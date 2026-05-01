@@ -1,0 +1,652 @@
+import { useEffect, useState } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
+import { supabase } from '../lib/supabase'
+import type { Ingreso, InformeIngreso, InformeAlta, ItemsPaciente } from '../types'
+import { ChevronLeft, User, FileText, ClipboardList, AlertTriangle, FileCheck, Download } from 'lucide-react'
+import { exportarInformeIngreso, exportarInformeAlta } from '../lib/exportWord'
+
+const TABS = [
+  { id: 'datos', label: 'Datos', icon: User },
+  { id: 'ingreso', label: 'Informe ingreso', icon: FileText },
+  { id: 'alta', label: 'Informe alta', icon: FileCheck },
+  { id: 'items', label: 'Ítems', icon: ClipboardList },
+  { id: 'eventos', label: 'Eventos', icon: AlertTriangle },
+]
+
+export default function DetalleIngreso() {
+  const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
+  const [tab, setTab] = useState('datos')
+  const [ingreso, setIngreso] = useState<Ingreso | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!id) return
+    supabase
+      .from('ingresos')
+      .select(`*, paciente:pacientes(*), medico_responsable:profesionales(*)`)
+      .eq('id', id)
+      .single()
+      .then(({ data }) => {
+        setIngreso(data as Ingreso)
+        setLoading(false)
+      })
+  }, [id])
+
+  if (loading) return <div className="p-8 text-slate-400">Cargando…</div>
+  if (!ingreso) return <div className="p-8 text-slate-400">Ingreso no encontrado</div>
+
+  const p = ingreso.paciente!
+  const nombreCompleto = `${p.primer_apellido} ${p.segundo_apellido ?? ''}, ${p.nombre}`.trim()
+  const edad = p.fecha_nacimiento
+    ? Math.floor((Date.now() - new Date(p.fecha_nacimiento).getTime()) / 31557600000)
+    : null
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div className="border-b bg-white px-8 py-4">
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-3">
+            <button onClick={() => navigate(-1)} className="text-slate-400 hover:text-slate-600 mt-1">
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <div>
+              <h1 className="text-xl font-bold text-slate-800">{nombreCompleto}</h1>
+              <div className="flex items-center gap-3 mt-0.5 text-xs text-slate-500">
+                {edad && <span>{edad} años</span>}
+                {ingreso.habitacion && <span>· Hab. {ingreso.habitacion}</span>}
+                {ingreso.medico_responsable && <span>· Dr/a. {ingreso.medico_responsable.nombre}</span>}
+                <span>· Ingreso: {new Date(ingreso.fecha_ingreso).toLocaleDateString('es-ES')}</span>
+                <span className={`px-2 py-0.5 rounded-full font-medium ${
+                  ingreso.estado === 'activo' ? 'bg-emerald-100 text-emerald-700'
+                  : ingreso.estado === 'alta' ? 'bg-slate-100 text-slate-500'
+                  : 'bg-red-100 text-red-600'
+                }`}>
+                  {ingreso.estado === 'activo' ? 'Ingresado' : ingreso.estado === 'alta' ? 'Alta' : 'Éxitus'}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-1 mt-4 -mb-4">
+          {TABS.map(({ id: tid, label, icon: Icon }) => (
+            <button
+              key={tid}
+              onClick={() => setTab(tid)}
+              className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+                tab === tid
+                  ? 'border-primary-600 text-primary-700'
+                  : 'border-transparent text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              <Icon className="w-3.5 h-3.5" />
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Tab content */}
+      <div className="flex-1 overflow-y-auto p-8">
+        {tab === 'datos' && <TabDatos ingreso={ingreso} onUpdate={setIngreso} />}
+        {tab === 'ingreso' && id && <TabInformeIngreso ingresoId={id} ingreso={ingreso} />}
+        {tab === 'alta' && id && <TabInformeAlta ingresoId={id} ingreso={ingreso} />}
+        {tab === 'items' && id && <TabItems ingresoId={id} />}
+        {tab === 'eventos' && id && <TabEventos ingresoId={id} />}
+      </div>
+    </div>
+  )
+}
+
+// ─── TAB DATOS ────────────────────────────────────────────────
+function TabDatos({ ingreso }: { ingreso: Ingreso; onUpdate: (i: Ingreso) => void }) {
+  const p = ingreso.paciente!
+  const [editando, setEditando] = useState(false)
+  const [paciente, setPaciente] = useState({ ...p })
+  const [ingresoEdit, setIngresoEdit] = useState({
+    habitacion: ingreso.habitacion?.toString() ?? '',
+    motivo_ingreso: ingreso.motivo_ingreso ?? '',
+    fecha_ingreso: ingreso.fecha_ingreso ?? '',
+    fecha_alta: ingreso.fecha_alta ?? '',
+    estado: ingreso.estado ?? 'activo',
+    medico_responsable_id: ingreso.medico_responsable_id ?? '',
+  })
+  const [medicos, setMedicos] = useState<import('../types').Profesional[]>([])
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    supabase.from('profesionales').select('*').eq('rol', 'medico').eq('activo', true)
+      .then(({ data }) => setMedicos(data ?? []))
+  }, [])
+
+  async function guardar() {
+    setSaving(true)
+    await Promise.all([
+      supabase.from('pacientes').update({
+        nombre: paciente.nombre,
+        primer_apellido: paciente.primer_apellido,
+        segundo_apellido: paciente.segundo_apellido,
+        cipna: paciente.cipna,
+        nhc: paciente.nhc,
+        dni: paciente.dni,
+        fecha_nacimiento: paciente.fecha_nacimiento || null,
+        sexo: paciente.sexo,
+        municipio: paciente.municipio,
+        medico_cabecera: paciente.medico_cabecera,
+        contacto_familiar_nombre: paciente.contacto_familiar_nombre,
+        contacto_familiar_telefono: paciente.contacto_familiar_telefono,
+      }).eq('id', p.id),
+      supabase.from('ingresos').update({
+        habitacion: ingresoEdit.habitacion ? parseInt(ingresoEdit.habitacion) : null,
+        motivo_ingreso: ingresoEdit.motivo_ingreso,
+        fecha_ingreso: ingresoEdit.fecha_ingreso,
+        fecha_alta: ingresoEdit.fecha_alta || null,
+        estado: ingresoEdit.estado,
+        medico_responsable_id: ingresoEdit.medico_responsable_id || null,
+      }).eq('id', ingreso.id),
+    ])
+    setSaving(false)
+    setSaved(true)
+    setEditando(false)
+    setTimeout(() => setSaved(false), 2000)
+  }
+
+  if (editando) {
+    const inp = (label: string, val: string, onChange: (v: string) => void, type = 'text') => (
+      <div key={label}>
+        <label className="label">{label}</label>
+        <input type={type} className="input" value={val}
+          onChange={e => onChange(e.target.value)} />
+      </div>
+    )
+    return (
+      <div className="max-w-2xl space-y-5">
+        <div className="card p-6 space-y-4">
+          <p className="section-title">Datos del paciente</p>
+          <div className="grid grid-cols-2 gap-4">
+            {inp('Nombre', paciente.nombre ?? '', v => setPaciente(p => ({ ...p, nombre: v })))}
+            {inp('Primer apellido', paciente.primer_apellido ?? '', v => setPaciente(p => ({ ...p, primer_apellido: v })))}
+            {inp('Segundo apellido', paciente.segundo_apellido ?? '', v => setPaciente(p => ({ ...p, segundo_apellido: v })))}
+            {inp('Fecha nacimiento', paciente.fecha_nacimiento ?? '', v => setPaciente(p => ({ ...p, fecha_nacimiento: v })), 'date')}
+            <div>
+              <label className="label">Sexo</label>
+              <select className="input" value={paciente.sexo ?? ''}
+                onChange={e => setPaciente(p => ({ ...p, sexo: e.target.value as any }))}>
+                <option value="">—</option>
+                <option value="hombre">Hombre</option>
+                <option value="mujer">Mujer</option>
+                <option value="otro">Otro</option>
+              </select>
+            </div>
+            {inp('CIPNA', paciente.cipna ?? '', v => setPaciente(p => ({ ...p, cipna: v })))}
+            {inp('NHC', paciente.nhc ?? '', v => setPaciente(p => ({ ...p, nhc: v })))}
+            {inp('DNI / NIE', paciente.dni ?? '', v => setPaciente(p => ({ ...p, dni: v })))}
+            {inp('Municipio', paciente.municipio ?? '', v => setPaciente(p => ({ ...p, municipio: v })))}
+            {inp('Médico de cabecera', paciente.medico_cabecera ?? '', v => setPaciente(p => ({ ...p, medico_cabecera: v })))}
+            {inp('Contacto familiar', paciente.contacto_familiar_nombre ?? '', v => setPaciente(p => ({ ...p, contacto_familiar_nombre: v })))}
+            {inp('Teléfono familiar', paciente.contacto_familiar_telefono ?? '', v => setPaciente(p => ({ ...p, contacto_familiar_telefono: v })))}
+          </div>
+        </div>
+        <div className="card p-6 space-y-4">
+          <p className="section-title">Datos del ingreso</p>
+          <div className="grid grid-cols-2 gap-4">
+            {inp('Fecha de ingreso', ingresoEdit.fecha_ingreso, v => setIngresoEdit(i => ({ ...i, fecha_ingreso: v })), 'date')}
+            {inp('Fecha de alta', ingresoEdit.fecha_alta, v => setIngresoEdit(i => ({ ...i, fecha_alta: v })), 'date')}
+            {inp('Habitación', ingresoEdit.habitacion, v => setIngresoEdit(i => ({ ...i, habitacion: v })), 'number')}
+            <div>
+              <label className="label">Estado</label>
+              <select className="input" value={ingresoEdit.estado}
+                onChange={e => setIngresoEdit(i => ({ ...i, estado: e.target.value as any }))}>
+                <option value="activo">Ingresado</option>
+                <option value="alta">Alta</option>
+                <option value="exitus">Éxitus</option>
+              </select>
+            </div>
+            <div>
+              <label className="label">Médico responsable</label>
+              <select className="input" value={ingresoEdit.medico_responsable_id}
+                onChange={e => setIngresoEdit(i => ({ ...i, medico_responsable_id: e.target.value }))}>
+                <option value="">— Sin asignar —</option>
+                {medicos.map(m => (
+                  <option key={m.id} value={m.id}>{m.nombre} {m.apellidos}</option>
+                ))}
+              </select>
+            </div>
+            <div className="col-span-2">
+              <label className="label">Motivo de ingreso</label>
+              <textarea className="textarea" rows={2} value={ingresoEdit.motivo_ingreso}
+                onChange={e => setIngresoEdit(i => ({ ...i, motivo_ingreso: e.target.value }))} />
+            </div>
+          </div>
+        </div>
+        <div className="flex justify-end gap-3">
+          <button onClick={() => setEditando(false)} className="btn-secondary">Cancelar</button>
+          <button onClick={guardar} disabled={saving} className="btn-primary">
+            {saving ? 'Guardando…' : 'Guardar cambios'}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // Modo lectura
+  const rows: [string, string | null | undefined][] = [
+    ['CIPNA', p.cipna], ['NHC', p.nhc], ['DNI', p.dni],
+    ['Fecha nacimiento', p.fecha_nacimiento ? new Date(p.fecha_nacimiento).toLocaleDateString('es-ES') : null],
+    ['Sexo', p.sexo], ['Municipio', p.municipio],
+    ['Médico de cabecera', p.medico_cabecera],
+    ['Contacto familiar', p.contacto_familiar_nombre],
+    ['Teléfono familiar', p.contacto_familiar_telefono],
+    ['Motivo de ingreso', ingreso.motivo_ingreso],
+    ['Estado', ingreso.estado],
+    ['Habitación', ingreso.habitacion?.toString()],
+  ]
+  return (
+    <div className="max-w-2xl space-y-4">
+      <div className="flex justify-end">
+        <button onClick={() => setEditando(true)} className="btn-secondary">
+          Editar datos
+        </button>
+      </div>
+      <div className="card overflow-hidden">
+        <div className="divide-y">
+          {rows.map(([k, v]) => (
+            <div key={k} className="flex px-5 py-3 text-sm">
+              <span className="w-44 text-slate-500 shrink-0">{k}</span>
+              <span className="text-slate-800">{v || <span className="text-slate-300">—</span>}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+      {saved && <p className="text-emerald-600 text-sm text-right">✓ Guardado correctamente</p>}
+    </div>
+  )
+}
+
+// ─── TAB INFORME INGRESO ──────────────────────────────────────
+function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso: Ingreso | null }) {
+  const [data, setData] = useState<Partial<InformeIngreso>>({})
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    supabase.from('informe_ingreso').select('*').eq('ingreso_id', ingresoId).single()
+      .then(({ data: d }) => { if (d) setData(d) })
+  }, [ingresoId])
+
+  async function save() {
+    setSaving(true)
+    await supabase.from('informe_ingreso').upsert({ ...data, ingreso_id: ingresoId })
+    setSaving(false)
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
+  }
+
+  const field = (key: keyof InformeIngreso, label: string, rows = 3) => (
+    <div key={key}>
+      <label className="label">{label}</label>
+      <textarea
+        className="textarea"
+        rows={rows}
+        value={(data[key] as string) ?? ''}
+        onChange={e => setData(d => ({ ...d, [key]: e.target.value }))}
+      />
+    </div>
+  )
+
+  return (
+    <div className="max-w-3xl space-y-6">
+      <div className="card p-6 space-y-4">
+        <p className="section-title">Antecedentes patológicos</p>
+        {field('alergias', 'Alergias', 2)}
+        {field('antecedentes_medicos', 'Antecedentes médicos')}
+        {field('antecedentes_quirurgicos', 'Intervenciones quirúrgicas', 2)}
+        {field('antecedentes_familiares', 'Antecedentes familiares', 2)}
+        {field('tratamiento_ingreso', 'Tratamiento al ingreso')}
+      </div>
+
+      <div className="card p-6 space-y-4">
+        <p className="section-title">Valoración Geriátrica Integral</p>
+        {field('vgi_social', 'Social', 2)}
+        {field('vgi_funcional', 'Funcional', 2)}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="label">I. Barthel (/100)</label>
+            <input type="number" min={0} max={100} className="input"
+              value={data.barthel ?? ''}
+              onChange={e => setData(d => ({ ...d, barthel: parseInt(e.target.value) || undefined }))} />
+          </div>
+          <div>
+            <label className="label">I. Lawton (/8)</label>
+            <input type="number" min={0} max={8} className="input"
+              value={data.lawton ?? ''}
+              onChange={e => setData(d => ({ ...d, lawton: parseInt(e.target.value) || undefined }))} />
+          </div>
+        </div>
+        {field('vgi_cognitivo', 'Cognitivo', 2)}
+        {field('vgi_sensorial', 'Sensorial', 2)}
+        {field('vgi_nutricional', 'Nutricional', 2)}
+        {field('vgi_dolor', 'Dolor', 2)}
+        {field('vgi_otros', 'Otros síndromes geriátricos', 2)}
+      </div>
+
+      <div className="card p-6 space-y-4">
+        <p className="section-title">Enfermedad actual</p>
+        {field('personalidad_previa', 'Personalidad previa', 2)}
+        {field('evolucion', 'Evolución', 4)}
+        {field('situacion_cognitivo', 'Situación cognitiva', 2)}
+        {field('situacion_conductual', 'Situación conductual', 2)}
+        {field('situacion_animico', 'Situación anímica', 2)}
+        {field('situacion_funcional', 'Situación funcional', 2)}
+        {field('situacion_social', 'Situación social', 2)}
+      </div>
+
+      <div className="card p-6 space-y-4">
+        <p className="section-title">Exploraciones</p>
+        {field('exploracion_fisica', 'Exploración física al ingreso')}
+        {field('exploracion_neurologica', 'Exploración neurológica al ingreso')}
+        {field('exploracion_psicopatologica', 'Exploración psicopatológica al ingreso')}
+        {field('exploraciones_complementarias', 'Exploraciones complementarias')}
+      </div>
+
+      <div className="card p-6 space-y-4">
+        <p className="section-title">Diagnóstico y plan</p>
+        {field('impresion_diagnostica', 'Impresión diagnóstica', 2)}
+        {field('plan_objetivos', 'Objetivos', 2)}
+        {field('plan_medicacion', 'Medicación')}
+        {field('plan_otros_cuidados', 'Otros cuidados / intervenciones', 2)}
+      </div>
+
+      <div className="flex justify-end gap-3">
+        <button
+          onClick={async () => {
+            if (!ingreso) return
+            await save()
+            await exportarInformeIngreso(ingreso, data as InformeIngreso)
+          }}
+          className="btn-secondary"
+        >
+          <Download className="w-4 h-4" />
+          Exportar Word
+        </button>
+        <button onClick={save} disabled={saving} className="btn-primary">
+          {saving ? 'Guardando…' : saved ? '✓ Guardado' : 'Guardar cambios'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ─── TAB INFORME ALTA ─────────────────────────────────────────
+function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: Ingreso | null }) {
+  const [data, setData] = useState<Partial<InformeAlta>>({})
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+
+  const [informeIngreso, setInformeIngreso] = useState<Partial<InformeIngreso>>({})
+
+  useEffect(() => {
+    supabase.from('informe_alta').select('*').eq('ingreso_id', ingresoId).single()
+      .then(({ data: d }) => { if (d) setData(d) })
+    supabase.from('informe_ingreso').select('*').eq('ingreso_id', ingresoId).single()
+      .then(({ data: d }) => { if (d) setInformeIngreso(d) })
+  }, [ingresoId])
+
+  async function save() {
+    setSaving(true)
+    await supabase.from('informe_alta').upsert({ ...data, ingreso_id: ingresoId })
+    setSaving(false)
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
+  }
+
+  const field = (key: keyof InformeAlta, label: string, rows = 3) => (
+    <div key={key}>
+      <label className="label">{label}</label>
+      <textarea className="textarea" rows={rows}
+        value={(data[key] as string) ?? ''}
+        onChange={e => setData(d => ({ ...d, [key]: e.target.value }))} />
+    </div>
+  )
+
+  return (
+    <div className="max-w-3xl space-y-6">
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-700">
+        Los datos de antecedentes e informe de ingreso se heredan automáticamente al exportar a Word.
+      </div>
+
+      <div className="card p-6 space-y-4">
+        <p className="section-title">Durante el ingreso</p>
+        {field('exploraciones_durante_ingreso', 'Exploraciones complementarias durante el ingreso')}
+        {field('estudio_neuropsicologico', 'Estudio neuropsicológico')}
+        {field('informe_fisioterapia', 'Informe de fisioterapia')}
+        {field('informe_terapia_ocupacional', 'Informe de terapia ocupacional')}
+      </div>
+
+      <div className="card p-6 space-y-4">
+        <p className="section-title">Evolución y diagnósticos</p>
+        {field('evolucion_clinica', 'Evolución clínica', 5)}
+        {field('juicios_clinicos', 'Juicios clínicos', 2)}
+      </div>
+
+      <div className="card p-6 space-y-4">
+        <p className="section-title">Tratamiento y recomendaciones al alta</p>
+        {field('recomendaciones_conductuales', 'Recomendaciones de manejo conductual')}
+        {field('cuidados_enfermeria', 'Cuidados de enfermería')}
+        {field('medicacion_alta', 'Medicación al alta')}
+        {field('otras_recomendaciones', 'Otras recomendaciones', 2)}
+      </div>
+
+      <div className="flex justify-end gap-3">
+        <button
+          onClick={async () => {
+            if (!ingreso) return
+            await save()
+            await exportarInformeAlta(ingreso, informeIngreso as InformeIngreso, data as InformeAlta)
+          }}
+          className="btn-secondary"
+        >
+          <Download className="w-4 h-4" />
+          Exportar Word
+        </button>
+        <button onClick={save} disabled={saving} className="btn-primary">
+          {saving ? 'Guardando…' : saved ? '✓ Guardado' : 'Guardar cambios'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ─── TAB ÍTEMS ────────────────────────────────────────────────
+function TabItems({ ingresoId }: { ingresoId: string }) {
+  const [data, setData] = useState<Partial<ItemsPaciente>>({})
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    supabase.from('items_paciente').select('*').eq('ingreso_id', ingresoId).single()
+      .then(({ data: d }) => { if (d) setData(d) })
+  }, [ingresoId])
+
+  async function save() {
+    setSaving(true)
+    await supabase.from('items_paciente').upsert({ ...data, ingreso_id: ingresoId })
+    setSaving(false)
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
+  }
+
+  const sel = (key: keyof ItemsPaciente, label: string, options: { v: string; l: string }[]) => (
+    <div>
+      <label className="label">{label}</label>
+      <select className="input" value={(data[key] as string) ?? ''}
+        onChange={e => setData(d => ({ ...d, [key]: e.target.value || null }))}>
+        <option value="">—</option>
+        {options.map(o => <option key={o.v} value={o.v}>{o.l}</option>)}
+      </select>
+    </div>
+  )
+
+  const bool = (key: keyof ItemsPaciente, label: string) => (
+    <label className="flex items-center gap-2 text-sm cursor-pointer">
+      <input type="checkbox" className="w-4 h-4 rounded text-primary-600"
+        checked={!!(data[key])}
+        onChange={e => setData(d => ({ ...d, [key]: e.target.checked }))} />
+      {label}
+    </label>
+  )
+
+  const SUJECION_OPTS = ['normal', 'una_barra', 'dos_barras', 'sujecion_fisica', 'sensor_presion', 'cota_cero']
+  const SUJECION_LABELS: Record<string, string> = {
+    normal: 'Normal', una_barra: 'Una barra', dos_barras: 'Dos barras',
+    sujecion_fisica: 'Sujeción física', sensor_presion: 'Sensor de presión', cota_cero: 'Cota cero',
+  }
+
+  const multiSujecion = (key: 'sujecion_cama' | 'sujecion_silla_ruedas' | 'sujecion_sillon', label: string) => {
+    const current: string[] = (data[key] as string[]) ?? []
+    return (
+      <div>
+        <label className="label">{label}</label>
+        <div className="flex flex-wrap gap-2">
+          {SUJECION_OPTS.map(opt => {
+            const active = current.includes(opt)
+            return (
+              <button key={opt} type="button"
+                onClick={() => {
+                  const next = active ? current.filter(x => x !== opt) : [...current, opt]
+                  setData(d => ({ ...d, [key]: next }))
+                }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                  active ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400'
+                }`}>
+                {SUJECION_LABELS[opt]}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="max-w-3xl space-y-6">
+      <div className="card p-6 space-y-4">
+        <p className="section-title">Dependencia y cuidados</p>
+        <div className="grid grid-cols-2 gap-4">
+          {sel('dependencia_avd', 'Dependencia AVD', [{ v: '1', l: '1 persona' }, { v: '2', l: '2 personas' }])}
+          {sel('higiene', 'Higiene', [{ v: 'lavabo', l: 'Lavabo' }, { v: 'cama', l: 'Cama' }])}
+          {sel('ducha', 'Ducha', [{ v: 'pie', l: 'De pie' }, { v: 'sentado', l: 'Sentado' }])}
+          {sel('ingestas', 'Ingestas', [{ v: 'autonomo', l: 'Autónomo' }, { v: 'dependiente', l: 'Dependiente' }])}
+          <div>
+            <label className="label">Vestido</label>
+            <input className="input" value={(data.vestido as string) ?? ''}
+              onChange={e => setData(d => ({ ...d, vestido: e.target.value }))} />
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-4 pt-1">
+          {bool('banio', 'Baño')}
+          {bool('siestas', 'Siestas')}
+        </div>
+      </div>
+
+      <div className="card p-6 space-y-4">
+        <p className="section-title">Continencia</p>
+        <div className="grid grid-cols-2 gap-4">
+          {sel('panial_dia', 'Pañal día', [{ v: 'ninguno', l: 'Ninguno' }, { v: 'BP', l: 'BP' }, { v: 'CA', l: 'CA' }])}
+          {sel('panial_noche', 'Pañal noche', [
+            { v: 'ninguno', l: 'Ninguno' }, { v: 'BP', l: 'BP' }, { v: 'CA', l: 'CA' }, { v: 'CA+malla', l: 'CA + malla' }
+          ])}
+        </div>
+        <div className="flex flex-wrap gap-4">
+          {bool('colector', 'Colector')}
+          {bool('sonda_vesical', 'Sonda vesical')}
+        </div>
+      </div>
+
+      <div className="card p-6 space-y-4">
+        <p className="section-title">Prótesis</p>
+        <div className="grid grid-cols-3 gap-4">
+          {sel('dentadura', 'Dentadura', [
+            { v: 'ninguna', l: 'Ninguna' }, { v: 'superior', l: 'Superior' },
+            { v: 'inferior', l: 'Inferior' }, { v: 'completa', l: 'Completa' },
+            { v: 'fija', l: 'Fija' }, { v: 'puente', l: 'Puente' },
+          ])}
+          {sel('audifonos', 'Audífonos', [
+            { v: 'ninguno', l: 'Ninguno' }, { v: 'derecho', l: 'Derecho' },
+            { v: 'izquierdo', l: 'Izquierdo' }, { v: 'ambos', l: 'Ambos' },
+          ])}
+          {sel('gafas', 'Gafas', [
+            { v: 'no', l: 'No' }, { v: 'si', l: 'Sí' }, { v: 'solo_tv', l: 'Solo TV' },
+          ])}
+        </div>
+      </div>
+
+      <div className="card p-6 space-y-4">
+        <p className="section-title">Movilidad</p>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="label">Deambulación</label>
+            <input className="input" value={(data.deambulacion as string) ?? ''}
+              onChange={e => setData(d => ({ ...d, deambulacion: e.target.value }))} />
+          </div>
+          {sel('ayudas_deambulacion', 'Ayudas', [
+            { v: 'ninguna', l: 'Ninguna' }, { v: 'baston', l: 'Bastón' },
+            { v: 'andador_2r', l: 'Andador 2 ruedas' }, { v: 'andador_4r', l: 'Andador 4 ruedas' },
+            { v: 'silla_ruedas', l: 'Silla de ruedas' },
+          ])}
+        </div>
+        <div className="flex flex-wrap gap-4">
+          {bool('bipedestador', 'Bipedestador')}
+          {bool('grua', 'Grúa')}
+          {bool('cambios_posturales', 'Cambios posturales')}
+          {bool('cama_45', 'Cama 45°')}
+        </div>
+      </div>
+
+      <div className="card p-6 space-y-4">
+        <p className="section-title">Otros</p>
+        <div className="flex flex-wrap gap-4">
+          {bool('oxigenoterapia', 'Oxigenoterapia')}
+          {bool('botella_noche', 'Botella noche')}
+          {bool('colchon_antiescaras', 'Colchón antiescaras')}
+          {bool('patucos_coderas', 'Patucos / coderas')}
+          {bool('sensor_cama', 'Sensor cama')}
+        </div>
+      </div>
+
+      <div className="card p-6 space-y-4">
+        <p className="section-title">Contenciones</p>
+        {multiSujecion('sujecion_cama', 'Sujeción cama')}
+        {multiSujecion('sujecion_silla_ruedas', 'Sujeción silla de ruedas')}
+        {multiSujecion('sujecion_sillon', 'Sujeción sillón')}
+        <div>
+          <label className="label">Observaciones</label>
+          <textarea className="textarea" rows={3}
+            value={(data.observaciones_sujeciones as string) ?? ''}
+            onChange={e => setData(d => ({ ...d, observaciones_sujeciones: e.target.value }))} />
+        </div>
+      </div>
+
+      <div className="flex justify-end">
+        <button onClick={save} disabled={saving} className="btn-primary">
+          {saving ? 'Guardando…' : saved ? '✓ Guardado' : 'Guardar cambios'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ─── TAB EVENTOS ──────────────────────────────────────────────
+function TabEventos({ ingresoId: _ingresoId }: { ingresoId: string }) {
+  return (
+    <div className="max-w-3xl">
+      <div className="card p-6 text-sm text-slate-400 text-center">
+        Módulo de eventos — próximamente
+      </div>
+    </div>
+  )
+}
