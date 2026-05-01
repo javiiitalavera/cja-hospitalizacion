@@ -13,24 +13,24 @@ function esc(val: string | null | undefined): string {
     .replace(/'/g, '&apos;')
 }
 
-function parrafoXml(texto: string, font = 'Gill Sans MT'): string {
+function parrafoXml(texto: string, font = 'Calibri'): string {
   return `<w:p><w:pPr><w:spacing w:line="276" w:lineRule="auto"/><w:jc w:val="both"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="${font}" w:hAnsi="${font}"/></w:rPr><w:t xml:space="preserve">${esc(texto)}</w:t></w:r></w:p>`
 }
 
-function parrafoBoldXml(label: string, valor: string, font = 'Gill Sans MT'): string {
+function parrafoBoldXml(label: string, valor: string, font = 'Calibri'): string {
   return `<w:p><w:pPr><w:spacing w:line="276" w:lineRule="auto"/><w:jc w:val="both"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="${font}" w:hAnsi="${font}"/><w:b/></w:rPr><w:t xml:space="preserve">${esc(label)}</w:t></w:r><w:r><w:rPr><w:rFonts w:ascii="${font}" w:hAnsi="${font}"/></w:rPr><w:t xml:space="preserve">${esc(valor)}</w:t></w:r></w:p>`
 }
 
-function seccionXml(titulo: string, font = 'Gill Sans MT'): string {
+function seccionXml(titulo: string, font = 'Calibri'): string {
   return `<w:p><w:pPr><w:spacing w:line="276" w:lineRule="auto"/><w:jc w:val="both"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="${font}" w:hAnsi="${font}"/><w:b/><w:u w:val="single"/></w:rPr><w:t>${esc(titulo)}</w:t></w:r></w:p>`
 }
 
-function lineasXml(texto: string | null | undefined, font = 'Gill Sans MT'): string {
+function lineasXml(texto: string | null | undefined, font = 'Calibri'): string {
   if (!texto?.trim()) return parrafoXml('', font)
   return texto.split('\n').map(l => parrafoXml(l, font)).join('')
 }
 
-function tablaTomasXml(filas = 7, font = 'Gill Sans MT'): string {
+function tablaTomasXml(filas = 7, font = 'Calibri'): string {
   const cols = ['DESAYUNO', 'COMIDA', 'MERIENDA', 'CENA', 'ACOSTAR']
   const colW = 1400
   const primerW = 1726
@@ -78,7 +78,7 @@ function inyectarHeader(headerXml: string, p: NonNullable<Ingreso['paciente']>, 
 export async function exportarInformeIngreso(ingreso: Ingreso, inf: InformeIngreso): Promise<void> {
   const zip = await cargarPlantilla('plantilla_ingreso.docx')
   const p = ingreso.paciente!
-  const font = 'Gill Sans MT'
+  const font = 'Calibri'
   const edad = p.fecha_nacimiento ? Math.floor((Date.now() - new Date(p.fecha_nacimiento).getTime()) / 31557600000) : '?'
   const fingreso = ingreso.fecha_ingreso ? new Date(ingreso.fecha_ingreso).toLocaleDateString('es-ES') : ''
   const nombreCompleto = `${p.primer_apellido ?? ''} ${p.segundo_apellido ?? ''}, ${p.nombre ?? ''}`.trim()
@@ -169,7 +169,7 @@ export async function exportarInformeIngreso(ingreso: Ingreso, inf: InformeIngre
 export async function exportarInformeAlta(ingreso: Ingreso, ii: InformeIngreso, ia: InformeAlta): Promise<void> {
   const zip = await cargarPlantilla('plantilla_alta.docx')
   const p = ingreso.paciente!
-  const font = 'Gill Sans MT'
+  const font = 'Calibri'
   const edad = p.fecha_nacimiento ? Math.floor((Date.now() - new Date(p.fecha_nacimiento).getTime()) / 31557600000) : '?'
   const fingreso = ingreso.fecha_ingreso ? new Date(ingreso.fecha_ingreso).toLocaleDateString('es-ES') : ''
   const falta = ingreso.fecha_alta ? new Date(ingreso.fecha_alta).toLocaleDateString('es-ES') : ''

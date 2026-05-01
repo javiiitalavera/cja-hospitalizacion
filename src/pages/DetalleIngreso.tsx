@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import type { Ingreso, InformeIngreso, InformeAlta, ItemsPaciente } from '../types'
@@ -98,6 +98,26 @@ export default function DetalleIngreso() {
         {tab === 'eventos' && id && <TabEventos ingresoId={id} />}
       </div>
     </div>
+  )
+}
+
+// ─── AUTOTEXTAREA ─────────────────────────────────────────────
+function AutoTextarea({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const ref = useRef<HTMLTextAreaElement>(null)
+  useEffect(() => {
+    if (ref.current) {
+      ref.current.style.height = 'auto'
+      ref.current.style.height = ref.current.scrollHeight + 'px'
+    }
+  }, [value])
+  return (
+    <textarea
+      ref={ref}
+      className="textarea"
+      style={{ minHeight: '4rem', overflow: 'hidden', resize: 'none' }}
+      value={value}
+      onChange={e => onChange(e.target.value)}
+    />
   )
 }
 
@@ -272,77 +292,90 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
   const [data, setData] = useState<Partial<InformeIngreso>>({})
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const dataRef = useRef(data)
+  dataRef.current = data
 
   useEffect(() => {
     supabase.from('informe_ingreso').select('*').eq('ingreso_id', ingresoId).single()
       .then(({ data: d }) => { if (d) setData(d) })
   }, [ingresoId])
 
-  async function save() {
+  async function save(d = dataRef.current) {
     setSaving(true)
-    await supabase.from('informe_ingreso').upsert({ ...data, ingreso_id: ingresoId })
+    await supabase.from('informe_ingreso').upsert({ ...d, ingreso_id: ingresoId })
     setSaving(false)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
 
-  const field = (key: keyof InformeIngreso, label: string, rows = 3) => (
+  function update(key: keyof InformeIngreso, value: string | number | undefined) {
+    const next = { ...dataRef.current, [key]: value }
+    setData(next)
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => save(next), 1500)
+  }
+
+  const field = (key: keyof InformeIngreso, label: string) => (
     <div key={key}>
       <label className="label">{label}</label>
-      <textarea
-        className="textarea"
-        rows={rows}
+      <AutoTextarea
         value={(data[key] as string) ?? ''}
-        onChange={e => setData(d => ({ ...d, [key]: e.target.value }))}
+        onChange={v => update(key, v)}
       />
     </div>
   )
 
   return (
     <div className="max-w-3xl space-y-6">
+      <div className="flex items-center justify-end gap-3 text-xs text-slate-400">
+        {saving && <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse inline-block"/> Guardando…</span>}
+        {!saving && saved && <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"/> Guardado</span>}
+      </div>
+
       <div className="card p-6 space-y-4">
         <p className="section-title">Antecedentes patológicos</p>
-        {field('alergias', 'Alergias', 2)}
+        {field('alergias', 'Alergias')}
         {field('antecedentes_medicos', 'Antecedentes médicos')}
-        {field('antecedentes_quirurgicos', 'Intervenciones quirúrgicas', 2)}
-        {field('antecedentes_familiares', 'Antecedentes familiares', 2)}
+        {field('antecedentes_quirurgicos', 'Intervenciones quirúrgicas')}
+        {field('antecedentes_familiares', 'Antecedentes familiares')}
         {field('tratamiento_ingreso', 'Tratamiento al ingreso')}
       </div>
 
       <div className="card p-6 space-y-4">
         <p className="section-title">Valoración Geriátrica Integral</p>
-        {field('vgi_social', 'Social', 2)}
-        {field('vgi_funcional', 'Funcional', 2)}
+        {field('vgi_social', 'Social')}
+        {field('vgi_funcional', 'Funcional')}
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="label">I. Barthel (/100)</label>
             <input type="number" min={0} max={100} className="input"
               value={data.barthel ?? ''}
-              onChange={e => setData(d => ({ ...d, barthel: parseInt(e.target.value) || undefined }))} />
+              onChange={e => update('barthel', parseInt(e.target.value) || undefined)} />
           </div>
           <div>
             <label className="label">I. Lawton (/8)</label>
             <input type="number" min={0} max={8} className="input"
               value={data.lawton ?? ''}
-              onChange={e => setData(d => ({ ...d, lawton: parseInt(e.target.value) || undefined }))} />
+              onChange={e => update('lawton', parseInt(e.target.value) || undefined)} />
           </div>
         </div>
-        {field('vgi_cognitivo', 'Cognitivo', 2)}
-        {field('vgi_sensorial', 'Sensorial', 2)}
-        {field('vgi_nutricional', 'Nutricional', 2)}
-        {field('vgi_dolor', 'Dolor', 2)}
-        {field('vgi_otros', 'Otros síndromes geriátricos', 2)}
+        {field('vgi_cognitivo', 'Cognitivo')}
+        {field('vgi_sensorial', 'Sensorial')}
+        {field('vgi_nutricional', 'Nutricional')}
+        {field('vgi_dolor', 'Dolor')}
+        {field('vgi_otros', 'Otros síndromes geriátricos')}
       </div>
 
       <div className="card p-6 space-y-4">
         <p className="section-title">Enfermedad actual</p>
-        {field('personalidad_previa', 'Personalidad previa', 2)}
-        {field('evolucion', 'Evolución', 4)}
-        {field('situacion_cognitivo', 'Situación cognitiva', 2)}
-        {field('situacion_conductual', 'Situación conductual', 2)}
-        {field('situacion_animico', 'Situación anímica', 2)}
-        {field('situacion_funcional', 'Situación funcional', 2)}
-        {field('situacion_social', 'Situación social', 2)}
+        {field('personalidad_previa', 'Personalidad previa')}
+        {field('evolucion', 'Evolución')}
+        {field('situacion_cognitivo', 'Situación cognitiva')}
+        {field('situacion_conductual', 'Situación conductual')}
+        {field('situacion_animico', 'Situación anímica')}
+        {field('situacion_funcional', 'Situación funcional')}
+        {field('situacion_social', 'Situación social')}
       </div>
 
       <div className="card p-6 space-y-4">
@@ -355,10 +388,10 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
 
       <div className="card p-6 space-y-4">
         <p className="section-title">Diagnóstico y plan</p>
-        {field('impresion_diagnostica', 'Impresión diagnóstica', 2)}
-        {field('plan_objetivos', 'Objetivos', 2)}
+        {field('impresion_diagnostica', 'Impresión diagnóstica')}
+        {field('plan_objetivos', 'Objetivos')}
         {field('plan_medicacion', 'Medicación')}
-        {field('plan_otros_cuidados', 'Otros cuidados / intervenciones', 2)}
+        {field('plan_otros_cuidados', 'Otros cuidados / intervenciones')}
       </div>
 
       <div className="flex justify-end gap-3">
@@ -373,8 +406,8 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
           <Download className="w-4 h-4" />
           Exportar Word
         </button>
-        <button onClick={save} disabled={saving} className="btn-primary">
-          {saving ? 'Guardando…' : saved ? '✓ Guardado' : 'Guardar cambios'}
+        <button onClick={() => save()} className="btn-primary">
+          Guardar ahora
         </button>
       </div>
     </div>
@@ -396,27 +429,45 @@ function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
       .then(({ data: d }) => { if (d) setInformeIngreso(d) })
   }, [ingresoId])
 
-  async function save() {
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const dataRef = useRef(data)
+  dataRef.current = data
+
+  async function save(d = dataRef.current) {
     setSaving(true)
-    await supabase.from('informe_alta').upsert({ ...data, ingreso_id: ingresoId })
+    await supabase.from('informe_alta').upsert({ ...d, ingreso_id: ingresoId })
     setSaving(false)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
 
-  const field = (key: keyof InformeAlta, label: string, rows = 3) => (
+  function update(key: keyof InformeAlta, value: string) {
+    const next = { ...dataRef.current, [key]: value }
+    setData(next)
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => save(next), 1500)
+  }
+
+  const field = (key: keyof InformeAlta, label: string) => (
     <div key={key}>
       <label className="label">{label}</label>
-      <textarea className="textarea" rows={rows}
+      <AutoTextarea
         value={(data[key] as string) ?? ''}
-        onChange={e => setData(d => ({ ...d, [key]: e.target.value }))} />
+        onChange={v => update(key, v)}
+      />
     </div>
   )
 
   return (
     <div className="max-w-3xl space-y-6">
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-700">
-        Los datos de antecedentes e informe de ingreso se heredan automáticamente al exportar a Word.
+      <div className="flex items-center justify-between">
+        <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-xs text-blue-700">
+          Los antecedentes e informe de ingreso se heredan al exportar a Word.
+        </div>
+        <div className="text-xs text-slate-400">
+          {saving && <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse inline-block"/> Guardando…</span>}
+          {!saving && saved && <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"/> Guardado</span>}
+        </div>
       </div>
 
       <div className="card p-6 space-y-4">
@@ -429,8 +480,8 @@ function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
 
       <div className="card p-6 space-y-4">
         <p className="section-title">Evolución y diagnósticos</p>
-        {field('evolucion_clinica', 'Evolución clínica', 5)}
-        {field('juicios_clinicos', 'Juicios clínicos', 2)}
+        {field('evolucion_clinica', 'Evolución clínica')}
+        {field('juicios_clinicos', 'Juicios clínicos')}
       </div>
 
       <div className="card p-6 space-y-4">
@@ -438,7 +489,7 @@ function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
         {field('recomendaciones_conductuales', 'Recomendaciones de manejo conductual')}
         {field('cuidados_enfermeria', 'Cuidados de enfermería')}
         {field('medicacion_alta', 'Medicación al alta')}
-        {field('otras_recomendaciones', 'Otras recomendaciones', 2)}
+        {field('otras_recomendaciones', 'Otras recomendaciones')}
       </div>
 
       <div className="flex justify-end gap-3">
@@ -453,8 +504,8 @@ function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
           <Download className="w-4 h-4" />
           Exportar Word
         </button>
-        <button onClick={save} disabled={saving} className="btn-primary">
-          {saving ? 'Guardando…' : saved ? '✓ Guardado' : 'Guardar cambios'}
+        <button onClick={() => save()} className="btn-primary">
+          Guardar ahora
         </button>
       </div>
     </div>
