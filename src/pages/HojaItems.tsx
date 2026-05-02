@@ -246,18 +246,19 @@ function PanelEdicion({ ingreso, onClose, onSaved }: {
 
 // ─── BLOQUE DE TABLA ──────────────────────────────────────────
 
-function Bloque({ habs, offset, onSelect, selectedId }: {
+function Bloque({ habs, offset, count=16, onSelect, selectedId }: {
   habs: IngresoConItems[]
   offset: number
+  count?: number
   onSelect: (i: IngresoConItems) => void
   selectedId: string | null
 }) {
-  const slots: (IngresoConItems|null)[] = Array(16).fill(null)
+  const slots: (IngresoConItems|null)[] = Array(count).fill(null)
   habs.forEach(i => {
-    if (i.habitacion && i.habitacion > offset && i.habitacion <= offset+16)
+    if (i.habitacion && i.habitacion > offset && i.habitacion <= offset+count)
       slots[i.habitacion-offset-1] = i
   })
-  const habNums = Array.from({length:16},(_,i)=>i+1+offset)
+  const habNums = Array.from({length:count},(_,i)=>i+1+offset)
   const cellCls = 'border border-slate-400 text-center text-[7.5pt] leading-tight px-0.5 py-0'
   const labelCls = 'border border-slate-400 text-left text-[7.5pt] leading-tight px-1 py-0 font-medium bg-slate-100 whitespace-nowrap'
 
@@ -265,7 +266,7 @@ function Bloque({ habs, offset, onSelect, selectedId }: {
     <table className="w-full border-collapse table-fixed" style={{fontSize:'7.5pt'}}>
       <colgroup>
         <col style={{width:'80px'}}/>
-        {habNums.map(n=><col key={n} style={{width:`${100/16}%`}}/>)}
+        {habNums.map(n=><col key={n} style={{width:`${100/count}%`}}/>)}
       </colgroup>
       <thead>
         <tr>
@@ -345,8 +346,9 @@ export default function HojaItems() {
     setSelected(prev => prev?.id === ingresoId ? { ...prev, items: updated } : prev)
   }
 
-  const habs1_16  = data.filter(i=>i.habitacion&&i.habitacion<=16)
-  const habs17_32 = data.filter(i=>i.habitacion&&i.habitacion>16)
+  const habs1_16   = data.filter(i=>i.habitacion&&i.habitacion<=16)
+  const habs17_max = data.filter(i=>i.habitacion&&i.habitacion>16)
+  const maxHab = Math.max(32, ...data.map(i=>i.habitacion??0))
   const conSujeciones = data.filter(i=>{
     const it=i.items
     if(!it) return false
@@ -370,50 +372,58 @@ export default function HojaItems() {
         </button>
       </div>
 
-      {/* Cabecera impresión */}
-      <div className="hidden print:flex justify-between items-center mb-2">
-        <span className="font-bold text-sm">CJA · HOJA DE ÍTEMS</span>
-        <span className="text-sm capitalize">{today}</span>
-      </div>
-
-      <div className="mb-4">
-        <Bloque habs={habs1_16} offset={0} onSelect={setSelected} selectedId={selected?.id??null}/>
-      </div>
-      <div className="my-3 border-t-2 border-slate-400 print:my-2"/>
-      <div className="mb-4">
-        <Bloque habs={habs17_32} offset={16} onSelect={setSelected} selectedId={selected?.id??null}/>
-      </div>
-
-      {conSujeciones.length>0&&(
-        <div className="mt-3">
-          <div className="border border-slate-400 bg-slate-100 px-2 py-1 text-[7.5pt] font-bold">
-            PAUTA SUJECIONES / MEDIDAS ALTERNATIVAS (observaciones)
-          </div>
-          <div className="border border-slate-400 px-2 py-0.5 text-[6.5pt] text-slate-600">
-            (1) Soporte terapéutico &nbsp;(2) Agresividad o autoagresión &nbsp;(3) Garantizar rehabilitación &nbsp;(4) Riesgo alto de caída + otras conductas &nbsp;(5) Voluntario &nbsp;(6) Control postural/seguridad
-          </div>
-          <table className="w-full border-collapse mt-1">
-            <tbody>
-              {conSujeciones.map(i=>{
-                const it=i.items!
-                const partes=[
-                  sujecionStr(it.sujecion_cama)&&`Cama: ${sujecionStr(it.sujecion_cama)}`,
-                  sujecionStr(it.sujecion_silla_ruedas)&&`Silla: ${sujecionStr(it.sujecion_silla_ruedas)}`,
-                  sujecionStr(it.sujecion_sillon)&&`Sillón: ${sujecionStr(it.sujecion_sillon)}`,
-                ].filter(Boolean).join(' · ')
-                return (
-                  <tr key={i.id} className="border border-slate-300">
-                    <td className="px-2 py-0.5 text-[7.5pt] font-medium w-8 text-center border-r border-slate-300">{i.habitacion}</td>
-                    <td className="px-2 py-0.5 text-[7.5pt] w-36 border-r border-slate-300">{i.paciente?.primer_apellido}, {i.paciente?.nombre}</td>
-                    <td className="px-2 py-0.5 text-[7.5pt] text-slate-600 border-r border-slate-300">{partes}</td>
-                    <td className="px-2 py-0.5 text-[7.5pt] text-slate-600">{it.observaciones_sujeciones??''}</td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+      {/* Página 1: camas 1-16 */}
+      <div className="print-page">
+        <div className="hidden print:flex justify-between items-center mb-1 text-[8pt]">
+          <span className="font-bold">CJA · HOJA DE ÍTEMS — Camas 1–16</span>
+          <span className="capitalize">{today}</span>
         </div>
-      )}
+        <Bloque habs={habs1_16} offset={0} count={16} onSelect={setSelected} selectedId={selected?.id??null}/>
+      </div>
+
+      {/* Separador pantalla */}
+      <div className="my-3 border-t-2 border-slate-400 print:hidden"/>
+
+      {/* Página 2: camas 17-32 (o 17-33) */}
+      <div className="print-page">
+        <div className="hidden print:flex justify-between items-center mb-1 text-[8pt]">
+          <span className="font-bold">CJA · HOJA DE ÍTEMS — Camas 17–{maxHab}</span>
+          <span className="capitalize">{today}</span>
+        </div>
+        <Bloque habs={habs17_max} offset={16} count={maxHab-16} onSelect={setSelected} selectedId={selected?.id??null}/>
+        {conSujeciones.length>0&&(
+          <div className="mt-3">
+            <div className="border border-slate-400 bg-slate-100 px-2 py-1 text-[7.5pt] font-bold">
+              PAUTA SUJECIONES / MEDIDAS ALTERNATIVAS (observaciones)
+            </div>
+            <div className="border border-slate-400 px-2 py-0.5 text-[6.5pt] text-slate-600">
+              (1) Soporte terapéutico &nbsp;(2) Agresividad o autoagresión &nbsp;(3) Garantizar rehabilitación &nbsp;(4) Riesgo alto de caída + otras conductas &nbsp;(5) Voluntario &nbsp;(6) Control postural/seguridad
+            </div>
+            <table className="w-full border-collapse mt-1">
+              <tbody>
+                {conSujeciones.map(i=>{
+                  const it=i.items!
+                  const partes=[
+                    sujecionStr(it.sujecion_cama)&&`Cama: ${sujecionStr(it.sujecion_cama)}`,
+                    sujecionStr(it.sujecion_silla_ruedas)&&`Silla: ${sujecionStr(it.sujecion_silla_ruedas)}`,
+                    sujecionStr(it.sujecion_sillon)&&`Sillón: ${sujecionStr(it.sujecion_sillon)}`,
+                  ].filter(Boolean).join(' · ')
+                  return (
+                    <tr key={i.id} className="border border-slate-300">
+                      <td className="px-2 py-0.5 text-[7.5pt] font-medium w-8 text-center border-r border-slate-300">{i.habitacion}</td>
+                      <td className="px-2 py-0.5 text-[7.5pt] w-36 border-r border-slate-300">{i.paciente?.primer_apellido}, {i.paciente?.nombre}</td>
+                      <td className="px-2 py-0.5 text-[7.5pt] text-slate-600 border-r border-slate-300">{partes}</td>
+                      <td className="px-2 py-0.5 text-[7.5pt] text-slate-600">{it.observaciones_sujeciones??''}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+
 
       {/* Panel lateral */}
       {selected&&(
