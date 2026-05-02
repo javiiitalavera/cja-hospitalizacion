@@ -291,7 +291,7 @@ export function Dashboard() {
                       <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                       <XAxis type="number" tick={{ fontSize: 11 }} allowDecimals={false} />
                       <YAxis type="category" dataKey="label" tick={{ fontSize: 11 }} width={80} />
-                      <Tooltip formatter={(v) => [v, 'Eventos']} />
+                      <Tooltip formatter={(v: number) => [v, 'Eventos']} />
                       <Bar dataKey="n" fill="#6175f5" radius={[0, 4, 4, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
@@ -392,7 +392,7 @@ export function Dashboard() {
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="mes" tick={{ fontSize: 11 }} />
                         <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
-                        <Tooltip formatter={(v) => [v, 'Eventos']} />
+                        <Tooltip formatter={(v: number) => [v, 'Eventos']} />
                         <Bar dataKey="eventos" fill="#f59e0b" radius={[4, 4, 0, 0]} name="Eventos" />
                       </BarChart>
                     </ResponsiveContainer>
