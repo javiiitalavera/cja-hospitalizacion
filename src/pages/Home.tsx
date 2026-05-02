@@ -157,7 +157,7 @@ export default function Home() {
                 <div
                   className="grid items-center bg-white border border-slate-200 rounded-lg px-3 py-2 hover:shadow-sm hover:border-primary-200 transition-all cursor-pointer"
                   style={{ gridTemplateColumns: '2.5rem minmax(0,1.4fr) 3rem 7rem 3.5rem 5.5rem minmax(0,0.9fr) 7rem 2rem' }}
-                  onClick={() => navigate(`/pacientes/${ingreso.id}`)}>
+                  onClick={() => navigate(`/ingresos/${ingreso.id}`)}>
                   {/* Hab con semáforo */}
                   <div>
                     <div className="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs"

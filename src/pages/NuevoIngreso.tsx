@@ -53,7 +53,7 @@ export default function NuevoIngreso() {
     setPaso('reingreso')
   }
 
-  async function crearIngreso(pacienteId: string) {
+  async function crearIngreso(pacienteId: string, esReingreso = false) {
     const { data: ingresoData, error: errIngreso } = await supabase
       .from('ingresos')
       .insert([{
@@ -71,10 +71,51 @@ export default function NuevoIngreso() {
       return null
     }
 
+    // Si es reingreso, buscar datos del ingreso anterior para copiar
+    let informeBase: Record<string, any> = {}
+    let itemsBase: Record<string, any> = {}
+
+    if (esReingreso) {
+      // Último ingreso anterior del mismo paciente
+      const { data: ingresosPrev } = await supabase
+        .from('ingresos')
+        .select('id')
+        .eq('paciente_id', pacienteId)
+        .neq('id', ingresoData.id)
+        .order('fecha_ingreso', { ascending: false })
+        .limit(1)
+
+      const prevId = ingresosPrev?.[0]?.id
+      if (prevId) {
+        const [{ data: infPrev }, { data: itemsPrev }] = await Promise.all([
+          supabase.from('informe_ingreso').select('*').eq('ingreso_id', prevId).single(),
+          supabase.from('items_paciente').select('*').eq('ingreso_id', prevId).single(),
+        ])
+
+        if (infPrev) {
+          // Copiar campos estables, limpiar campos específicos del episodio
+          const { id, ingreso_id, created_at, updated_at,
+            evolucion, situacion_cognitivo, situacion_conductual, situacion_animico,
+            situacion_funcional, situacion_social,
+            exploracion_fisica, exploracion_neurologica, exploracion_psicopatologica,
+            exploraciones_complementarias, impresion_diagnostica,
+            plan_objetivos, plan_medicacion, plan_otros_cuidados,
+            barthel, lawton,
+            ...camposEstables } = infPrev
+          informeBase = camposEstables
+        }
+
+        if (itemsPrev) {
+          const { id, ingreso_id, created_at, updated_at, semaforo_caidas, ...itemsEstables } = itemsPrev
+          itemsBase = itemsEstables
+        }
+      }
+    }
+
     await Promise.all([
-      supabase.from('informe_ingreso').insert([{ ingreso_id: ingresoData.id }]),
+      supabase.from('informe_ingreso').insert([{ ingreso_id: ingresoData.id, ...informeBase }]),
       supabase.from('informe_alta').insert([{ ingreso_id: ingresoData.id }]),
-      supabase.from('items_paciente').insert([{ ingreso_id: ingresoData.id }]),
+      supabase.from('items_paciente').insert([{ ingreso_id: ingresoData.id, ...itemsBase }]),
     ])
     return ingresoData.id
   }
@@ -94,7 +135,7 @@ export default function NuevoIngreso() {
       return
     }
     const ingresoId = await crearIngreso(pacienteData.id)
-    if (ingresoId) navigate(`/pacientes/${ingresoId}`)
+    if (ingresoId) navigate(`/ingresos/${ingresoId}`)
     setLoading(false)
   }
 
@@ -105,8 +146,8 @@ export default function NuevoIngreso() {
       return
     }
     setLoading(true)
-    const ingresoId = await crearIngreso(pacienteSeleccionado.id)
-    if (ingresoId) navigate(`/pacientes/${ingresoId}`)
+    const ingresoId = await crearIngreso(pacienteSeleccionado.id, true)
+    if (ingresoId) navigate(`/ingresos/${ingresoId}`)
     setLoading(false)
   }
 

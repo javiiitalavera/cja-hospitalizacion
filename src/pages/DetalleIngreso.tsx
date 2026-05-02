@@ -954,7 +954,7 @@ function TabHistorial({ pacienteId, ingresoActualId }: { pacienteId: string; ing
               return (
                 <div key={ing.id}
                   className="px-5 py-4 flex items-center justify-between hover:bg-slate-50 cursor-pointer transition-colors"
-                  onClick={() => navigate(`/pacientes/${ing.id}`)}>
+                  onClick={() => navigate(`/ingresos/${ing.id}`)}>
                   <div>
                     <div className="flex items-center gap-2 mb-1">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${ESTADO_COLOR[ing.estado] ?? 'bg-slate-100 text-slate-500'}`}>
