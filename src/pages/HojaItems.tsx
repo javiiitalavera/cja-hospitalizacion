@@ -85,10 +85,10 @@ function buildPrintHTML(data: IngresoConItems[], today: string): string {
     })
     const habNums = Array.from({length:count},(_,i)=>i+1+offset)
 
-    const labelPct = 10  // 10% for label column
-    const colPct = ((100 - labelPct) / count).toFixed(2)
+    const labelPct = 9
+    const colPct = ((100 - labelPct) / count).toFixed(3)
 
-    let html = `<table style="width:100%;border-collapse:collapse;table-layout:fixed;font-size:7.5pt;font-family:Arial,sans-serif;">`
+    let html = `<table style="width:100%;border-collapse:collapse;table-layout:fixed;font-size:8pt;font-family:Arial,sans-serif;margin:0;">`
     html += `<colgroup><col style="width:${labelPct}%"/>${habNums.map(()=>`<col style="width:${colPct}%"/>`).join('')}</colgroup>`
 
     // Header row - habitación números
@@ -98,7 +98,7 @@ function buildPrintHTML(data: IngresoConItems[], today: string): string {
       const ing = slots[n-offset-1]
       const bg = habBg(ing)
       const color = textColor(bg)
-      html += `<th style="border:1px solid #555;background:${bg};color:${color};text-align:center;padding:2px 1px;font-size:8pt;font-weight:bold;">${n}</th>`
+      html += `<th style="border:1px solid #555;background:${bg};color:${color};text-align:center;padding:3px 1px;font-size:9pt;font-weight:bold;">${n}</th>`
     }
     html += `</tr>`
 
@@ -107,7 +107,7 @@ function buildPrintHTML(data: IngresoConItems[], today: string): string {
       const isBoldLabel = LABEL_BOLD_ROWS.has(fila.key)
       const isBoldVal = BOLD_ROWS.has(fila.key)
       html += `<tr>`
-      html += `<td style="border:1px solid #555;background:#e8e8e8;padding:1px 3px;font-weight:${isBoldLabel?700:500};white-space:nowrap;overflow:hidden;font-size:6.5pt;">${fila.label}</td>`
+      html += `<td style="border:1px solid #555;background:#e8e8e8;padding:2px 4px;font-weight:${isBoldLabel?700:500};white-space:nowrap;overflow:hidden;font-size:7.5pt;">${fila.label}</td>`
       for (const n of habNums) {
         const ing = slots[n-offset-1]
         const it = ing?.items ?? null
@@ -115,7 +115,7 @@ function buildPrintHTML(data: IngresoConItems[], today: string): string {
         const bg = habBg(ing)
         // Use a light tint for data cells
         const cellBg = ing ? (bg === '#FF0000' ? '#ffaaaa' : bg === '#FF9900' ? '#ffddaa' : bg === '#FFFF00' ? '#ffffaa' : bg === '#92D050' ? '#d4edaa' : '#ffffff') : '#ffffff'
-        html += `<td style="border:1px solid #aaa;background:${cellBg};text-align:center;padding:0 1px;font-weight:${isBoldVal?600:400};overflow:hidden;font-size:6.5pt;">${val||'&nbsp;'}</td>`
+        html += `<td style="border:1px solid #aaa;background:${cellBg};text-align:center;padding:2px 1px;font-weight:${isBoldVal?600:400};overflow:hidden;font-size:7.5pt;">${val||'&nbsp;'}</td>`
       }
       html += `</tr>`
     }
@@ -132,13 +132,15 @@ function buildPrintHTML(data: IngresoConItems[], today: string): string {
 <meta charset="utf-8"/>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: Arial, sans-serif; background: white; }
-  .page { width: 100%; padding: 6px 8px; }
-  .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; font-size: 8pt; }
-  .page-header span { font-weight: bold; }
-  @page { size: A4 landscape; margin: 0.4cm 0.5cm; }
+  .page { width: 100%; padding: 4px 6px; }
+  .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px; font-size: 8pt; }
+  .page-header b { font-weight: bold; }
+  @page { size: A4 landscape; margin: 0.3cm 0.4cm; }
   @media print {
-    .page { page-break-after: always; }
+    html, body { width: 100%; height: 100%; }
+    .page { page-break-after: always; width: 100%; }
     .page:last-child { page-break-after: avoid; }
   }
 </style>
@@ -146,15 +148,15 @@ function buildPrintHTML(data: IngresoConItems[], today: string): string {
 <body>
   <div class="page">
     <div class="page-header">
-      <span>CJA · HOJA DE ÍTEMS — Camas 1–16</span>
-      <span style="font-weight:normal;text-transform:capitalize;">${today}</span>
+      <b>CJA · HOJA DE ÍTEMS — Camas 1–16</b>
+      <span style="text-transform:capitalize;">${today}</span>
     </div>
     ${bloque1}
   </div>
   <div class="page">
     <div class="page-header">
-      <span>CJA · HOJA DE ÍTEMS — Camas 17–${maxHab}</span>
-      <span style="font-weight:normal;text-transform:capitalize;">${today}</span>
+      <b>CJA · HOJA DE ÍTEMS — Camas 17–${maxHab}</b>
+      <span style="text-transform:capitalize;">${today}</span>
     </div>
     ${bloque2}
   </div>
