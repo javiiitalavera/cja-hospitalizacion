@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Ingreso, ItemsPaciente } from '../types'
-import { Printer, X, Save, Camera, Check } from 'lucide-react'
+import { Printer, X, Save, Camera, Check, History } from 'lucide-react'
 
 type IngresoConItems = Ingreso & { items: ItemsPaciente | null }
 
@@ -51,8 +51,8 @@ const FILAS = [
   {key:'antiescaras', label:'c. antiescaras',     get:(it:ItemsPaciente)=>it?.colchon_antiescaras?'X':''},
   {key:'patucos',     label:'patucos coderas',    get:(it:ItemsPaciente)=>it?.patucos_coderas?'X':''},
   {key:'suj_cama',    label:'sujeción cama',      get:(it:ItemsPaciente)=>sujecionStr(it?.sujecion_cama)},
-  {key:'suj_silla',   label:'sujeción silla r.',  get:(it:ItemsPaciente)=>sujecionStr(it?.sujecion_silla_ruedas)},
-  {key:'suj_sillon',  label:'sujeción sillón',    get:(it:ItemsPaciente)=>sujecionStr(it?.sujecion_sillon)},
+  {key:'suj_silla',   label:'sujeción silla r.',  get:(it:ItemsPaciente)=>it?.sujecion_silla_ruedas==='si_precisa'?'S/P':it?.sujecion_silla_ruedas==='continuo'?'Cont':it?.sujecion_silla_ruedas==='no'?'No':''},
+  {key:'suj_sillon',  label:'sujeción sillón',    get:(it:ItemsPaciente)=>it?.sujecion_sillon==='si_precisa'?'S/P':it?.sujecion_sillon==='continuo'?'Cont':it?.sujecion_sillon==='no'?'No':''},
   {key:'sensor',      label:'sensor cama',        get:(it:ItemsPaciente)=>it?.sensor_cama?'X':''},
   {key:'deambulacion',label:'deambulación',       get:(it:ItemsPaciente)=>it?.deambulacion??''},
   {key:'ayudas',      label:'ayudas deambulación',get:(it:ItemsPaciente)=>it?.ayudas_deambulacion?.replace('andador_2r','And.2r').replace('andador_4r','And.4r').replace('silla_ruedas','SR').replace('baston','Bast.')??''},
@@ -354,8 +354,34 @@ function PanelEdicion({ ingreso, onClose, onSaved }: {
 
         <p className="section-title mt-3">Contenciones</p>
         {multiSuj('sujecion_cama','Sujeción cama')}
-        {multiSuj('sujecion_silla_ruedas','Sujeción silla ruedas')}
-        {multiSuj('sujecion_sillon','Sujeción sillón')}
+        <div className="py-1.5 border-b border-slate-100">
+          <span className="text-xs text-slate-600 block mb-1">Sujeción silla ruedas</span>
+          <div className="flex gap-2">
+            {(['no','si_precisa','continuo'] as const).map(opt=>{
+              const labels={'no':'No','si_precisa':'Sí precisa','continuo':'Continuo'}
+              const active=(data as any).sujecion_silla_ruedas===opt
+              return <button key={opt} type="button"
+                onClick={()=>update('sujecion_silla_ruedas' as any, active?null:opt)}
+                className={`px-2 py-1 rounded text-[10px] font-medium border transition-colors ${active?'bg-primary-600 text-white border-primary-600':'bg-white text-slate-500 border-slate-300'}`}>
+                {labels[opt]}
+              </button>
+            })}
+          </div>
+        </div>
+        <div className="py-1.5 border-b border-slate-100">
+          <span className="text-xs text-slate-600 block mb-1">Sujeción sillón</span>
+          <div className="flex gap-2">
+            {(['no','si_precisa','continuo'] as const).map(opt=>{
+              const labels={'no':'No','si_precisa':'Sí precisa','continuo':'Continuo'}
+              const active=(data as any).sujecion_sillon===opt
+              return <button key={opt} type="button"
+                onClick={()=>update('sujecion_sillon' as any, active?null:opt)}
+                className={`px-2 py-1 rounded text-[10px] font-medium border transition-colors ${active?'bg-primary-600 text-white border-primary-600':'bg-white text-slate-500 border-slate-300'}`}>
+                {labels[opt]}
+              </button>
+            })}
+          </div>
+        </div>
         <div className="py-1.5">
           <span className="text-xs text-slate-600 block mb-1">Observaciones</span>
           <textarea className="textarea text-xs" rows={2}
@@ -455,6 +481,11 @@ export default function HojaItems() {
 
   const [snapshoting, setSnapshoting] = useState(false)
   const [snapshotDone, setSnapshotDone] = useState(false)
+  const [verHistorico, setVerHistorico] = useState(false)
+  const [fechasSnapshot, setFechasSnapshot] = useState<string[]>([])
+  const [fechaSeleccionada, setFechaSeleccionada] = useState<string>('')
+  const [snapshotData, setSnapshotData] = useState<any[]>([])
+  const [loadingSnapshot, setLoadingSnapshot] = useState(false)
 
   async function guardarSnapshot() {
     setSnapshoting(true)
@@ -480,6 +511,28 @@ export default function HojaItems() {
     setTimeout(() => setSnapshotDone(false), 3000)
   }
 
+  async function fetchFechas() {
+    const { data } = await supabase
+      .from('items_historico')
+      .select('fecha')
+      .order('fecha', { ascending: false })
+    const fechas = [...new Set((data ?? []).map((r: any) => r.fecha))]
+    setFechasSnapshot(fechas)
+    if (fechas.length > 0 && !fechaSeleccionada) setFechaSeleccionada(fechas[0])
+  }
+
+  async function cargarSnapshot(fecha: string) {
+    setLoadingSnapshot(true)
+    setFechaSeleccionada(fecha)
+    const { data: snaps } = await supabase
+      .from('items_historico')
+      .select('*, ingreso:ingresos(habitacion, paciente:pacientes(nombre, primer_apellido), medico_responsable:profesionales(nombre))')
+      .eq('fecha', fecha)
+      .order('ingreso(habitacion)', { ascending: true })
+    setSnapshotData(snaps ?? [])
+    setLoadingSnapshot(false)
+  }
+
   async function fetchData() {
     const {data:ingresos} = await supabase
       .from('ingresos')
@@ -493,7 +546,7 @@ export default function HojaItems() {
     setLoading(false)
   }
 
-  useEffect(()=>{fetchData()},[])
+  useEffect(()=>{fetchData(); fetchFechas()},[])
 
   function handleSaved(ingresoId: string, updated: ItemsPaciente) {
     setData(prev => prev.map(i => i.id===ingresoId ? {...i,items:updated} : i))
@@ -524,6 +577,11 @@ export default function HojaItems() {
               </span>
             ))}
           </div>
+          <button onClick={()=>{ setVerHistorico(v=>!v); if(!verHistorico&&fechasSnapshot.length>0) cargarSnapshot(fechasSnapshot[0]) }}
+            className={`btn-secondary ${verHistorico?'bg-slate-100':''}`}>
+            <History className="w-4 h-4"/>
+            {verHistorico ? 'Ver hoy' : 'Histórico'}
+          </button>
           <button onClick={guardarSnapshot} disabled={snapshoting}
             className={`btn-secondary ${snapshotDone ? 'text-emerald-600 border-emerald-300' : ''}`}>
             {snapshotDone
@@ -540,13 +598,97 @@ export default function HojaItems() {
         </div>
       </div>
 
-      <div className="mb-4">
-        <Bloque habs={habs1_16} offset={0} count={16} onSelect={setSelected} selectedId={selected?.id??null}/>
-      </div>
-      <div className="my-3 border-t-2 border-slate-400"/>
-      <div className="mb-4">
-        <Bloque habs={habs17_max} offset={16} count={maxHab-16} onSelect={setSelected} selectedId={selected?.id??null}/>
-      </div>
+      {/* Vista histórico */}
+      {verHistorico ? (
+        <div className="space-y-4">
+          {fechasSnapshot.length === 0 ? (
+            <div className="card p-10 text-center text-slate-400 text-sm">No hay snapshots guardados aún.</div>
+          ) : (
+            <>
+              <div className="flex gap-2 flex-wrap">
+                {fechasSnapshot.map(f=>(
+                  <button key={f}
+                    onClick={()=>cargarSnapshot(f)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                      fechaSeleccionada===f?'bg-primary-600 text-white border-primary-600':'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'
+                    }`}>
+                    {new Date(f).toLocaleDateString('es-ES',{weekday:'short',day:'numeric',month:'short',year:'numeric'})}
+                  </button>
+                ))}
+              </div>
+              {loadingSnapshot ? (
+                <div className="text-slate-400 text-sm py-8 text-center">Cargando snapshot…</div>
+              ) : snapshotData.length === 0 ? (
+                <div className="card p-8 text-center text-slate-400 text-sm">Sin datos para esta fecha.</div>
+              ) : (
+                <div className="card overflow-hidden">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b bg-slate-50">
+                        <th className="px-3 py-2 text-left font-semibold text-slate-500 w-10">Hab.</th>
+                        <th className="px-3 py-2 text-left font-semibold text-slate-500">Paciente</th>
+                        <th className="px-3 py-2 text-left font-semibold text-slate-500">Semáforo</th>
+                        <th className="px-3 py-2 text-left font-semibold text-slate-500">Dep.</th>
+                        <th className="px-3 py-2 text-left font-semibold text-slate-500">Higiene</th>
+                        <th className="px-3 py-2 text-left font-semibold text-slate-500">Ingestas</th>
+                        <th className="px-3 py-2 text-left font-semibold text-slate-500">Pañal D/N</th>
+                        <th className="px-3 py-2 text-left font-semibold text-slate-500">Suj. cama</th>
+                        <th className="px-3 py-2 text-left font-semibold text-slate-500">Suj. silla</th>
+                        <th className="px-3 py-2 text-left font-semibold text-slate-500">Suj. sillón</th>
+                        <th className="px-3 py-2 text-left font-semibold text-slate-500">Deambulación</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {snapshotData.sort((a:any,b:any)=>(a.ingreso?.habitacion??99)-(b.ingreso?.habitacion??99)).map((s:any)=>{
+                        const it=s.datos??{}
+                        const ing=s.ingreso
+                        const sem=it.semaforo_caidas
+                        const semBg=sem?SEMAFORO_COLOR[sem]:null
+                        const semTxt=sem==='rojo'?'#fff':'#000'
+                        const sujSilla=it.sujecion_silla_ruedas==='si_precisa'?'S/P':it.sujecion_silla_ruedas==='continuo'?'Cont':it.sujecion_silla_ruedas==='no'?'No':'—'
+                        const sujSillon=it.sujecion_sillon==='si_precisa'?'S/P':it.sujecion_sillon==='continuo'?'Cont':it.sujecion_sillon==='no'?'No':'—'
+                        const sujCama=Array.isArray(it.sujecion_cama)&&it.sujecion_cama.length>0?it.sujecion_cama.map((x:string)=>SUJECION_SHORT[x]??x).join('+'):'—'
+                        return (
+                          <tr key={s.id} className="hover:bg-slate-50">
+                            <td className="px-3 py-2">
+                              <div className="w-7 h-7 rounded flex items-center justify-center font-bold text-xs"
+                                style={semBg?{backgroundColor:semBg,color:semTxt}:{backgroundColor:'#f1f5f9',color:'#475569'}}>
+                                {ing?.habitacion??'—'}
+                              </div>
+                            </td>
+                            <td className="px-3 py-2 font-medium text-slate-800">
+                              {ing?.paciente?.primer_apellido}, {ing?.paciente?.nombre}
+                            </td>
+                            <td className="px-3 py-2 text-slate-500 capitalize">{sem??'—'}</td>
+                            <td className="px-3 py-2 text-slate-500">{it.dependencia_avd??'—'}</td>
+                            <td className="px-3 py-2 text-slate-500">{it.higiene==='lavabo'?'L':it.higiene==='cama'?'C':'—'}</td>
+                            <td className="px-3 py-2 text-slate-500">{it.ingestas==='autonomo'?'A':it.ingestas==='dependiente'?'D':'—'}</td>
+                            <td className="px-3 py-2 text-slate-500">{it.panial_dia??'—'} / {it.panial_noche??'—'}</td>
+                            <td className="px-3 py-2 text-slate-500">{sujCama}</td>
+                            <td className="px-3 py-2 text-slate-500">{sujSilla}</td>
+                            <td className="px-3 py-2 text-slate-500">{sujSillon}</td>
+                            <td className="px-3 py-2 text-slate-500">{it.deambulacion??'—'}</td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      ) : (
+        <>
+          <div className="mb-4">
+            <Bloque habs={habs1_16} offset={0} count={16} onSelect={setSelected} selectedId={selected?.id??null}/>
+          </div>
+          <div className="my-3 border-t-2 border-slate-400"/>
+          <div className="mb-4">
+            <Bloque habs={habs17_max} offset={16} count={maxHab-16} onSelect={setSelected} selectedId={selected?.id??null}/>
+          </div>
+        </>
+      )}
 
       {selected&&(
         <PanelEdicion

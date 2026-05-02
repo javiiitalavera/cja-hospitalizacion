@@ -122,8 +122,8 @@ export interface ItemsPaciente {
   oxigenoterapia: boolean
   botella_noche: boolean
   sujecion_cama: string[]
-  sujecion_silla_ruedas: string[]
-  sujecion_sillon: string[]
+  sujecion_silla_ruedas?: 'no' | 'si_precisa' | 'continuo'
+  sujecion_sillon?: 'no' | 'si_precisa' | 'continuo'
   colchon_antiescaras: boolean
   patucos_coderas: boolean
   sensor_cama: boolean

@@ -732,8 +732,34 @@ function TabItems({ ingresoId }: { ingresoId: string }) {
       <div className="card p-6 space-y-4">
         <p className="section-title">Contenciones</p>
         {multiSujecion('sujecion_cama', 'Sujeción cama')}
-        {multiSujecion('sujecion_silla_ruedas', 'Sujeción silla de ruedas')}
-        {multiSujecion('sujecion_sillon', 'Sujeción sillón')}
+        <div>
+          <label className="label">Sujeción silla de ruedas</label>
+          <div className="flex gap-2">
+            {(['no','si_precisa','continuo'] as const).map(opt=>{
+              const labels={no:'No',si_precisa:'Sí precisa',continuo:'Continuo'}
+              const active=(data as any).sujecion_silla_ruedas===opt
+              return <button key={opt} type="button"
+                onClick={()=>setData(d=>({...d,sujecion_silla_ruedas:active?undefined:opt}))}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${active?'bg-primary-600 text-white border-primary-600':'bg-white text-slate-600 border-slate-300 hover:border-slate-400'}`}>
+                {labels[opt]}
+              </button>
+            })}
+          </div>
+        </div>
+        <div>
+          <label className="label">Sujeción sillón</label>
+          <div className="flex gap-2">
+            {(['no','si_precisa','continuo'] as const).map(opt=>{
+              const labels={no:'No',si_precisa:'Sí precisa',continuo:'Continuo'}
+              const active=(data as any).sujecion_sillon===opt
+              return <button key={opt} type="button"
+                onClick={()=>setData(d=>({...d,sujecion_sillon:active?undefined:opt}))}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${active?'bg-primary-600 text-white border-primary-600':'bg-white text-slate-600 border-slate-300 hover:border-slate-400'}`}>
+                {labels[opt]}
+              </button>
+            })}
+          </div>
+        </div>
         <div>
           <label className="label">Observaciones</label>
           <textarea className="textarea" rows={3}
