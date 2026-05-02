@@ -85,6 +85,13 @@ export default function DetalleIngreso() {
               </div>
             </div>
           </div>
+          {ingreso.estado === 'activo' && (
+            <button onClick={() => setModalAlta(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-800 text-white text-xs font-medium transition-colors shrink-0">
+              <LogOut className="w-3.5 h-3.5" />
+              Dar de alta
+            </button>
+          )}
         </div>
 
         {/* Tabs */}
