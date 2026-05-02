@@ -5,13 +5,19 @@ import { Printer, X, Save } from 'lucide-react'
 
 type IngresoConItems = Ingreso & { items: ItemsPaciente | null }
 
-const HAB_COLORS: Record<number, string> = {
-  1:'#92D050',2:'#FF0000',3:'#FF9900',4:'#FFFF00',5:'#92D050',6:'#92D050',7:'#92D050',8:'#FFFFFF',
-  9:'#FF9900',10:'#FF9900',11:'#92D050',12:'#92D050',13:'#92D050',14:'#FFFF00',15:'#92D050',16:'#FFFF00',
-  17:'#92D050',18:'#92D050',19:'#FF9900',20:'#FFFF00',21:'#FF9900',22:'#FFFF00',23:'#FFFF00',24:'#FFFF00',
-  25:'#FF9900',26:'#92D050',27:'#FFFF00',28:'#92D050',29:'#FF9900',30:'#92D050',31:'#92D050',32:'#FF9900',
+const SEMAFORO_COLOR: Record<string, string> = {
+  verde:    '#92D050',
+  amarillo: '#FFFF00',
+  naranja:  '#FF9900',
+  rojo:     '#FF0000',
 }
 
+function habBg(ingreso: IngresoConItems | null): string {
+  if (!ingreso) return '#FFFFFF'
+  const sem = ingreso.items?.semaforo_caidas as string | undefined
+  if (sem && SEMAFORO_COLOR[sem]) return SEMAFORO_COLOR[sem]
+  return '#FFFFFF'
+}
 function textColor(bg: string) { return bg === '#FF0000' ? '#FFFFFF' : '#000000' }
 
 const SUJECION_SHORT: Record<string,string> = {
@@ -63,6 +69,111 @@ const FILAS = [
 
 const BOLD_ROWS = new Set(['nombre','medico'])
 const LABEL_BOLD_ROWS = new Set(['nombre','medico','dep'])
+
+// ─── TABLA HTML PURA PARA IMPRESIÓN ──────────────────────────
+
+function buildPrintHTML(data: IngresoConItems[], today: string): string {
+  const habs1_16   = data.filter(i=>i.habitacion&&i.habitacion<=16)
+  const habs17_max = data.filter(i=>i.habitacion&&i.habitacion>16)
+  const maxHab = Math.max(32, ...data.map(i=>i.habitacion??0))
+
+  function buildBloque(habs: IngresoConItems[], offset: number, count: number): string {
+    const slots: (IngresoConItems|null)[] = Array(count).fill(null)
+    habs.forEach(i => {
+      if (i.habitacion && i.habitacion > offset && i.habitacion <= offset+count)
+        slots[i.habitacion-offset-1] = i
+    })
+    const habNums = Array.from({length:count},(_,i)=>i+1+offset)
+
+    const labelW = 90
+    const colW = Math.floor((740-labelW)/count) // A4 landscape usable ~740px at 96dpi
+
+    let html = `<table style="width:100%;border-collapse:collapse;table-layout:fixed;font-size:7pt;font-family:Arial,sans-serif;">`
+    html += `<colgroup><col style="width:${labelW}px"/>${habNums.map(()=>`<col style="width:${colW}px"/>`).join('')}</colgroup>`
+
+    // Header row - habitación números
+    html += `<tr>`
+    html += `<th style="border:1px solid #555;background:#ccc;text-align:left;padding:2px 3px;font-size:7pt;">HABITACIÓN</th>`
+    for (const n of habNums) {
+      const ing = slots[n-offset-1]
+      const bg = habBg(ing)
+      const color = textColor(bg)
+      html += `<th style="border:1px solid #555;background:${bg};color:${color};text-align:center;padding:2px 1px;font-size:8pt;font-weight:bold;">${n}</th>`
+    }
+    html += `</tr>`
+
+    // Data rows
+    for (const fila of FILAS) {
+      const isBoldLabel = LABEL_BOLD_ROWS.has(fila.key)
+      const isBoldVal = BOLD_ROWS.has(fila.key)
+      html += `<tr>`
+      html += `<td style="border:1px solid #555;background:#e8e8e8;padding:1px 3px;font-weight:${isBoldLabel?700:500};white-space:nowrap;overflow:hidden;font-size:6.5pt;">${fila.label}</td>`
+      for (const n of habNums) {
+        const ing = slots[n-offset-1]
+        const it = ing?.items ?? null
+        const val = ing ? fila.get(it as any, ing as any) : ''
+        const bg = habBg(ing)
+        // Use a light tint for data cells
+        const cellBg = ing ? (bg === '#FF0000' ? '#ffaaaa' : bg === '#FF9900' ? '#ffddaa' : bg === '#FFFF00' ? '#ffffaa' : bg === '#92D050' ? '#d4edaa' : '#ffffff') : '#ffffff'
+        html += `<td style="border:1px solid #aaa;background:${cellBg};text-align:center;padding:0 1px;font-weight:${isBoldVal?600:400};overflow:hidden;font-size:6.5pt;">${val||'&nbsp;'}</td>`
+      }
+      html += `</tr>`
+    }
+    html += `</table>`
+    return html
+  }
+
+  const bloque1 = buildBloque(habs1_16, 0, 16)
+  const bloque2 = buildBloque(habs17_max, 16, maxHab-16)
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; background: white; }
+  .page { width: 100%; padding: 6px 8px; }
+  .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; font-size: 8pt; }
+  .page-header span { font-weight: bold; }
+  @page { size: A4 landscape; margin: 0.4cm 0.5cm; }
+  @media print {
+    .page { page-break-after: always; }
+    .page:last-child { page-break-after: avoid; }
+  }
+</style>
+</head>
+<body>
+  <div class="page">
+    <div class="page-header">
+      <span>CJA · HOJA DE ÍTEMS — Camas 1–16</span>
+      <span style="font-weight:normal;text-transform:capitalize;">${today}</span>
+    </div>
+    ${bloque1}
+  </div>
+  <div class="page">
+    <div class="page-header">
+      <span>CJA · HOJA DE ÍTEMS — Camas 17–${maxHab}</span>
+      <span style="font-weight:normal;text-transform:capitalize;">${today}</span>
+    </div>
+    ${bloque2}
+  </div>
+</body>
+</html>`
+}
+
+function printHoja(data: IngresoConItems[], today: string) {
+  const html = buildPrintHTML(data, today)
+  const win = window.open('', '_blank', 'width=900,height=700')
+  if (!win) return
+  win.document.write(html)
+  win.document.close()
+  win.focus()
+  setTimeout(() => {
+    win.print()
+    win.close()
+  }, 400)
+}
 
 // ─── PANEL LATERAL DE EDICIÓN ─────────────────────────────────
 
@@ -142,10 +253,11 @@ function PanelEdicion({ ingreso, onClose, onSaved }: {
     )
   }
 
+  const semaforo = (data as any).semaforo_caidas as string | undefined
   const nombre = `${ingreso.paciente?.primer_apellido ?? ''}, ${ingreso.paciente?.nombre ?? ''}`
 
   return (
-    <div className="fixed inset-y-0 right-0 w-80 bg-white shadow-2xl border-l flex flex-col z-40 print:hidden">
+    <div className="fixed inset-y-0 right-0 w-80 bg-white shadow-2xl border-l flex flex-col z-40">
       {/* Header */}
       <div className="px-4 py-3 border-b bg-slate-50 flex items-start justify-between">
         <div>
@@ -163,10 +275,27 @@ function PanelEdicion({ ingreso, onClose, onSaved }: {
         </div>
       </div>
 
-      {/* Campos */}
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-0">
+      <div className="flex-1 overflow-y-auto px-4 py-3">
 
-        <p className="section-title mt-1">Dependencia y cuidados</p>
+        {/* Semáforo caídas */}
+        <p className="section-title mt-1">Semáforo de caídas</p>
+        <div className="flex gap-2 py-2 border-b border-slate-100 mb-1">
+          {['verde','amarillo','naranja','rojo'].map(color => {
+            const active = semaforo === color
+            const bg = SEMAFORO_COLOR[color]
+            const txtColor = color === 'rojo' ? '#fff' : '#000'
+            return (
+              <button key={color} type="button"
+                onClick={() => update('semaforo_caidas' as keyof ItemsPaciente, active ? null : color)}
+                className={`flex-1 py-1.5 rounded-lg text-xs font-semibold border-2 transition-all ${active ? 'border-slate-700 scale-105' : 'border-transparent opacity-70 hover:opacity-100'}`}
+                style={{ backgroundColor: bg, color: txtColor }}>
+                {color.charAt(0).toUpperCase() + color.slice(1)}
+              </button>
+            )
+          })}
+        </div>
+
+        <p className="section-title mt-3">Dependencia y cuidados</p>
         {sel('dependencia_avd','Dependencia AVD',[{v:'1',l:'1 persona'},{v:'2',l:'2 personas'}])}
         {sel('higiene','Higiene',[{v:'lavabo',l:'Lavabo'},{v:'cama',l:'Cama'}])}
         {sel('ducha','Ducha',[{v:'pie',l:'De pie'},{v:'sentado',l:'Sentado'}])}
@@ -177,7 +306,7 @@ function PanelEdicion({ ingreso, onClose, onSaved }: {
             value={(data.vestido as string)??''}
             onChange={e=>update('vestido',e.target.value)} />
         </div>
-        <div className="flex gap-4 py-1.5 border-b border-slate-100">
+        <div className="flex gap-6 py-1.5 border-b border-slate-100">
           {bool('banio','Baño')}
           {bool('siestas','Siestas')}
         </div>
@@ -233,7 +362,6 @@ function PanelEdicion({ ingreso, onClose, onSaved }: {
         </div>
       </div>
 
-      {/* Footer */}
       <div className="px-4 py-3 border-t">
         <button onClick={()=>save()} className="btn-primary w-full justify-center">
           <Save className="w-3.5 h-3.5" />
@@ -244,7 +372,7 @@ function PanelEdicion({ ingreso, onClose, onSaved }: {
   )
 }
 
-// ─── BLOQUE DE TABLA ──────────────────────────────────────────
+// ─── TABLA EN PANTALLA ────────────────────────────────────────
 
 function Bloque({ habs, offset, count=16, onSelect, selectedId }: {
   habs: IngresoConItems[]
@@ -272,8 +400,9 @@ function Bloque({ habs, offset, count=16, onSelect, selectedId }: {
         <tr>
           <th className="border border-slate-400 bg-slate-200 text-[7.5pt] text-left px-1 py-0.5 font-bold">HABITACIÓN</th>
           {habNums.map(n=>{
-            const bg=HAB_COLORS[n]??'#FFFFFF'
-            const color=textColor(bg)
+            const ing = slots[n-offset-1]
+            const bg = habBg(ing)
+            const color = textColor(bg)
             return (
               <th key={n} className="border border-slate-400 text-[8pt] font-bold text-center py-0.5"
                 style={{backgroundColor:bg,color}}>{n}</th>
@@ -292,16 +421,15 @@ function Bloque({ habs, offset, count=16, onSelect, selectedId }: {
               const ingreso=slots[idx]
               const it=ingreso?.items??null
               const val=ingreso?fila.get(it as any,ingreso as any):''
-              const bg=ingreso?(HAB_COLORS[n]??'#FFFFFF'):'#FFFFFF'
-              const color=ingreso?textColor(bg):'#000000'
+              const bg=habBg(ingreso)
+              const cellBg = ingreso
+                ? (bg==='#FF0000'?'#ffcccc':bg==='#FF9900'?'#ffe5cc':bg==='#FFFF00'?'#ffffcc':bg==='#92D050'?'#e2f5cc':'#fff')
+                : '#fff'
+              const color=ingreso?textColor(bg):'#000'
               const isSelected=ingreso?.id===selectedId
               return (
                 <td key={n} className={`${cellCls} ${ingreso?'cursor-pointer hover:brightness-95':''} ${isSelected?'ring-2 ring-inset ring-primary-500':''}`}
-                  style={{
-                    backgroundColor:ingreso?`${bg}44`:'#FFFFFF',
-                    color,
-                    fontWeight:BOLD_ROWS.has(fila.key)?600:400,
-                  }}
+                  style={{backgroundColor:cellBg,color,fontWeight:BOLD_ROWS.has(fila.key)?600:400}}
                   onClick={()=>ingreso&&onSelect(ingreso)}>
                   {val||'\u00a0'}
                 </td>
@@ -339,93 +467,49 @@ export default function HojaItems() {
   useEffect(()=>{fetchData()},[])
 
   function handleSaved(ingresoId: string, updated: ItemsPaciente) {
-    setData(prev => prev.map(i =>
-      i.id === ingresoId ? { ...i, items: updated } : i
-    ))
-    // Update selected too
-    setSelected(prev => prev?.id === ingresoId ? { ...prev, items: updated } : prev)
+    setData(prev => prev.map(i => i.id===ingresoId ? {...i,items:updated} : i))
+    setSelected(prev => prev?.id===ingresoId ? {...prev,items:updated} : prev)
   }
 
   const habs1_16   = data.filter(i=>i.habitacion&&i.habitacion<=16)
   const habs17_max = data.filter(i=>i.habitacion&&i.habitacion>16)
   const maxHab = Math.max(32, ...data.map(i=>i.habitacion??0))
-  const conSujeciones = data.filter(i=>{
-    const it=i.items
-    if(!it) return false
-    return (it.sujecion_cama?.length??0)>0||(it.sujecion_silla_ruedas?.length??0)>0||(it.sujecion_sillon?.length??0)>0||it.observaciones_sujeciones
-  })
 
   if(loading) return <div className="p-8 text-slate-400">Cargando…</div>
 
   return (
     <div className={`p-4 transition-all duration-200 ${selected?'mr-80':''}`}>
-      {/* Header pantalla */}
-      <div className="flex items-center justify-between mb-4 print:hidden">
+      <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-xl font-bold text-slate-800">Hoja de ítems</h1>
           <p className="text-sm text-slate-400 capitalize">{today}</p>
-          {!selected && <p className="text-xs text-slate-400 mt-0.5">Haz click en un paciente para editar sus ítems</p>}
+          {!selected && <p className="text-xs text-slate-400 mt-0.5">Click en un paciente para editar sus ítems</p>}
         </div>
-        <button onClick={()=>window.print()} className="btn-secondary print:hidden">
-          <Printer className="w-4 h-4"/>
-          Imprimir
-        </button>
+        <div className="flex items-center gap-3">
+          {/* Leyenda semáforo */}
+          <div className="flex items-center gap-2 text-xs text-slate-500">
+            {['verde','amarillo','naranja','rojo'].map(c=>(
+              <span key={c} className="flex items-center gap-1">
+                <span className="w-3 h-3 rounded-full inline-block border border-slate-300" style={{backgroundColor:SEMAFORO_COLOR[c]}}/>
+                {c}
+              </span>
+            ))}
+          </div>
+          <button onClick={()=>printHoja(data,today)} className="btn-secondary">
+            <Printer className="w-4 h-4"/>
+            Imprimir
+          </button>
+        </div>
       </div>
 
-      {/* Página 1: camas 1-16 */}
-      <div className="print-page">
-        <div className="hidden print:flex justify-between items-center mb-1 text-[8pt]">
-          <span className="font-bold">CJA · HOJA DE ÍTEMS — Camas 1–16</span>
-          <span className="capitalize">{today}</span>
-        </div>
+      <div className="mb-4">
         <Bloque habs={habs1_16} offset={0} count={16} onSelect={setSelected} selectedId={selected?.id??null}/>
       </div>
-
-      {/* Separador pantalla */}
-      <div className="my-3 border-t-2 border-slate-400 print:hidden"/>
-
-      {/* Página 2: camas 17-32 (o 17-33) */}
-      <div className="print-page">
-        <div className="hidden print:flex justify-between items-center mb-1 text-[8pt]">
-          <span className="font-bold">CJA · HOJA DE ÍTEMS — Camas 17–{maxHab}</span>
-          <span className="capitalize">{today}</span>
-        </div>
+      <div className="my-3 border-t-2 border-slate-400"/>
+      <div className="mb-4">
         <Bloque habs={habs17_max} offset={16} count={maxHab-16} onSelect={setSelected} selectedId={selected?.id??null}/>
-        {conSujeciones.length>0&&(
-          <div className="mt-3">
-            <div className="border border-slate-400 bg-slate-100 px-2 py-1 text-[7.5pt] font-bold">
-              PAUTA SUJECIONES / MEDIDAS ALTERNATIVAS (observaciones)
-            </div>
-            <div className="border border-slate-400 px-2 py-0.5 text-[6.5pt] text-slate-600">
-              (1) Soporte terapéutico &nbsp;(2) Agresividad o autoagresión &nbsp;(3) Garantizar rehabilitación &nbsp;(4) Riesgo alto de caída + otras conductas &nbsp;(5) Voluntario &nbsp;(6) Control postural/seguridad
-            </div>
-            <table className="w-full border-collapse mt-1">
-              <tbody>
-                {conSujeciones.map(i=>{
-                  const it=i.items!
-                  const partes=[
-                    sujecionStr(it.sujecion_cama)&&`Cama: ${sujecionStr(it.sujecion_cama)}`,
-                    sujecionStr(it.sujecion_silla_ruedas)&&`Silla: ${sujecionStr(it.sujecion_silla_ruedas)}`,
-                    sujecionStr(it.sujecion_sillon)&&`Sillón: ${sujecionStr(it.sujecion_sillon)}`,
-                  ].filter(Boolean).join(' · ')
-                  return (
-                    <tr key={i.id} className="border border-slate-300">
-                      <td className="px-2 py-0.5 text-[7.5pt] font-medium w-8 text-center border-r border-slate-300">{i.habitacion}</td>
-                      <td className="px-2 py-0.5 text-[7.5pt] w-36 border-r border-slate-300">{i.paciente?.primer_apellido}, {i.paciente?.nombre}</td>
-                      <td className="px-2 py-0.5 text-[7.5pt] text-slate-600 border-r border-slate-300">{partes}</td>
-                      <td className="px-2 py-0.5 text-[7.5pt] text-slate-600">{it.observaciones_sujeciones??''}</td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
       </div>
 
-
-
-      {/* Panel lateral */}
       {selected&&(
         <PanelEdicion
           ingreso={selected}
@@ -433,16 +517,6 @@ export default function HojaItems() {
           onSaved={(updated)=>handleSaved(selected.id,updated)}
         />
       )}
-
-      <style>{`
-        @media print {
-          body{margin:0;}
-          .print\\:hidden{display:none!important;}
-          .print\\:flex{display:flex!important;}
-          .print\\:my-2{margin-top:0.5rem!important;margin-bottom:0.5rem!important;}
-          @page{size:A4 portrait;margin:0.5cm 0.4cm;}
-        }
-      `}</style>
     </div>
   )
 }

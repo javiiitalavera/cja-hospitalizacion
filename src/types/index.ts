@@ -129,6 +129,7 @@ export interface ItemsPaciente {
   sensor_cama: boolean
   motivo_sujecion: string[]
   observaciones_sujeciones?: string
+  semaforo_caidas?: 'verde' | 'amarillo' | 'naranja' | 'rojo'
   created_at: string
   updated_at: string
 }
