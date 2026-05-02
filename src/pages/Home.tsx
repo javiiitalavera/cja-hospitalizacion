@@ -102,7 +102,7 @@ export default function Home() {
       {/* Quick actions */}
       <div className="card p-6">
         <p className="section-title">Acciones rápidas</p>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           <Link to="/pacientes/nuevo" className="btn-primary justify-center py-3">
             <Users className="w-4 h-4" />
             Nuevo ingreso
@@ -111,11 +111,8 @@ export default function Home() {
             <ClipboardList className="w-4 h-4" />
             Abrir hoja de ítems
           </Link>
-          <Link to="/eventos/nuevo" className="btn-secondary justify-center py-3">
-            <AlertTriangle className="w-4 h-4" />
-            Registrar evento
-          </Link>
         </div>
+        <p className="text-xs text-slate-400 mt-3">Los eventos se registran desde la ficha de cada paciente → pestaña Eventos.</p>
       </div>
 
       {/* Panel alertas eventos recientes */}
