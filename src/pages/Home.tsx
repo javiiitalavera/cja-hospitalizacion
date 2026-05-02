@@ -105,7 +105,7 @@ export default function Home() {
         <div className="grid grid-cols-1 gap-1">
           {/* Cabecera */}
           <div className="grid gap-px text-xs font-semibold text-slate-400 uppercase tracking-wide px-3 pb-1"
-            style={{ gridTemplateColumns: '2.5rem 1fr 3rem 5rem 4rem 5rem 6rem 2.5rem 2.5rem' }}>
+            style={{ gridTemplateColumns: '2.5rem minmax(0,1.4fr) 3rem 7rem 3.5rem 5.5rem minmax(0,0.9fr) 7rem 2rem' }}>
             <div>Hab.</div>
             <div>Paciente</div>
             <div>Edad</div>
@@ -113,7 +113,7 @@ export default function Home() {
             <div>Días</div>
             <div>Ingreso</div>
             <div>Médico</div>
-            <div></div>
+            <div>Evento</div>
             <div></div>
           </div>
 
@@ -127,7 +127,7 @@ export default function Home() {
               return (
                 <div key={n}
                   className="grid items-center border border-dashed border-slate-150 rounded-lg px-3 py-1.5"
-                  style={{ gridTemplateColumns: '2.5rem 1fr 3rem 5rem 4rem 5rem 6rem 2.5rem 2.5rem' }}>
+                  style={{ gridTemplateColumns: '2.5rem minmax(0,1.4fr) 3rem 7rem 3.5rem 5.5rem minmax(0,0.9fr) 7rem 2rem' }}>
                   <span className="text-xs font-bold text-slate-200">{n}</span>
                   <span className="text-xs text-slate-200">— libre —</span>
                   <span/><span/><span/><span/><span/><span/><span/>
@@ -156,7 +156,7 @@ export default function Home() {
               <div key={n} className="group">
                 <div
                   className="grid items-center bg-white border border-slate-200 rounded-lg px-3 py-2 hover:shadow-sm hover:border-primary-200 transition-all cursor-pointer"
-                  style={{ gridTemplateColumns: '2.5rem 1fr 3rem 5rem 4rem 5rem 6rem 2.5rem 2.5rem' }}
+                  style={{ gridTemplateColumns: '2.5rem minmax(0,1.4fr) 3rem 7rem 3.5rem 5.5rem minmax(0,0.9fr) 7rem 2rem' }}
                   onClick={() => navigate(`/pacientes/${ingreso.id}`)}>
                   {/* Hab con semáforo */}
                   <div>
@@ -195,11 +195,11 @@ export default function Home() {
                   {/* Médico */}
                   <div className="text-slate-500 text-xs truncate">{medico}</div>
                   {/* Botón evento */}
-                  <div onClick={e => { e.stopPropagation(); setModalEvento(ingreso.id) }}>
-                    <div className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-300 hover:text-amber-600 hover:bg-amber-50 transition-colors"
-                      title="Registrar evento">
-                      <AlertTriangle className="w-3.5 h-3.5" />
-                    </div>
+                  <div onClick={e => { e.stopPropagation(); setModalEvento(ingreso.id) }}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 transition-colors text-xs font-medium cursor-pointer"
+                    title="Registrar evento">
+                    <AlertTriangle className="w-3 h-3 shrink-0" />
+                    Evento
                   </div>
                   {/* Arrow */}
                   <div className="flex justify-end">
