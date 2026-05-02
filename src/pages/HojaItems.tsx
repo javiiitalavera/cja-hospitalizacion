@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Ingreso, ItemsPaciente } from '../types'
-import { Printer, X, Save } from 'lucide-react'
+import { Printer, X, Save, Camera, Check } from 'lucide-react'
 
 type IngresoConItems = Ingreso & { items: ItemsPaciente | null }
 
@@ -453,6 +453,33 @@ export default function HojaItems() {
 
   const today = new Date().toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long',year:'numeric'})
 
+  const [snapshoting, setSnapshoting] = useState(false)
+  const [snapshotDone, setSnapshotDone] = useState(false)
+
+  async function guardarSnapshot() {
+    setSnapshoting(true)
+    const today_date = new Date().toISOString().split('T')[0]
+
+    // For each active patient with items, save a snapshot
+    const upserts = data
+      .filter(i => i.items)
+      .map(i => ({
+        ingreso_id: i.id,
+        fecha: today_date,
+        datos: i.items,
+      }))
+
+    if (upserts.length > 0) {
+      await supabase
+        .from('items_historico')
+        .upsert(upserts, { onConflict: 'ingreso_id,fecha' })
+    }
+
+    setSnapshoting(false)
+    setSnapshotDone(true)
+    setTimeout(() => setSnapshotDone(false), 3000)
+  }
+
   async function fetchData() {
     const {data:ingresos} = await supabase
       .from('ingresos')
@@ -497,6 +524,15 @@ export default function HojaItems() {
               </span>
             ))}
           </div>
+          <button onClick={guardarSnapshot} disabled={snapshoting}
+            className={`btn-secondary ${snapshotDone ? 'text-emerald-600 border-emerald-300' : ''}`}>
+            {snapshotDone
+              ? <><Check className="w-4 h-4"/>Snapshot guardado</>
+              : snapshoting
+                ? <><Camera className="w-4 h-4"/>Guardando…</>
+                : <><Camera className="w-4 h-4"/>Snapshot del día</>
+            }
+          </button>
           <button onClick={()=>printHoja(data,today)} className="btn-secondary">
             <Printer className="w-4 h-4"/>
             Imprimir

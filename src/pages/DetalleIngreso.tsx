@@ -576,6 +576,7 @@ function TabItems({ ingresoId }: { ingresoId: string }) {
   const [data, setData] = useState<Partial<ItemsPaciente>>({})
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [verHistorico, setVerHistorico] = useState(false)
 
   useEffect(() => {
     supabase.from('items_paciente').select('*').eq('ingreso_id', ingresoId).single()
@@ -741,10 +742,103 @@ function TabItems({ ingresoId }: { ingresoId: string }) {
         </div>
       </div>
 
-      <div className="flex justify-end">
+      <div className="flex justify-between items-center">
+        <button onClick={() => setVerHistorico(v => !v)} className="btn-secondary text-xs">
+          {verHistorico ? 'Ocultar histórico' : 'Ver histórico de snapshots'}
+        </button>
         <button onClick={save} disabled={saving} className="btn-primary">
           {saving ? 'Guardando…' : saved ? '✓ Guardado' : 'Guardar cambios'}
         </button>
+      </div>
+
+      {verHistorico && <HistoricoItems ingresoId={ingresoId} />}
+    </div>
+  )
+}
+
+// ─── HISTORICO ITEMS ──────────────────────────────────────────
+function HistoricoItems({ ingresoId }: { ingresoId: string }) {
+  const [snapshots, setSnapshots] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [selected, setSelected] = useState<any>(null)
+
+  useEffect(() => {
+    supabase.from('items_historico')
+      .select('*')
+      .eq('ingreso_id', ingresoId)
+      .order('fecha', { ascending: false })
+      .then(({ data }) => { setSnapshots(data ?? []); setLoading(false) })
+  }, [ingresoId])
+
+  const LABELS: Record<string, string> = {
+    dependencia_avd: 'Dependencia AVD', panial_dia: 'Pañal día', panial_noche: 'Pañal noche',
+    colector: 'Colector', sonda_vesical: 'Sonda vesical', dentadura: 'Dentadura',
+    audifonos: 'Audífonos', gafas: 'Gafas', higiene: 'Higiene', vestido: 'Vestido',
+    ducha: 'Ducha', banio: 'Baño', siestas: 'Siestas', deambulacion: 'Deambulación',
+    ayudas_deambulacion: 'Ayudas deambulación', bipedestador: 'Bipedestador',
+    grua: 'Grúa', cambios_posturales: 'Cambios posturales', cama_45: 'Cama 45°',
+    ingestas: 'Ingestas', oxigenoterapia: 'Oxigenoterapia', botella_noche: 'Botella noche',
+    colchon_antiescaras: 'Colchón antiescaras', patucos_coderas: 'Patucos/coderas',
+    sensor_cama: 'Sensor cama', sujecion_cama: 'Sujeción cama',
+    sujecion_silla_ruedas: 'Sujeción silla', sujecion_sillon: 'Sujeción sillón',
+    observaciones_sujeciones: 'Observaciones sujeciones', semaforo_caidas: 'Semáforo caídas',
+  }
+  const SKIP = new Set(['id', 'ingreso_id', 'created_at', 'updated_at'])
+
+  function formatVal(v: any): string {
+    if (v === null || v === undefined || v === '') return '—'
+    if (typeof v === 'boolean') return v ? 'Sí' : 'No'
+    if (Array.isArray(v)) return v.length > 0 ? v.join(', ') : '—'
+    return String(v)
+  }
+
+  if (loading) return <div className="text-xs text-slate-400 py-4 text-center">Cargando histórico…</div>
+  if (snapshots.length === 0) return (
+    <div className="card p-6 text-center text-sm text-slate-400">
+      No hay snapshots guardados. Usa el botón "Snapshot del día" en la Hoja de Ítems.
+    </div>
+  )
+
+  return (
+    <div className="card overflow-hidden">
+      <div className="px-4 py-3 border-b bg-slate-50">
+        <p className="section-title mb-0">Histórico de snapshots</p>
+      </div>
+      <div className="flex">
+        {/* Lista de fechas */}
+        <div className="w-36 border-r shrink-0">
+          {snapshots.map(s => (
+            <button key={s.id}
+              onClick={() => setSelected(s)}
+              className={`w-full text-left px-4 py-2.5 text-xs border-b transition-colors ${
+                selected?.id === s.id
+                  ? 'bg-primary-50 text-primary-700 font-semibold'
+                  : 'hover:bg-slate-50 text-slate-600'
+              }`}>
+              {new Date(s.fecha).toLocaleDateString('es-ES')}
+            </button>
+          ))}
+        </div>
+
+        {/* Detalle del snapshot */}
+        <div className="flex-1 overflow-y-auto max-h-80">
+          {!selected ? (
+            <div className="p-6 text-xs text-slate-400 text-center">
+              Selecciona una fecha para ver el snapshot
+            </div>
+          ) : (
+            <div className="divide-y">
+              {Object.entries(selected.datos ?? {})
+                .filter(([k]) => !SKIP.has(k) && selected.datos[k] !== null && selected.datos[k] !== undefined)
+                .map(([k, v]) => (
+                  <div key={k} className="flex px-4 py-2 text-xs">
+                    <span className="w-44 text-slate-400 shrink-0">{LABELS[k] ?? k}</span>
+                    <span className="text-slate-700 font-medium">{formatVal(v)}</span>
+                  </div>
+                ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
