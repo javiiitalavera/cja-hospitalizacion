@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import type { Ingreso, InformeIngreso, InformeAlta, ItemsPaciente } from '../types'
-import { ChevronLeft, User, FileText, ClipboardList, AlertTriangle, FileCheck, Download, Plus, Pencil, Trash2 } from 'lucide-react'
+import { ChevronLeft, User, FileText, ClipboardList, AlertTriangle, FileCheck, Download, Plus, Pencil, Trash2, LogOut } from 'lucide-react'
 import FormularioEvento from '../components/FormularioEvento'
 import { TIPO_EVENTO_LABEL, TIPO_EVENTO_COLOR, TURNO_LABEL, type Evento } from '../types/eventos'
 import { exportarInformeIngreso, exportarInformeAlta } from '../lib/exportWord'
@@ -21,6 +21,9 @@ export default function DetalleIngreso() {
   const [tab, setTab] = useState('datos')
   const [ingreso, setIngreso] = useState<Ingreso | null>(null)
   const [loading, setLoading] = useState(true)
+  const [modalAlta, setModalAlta] = useState(false)
+  const [altaForm, setAltaForm] = useState({ fecha_alta: new Date().toISOString().split('T')[0], estado: 'alta' })
+  const [procesandoAlta, setProcesandoAlta] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -34,6 +37,18 @@ export default function DetalleIngreso() {
         setLoading(false)
       })
   }, [id])
+
+  async function darAlta() {
+    if (!id) return
+    setProcesandoAlta(true)
+    await supabase.from('ingresos').update({
+      estado: altaForm.estado,
+      fecha_alta: altaForm.fecha_alta,
+    }).eq('id', id)
+    setIngreso(prev => prev ? { ...prev, estado: altaForm.estado as any, fecha_alta: altaForm.fecha_alta } : prev)
+    setModalAlta(false)
+    setProcesandoAlta(false)
+  }
 
   if (loading) return <div className="p-8 text-slate-400">Cargando…</div>
   if (!ingreso) return <div className="p-8 text-slate-400">Ingreso no encontrado</div>
@@ -90,6 +105,39 @@ export default function DetalleIngreso() {
           ))}
         </div>
       </div>
+
+      {/* Modal alta */}
+      {modalAlta && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+            <h2 className="text-base font-bold text-slate-800 mb-4">Dar de alta</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="label">Fecha de alta *</label>
+                <input type="date" className="input"
+                  value={altaForm.fecha_alta}
+                  onChange={e => setAltaForm(f => ({ ...f, fecha_alta: e.target.value }))} />
+              </div>
+              <div>
+                <label className="label">Motivo del alta *</label>
+                <select className="input" value={altaForm.estado}
+                  onChange={e => setAltaForm(f => ({ ...f, estado: e.target.value }))}>
+                  <option value="alta">Alta domiciliaria</option>
+                  <option value="alta_traslado">Traslado a otro centro</option>
+                  <option value="exitus">Éxitus</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setModalAlta(false)} className="btn-secondary flex-1">Cancelar</button>
+              <button onClick={darAlta} disabled={procesandoAlta} className="btn-primary flex-1">
+                <LogOut className="w-4 h-4" />
+                {procesandoAlta ? 'Procesando…' : 'Confirmar alta'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Tab content */}
       <div className="flex-1 overflow-y-auto p-8">
