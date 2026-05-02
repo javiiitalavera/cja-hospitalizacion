@@ -85,11 +85,11 @@ function buildPrintHTML(data: IngresoConItems[], today: string): string {
     })
     const habNums = Array.from({length:count},(_,i)=>i+1+offset)
 
-    const labelW = 90
-    const colW = Math.floor((740-labelW)/count) // A4 landscape usable ~740px at 96dpi
+    const labelPct = 10  // 10% for label column
+    const colPct = ((100 - labelPct) / count).toFixed(2)
 
-    let html = `<table style="width:100%;border-collapse:collapse;table-layout:fixed;font-size:7pt;font-family:Arial,sans-serif;">`
-    html += `<colgroup><col style="width:${labelW}px"/>${habNums.map(()=>`<col style="width:${colW}px"/>`).join('')}</colgroup>`
+    let html = `<table style="width:100%;border-collapse:collapse;table-layout:fixed;font-size:7.5pt;font-family:Arial,sans-serif;">`
+    html += `<colgroup><col style="width:${labelPct}%"/>${habNums.map(()=>`<col style="width:${colPct}%"/>`).join('')}</colgroup>`
 
     // Header row - habitación números
     html += `<tr>`
