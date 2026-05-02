@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { NavLink, Outlet } from "react-router-dom"
 import {
   Users, ClipboardList, AlertTriangle,
-  BarChart2, Settings, Activity, Home, ChevronLeft, ChevronRight
+  BarChart2, Settings, Activity, Home, ChevronLeft
 } from 'lucide-react'
 
 const navItems = [
@@ -18,34 +18,31 @@ export default function Layout() {
   const [collapsed, setCollapsed] = useState(false)
 
   return (
-    <div className="relative flex h-screen overflow-hidden bg-slate-50">
-      {/* Sidebar */}
+    <div className="flex h-screen overflow-hidden bg-slate-50">
       <aside className={`bg-white border-r flex flex-col shrink-0 transition-all duration-200 ${collapsed ? 'w-14' : 'w-56'}`}>
-        {/* Logo + toggle */}
-        <div className={`border-b flex items-center ${collapsed ? 'justify-center py-4 px-0' : 'px-4 py-4 justify-between'}`}>
+        {/* Cabecera */}
+        <div className="border-b px-3 py-4 flex items-center justify-between gap-2">
+          {/* Icono — siempre visible, expande si colapsado */}
+          <button
+            onClick={() => collapsed && setCollapsed(false)}
+            className={`w-7 h-7 bg-primary-600 rounded-lg flex items-center justify-center shrink-0 ${collapsed ? 'hover:bg-primary-700 cursor-pointer' : 'cursor-default'} transition-colors`}
+            title={collapsed ? 'Expandir menú' : undefined}
+          >
+            <Activity className="w-4 h-4 text-white" />
+          </button>
+
+          {/* Texto + botón colapsar — solo cuando expandido */}
           {!collapsed && (
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 bg-primary-600 rounded-lg flex items-center justify-center shrink-0">
-                <Activity className="w-4 h-4 text-white" />
-              </div>
-              <div>
+            <>
+              <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold text-slate-800 leading-tight">CJA</p>
                 <p className="text-[10px] text-slate-400 leading-tight">Hospitalización</p>
               </div>
-            </div>
-          )}
-          {collapsed && (
-            <button onClick={() => setCollapsed(false)}
-              title="Expandir menú"
-              className="w-7 h-7 bg-primary-600 rounded-lg flex items-center justify-center hover:bg-primary-700 transition-colors">
-              <Activity className="w-4 h-4 text-white" />
-            </button>
-          )}
-          {!collapsed && (
-            <button onClick={() => setCollapsed(true)}
-              className="text-slate-300 hover:text-slate-500 transition-colors p-1 rounded">
-              <ChevronLeft className="w-4 h-4" />
-            </button>
+              <button onClick={() => setCollapsed(true)}
+                className="text-slate-300 hover:text-slate-500 transition-colors p-1 rounded shrink-0">
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+            </>
           )}
         </div>
 
@@ -82,20 +79,6 @@ export default function Layout() {
         )}
       </aside>
 
-      {/* Floating toggle button on sidebar edge */}
-      <button
-        onClick={() => setCollapsed(v => !v)}
-        className="absolute top-6 z-10 flex items-center justify-center w-5 h-10 bg-white border border-slate-200 rounded-r-lg shadow-sm hover:bg-slate-50 hover:shadow-md transition-all"
-        style={{ left: collapsed ? '3.5rem' : '14rem' }}
-        title={collapsed ? 'Expandir menú' : 'Colapsar menú'}
-      >
-        {collapsed
-          ? <ChevronRight className="w-3 h-3 text-slate-400" />
-          : <ChevronLeft className="w-3 h-3 text-slate-400" />
-        }
-      </button>
-
-      {/* Main content */}
       <main className="flex-1 overflow-y-auto">
         <Outlet />
       </main>
