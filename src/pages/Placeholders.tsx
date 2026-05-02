@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Profesional, Rol } from '../types'
-import { Plus, Pencil, X, Save, UserCheck, UserX } from 'lucide-react'
+import { Plus, Pencil, X, Save, UserCheck, UserX, Trash2 } from 'lucide-react'
+import FormularioEvento from '../components/FormularioEvento'
 
 export function Eventos() {
   const [eventos, setEventos] = useState<any[]>([])
@@ -11,6 +12,7 @@ export function Eventos() {
   const [filtroHasta, setFiltroHasta] = useState('')
   const [filtroPaciente, setFiltroPaciente] = useState('')
   const [modalEvento, setModalEvento] = useState<any>(null)
+  const [editandoEvento, setEditandoEvento] = useState<any>(null)
 
   const TIPOS: Record<string,string> = {
     caida:'Caída', ulcera:'Úlcera', error_medicacion:'Error medicación',
@@ -51,6 +53,13 @@ export function Eventos() {
   useEffect(() => { fetchEventos() }, [filtroTipo, filtroDesde, filtroHasta])
 
   function handleBuscar() { setLoading(true); fetchEventos() }
+
+  async function eliminarEvento(id: string) {
+    if (!confirm('¿Eliminar este evento? Esta acción no se puede deshacer.')) return
+    await supabase.from('eventos').delete().eq('id', id)
+    setModalEvento(null)
+    fetchEventos()
+  }
 
   return (
     <div className="p-6">
@@ -151,7 +160,7 @@ export function Eventos() {
       )}
 
       {/* Modal detalle */}
-      {modalEvento&&(
+      {modalEvento&&!editandoEvento&&(
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
           onClick={()=>setModalEvento(null)}>
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6" onClick={e=>e.stopPropagation()}>
@@ -163,7 +172,7 @@ export function Eventos() {
                 <X className="w-4 h-4"/>
               </button>
             </div>
-            <div className="space-y-2 text-sm">
+            <div className="space-y-2 text-sm mb-5">
               <p><span className="font-medium">Paciente: </span>{modalEvento.ingreso?.paciente?.primer_apellido}, {modalEvento.ingreso?.paciente?.nombre}</p>
               <p><span className="font-medium">Fecha: </span>{new Date(modalEvento.fecha).toLocaleDateString('es-ES')}{modalEvento.hora&&` · ${modalEvento.hora.slice(0,5)}`}{modalEvento.turno&&` · Turno ${TURNO[modalEvento.turno]}`}</p>
               {Object.entries(modalEvento.datos??{}).map(([k,v]:any)=>(
@@ -172,8 +181,28 @@ export function Eventos() {
               {modalEvento.notas&&<p><span className="font-medium">Notas: </span>{modalEvento.notas}</p>}
               {modalEvento.registrado_por&&<p className="text-slate-400 text-xs pt-2 border-t">Registrado por {modalEvento.registrado_por.nombre} {modalEvento.registrado_por.apellidos}</p>}
             </div>
+            <div className="flex gap-2 pt-4 border-t">
+              <button onClick={()=>eliminarEvento(modalEvento.id)} className="btn-danger">
+                <Trash2 className="w-4 h-4"/>Eliminar
+              </button>
+              <div className="flex-1"/>
+              <button onClick={()=>setModalEvento(null)} className="btn-secondary">Cerrar</button>
+              <button onClick={()=>setEditandoEvento(modalEvento)} className="btn-primary">
+                <Pencil className="w-4 h-4"/>Editar
+              </button>
+            </div>
           </div>
         </div>
+      )}
+
+      {/* Modal edición */}
+      {editandoEvento&&(
+        <FormularioEvento
+          ingresoId={editandoEvento.ingreso_id}
+          eventoExistente={editandoEvento}
+          onClose={()=>setEditandoEvento(null)}
+          onGuardado={()=>{ setEditandoEvento(null); setModalEvento(null); fetchEventos() }}
+        />
       )}
     </div>
   )
