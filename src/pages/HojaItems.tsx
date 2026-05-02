@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Ingreso, ItemsPaciente } from '../types'
-import { Printer, X, Save, Camera, Check, History } from 'lucide-react'
+import { Printer, X, Save, History } from 'lucide-react'
 
 type IngresoConItems = Ingreso & { items: ItemsPaciente | null }
 
@@ -479,37 +479,11 @@ export default function HojaItems() {
 
   const today = new Date().toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long',year:'numeric'})
 
-  const [snapshoting, setSnapshoting] = useState(false)
-  const [snapshotDone, setSnapshotDone] = useState(false)
   const [verHistorico, setVerHistorico] = useState(false)
   const [fechasSnapshot, setFechasSnapshot] = useState<string[]>([])
   const [fechaSeleccionada, setFechaSeleccionada] = useState<string>('')
   const [snapshotData, setSnapshotData] = useState<any[]>([])
   const [loadingSnapshot, setLoadingSnapshot] = useState(false)
-
-  async function guardarSnapshot() {
-    setSnapshoting(true)
-    const today_date = new Date().toISOString().split('T')[0]
-
-    // For each active patient with items, save a snapshot
-    const upserts = data
-      .filter(i => i.items)
-      .map(i => ({
-        ingreso_id: i.id,
-        fecha: today_date,
-        datos: i.items,
-      }))
-
-    if (upserts.length > 0) {
-      await supabase
-        .from('items_historico')
-        .upsert(upserts, { onConflict: 'ingreso_id,fecha' })
-    }
-
-    setSnapshoting(false)
-    setSnapshotDone(true)
-    setTimeout(() => setSnapshotDone(false), 3000)
-  }
 
   async function fetchFechas() {
     const { data } = await supabase
@@ -581,15 +555,6 @@ export default function HojaItems() {
             className={`btn-secondary ${verHistorico?'bg-slate-100':''}`}>
             <History className="w-4 h-4"/>
             {verHistorico ? 'Ver hoy' : 'Histórico'}
-          </button>
-          <button onClick={guardarSnapshot} disabled={snapshoting}
-            className={`btn-secondary ${snapshotDone ? 'text-emerald-600 border-emerald-300' : ''}`}>
-            {snapshotDone
-              ? <><Check className="w-4 h-4"/>Snapshot guardado</>
-              : snapshoting
-                ? <><Camera className="w-4 h-4"/>Guardando…</>
-                : <><Camera className="w-4 h-4"/>Snapshot del día</>
-            }
           </button>
           <button onClick={()=>printHoja(data,today)} className="btn-secondary">
             <Printer className="w-4 h-4"/>
