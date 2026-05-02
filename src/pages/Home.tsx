@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { Users, ClipboardList, AlertTriangle, BedDouble } from 'lucide-react'
+import { Users, ClipboardList, AlertTriangle, BedDouble, Clock } from 'lucide-react'
+import { TIPO_EVENTO_LABEL, TIPO_EVENTO_COLOR, type Evento } from '../types/eventos'
 
 export default function Home() {
+  const [eventosRecientes, setEventosRecientes] = useState<Evento[]>([])
   const [stats, setStats] = useState({
     pacientesActivos: 0,
     ingresosHoy: 0,
@@ -14,11 +16,20 @@ export default function Home() {
 
   useEffect(() => {
     async function fetchStats() {
-      const [{ count: activos }, { count: eventosEsteMes }] = await Promise.all([
+      const ayer = new Date()
+    ayer.setDate(ayer.getDate() - 1)
+
+    const [{ count: activos }, { count: eventosEsteMes }, { data: recientes }] = await Promise.all([
         supabase.from('ingresos').select('*', { count: 'exact', head: true }).eq('estado', 'activo'),
         supabase.from('eventos').select('*', { count: 'exact', head: true })
           .gte('fecha', new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()),
+        supabase.from('eventos')
+          .select('*, registrado_por:profesionales(nombre, apellidos), ingreso:ingresos(habitacion, paciente:pacientes(nombre, primer_apellido))')
+          .gte('fecha', ayer.toISOString().split('T')[0])
+          .order('created_at', { ascending: false })
+          .limit(5),
       ])
+      setEventosRecientes((recientes ?? []) as Evento[])
       setStats({
         pacientesActivos: activos ?? 0,
         ingresosHoy: 0,
@@ -106,6 +117,36 @@ export default function Home() {
           </Link>
         </div>
       </div>
+
+      {/* Panel alertas eventos recientes */}
+      {eventosRecientes.length > 0 && (
+        <div className="card p-6 mt-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Clock className="w-4 h-4 text-amber-500" />
+            <p className="section-title mb-0">Eventos últimas 24h</p>
+          </div>
+          <div className="space-y-2">
+            {eventosRecientes.map(ev => {
+              const paciente = (ev.ingreso as any)?.paciente
+              const hab = (ev.ingreso as any)?.habitacion
+              return (
+                <div key={ev.id} className="flex items-center gap-3 py-2 border-b last:border-0">
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold border shrink-0 ${TIPO_EVENTO_COLOR[ev.tipo]}`}>
+                    {TIPO_EVENTO_LABEL[ev.tipo]}
+                  </span>
+                  <span className="text-sm text-slate-700 flex-1">
+                    {paciente ? `${paciente.primer_apellido}, ${paciente.nombre}` : '—'}
+                    {hab && <span className="text-slate-400"> · Hab. {hab}</span>}
+                  </span>
+                  <span className="text-xs text-slate-400 shrink-0">
+                    {new Date(ev.fecha).toLocaleDateString('es-ES')}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
