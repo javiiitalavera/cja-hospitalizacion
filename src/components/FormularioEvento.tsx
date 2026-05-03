@@ -94,7 +94,7 @@ export default function FormularioEvento({ ingresoId, eventoExistente, onClose, 
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b">
           <h2 className="text-base font-bold text-slate-800">
-            {eventoExistente ? 'Editar evento' : 'Registrar evento'}
+            {eventoExistente ? 'Editar incidencia' : 'Registrar incidencia'}
           </h2>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
             <X className="w-5 h-5" />
