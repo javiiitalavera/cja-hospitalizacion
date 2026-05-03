@@ -195,11 +195,17 @@ export function Dashboard() {
   // ── Caídas con lesión ─────────────────────────────────────────
   const caidas = eventos.filter(e => e.tipo === 'caida')
   const caidasConLesion = caidas.filter(e => e.datos?.con_lesion === 'Sí')
-  const tasaCaidas = diasEstancia > 0 ? (caidas.length / diasEstancia * 100).toFixed(2) : '—'
-  const tasaCaidasLesion = diasEstancia > 0 ? (caidasConLesion.length / diasEstancia * 100).toFixed(2) : '—'
+  const tasaCaidas = diasEstancia > 0 ? (caidas.length / diasEstancia * 1000).toFixed(1) : '—'
+  const tasaCaidasLesion = diasEstancia > 0 ? (caidasConLesion.length / diasEstancia * 1000).toFixed(1) : '—'
   const pctConLesion = caidas.length > 0
     ? Math.round(caidasConLesion.length / caidas.length * 100)
     : null
+
+  // UPP: separar incidentes (durante ingreso) de prevalentes (al ingreso)
+  const ulceras = eventos.filter(e => e.tipo === 'ulcera')
+  const ulcerasIncidentes = ulceras.filter(e => e.datos?.momento === 'Durante el ingreso')
+  const ulcerasPrevalentes = ulceras.filter(e => e.datos?.momento === 'Al ingreso')
+  const tasaUlcerasIncidentes = diasEstancia > 0 ? (ulcerasIncidentes.length / diasEstancia * 1000).toFixed(1) : '—'
 
   // ── Reingreso a 30 días ───────────────────────────────────────
   // Un ingreso es "reingreso a 30 días" si el mismo paciente tuvo un alta
@@ -247,7 +253,7 @@ export function Dashboard() {
 
   const eventosData = Object.keys(TIPO_LABEL).map(tipo => {
     const n = eventos.filter(e => e.tipo === tipo).length
-    const tasa = diasEstancia > 0 ? (n / diasEstancia * 100).toFixed(2) : '—'
+    const tasa = diasEstancia > 0 ? (n / diasEstancia * 1000).toFixed(1) : '—'
     return { tipo, label: TIPO_LABEL[tipo], n, tasa, color: TIPO_COLOR[tipo] }
   }).filter(d => d.n > 0).sort((a, b) => b.n - a.n)
 
@@ -334,7 +340,7 @@ export function Dashboard() {
               <StatCard label="Altas" value={totalAltas} icon={Users} color="text-emerald-600 bg-emerald-50" />
               <StatCard label="Éxitus" value={totalExitus} icon={Activity} color="text-red-600 bg-red-50" />
               <StatCard label="Estancia media" value={estanciaMedia > 0 ? `${estanciaMedia}d` : '—'} sub="ingresos con alta en período" icon={Clock} color="text-violet-600 bg-violet-50" />
-              <StatCard label="Días-estancia" value={diasEstancia} sub="base para tasas" icon={Calendar} color="text-sky-600 bg-sky-50" />
+              <StatCard label="Días-estancia" value={diasEstancia} sub="base para tasas (/1.000)" icon={Calendar} color="text-sky-600 bg-sky-50" />
               <StatCard label="Estancias >60d" value={estanciasLargas} sub="pacientes actuales" icon={Calendar} color="text-orange-600 bg-orange-50" />
             </div>
           </section>
@@ -357,7 +363,7 @@ export function Dashboard() {
                     <div className="flex justify-between items-end">
                       <div>
                         <p className="text-3xl font-bold text-slate-800">{caidas.length}</p>
-                        <p className="text-xs text-slate-400">total · tasa {tasaCaidas}/100 días-est.</p>
+                        <p className="text-xs text-slate-400">total · tasa {tasaCaidas}/1.000 días-est.</p>
                       </div>
                       <div className="text-right">
                         <p className="text-2xl font-bold text-red-600">{caidasConLesion.length}</p>
@@ -370,10 +376,43 @@ export function Dashboard() {
                           <div className="h-full bg-red-400 rounded-full transition-all" style={{ width: `${pctConLesion}%` }} />
                         </div>
                         <p className="text-xs text-slate-500">
-                          {pctConLesion}% con lesión · tasa lesión {tasaCaidasLesion}/100 días-est.
+                          {pctConLesion}% con lesión · tasa lesión {tasaCaidasLesion}/1.000 días-est.
                         </p>
                       </>
                     )}
+                  </div>
+                )}
+              </div>
+
+              {/* UPP */}
+              <div className="card p-5">
+                <div className="flex items-center gap-2 mb-4">
+                  <ShieldAlert className="w-4 h-4 text-red-500" />
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Úlceras por presión</p>
+                </div>
+                {ulceras.length === 0 ? (
+                  <p className="text-slate-400 text-sm">Sin úlceras registradas</p>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-end">
+                      <div>
+                        <p className="text-3xl font-bold text-slate-800">{ulcerasIncidentes.length}</p>
+                        <p className="text-xs text-slate-400">nosocomiales · tasa {tasaUlcerasIncidentes}/1.000 días-est.</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-2xl font-bold text-slate-500">{ulcerasPrevalentes.length}</p>
+                        <p className="text-xs text-slate-400">al ingreso</p>
+                      </div>
+                    </div>
+                    {ulceras.length > 0 && (
+                      <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-red-300 rounded-full transition-all"
+                          style={{ width: `${Math.round(ulcerasIncidentes.length / ulceras.length * 100)}%` }} />
+                      </div>
+                    )}
+                    <p className="text-xs text-slate-400">
+                      {ulceras.length} total · {Math.round(ulcerasIncidentes.length / ulceras.length * 100)}% nosocomiales
+                    </p>
                   </div>
                 )}
               </div>
@@ -403,7 +442,7 @@ export function Dashboard() {
                         <div className="h-full bg-violet-400 rounded-full transition-all" style={{ width: `${Math.min(tasaReingreso, 100)}%` }} />
                       </div>
                     )}
-                    <p className="text-xs text-slate-400">Pacientes que reingresaron en ≤30 días desde el alta</p>
+                    <p className="text-xs text-slate-400">Ingresos no programados en ≤30 días desde el alta. Numerador: ingresos nuevos del período con alta previa ≤30d en el mismo paciente.</p>
                   </div>
                 )}
               </div>
@@ -515,7 +554,7 @@ export function Dashboard() {
                     <tr className="border-b bg-slate-50">
                       <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Tipo</th>
                       <th className="px-4 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wide">N</th>
-                      <th className="px-4 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wide">Tasa / 100 días-estancia</th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wide">Tasa / 1.000 días-est.</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">

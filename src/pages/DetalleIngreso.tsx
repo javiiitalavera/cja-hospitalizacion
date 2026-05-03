@@ -351,6 +351,7 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
   const [data, setData] = useState<Partial<InformeIngreso>>({})
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [saveError, setSaveError] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const dataRef = useRef(data)
   dataRef.current = data
@@ -362,8 +363,10 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
 
   async function save(d = dataRef.current) {
     setSaving(true)
-    await supabase.from('informe_ingreso').upsert({ ...d, ingreso_id: ingresoId })
+    setSaveError(false)
+    const { error } = await supabase.from('informe_ingreso').upsert({ ...d, ingreso_id: ingresoId })
     setSaving(false)
+    if (error) { setSaveError(true); return }
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
@@ -390,6 +393,7 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
       <div className="flex items-center justify-end gap-3 text-xs text-slate-400">
         {saving && <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse inline-block"/> Guardando…</span>}
         {!saving && saved && <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"/> Guardado</span>}
+        {saveError && <span className="flex items-center gap-1.5 text-red-600 font-semibold"><span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block"/> Error al guardar — comprueba la conexión</span>}
       </div>
 
       <div className="card p-6 space-y-4">
@@ -492,10 +496,14 @@ function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
   const dataRef = useRef(data)
   dataRef.current = data
 
+  const [saveError, setSaveError] = useState(false)
+
   async function save(d = dataRef.current) {
     setSaving(true)
-    await supabase.from('informe_alta').upsert({ ...d, ingreso_id: ingresoId })
+    setSaveError(false)
+    const { error } = await supabase.from('informe_alta').upsert({ ...d, ingreso_id: ingresoId })
     setSaving(false)
+    if (error) { setSaveError(true); return }
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
@@ -526,6 +534,7 @@ function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
         <div className="text-xs text-slate-400">
           {saving && <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse inline-block"/> Guardando…</span>}
           {!saving && saved && <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"/> Guardado</span>}
+          {saveError && <span className="flex items-center gap-1.5 text-red-600 font-semibold"><span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block"/> Error al guardar — comprueba la conexión</span>}
         </div>
       </div>
 
