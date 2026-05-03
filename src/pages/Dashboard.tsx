@@ -232,7 +232,7 @@ export function Dashboard() {
     else semaforoConteo.sin_asignar++
   })
 
-  // ── Eventos adversos ──────────────────────────────────────────
+  // ── Incidencias ──────────────────────────────────────────
   const TIPO_LABEL: Record<string, string> = {
     caida: 'Caídas', ulcera: 'Úlceras', error_medicacion: 'Errores medicación',
     efecto_adverso_medicacion: 'Efectos adversos', infeccion_nosocomial: 'Infecciones',
@@ -503,11 +503,11 @@ export function Dashboard() {
             </div>
           </section>
 
-          {/* BLOQUE 4: Eventos adversos */}
+          {/* BLOQUE 4: Incidencias */}
           <section>
-            <p className="section-title mb-3">Eventos adversos · {periodoLabel(periodo)}</p>
+            <p className="section-title mb-3">Incidencias · {periodoLabel(periodo)}</p>
             {eventosData.length === 0 ? (
-              <div className="card p-6 text-center text-slate-400 text-sm">Sin eventos registrados en este periodo.</div>
+              <div className="card p-6 text-center text-slate-400 text-sm">Sin incidencias registradas en este periodo.</div>
             ) : (
               <div className="card overflow-hidden">
                 <table className="w-full text-sm">
@@ -555,14 +555,14 @@ export function Dashboard() {
                 </div>
                 {eventosMesData.length > 1 && (
                   <div className="card p-5">
-                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-4">Eventos adversos por mes</p>
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-4">Incidencias por mes</p>
                     <ResponsiveContainer width="100%" height={220}>
                       <BarChart data={eventosMesData}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="mes" tick={{ fontSize: 11 }} />
                         <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
-                        <Tooltip formatter={(v: number) => [v, 'Eventos']} />
-                        <Bar dataKey="eventos" fill="#f59e0b" radius={[4, 4, 0, 0]} name="Eventos" />
+                        <Tooltip formatter={(v: number) => [v, 'Incidencias']} />
+                        <Bar dataKey="eventos" fill="#f59e0b" radius={[4, 4, 0, 0]} name="Incidencias" />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>

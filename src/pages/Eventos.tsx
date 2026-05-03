@@ -247,7 +247,7 @@ export function Eventos() {
   function handleBuscar() { setLoadingLista(true); fetchLista() }
 
   async function eliminarEvento(id: string) {
-    if (!confirm('¿Eliminar este evento? Esta acción no se puede deshacer.')) return
+    if (!confirm('¿Eliminar esta incidencia? Esta acción no se puede deshacer.')) return
     await supabase.from('eventos').delete().eq('id', id)
     setModalEvento(null)
     fetchLista()
@@ -351,7 +351,7 @@ export function Eventos() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Eventos adversos</h1>
+          <h1 className="text-2xl font-bold text-slate-800">Incidencias</h1>
           <p className="text-sm text-slate-400 mt-0.5">Seguimiento de incidencias y seguridad del paciente</p>
         </div>
         <PeriodoSelector value={periodo} onChange={setPeriodo} />
@@ -365,7 +365,7 @@ export function Eventos() {
           {/* KPI resumen total */}
           <div className="grid grid-cols-3 gap-3">
             <div className="card p-4 col-span-1">
-              <p className="text-xs font-bold uppercase tracking-widest text-primary-600 mb-1">Total eventos</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-primary-600 mb-1">Total incidencias</p>
               <p className="text-4xl font-bold text-slate-800">{totalActual}</p>
               <p className="text-xs text-slate-400 mt-1">
                 {totalAnterior > 0
@@ -383,13 +383,13 @@ export function Eventos() {
               <p className="text-4xl font-bold text-slate-800">
                 {diasEstanciaActual > 0 ? (totalActual / diasEstanciaActual * 100).toFixed(2) : '—'}
               </p>
-              <p className="text-xs text-slate-400 mt-1">Eventos / 100 días-estancia</p>
+              <p className="text-xs text-slate-400 mt-1">Incidencias / 100 días-estancia</p>
             </div>
           </div>
 
           {/* KPIs por tipo */}
           <section>
-            <p className="section-title">Por tipo de evento</p>
+            <p className="section-title">Por tipo de incidencia</p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {kpis.map(k => (
                 <KpiCard key={k.tipo} {...k} />
@@ -494,7 +494,7 @@ export function Eventos() {
       {/* ── BLOQUE LISTADO ── */}
       <section>
         <div className="flex items-center justify-between mb-0">
-          <p className="section-title mb-0">Registro de eventos</p>
+          <p className="section-title mb-0">Registro de incidencias</p>
           <button onClick={exportarCSV} disabled={eventosLista.length === 0}
             className="btn-secondary text-xs py-1.5 gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed">
             <Download className="w-3.5 h-3.5" />
@@ -547,7 +547,7 @@ export function Eventos() {
         {loadingLista ? (
           <div className="text-slate-400 text-center py-10">Cargando…</div>
         ) : eventosLista.length === 0 ? (
-          <div className="card p-10 text-center text-slate-400 text-sm">No hay eventos con estos filtros.</div>
+          <div className="card p-10 text-center text-slate-400 text-sm">No hay incidencias con estos filtros.</div>
         ) : (
           <div className="space-y-2">
             {eventosLista.map((ev: any) => {

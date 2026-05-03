@@ -9,7 +9,7 @@ const navItems = [
   { to: '/', icon: Home, label: 'Inicio', end: true },
   { to: '/pacientes', icon: Users, label: 'Pacientes' },
   { to: '/items', icon: ClipboardList, label: 'Hoja de Ítems' },
-  { to: '/eventos', icon: AlertTriangle, label: 'Eventos' },
+  { to: '/eventos', icon: AlertTriangle, label: 'Incidencias' },
   { to: '/dashboard', icon: BarChart2, label: 'Dashboard' },
   { to: '/configuracion', icon: Settings, label: 'Configuración' },
 ]

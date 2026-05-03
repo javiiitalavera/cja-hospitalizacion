@@ -112,7 +112,7 @@ export default function Home() {
             <div>Días</div>
             <div>Ingreso</div>
             <div>Médico</div>
-            <div>Evento</div>
+            <div>Incidencia</div>
             <div></div>
           </div>
 
@@ -198,7 +198,7 @@ export default function Home() {
                   {/* Botón evento */}
                   <div onClick={e => { e.stopPropagation(); setModalEvento(ingreso.id) }}
                     className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 transition-colors text-xs font-medium cursor-pointer"
-                    title="Registrar evento">
+                    title="Registrar incidencia">
                     <AlertTriangle className="w-3 h-3 shrink-0" />
                     Evento
                   </div>

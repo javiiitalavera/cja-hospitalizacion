@@ -12,7 +12,7 @@ const TABS = [
   { id: 'ingreso', label: 'Informe ingreso', icon: FileText },
   { id: 'alta', label: 'Informe alta', icon: FileCheck },
   { id: 'items', label: 'Ítems', icon: ClipboardList },
-  { id: 'eventos', label: 'Eventos', icon: AlertTriangle },
+  { id: 'eventos', label: 'Incidencias', icon: AlertTriangle },
   { id: 'historial', label: 'Historial', icon: History },
 ]
 
@@ -870,7 +870,7 @@ function HistoricoItems({ ingresoId }: { ingresoId: string }) {
   )
 }
 
-// ─── TAB EVENTOS ──────────────────────────────────────────────
+// ─── TAB INCIDENCIAS ──────────────────────────────────────────────
 function TabEventos({ ingresoId }: { ingresoId: string }) {
   const [eventos, setEventos] = useState<Evento[]>([])
   const [loading, setLoading] = useState(true)
@@ -891,7 +891,7 @@ function TabEventos({ ingresoId }: { ingresoId: string }) {
   useEffect(() => { fetchEventos() }, [ingresoId])
 
   async function eliminar(id: string) {
-    if (!confirm('¿Eliminar este evento?')) return
+    if (!confirm('¿Eliminar esta incidencia?')) return
     await supabase.from('eventos').delete().eq('id', id)
     fetchEventos()
   }
@@ -909,10 +909,10 @@ function TabEventos({ ingresoId }: { ingresoId: string }) {
   return (
     <div className="max-w-3xl space-y-4">
       <div className="flex justify-between items-center">
-        <p className="text-sm text-slate-500">{eventos.length} evento{eventos.length !== 1 ? 's' : ''} registrado{eventos.length !== 1 ? 's' : ''}</p>
+        <p className="text-sm text-slate-500">{eventos.length} evento{incidencias.length !== 1 ? 's' : ''} registrada{incidencias.length !== 1 ? 's' : ''}</p>
         <button onClick={() => setModal(true)} className="btn-primary">
           <Plus className="w-4 h-4" />
-          Registrar evento
+          Registrar incidencia
         </button>
       </div>
 
@@ -920,7 +920,7 @@ function TabEventos({ ingresoId }: { ingresoId: string }) {
         <div className="text-slate-400 text-sm py-8 text-center">Cargando…</div>
       ) : eventos.length === 0 ? (
         <div className="card p-10 text-center text-slate-400 text-sm">
-          No hay eventos registrados en este ingreso.
+          No hay incidencias registradas en este ingreso.
         </div>
       ) : (
         <div className="space-y-3">
@@ -1106,11 +1106,11 @@ function TabHistorial({ pacienteId, ingresoActualId }: { pacienteId: string; ing
       {/* Historial de eventos completo */}
       <div className="card overflow-hidden">
         <div className="px-5 py-4 border-b bg-slate-50 flex items-center justify-between">
-          <p className="section-title mb-0">Todos los eventos ({eventos.length})</p>
+          <p className="section-title mb-0">Todas las incidencias ({eventos.length})</p>
         </div>
         {eventos.length === 0 ? (
           <div className="px-5 py-8 text-sm text-slate-400 text-center">
-            No hay eventos registrados.
+            No hay incidencias registradas.
           </div>
         ) : (
           <div className="divide-y">

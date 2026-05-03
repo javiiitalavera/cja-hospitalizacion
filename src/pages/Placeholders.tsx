@@ -2,9 +2,8 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Profesional, Rol } from '../types'
 import { Plus, Pencil, X, Save, UserCheck, UserX, Trash2 } from 'lucide-react'
-import FormularioEvento from '../components/FormularioEvento'
 
-export function Eventos() {
+function _removed() {
   const [eventos, setEventos] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [filtroTipo, setFiltroTipo] = useState('')
@@ -64,7 +63,7 @@ export function Eventos() {
   return (
     <div className="p-6">
       <div className="mb-5">
-        <h1 className="text-2xl font-bold text-slate-800">Eventos</h1>
+        <h1 className="text-2xl font-bold text-slate-800">Incidencias</h1>
         <p className="text-sm text-slate-400 mt-0.5">Registro global de incidencias</p>
       </div>
 
@@ -206,6 +205,11 @@ export function Eventos() {
       )}
     </div>
   )
+}
+
+
+
+  return null
 }
 
 

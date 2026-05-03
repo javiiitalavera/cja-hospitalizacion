@@ -109,7 +109,7 @@ export default function DetallePaciente() {
 
   const TABS = [
     { id: 'ingresos', label: `Episodios (${ingresos.length})`, icon: History },
-    { id: 'eventos', label: `Eventos (${eventos.length})`, icon: AlertTriangle },
+    { id: 'eventos', label: `Incidencias (${eventos.length})`, icon: AlertTriangle },
     { id: 'datos', label: 'Datos personales', icon: FileText },
   ]
 
