@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import type { Ingreso, ItemsPaciente } from '../types'
 import { Printer, X, Save, History } from 'lucide-react'
@@ -179,10 +180,11 @@ function printHoja(data: IngresoConItems[], today: string) {
 
 // ─── PANEL LATERAL DE EDICIÓN ─────────────────────────────────
 
-function PanelEdicion({ ingreso, onClose, onSaved }: {
+function PanelEdicion({ ingreso, onClose, onSaved, onHabitacionChange }: {
   ingreso: IngresoConItems
   onClose: () => void
   onSaved: (updated: ItemsPaciente) => void
+  onHabitacionChange: (ingresoId: string, nuevaHab: number) => void
 }) {
   const [data, setData] = useState<Partial<ItemsPaciente>>(ingreso.items ?? {})
   const [saving, setSaving] = useState(false)
@@ -192,6 +194,33 @@ function PanelEdicion({ ingreso, onClose, onSaved }: {
   dataRef.current = data
 
   const [confirmLimpiar, setConfirmLimpiar] = useState(false)
+  const [habEdit, setHabEdit] = useState(ingreso.habitacion?.toString() ?? '')
+  const [habError, setHabError] = useState('')
+  const [savingHab, setSavingHab] = useState(false)
+
+  async function cambiarHabitacion() {
+    const n = parseInt(habEdit)
+    if (!n || n < 1 || n > 33) { setHabError('Hab. inválida (1-33)'); return }
+    if (n === ingreso.habitacion) { setHabError(''); return }
+    setSavingHab(true)
+    setHabError('')
+    // Verificar que no está ocupada
+    const { data: ocupada } = await supabase
+      .from('ingresos')
+      .select('id, paciente:pacientes(nombre, primer_apellido)')
+      .eq('habitacion', n)
+      .eq('estado', 'activo')
+      .maybeSingle()
+    if (ocupada) {
+      const p = (ocupada as any).paciente
+      setHabError(`Ocupada por ${p?.primer_apellido ?? '?'}, ${p?.nombre ?? '?'}`)
+      setSavingHab(false)
+      return
+    }
+    await supabase.from('ingresos').update({ habitacion: n }).eq('id', ingreso.id)
+    onHabitacionChange(ingreso.id, n)
+    setSavingHab(false)
+  }
 
   async function save(d = dataRef.current) {
     setSaving(true)
@@ -278,9 +307,21 @@ function PanelEdicion({ ingreso, onClose, onSaved }: {
     <div className="fixed inset-y-0 right-0 w-80 bg-white shadow-2xl border-l flex flex-col z-40">
       {/* Header */}
       <div className="px-4 py-3 border-b bg-slate-50 flex items-start justify-between">
-        <div>
-          <p className="font-bold text-sm text-slate-800">{nombre}</p>
-          <p className="text-xs text-slate-400">Hab. {ingreso.habitacion} · Ítems</p>
+        <div className="flex-1 min-w-0 mr-2">
+          <p className="font-bold text-sm text-slate-800 truncate">{nombre}</p>
+          <div className="flex items-center gap-1.5 mt-1">
+            <span className="text-xs text-slate-400">Hab.</span>
+            <input
+              type="number" min={1} max={33}
+              className="w-14 text-xs border border-slate-200 rounded px-1.5 py-0.5 text-slate-700 font-medium"
+              value={habEdit}
+              onChange={e => { setHabEdit(e.target.value); setHabError('') }}
+              onBlur={cambiarHabitacion}
+              onKeyDown={e => e.key === 'Enter' && cambiarHabitacion()}
+            />
+            {savingHab && <span className="text-xs text-slate-400">…</span>}
+            {habError && <span className="text-xs text-red-500">{habError}</span>}
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-slate-400">
@@ -448,11 +489,12 @@ function snapshotToIngresos(snaps: any[]): IngresoConItems[] {
 
 // ─── TABLA EN PANTALLA ────────────────────────────────────────
 
-function Bloque({ habs, offset, count=16, onSelect, selectedId, readOnly=false }: {
+function Bloque({ habs, offset, count=16, onSelect, onSelectVacia, selectedId, readOnly=false }: {
   habs: IngresoConItems[]
   offset: number
   count?: number
   onSelect: (i: IngresoConItems) => void
+  onSelectVacia?: (n: number) => void
   selectedId: string | null
   readOnly?: boolean
 }) {
@@ -479,8 +521,12 @@ function Bloque({ habs, offset, count=16, onSelect, selectedId, readOnly=false }
             const bg = habBg(ing)
             const color = textColor(bg)
             return (
-              <th key={n} className="border border-slate-400 text-[8pt] font-bold text-center py-0.5"
-                style={{backgroundColor:bg,color}}>{n}</th>
+              <th key={n}
+                className={`border border-slate-400 text-[8pt] font-bold text-center py-0.5 ${!ing && !readOnly ? 'cursor-pointer hover:bg-primary-50' : ''}`}
+                style={{backgroundColor:bg,color}}
+                onClick={()=>{ if(!ing && !readOnly && onSelectVacia) onSelectVacia(n) }}
+                title={!ing && !readOnly ? `Ingresar en habitación ${n}` : undefined}
+              >{n}</th>
             )
           })}
         </tr>
@@ -503,9 +549,9 @@ function Bloque({ habs, offset, count=16, onSelect, selectedId, readOnly=false }
               const color=ingreso?textColor(bg):'#000'
               const isSelected=ingreso?.id===selectedId
               return (
-                <td key={n} className={`${cellCls} ${ingreso&&!readOnly?'cursor-pointer hover:brightness-95':''} ${isSelected?'ring-2 ring-inset ring-primary-500':''}`}
+                <td key={n} className={`${cellCls} ${ingreso&&!readOnly?'cursor-pointer hover:brightness-95':!ingreso&&!readOnly?'cursor-pointer hover:bg-primary-50/40':''} ${isSelected?'ring-2 ring-inset ring-primary-500':''}`}
                   style={{backgroundColor:cellBg,color,fontWeight:BOLD_ROWS.has(fila.key)?600:400}}
-                  onClick={()=>ingreso&&onSelect(ingreso)}>
+                  onClick={()=>{ if(ingreso&&!readOnly) onSelect(ingreso); else if(!ingreso&&!readOnly&&onSelectVacia&&fila.key==='nombre') onSelectVacia(n) }}>
                   {val||'\u00a0'}
                 </td>
               )
@@ -520,6 +566,7 @@ function Bloque({ habs, offset, count=16, onSelect, selectedId, readOnly=false }
 // ─── PÁGINA PRINCIPAL ─────────────────────────────────────────
 
 export default function HojaItems() {
+  const navigate = useNavigate()
   const [data, setData] = useState<IngresoConItems[]>([])
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<IngresoConItems|null>(null)
@@ -619,6 +666,11 @@ export default function HojaItems() {
   function handleSaved(ingresoId: string, updated: ItemsPaciente) {
     setData(prev => prev.map(i => i.id===ingresoId ? {...i,items:updated} : i))
     setSelected(prev => prev?.id===ingresoId ? {...prev,items:updated} : prev)
+  }
+
+  function handleHabitacionChange(ingresoId: string, nuevaHab: number) {
+    setData(prev => prev.map(i => i.id===ingresoId ? {...i, habitacion:nuevaHab} : i))
+    setSelected(prev => prev?.id===ingresoId ? {...prev, habitacion:nuevaHab} : prev)
   }
 
   const habs1_16   = data.filter(i=>i.habitacion&&i.habitacion<=16)
@@ -820,11 +872,11 @@ export default function HojaItems() {
       ) : (
         <>
           <div className="mb-4">
-            <Bloque habs={habs1_16} offset={0} count={16} onSelect={setSelected} selectedId={selected?.id??null}/>
+            <Bloque habs={habs1_16} offset={0} count={16} onSelect={setSelected} onSelectVacia={n=>navigate(`/pacientes/nuevo?habitacion=${n}`)} selectedId={selected?.id??null}/>
           </div>
           <div className="my-3 border-t-2 border-slate-400"/>
           <div className="mb-4">
-            <Bloque habs={habs17_max} offset={16} count={maxHab-16} onSelect={setSelected} selectedId={selected?.id??null}/>
+            <Bloque habs={habs17_max} offset={16} count={maxHab-16} onSelect={setSelected} onSelectVacia={n=>navigate(`/pacientes/nuevo?habitacion=${n}`)} selectedId={selected?.id??null}/>
           </div>
         </>
       )}
@@ -834,6 +886,7 @@ export default function HojaItems() {
           ingreso={selected}
           onClose={()=>setSelected(null)}
           onSaved={(updated)=>handleSaved(selected.id,updated)}
+          onHabitacionChange={handleHabitacionChange}
         />
       )}
     </div>
