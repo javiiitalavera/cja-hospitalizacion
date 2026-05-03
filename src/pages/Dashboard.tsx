@@ -6,7 +6,7 @@ import {
 } from 'recharts'
 import {
   Users, TrendingUp, Calendar, BedDouble,
-  Activity, Clock, ChevronDown
+  Activity, Clock, ChevronDown, ShieldAlert
 } from 'lucide-react'
 
 // ─── HELPERS ──────────────────────────────────────────────────
@@ -14,9 +14,8 @@ import {
 function calcEstanciaMedia(ingresos: any[]): number {
   const conAlta = ingresos.filter(i => i.fecha_alta && i.fecha_ingreso)
   if (!conAlta.length) return 0
-  const total = conAlta.reduce((sum, i) => {
-    return sum + Math.round((new Date(i.fecha_alta).getTime() - new Date(i.fecha_ingreso).getTime()) / 86400000)
-  }, 0)
+  const total = conAlta.reduce((sum, i) =>
+    sum + Math.round((new Date(i.fecha_alta).getTime() - new Date(i.fecha_ingreso).getTime()) / 86400000), 0)
   return Math.round(total / conAlta.length)
 }
 
@@ -48,8 +47,7 @@ function getDesde(periodo: string): string {
 // ─── STAT CARD ────────────────────────────────────────────────
 
 function StatCard({ label, value, sub, icon: Icon, color = 'text-primary-600 bg-primary-50' }: {
-  label: string; value: string | number; sub?: string
-  icon: any; color?: string
+  label: string; value: string | number; sub?: string; icon: any; color?: string
 }) {
   return (
     <div className="card p-5">
@@ -63,15 +61,31 @@ function StatCard({ label, value, sub, icon: Icon, color = 'text-primary-600 bg-
   )
 }
 
+// Colores semáforo (hex para coincidir con Home.tsx)
+const SEM_HEX: Record<string, string> = {
+  verde: '#92D050', amarillo: '#FFFF00', naranja: '#FF9900', rojo: '#FF0000'
+}
+const SEM_LABEL: Record<string, string> = {
+  verde: 'Verde', amarillo: 'Amarillo', naranja: 'Naranja', rojo: 'Rojo'
+}
+const SEM_ORDER = ['rojo', 'naranja', 'amarillo', 'verde']
+
 // ─── DASHBOARD ────────────────────────────────────────────────
 
 export function Dashboard() {
   const [periodo, setPeriodo] = useState('mes')
   const [loading, setLoading] = useState(true)
+  // Ingresos que solapan con el período (para días-estancia y altas reales)
   const [ingresosperiodo, setIngresosperiodo] = useState<any[]>([])
+  // Ingresos nuevos en el período (para contar nuevos y evolución)
   const [ingresosNuevos, setIngresosNuevos] = useState<any[]>([])
   const [eventos, setEventos] = useState<any[]>([])
+  // Pacientes activos ahora (snapshot)
   const [pacientesActivos, setPacientesActivos] = useState<any[]>([])
+  // Para reingreso: todos los ingresos históricos del mismo paciente
+  const [todosIngresos, setTodosIngresos] = useState<any[]>([])
+  // Semáforo de caídas de pacientes activos
+  const [semaforoItems, setSemaforoItems] = useState<any[]>([])
   const [showPeriodo, setShowPeriodo] = useState(false)
 
   useEffect(() => { fetchData() }, [periodo])
@@ -86,30 +100,46 @@ export function Dashboard() {
       { data: ingsNuevos },
       { data: evs },
       { data: activos },
+      { data: semItems },
     ] = await Promise.all([
-      // Ingresos que solapan con el período (para días-estancia y altas)
       supabase.from('ingresos')
         .select('*, paciente:pacientes(sexo, fecha_nacimiento), medico_responsable:profesionales(nombre)')
         .or(`fecha_alta.gte.${desde},fecha_alta.is.null`)
         .lte('fecha_ingreso', hoy)
         .order('fecha_ingreso', { ascending: true }),
-      // Ingresos nuevos en el período (para contar nuevos ingresos y evolución)
       supabase.from('ingresos')
-        .select('fecha_ingreso, fecha_alta, estado, medico_responsable:profesionales(nombre)')
+        .select('fecha_ingreso, fecha_alta, estado, paciente_id, medico_responsable:profesionales(nombre)')
         .gte('fecha_ingreso', desde)
         .order('fecha_ingreso', { ascending: true }),
-      // Eventos del período
       supabase.from('eventos').select('*').gte('fecha', desde),
-      // Snapshot actual — no depende del período
       supabase.from('ingresos')
-        .select('*, paciente:pacientes(sexo, fecha_nacimiento)')
+        .select('id, fecha_ingreso, paciente_id, paciente:pacientes(sexo, fecha_nacimiento)')
         .eq('estado', 'activo'),
+      // Semáforo de caídas de todos los pacientes activos
+      supabase.from('items_paciente')
+        .select('ingreso_id, semaforo_caidas'),
     ])
 
+    const activosList = activos ?? []
+    setPacientesActivos(activosList)
     setIngresosperiodo(ingsPeriodo ?? [])
     setIngresosNuevos(ingsNuevos ?? [])
     setEventos(evs ?? [])
-    setPacientesActivos(activos ?? [])
+    setSemaforoItems(semItems ?? [])
+
+    // Para reingreso: cargar historial de los pacientes que ingresaron en el período
+    const pacienteIds = [...new Set((ingsNuevos ?? []).map((i: any) => i.paciente_id).filter(Boolean))]
+    if (pacienteIds.length > 0) {
+      const { data: hist } = await supabase
+        .from('ingresos')
+        .select('id, paciente_id, fecha_ingreso, fecha_alta, estado')
+        .in('paciente_id', pacienteIds)
+        .order('fecha_ingreso', { ascending: true })
+      setTodosIngresos(hist ?? [])
+    } else {
+      setTodosIngresos([])
+    }
+
     setLoading(false)
   }
 
@@ -152,7 +182,6 @@ export function Dashboard() {
     ].filter(d => d.value > 0)
   })()
 
-  // Distribución por médico — sobre ingresos nuevos del período
   const medicoData = (() => {
     const map: Record<string, number> = {}
     ingresosNuevos.forEach(i => {
@@ -162,6 +191,46 @@ export function Dashboard() {
     return Object.entries(map).map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value)
   })()
+
+  // ── Caídas con lesión ─────────────────────────────────────────
+  const caidas = eventos.filter(e => e.tipo === 'caida')
+  const caidasConLesion = caidas.filter(e => e.datos?.con_lesion === 'Sí')
+  const tasaCaidas = diasEstancia > 0 ? (caidas.length / diasEstancia * 100).toFixed(2) : '—'
+  const tasaCaidasLesion = diasEstancia > 0 ? (caidasConLesion.length / diasEstancia * 100).toFixed(2) : '—'
+  const pctConLesion = caidas.length > 0
+    ? Math.round(caidasConLesion.length / caidas.length * 100)
+    : null
+
+  // ── Reingreso a 30 días ───────────────────────────────────────
+  // Un ingreso es "reingreso a 30 días" si el mismo paciente tuvo un alta
+  // en los 30 días anteriores a la fecha_ingreso de este episodio
+  const reingresos30 = ingresosNuevos.filter(ing => {
+    if (!ing.paciente_id) return false
+    const fechaActual = new Date(ing.fecha_ingreso)
+    const hace30 = new Date(fechaActual)
+    hace30.setDate(hace30.getDate() - 30)
+    return todosIngresos.some(prev =>
+      prev.paciente_id === ing.paciente_id &&
+      prev.id !== ing.id &&
+      prev.fecha_alta &&
+      new Date(prev.fecha_alta) >= hace30 &&
+      new Date(prev.fecha_alta) < fechaActual
+    )
+  })
+  const tasaReingreso = totalAltas > 0
+    ? Math.round(reingresos30.length / totalAltas * 100)
+    : null
+
+  // ── Semáforo de caídas (snapshot actual) ─────────────────────
+  const activosIds = new Set(pacientesActivos.map((i: any) => i.id))
+  const semaforoActivos = semaforoItems.filter(s => activosIds.has(s.ingreso_id))
+  const semaforoConteo: Record<string, number> = { verde: 0, amarillo: 0, naranja: 0, rojo: 0, sin_asignar: 0 }
+  pacientesActivos.forEach((ing: any) => {
+    const item = semaforoActivos.find(s => s.ingreso_id === ing.id)
+    const sem = item?.semaforo_caidas
+    if (sem && semaforoConteo[sem] !== undefined) semaforoConteo[sem]++
+    else semaforoConteo.sin_asignar++
+  })
 
   // ── Eventos adversos ──────────────────────────────────────────
   const TIPO_LABEL: Record<string, string> = {
@@ -257,7 +326,7 @@ export function Dashboard() {
       ) : (
         <div className="space-y-6">
 
-          {/* BLOQUE 1: Actividad asistencial — depende del período */}
+          {/* BLOQUE 1: Actividad asistencial */}
           <section>
             <p className="section-title mb-3">Actividad asistencial · {periodoLabel(periodo)}</p>
             <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
@@ -270,7 +339,117 @@ export function Dashboard() {
             </div>
           </section>
 
-          {/* BLOQUE 2: Snapshot actual — no depende del período */}
+          {/* BLOQUE 2: Indicadores de seguridad */}
+          <section>
+            <p className="section-title mb-3">Seguridad del paciente · {periodoLabel(periodo)}</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+              {/* Caídas con/sin lesión */}
+              <div className="card p-5">
+                <div className="flex items-center gap-2 mb-4">
+                  <ShieldAlert className="w-4 h-4 text-orange-500" />
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Caídas</p>
+                </div>
+                {caidas.length === 0 ? (
+                  <p className="text-slate-400 text-sm">Sin caídas registradas</p>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-end">
+                      <div>
+                        <p className="text-3xl font-bold text-slate-800">{caidas.length}</p>
+                        <p className="text-xs text-slate-400">total · tasa {tasaCaidas}/100 días-est.</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-2xl font-bold text-red-600">{caidasConLesion.length}</p>
+                        <p className="text-xs text-slate-400">con lesión</p>
+                      </div>
+                    </div>
+                    {pctConLesion !== null && (
+                      <>
+                        <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                          <div className="h-full bg-red-400 rounded-full transition-all" style={{ width: `${pctConLesion}%` }} />
+                        </div>
+                        <p className="text-xs text-slate-500">
+                          {pctConLesion}% con lesión · tasa lesión {tasaCaidasLesion}/100 días-est.
+                        </p>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Reingreso a 30 días */}
+              <div className="card p-5">
+                <div className="flex items-center gap-2 mb-4">
+                  <ShieldAlert className="w-4 h-4 text-violet-500" />
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Reingreso a 30 días</p>
+                </div>
+                {totalAltas === 0 ? (
+                  <p className="text-slate-400 text-sm">Sin altas en el período</p>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-end">
+                      <div>
+                        <p className="text-3xl font-bold text-slate-800">{reingresos30.length}</p>
+                        <p className="text-xs text-slate-400">reingresos</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-2xl font-bold text-violet-600">{tasaReingreso}%</p>
+                        <p className="text-xs text-slate-400">sobre {totalAltas} altas</p>
+                      </div>
+                    </div>
+                    {tasaReingreso !== null && (
+                      <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-violet-400 rounded-full transition-all" style={{ width: `${Math.min(tasaReingreso, 100)}%` }} />
+                      </div>
+                    )}
+                    <p className="text-xs text-slate-400">Pacientes que reingresaron en ≤30 días desde el alta</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Semáforo de caídas — snapshot actual */}
+              <div className="card p-5">
+                <div className="flex items-center gap-2 mb-4">
+                  <ShieldAlert className="w-4 h-4 text-amber-500" />
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                    Riesgo de caída <span className="normal-case font-normal text-slate-400">(actual)</span>
+                  </p>
+                </div>
+                {pacientesActivos.length === 0 ? (
+                  <p className="text-slate-400 text-sm">Sin pacientes activos</p>
+                ) : (
+                  <div className="space-y-2">
+                    {SEM_ORDER.map(color => {
+                      const n = semaforoConteo[color]
+                      if (n === 0) return null
+                      const pct = Math.round(n / pacientesActivos.length * 100)
+                      return (
+                        <div key={color}>
+                          <div className="flex justify-between text-xs mb-1">
+                            <span className="font-medium text-slate-700">{SEM_LABEL[color]}</span>
+                            <span className="text-slate-500">{n} pac. ({pct}%)</span>
+                          </div>
+                          <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-full rounded-full transition-all"
+                              style={{ width: `${pct}%`, backgroundColor: SEM_HEX[color] }} />
+                          </div>
+                        </div>
+                      )
+                    })}
+                    {semaforoConteo.sin_asignar > 0 && (
+                      <p className="text-xs text-slate-400 pt-1">
+                        {semaforoConteo.sin_asignar} sin semáforo asignado
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+            </div>
+          </section>
+
+          {/* BLOQUE 3: Snapshot actual */}
           <section>
             <p className="section-title mb-3">
               Situación actual{' '}
@@ -324,7 +503,7 @@ export function Dashboard() {
             </div>
           </section>
 
-          {/* BLOQUE 3: Eventos adversos — depende del período */}
+          {/* BLOQUE 4: Eventos adversos */}
           <section>
             <p className="section-title mb-3">Eventos adversos · {periodoLabel(periodo)}</p>
             {eventosData.length === 0 ? (
@@ -355,7 +534,7 @@ export function Dashboard() {
             )}
           </section>
 
-          {/* BLOQUE 4: Evolución temporal */}
+          {/* BLOQUE 5: Evolución temporal */}
           {evolucionData.length > 1 && (
             <section>
               <p className="section-title mb-3">Evolución temporal · {periodoLabel(periodo)}</p>
