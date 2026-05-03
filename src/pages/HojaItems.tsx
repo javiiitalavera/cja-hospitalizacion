@@ -191,6 +191,8 @@ function PanelEdicion({ ingreso, onClose, onSaved }: {
   const dataRef = useRef(data)
   dataRef.current = data
 
+  const [confirmLimpiar, setConfirmLimpiar] = useState(false)
+
   async function save(d = dataRef.current) {
     setSaving(true)
     const { data: updated } = await supabase
@@ -202,6 +204,20 @@ function PanelEdicion({ ingreso, onClose, onSaved }: {
     setSaved(true)
     if (updated) onSaved(updated as ItemsPaciente)
     setTimeout(() => setSaved(false), 2000)
+  }
+
+  async function limpiarItems() {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    setSaving(true)
+    const { data: updated } = await supabase
+      .from('items_paciente')
+      .upsert({ ingreso_id: ingreso.id })
+      .select()
+      .single()
+    setSaving(false)
+    setData({})
+    setConfirmLimpiar(false)
+    if (updated) onSaved(updated as ItemsPaciente)
   }
 
   function update(key: keyof ItemsPaciente, val: any) {
@@ -390,11 +406,26 @@ function PanelEdicion({ ingreso, onClose, onSaved }: {
         </div>
       </div>
 
-      <div className="px-4 py-3 border-t">
+      <div className="px-4 py-3 border-t space-y-2">
         <button onClick={()=>save()} className="btn-primary w-full justify-center">
           <Save className="w-3.5 h-3.5" />
           Guardar ahora
         </button>
+        {!confirmLimpiar ? (
+          <button onClick={()=>setConfirmLimpiar(true)}
+            className="w-full text-xs text-slate-400 hover:text-red-500 transition-colors py-1 text-center">
+            Borrar todos los ítems
+          </button>
+        ) : (
+          <div className="flex gap-2">
+            <button onClick={()=>setConfirmLimpiar(false)} className="btn-secondary flex-1 text-xs py-1.5">
+              Cancelar
+            </button>
+            <button onClick={limpiarItems} className="btn-danger flex-1 text-xs py-1.5">
+              Confirmar borrado
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )
