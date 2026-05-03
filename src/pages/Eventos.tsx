@@ -196,7 +196,8 @@ export function Eventos() {
       supabase.from('eventos').select('tipo, fecha').gte('fecha', iniAnt).lte('fecha', finAnt),
       supabase.from('ingresos')
         .select('fecha_ingreso, fecha_alta, estado, medico_responsable:profesionales(nombre,apellidos)')
-        .gte('fecha_ingreso', desde),
+        .or(`fecha_alta.gte.${desde},fecha_alta.is.null`)
+        .lte('fecha_ingreso', new Date().toISOString().split('T')[0]),
     ])
 
     setEventosActual(evAct ?? [])
