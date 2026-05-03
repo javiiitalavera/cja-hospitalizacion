@@ -6,7 +6,8 @@ import DetallePaciente from './pages/DetallePaciente'
 import NuevoIngreso from './pages/NuevoIngreso'
 import DetalleIngreso from './pages/DetalleIngreso'
 import HojaItems from './pages/HojaItems'
-import { Eventos, Configuracion } from './pages/Placeholders'
+import { Eventos } from './pages/Eventos'
+import { Configuracion } from './pages/Placeholders'
 import { Dashboard } from './pages/Dashboard'
 
 export default function App() {
