@@ -400,14 +400,30 @@ function PanelEdicion({ ingreso, onClose, onSaved }: {
   )
 }
 
+// Convierte items_historico al mismo formato que IngresoConItems
+function snapshotToIngresos(snaps: any[]): IngresoConItems[] {
+  return snaps.map(s => ({
+    id: s.ingreso_id,
+    habitacion: s.ingreso?.habitacion ?? null,
+    estado: 'activo' as const,
+    fecha_ingreso: '',
+    paciente_id: '',
+    paciente: s.ingreso?.paciente ?? null,
+    medico_responsable: s.ingreso?.medico_responsable ?? null,
+    items: s.datos as ItemsPaciente,
+    created_at: '',
+  }))
+}
+
 // ─── TABLA EN PANTALLA ────────────────────────────────────────
 
-function Bloque({ habs, offset, count=16, onSelect, selectedId }: {
+function Bloque({ habs, offset, count=16, onSelect, selectedId, readOnly=false }: {
   habs: IngresoConItems[]
   offset: number
   count?: number
   onSelect: (i: IngresoConItems) => void
   selectedId: string | null
+  readOnly?: boolean
 }) {
   const slots: (IngresoConItems|null)[] = Array(count).fill(null)
   habs.forEach(i => {
@@ -456,7 +472,7 @@ function Bloque({ habs, offset, count=16, onSelect, selectedId }: {
               const color=ingreso?textColor(bg):'#000'
               const isSelected=ingreso?.id===selectedId
               return (
-                <td key={n} className={`${cellCls} ${ingreso?'cursor-pointer hover:brightness-95':''} ${isSelected?'ring-2 ring-inset ring-primary-500':''}`}
+                <td key={n} className={`${cellCls} ${ingreso&&!readOnly?'cursor-pointer hover:brightness-95':''} ${isSelected?'ring-2 ring-inset ring-primary-500':''}`}
                   style={{backgroundColor:cellBg,color,fontWeight:BOLD_ROWS.has(fila.key)?600:400}}
                   onClick={()=>ingreso&&onSelect(ingreso)}>
                   {val||'\u00a0'}
@@ -570,75 +586,48 @@ export default function HojaItems() {
             <div className="card p-10 text-center text-slate-400 text-sm">No hay snapshots guardados aún.</div>
           ) : (
             <>
-              <div className="flex gap-2 flex-wrap">
-                {fechasSnapshot.map(f=>(
-                  <button key={f}
-                    onClick={()=>cargarSnapshot(f)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-                      fechaSeleccionada===f?'bg-primary-600 text-white border-primary-600':'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'
-                    }`}>
-                    {new Date(f).toLocaleDateString('es-ES',{weekday:'short',day:'numeric',month:'short',year:'numeric'})}
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex gap-2 flex-wrap flex-1">
+                  {fechasSnapshot.map(f=>(
+                    <button key={f}
+                      onClick={()=>cargarSnapshot(f)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                        fechaSeleccionada===f?'bg-primary-600 text-white border-primary-600':'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'
+                      }`}>
+                      {new Date(f).toLocaleDateString('es-ES',{weekday:'short',day:'numeric',month:'short',year:'numeric'})}
+                    </button>
+                  ))}
+                </div>
+                {snapshotData.length > 0 && (
+                  <button
+                    onClick={()=>{
+                      const fechaLabel = new Date(fechaSeleccionada).toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long',year:'numeric'})
+                      printHoja(snapshotToIngresos(snapshotData), fechaLabel)
+                    }}
+                    className="btn-secondary shrink-0">
+                    <Printer className="w-4 h-4"/>
+                    Imprimir
                   </button>
-                ))}
+                )}
               </div>
               {loadingSnapshot ? (
-                <div className="text-slate-400 text-sm py-8 text-center">Cargando snapshot…</div>
+                <div className="text-slate-400 text-sm py-8 text-center">Cargando…</div>
               ) : snapshotData.length === 0 ? (
                 <div className="card p-8 text-center text-slate-400 text-sm">Sin datos para esta fecha.</div>
               ) : (
-                <div className="card overflow-hidden">
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="border-b bg-slate-50">
-                        <th className="px-3 py-2 text-left font-semibold text-slate-500 w-10">Hab.</th>
-                        <th className="px-3 py-2 text-left font-semibold text-slate-500">Paciente</th>
-                        <th className="px-3 py-2 text-left font-semibold text-slate-500">Semáforo</th>
-                        <th className="px-3 py-2 text-left font-semibold text-slate-500">Dep.</th>
-                        <th className="px-3 py-2 text-left font-semibold text-slate-500">Higiene</th>
-                        <th className="px-3 py-2 text-left font-semibold text-slate-500">Ingestas</th>
-                        <th className="px-3 py-2 text-left font-semibold text-slate-500">Pañal D/N</th>
-                        <th className="px-3 py-2 text-left font-semibold text-slate-500">Suj. cama</th>
-                        <th className="px-3 py-2 text-left font-semibold text-slate-500">Suj. silla</th>
-                        <th className="px-3 py-2 text-left font-semibold text-slate-500">Suj. sillón</th>
-                        <th className="px-3 py-2 text-left font-semibold text-slate-500">Deambulación</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                      {snapshotData.sort((a:any,b:any)=>(a.ingreso?.habitacion??99)-(b.ingreso?.habitacion??99)).map((s:any)=>{
-                        const it=s.datos??{}
-                        const ing=s.ingreso
-                        const sem=it.semaforo_caidas
-                        const semBg=sem?SEMAFORO_COLOR[sem]:null
-                        const semTxt=sem==='rojo'?'#fff':'#000'
-                        const sujSilla=it.sujecion_silla_ruedas==='si_precisa'?'S/P':it.sujecion_silla_ruedas==='continuo'?'Cont':it.sujecion_silla_ruedas==='no'?'No':'—'
-                        const sujSillon=it.sujecion_sillon==='si_precisa'?'S/P':it.sujecion_sillon==='continuo'?'Cont':it.sujecion_sillon==='no'?'No':'—'
-                        const sujCama=Array.isArray(it.sujecion_cama)&&it.sujecion_cama.length>0?it.sujecion_cama.map((x:string)=>SUJECION_SHORT[x]??x).join('+'):'—'
-                        return (
-                          <tr key={s.id} className="hover:bg-slate-50">
-                            <td className="px-3 py-2">
-                              <div className="w-7 h-7 rounded flex items-center justify-center font-bold text-xs"
-                                style={semBg?{backgroundColor:semBg,color:semTxt}:{backgroundColor:'#f1f5f9',color:'#475569'}}>
-                                {ing?.habitacion??'—'}
-                              </div>
-                            </td>
-                            <td className="px-3 py-2 font-medium text-slate-800">
-                              {ing?.paciente?.primer_apellido}, {ing?.paciente?.nombre}
-                            </td>
-                            <td className="px-3 py-2 text-slate-500 capitalize">{sem??'—'}</td>
-                            <td className="px-3 py-2 text-slate-500">{it.dependencia_avd??'—'}</td>
-                            <td className="px-3 py-2 text-slate-500">{it.higiene==='lavabo'?'L':it.higiene==='cama'?'C':'—'}</td>
-                            <td className="px-3 py-2 text-slate-500">{it.ingestas==='autonomo'?'A':it.ingestas==='dependiente'?'D':'—'}</td>
-                            <td className="px-3 py-2 text-slate-500">{it.panial_dia??'—'} / {it.panial_noche??'—'}</td>
-                            <td className="px-3 py-2 text-slate-500">{sujCama}</td>
-                            <td className="px-3 py-2 text-slate-500">{sujSilla}</td>
-                            <td className="px-3 py-2 text-slate-500">{sujSillon}</td>
-                            <td className="px-3 py-2 text-slate-500">{it.deambulacion??'—'}</td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                <>
+                  {(()=>{
+                    const converted = snapshotToIngresos(snapshotData)
+                    const habs1 = converted.filter(i=>i.habitacion&&i.habitacion<=16)
+                    const habs2 = converted.filter(i=>i.habitacion&&i.habitacion>16)
+                    return (
+                      <>
+                        <Bloque habs={habs1} offset={0} count={16} onSelect={()=>{}} selectedId={null} readOnly/>
+                        {habs2.length>0 && <Bloque habs={habs2} offset={16} count={Math.max(16,...converted.map(i=>i.habitacion??0))-16} onSelect={()=>{}} selectedId={null} readOnly/>}
+                      </>
+                    )
+                  })()}
+                </>
               )}
             </>
           )}
