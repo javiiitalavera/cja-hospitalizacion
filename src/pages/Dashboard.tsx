@@ -20,6 +20,16 @@ function calcEstanciaMedia(ingresos: any[]): number {
   return Math.round(total / conAlta.length)
 }
 
+function calcDiasEstancia(ingresos: any[], desde: string): number {
+  const hoy = new Date()
+  const desdeDate = new Date(desde)
+  return ingresos.reduce((sum: number, ing: any) => {
+    const ini = new Date(Math.max(new Date(ing.fecha_ingreso).getTime(), desdeDate.getTime()))
+    const fin = ing.fecha_alta ? new Date(ing.fecha_alta) : hoy
+    return sum + Math.max(0, Math.round((fin.getTime() - ini.getTime()) / 86400000))
+  }, 0)
+}
+
 function periodoLabel(p: string) {
   const map: Record<string, string> = {
     mes: 'Este mes', trimestre: 'Este trimestre', anio: 'Este año', todo: 'Todo el historial'
@@ -58,48 +68,70 @@ function StatCard({ label, value, sub, icon: Icon, color = 'text-primary-600 bg-
 export function Dashboard() {
   const [periodo, setPeriodo] = useState('mes')
   const [loading, setLoading] = useState(true)
-  const [ingresos, setIngresos] = useState<any[]>([])
+  const [ingresosperiodo, setIngresosperiodo] = useState<any[]>([])
+  const [ingresosNuevos, setIngresosNuevos] = useState<any[]>([])
   const [eventos, setEventos] = useState<any[]>([])
   const [pacientesActivos, setPacientesActivos] = useState<any[]>([])
   const [showPeriodo, setShowPeriodo] = useState(false)
 
-  useEffect(() => {
-    fetchData()
-  }, [periodo])
+  useEffect(() => { fetchData() }, [periodo])
 
   async function fetchData() {
     setLoading(true)
     const desde = getDesde(periodo)
+    const hoy = new Date().toISOString().split('T')[0]
 
     const [
-      { data: ings },
+      { data: ingsPeriodo },
+      { data: ingsNuevos },
       { data: evs },
       { data: activos },
     ] = await Promise.all([
+      // Ingresos que solapan con el período (para días-estancia y altas)
       supabase.from('ingresos')
         .select('*, paciente:pacientes(sexo, fecha_nacimiento), medico_responsable:profesionales(nombre)')
+        .or(`fecha_alta.gte.${desde},fecha_alta.is.null`)
+        .lte('fecha_ingreso', hoy)
+        .order('fecha_ingreso', { ascending: true }),
+      // Ingresos nuevos en el período (para contar nuevos ingresos y evolución)
+      supabase.from('ingresos')
+        .select('fecha_ingreso, fecha_alta, estado, medico_responsable:profesionales(nombre)')
         .gte('fecha_ingreso', desde)
         .order('fecha_ingreso', { ascending: true }),
-      supabase.from('eventos')
-        .select('*')
-        .gte('fecha', desde),
+      // Eventos del período
+      supabase.from('eventos').select('*').gte('fecha', desde),
+      // Snapshot actual — no depende del período
       supabase.from('ingresos')
-        .select('*, paciente:pacientes(fecha_nacimiento)')
+        .select('*, paciente:pacientes(sexo, fecha_nacimiento)')
         .eq('estado', 'activo'),
     ])
 
-    setIngresos(ings ?? [])
+    setIngresosperiodo(ingsPeriodo ?? [])
+    setIngresosNuevos(ingsNuevos ?? [])
     setEventos(evs ?? [])
     setPacientesActivos(activos ?? [])
     setLoading(false)
   }
 
-  // ── KPIs básicos ─────────────────────────────────────────────
-  const totalIngresos = ingresos.length
-  const totalAltas = ingresos.filter(i => ['alta', 'alta_traslado'].includes(i.estado)).length
-  const totalExitus = ingresos.filter(i => i.estado === 'exitus').length
-  const estanciaMedia = calcEstanciaMedia(ingresos)
+  const desde = getDesde(periodo)
+
+  // ── KPIs actividad (período) ──────────────────────────────────
+  const totalIngresosNuevos = ingresosNuevos.length
+  const totalAltas = ingresosperiodo.filter(i =>
+    ['alta', 'alta_traslado'].includes(i.estado) && i.fecha_alta >= desde
+  ).length
+  const totalExitus = ingresosperiodo.filter(i =>
+    i.estado === 'exitus' && i.fecha_alta >= desde
+  ).length
+  const estanciaMedia = calcEstanciaMedia(ingresosNuevos)
+  const diasEstancia = calcDiasEstancia(ingresosperiodo, desde)
+
+  // ── KPIs snapshot actual ──────────────────────────────────────
   const ocupacion = Math.round((pacientesActivos.length / 33) * 100)
+  const estanciasLargas = pacientesActivos.filter(i => {
+    const dias = Math.floor((Date.now() - new Date(i.fecha_ingreso).getTime()) / 86400000)
+    return dias > 60
+  }).length
 
   const edadMedia = (() => {
     const conFnac = pacientesActivos.filter(i => i.paciente?.fecha_nacimiento)
@@ -109,12 +141,6 @@ export function Dashboard() {
     return Math.round(sum / conFnac.length)
   })()
 
-  const estanciasLargas = pacientesActivos.filter(i => {
-    const dias = Math.floor((Date.now() - new Date(i.fecha_ingreso).getTime()) / 86400000)
-    return dias > 60
-  }).length
-
-  // ── Distribución por sexo ────────────────────────────────────
   const sexoData = (() => {
     const h = pacientesActivos.filter(i => i.paciente?.sexo === 'hombre').length
     const m = pacientesActivos.filter(i => i.paciente?.sexo === 'mujer').length
@@ -126,10 +152,10 @@ export function Dashboard() {
     ].filter(d => d.value > 0)
   })()
 
-  // ── Distribución por médico ──────────────────────────────────
+  // Distribución por médico — sobre ingresos nuevos del período
   const medicoData = (() => {
     const map: Record<string, number> = {}
-    ingresos.forEach(i => {
+    ingresosNuevos.forEach(i => {
       const n = i.medico_responsable?.nombre ?? 'Sin asignar'
       map[n] = (map[n] ?? 0) + 1
     })
@@ -137,7 +163,7 @@ export function Dashboard() {
       .sort((a, b) => b.value - a.value)
   })()
 
-  // ── Eventos adversos ─────────────────────────────────────────
+  // ── Eventos adversos ──────────────────────────────────────────
   const TIPO_LABEL: Record<string, string> = {
     caida: 'Caídas', ulcera: 'Úlceras', error_medicacion: 'Errores medicación',
     efecto_adverso_medicacion: 'Efectos adversos', infeccion_nosocomial: 'Infecciones',
@@ -150,22 +176,22 @@ export function Dashboard() {
     agresividad_fisica: 'bg-rose-100 text-rose-700', fuga: 'bg-slate-100 text-slate-700',
   }
 
-  const eventosData = Object.keys(TIPO_LABEL).map(tipo => ({
-    tipo,
-    label: TIPO_LABEL[tipo],
-    n: eventos.filter(e => e.tipo === tipo).length,
-    color: TIPO_COLOR[tipo],
-  })).filter(d => d.n > 0).sort((a, b) => b.n - a.n)
+  const eventosData = Object.keys(TIPO_LABEL).map(tipo => {
+    const n = eventos.filter(e => e.tipo === tipo).length
+    const tasa = diasEstancia > 0 ? (n / diasEstancia * 100).toFixed(2) : '—'
+    return { tipo, label: TIPO_LABEL[tipo], n, tasa, color: TIPO_COLOR[tipo] }
+  }).filter(d => d.n > 0).sort((a, b) => b.n - a.n)
 
-
-  // ── Evolución mensual ────────────────────────────────────────
+  // ── Evolución mensual ─────────────────────────────────────────
   const evolucionData = (() => {
     const map: Record<string, { mes: string; ingresos: number; altas: number }> = {}
-    ingresos.forEach(i => {
+    ingresosNuevos.forEach(i => {
       const mes = i.fecha_ingreso.slice(0, 7)
       if (!map[mes]) map[mes] = { mes, ingresos: 0, altas: 0 }
       map[mes].ingresos++
-      if (['alta', 'alta_traslado', 'exitus'].includes(i.estado) && i.fecha_alta) {
+    })
+    ingresosperiodo.forEach(i => {
+      if (['alta', 'alta_traslado', 'exitus'].includes(i.estado) && i.fecha_alta && i.fecha_alta >= desde) {
         const mesAlta = i.fecha_alta.slice(0, 7)
         if (!map[mesAlta]) map[mesAlta] = { mes: mesAlta, ingresos: 0, altas: 0 }
         map[mesAlta].altas++
@@ -179,7 +205,6 @@ export function Dashboard() {
       }))
   })()
 
-  // ── Eventos por mes ─────────────────────────────────────────
   const eventosMesData = (() => {
     const map: Record<string, number> = {}
     eventos.forEach(e => {
@@ -202,11 +227,8 @@ export function Dashboard() {
           <h1 className="text-2xl font-bold text-slate-800">Dashboard</h1>
           <p className="text-sm text-slate-400 mt-0.5">Indicadores asistenciales</p>
         </div>
-        {/* Selector de periodo */}
         <div className="relative">
-          <button
-            onClick={() => setShowPeriodo(v => !v)}
-            className="btn-secondary gap-2">
+          <button onClick={() => setShowPeriodo(v => !v)} className="btn-secondary gap-2">
             <Calendar className="w-4 h-4" />
             {periodoLabel(periodo)}
             <ChevronDown className="w-3.5 h-3.5" />
@@ -235,87 +257,31 @@ export function Dashboard() {
       ) : (
         <div className="space-y-6">
 
-          {/* BLOQUE 1: Actividad asistencial */}
+          {/* BLOQUE 1: Actividad asistencial — depende del período */}
           <section>
             <p className="section-title mb-3">Actividad asistencial · {periodoLabel(periodo)}</p>
             <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
-              <StatCard label="Ingresos" value={totalIngresos} icon={TrendingUp} color="text-primary-600 bg-primary-50" />
+              <StatCard label="Ingresos nuevos" value={totalIngresosNuevos} icon={TrendingUp} color="text-primary-600 bg-primary-50" />
               <StatCard label="Altas" value={totalAltas} icon={Users} color="text-emerald-600 bg-emerald-50" />
               <StatCard label="Éxitus" value={totalExitus} icon={Activity} color="text-red-600 bg-red-50" />
-              <StatCard label="Estancia media" value={estanciaMedia > 0 ? `${estanciaMedia}d` : '—'} icon={Clock} color="text-violet-600 bg-violet-50" />
-              <StatCard label="Ocupación actual" value={`${ocupacion}%`} sub={`${pacientesActivos.length} / 33 camas`} icon={BedDouble} color="text-amber-600 bg-amber-50" />
-              <StatCard label="Estancias >60d" value={estanciasLargas} icon={Calendar} color="text-orange-600 bg-orange-50" />
+              <StatCard label="Estancia media" value={estanciaMedia > 0 ? `${estanciaMedia}d` : '—'} sub="ingresos con alta en período" icon={Clock} color="text-violet-600 bg-violet-50" />
+              <StatCard label="Días-estancia" value={diasEstancia} sub="base para tasas" icon={Calendar} color="text-sky-600 bg-sky-50" />
+              <StatCard label="Estancias >60d" value={estanciasLargas} sub="pacientes actuales" icon={Calendar} color="text-orange-600 bg-orange-50" />
             </div>
           </section>
 
-          {/* BLOQUE 2: Eventos adversos */}
+          {/* BLOQUE 2: Snapshot actual — no depende del período */}
           <section>
-            <p className="section-title mb-3">Eventos adversos · {periodoLabel(periodo)}</p>
-            {eventosData.length === 0 ? (
-              <div className="card p-6 text-center text-slate-400 text-sm">Sin eventos registrados en este periodo.</div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Tabla de eventos */}
-                <div className="card overflow-hidden">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b bg-slate-50">
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Tipo</th>
-                        <th className="px-4 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wide">N</th>
-                        <th className="px-4 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wide">Tasa/100</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                      {eventosData.map(e => (
-                        <tr key={e.tipo} className="hover:bg-slate-50">
-                          <td className="px-4 py-2.5">
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${e.color}`}>
-                              {e.label}
-                            </span>
-                          </td>
-                          <td className="px-4 py-2.5 text-center font-bold text-slate-800">{e.n}</td>
-                          <td className="px-4 py-2.5 text-center text-slate-500 text-xs">
-                            {totalIngresos > 0 ? (e.n / totalIngresos * 100).toFixed(1) : '—'}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Gráfico de barras eventos */}
-                <div className="card p-4">
-                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Distribución</p>
-                  <ResponsiveContainer width="100%" height={200}>
-                    <BarChart data={eventosData} layout="vertical" margin={{ left: 80, right: 20 }}>
-                      <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                      <XAxis type="number" tick={{ fontSize: 11 }} allowDecimals={false} />
-                      <YAxis type="category" dataKey="label" tick={{ fontSize: 11 }} width={80} />
-                      <Tooltip formatter={(v: number) => [v, 'Eventos']} />
-                      <Bar dataKey="n" fill="#6175f5" radius={[0, 4, 4, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            )}
-          </section>
-
-          {/* BLOQUE 3: Perfil de pacientes */}
-          <section>
-            <p className="section-title mb-3">Perfil actual de pacientes ingresados</p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Edad media */}
-              <div className="card p-5 flex flex-col items-center justify-center text-center">
-                <p className="text-4xl font-bold text-slate-800">{edadMedia ?? '—'}</p>
-                <p className="text-sm text-slate-500 mt-1">Edad media (años)</p>
-              </div>
-
-              {/* Sexo */}
+            <p className="section-title mb-3">
+              Situación actual{' '}
+              <span className="normal-case font-normal text-slate-400">(snapshot — independiente del período)</span>
+            </p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <StatCard label="Ocupación" value={`${ocupacion}%`} sub={`${pacientesActivos.length} / 33 camas`} icon={BedDouble} color="text-amber-600 bg-amber-50" />
+              <StatCard label="Edad media" value={edadMedia ? `${edadMedia}a` : '—'} sub="pacientes actuales" icon={Users} color="text-violet-600 bg-violet-50" />
               <div className="card p-5">
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Distribución por sexo</p>
-                {sexoData.length === 0 ? (
-                  <p className="text-slate-400 text-sm">Sin datos</p>
-                ) : (
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Por sexo (actuales)</p>
+                {sexoData.length === 0 ? <p className="text-slate-400 text-sm">Sin datos</p> : (
                   <div className="space-y-2">
                     {sexoData.map(s => {
                       const pct = Math.round(s.value / pacientesActivos.length * 100)
@@ -334,16 +300,12 @@ export function Dashboard() {
                   </div>
                 )}
               </div>
-
-              {/* Por médico */}
               <div className="card p-5">
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Por médico responsable</p>
-                {medicoData.length === 0 ? (
-                  <p className="text-slate-400 text-sm">Sin datos</p>
-                ) : (
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Por médico · {periodoLabel(periodo)}</p>
+                {medicoData.length === 0 ? <p className="text-slate-400 text-sm">Sin datos</p> : (
                   <div className="space-y-2">
                     {medicoData.map(m => {
-                      const pct = Math.round(m.value / totalIngresos * 100)
+                      const pct = totalIngresosNuevos > 0 ? Math.round(m.value / totalIngresosNuevos * 100) : 0
                       return (
                         <div key={m.name}>
                           <div className="flex justify-between text-xs mb-1">
@@ -362,12 +324,56 @@ export function Dashboard() {
             </div>
           </section>
 
+          {/* BLOQUE 3: Eventos adversos — depende del período */}
+          <section>
+            <p className="section-title mb-3">Eventos adversos · {periodoLabel(periodo)}</p>
+            {eventosData.length === 0 ? (
+              <div className="card p-6 text-center text-slate-400 text-sm">Sin eventos registrados en este periodo.</div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="card overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-slate-50">
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Tipo</th>
+                        <th className="px-4 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wide">N</th>
+                        <th className="px-4 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wide">Tasa / 100 días-estancia</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {eventosData.map(e => (
+                        <tr key={e.tipo} className="hover:bg-slate-50">
+                          <td className="px-4 py-2.5">
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${e.color}`}>{e.label}</span>
+                          </td>
+                          <td className="px-4 py-2.5 text-center font-bold text-slate-800">{e.n}</td>
+                          <td className="px-4 py-2.5 text-center text-slate-500 text-xs">{e.tasa}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="card p-4">
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Distribución</p>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <BarChart data={eventosData} layout="vertical" margin={{ left: 80, right: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                      <XAxis type="number" tick={{ fontSize: 11 }} allowDecimals={false} />
+                      <YAxis type="category" dataKey="label" tick={{ fontSize: 11 }} width={80} />
+                      <Tooltip formatter={(v: number) => [v, 'Eventos']} />
+                      <Bar dataKey="n" fill="#6175f5" radius={[0, 4, 4, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            )}
+          </section>
+
           {/* BLOQUE 4: Evolución temporal */}
           {evolucionData.length > 1 && (
             <section>
-              <p className="section-title mb-3">Evolución temporal</p>
+              <p className="section-title mb-3">Evolución temporal · {periodoLabel(periodo)}</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Ingresos y altas por mes */}
                 <div className="card p-5">
                   <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-4">Ingresos y altas por mes</p>
                   <ResponsiveContainer width="100%" height={220}>
@@ -377,13 +383,11 @@ export function Dashboard() {
                       <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                       <Tooltip />
                       <Legend wrapperStyle={{ fontSize: 11 }} />
-                      <Line type="monotone" dataKey="ingresos" stroke="#6175f5" strokeWidth={2} dot={{ r: 3 }} name="Ingresos" />
-                      <Line type="monotone" dataKey="altas" stroke="#10b981" strokeWidth={2} dot={{ r: 3 }} name="Altas" />
+                      <Line type="monotone" dataKey="ingresos" stroke="#6175f5" strokeWidth={2} dot={{ r: 3 }} name="Ingresos nuevos" />
+                      <Line type="monotone" dataKey="altas" stroke="#10b981" strokeWidth={2} dot={{ r: 3 }} name="Altas / éxitus" />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
-
-                {/* Eventos por mes */}
                 {eventosMesData.length > 1 && (
                   <div className="card p-5">
                     <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-4">Eventos adversos por mes</p>
