@@ -6,7 +6,7 @@ import {
   ResponsiveContainer, Legend,
 } from 'recharts'
 import {
-  AlertTriangle, Calendar, ChevronDown, X,
+  Calendar, ChevronDown, X,
   Pencil, Trash2, TrendingUp, TrendingDown, Minus, Download,
 } from 'lucide-react'
 import FormularioEvento from '../components/FormularioEvento'
