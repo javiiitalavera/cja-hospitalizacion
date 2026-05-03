@@ -1,10 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Profesional } from '../types'
-import {
-  TIPO_EVENTO_LABEL, CAMPOS_POR_TIPO, TURNO_LABEL,
-  type TipoEvento, type Evento,
-} from '../types/eventos'
+import { TIPO_EVENTO_LABEL, CAMPOS_POR_TIPO, TURNO_LABEL, type TipoEvento, type Evento } from '../types/eventos'
 import { X, Save } from 'lucide-react'
 
 interface Props {
@@ -27,7 +24,11 @@ export default function FormularioEvento({ ingresoId, eventoExistente, onClose, 
   const [error, setError] = useState('')
 
   useEffect(() => {
-    supabase.from('profesionales').select('*').eq('activo', true).order('apellidos')
+    supabase
+      .from('profesionales')
+      .select('*')
+      .eq('activo', true)
+      .order('apellidos')
       .then(({ data }) => setProfesionales(data ?? []))
   }, [])
 
@@ -37,14 +38,23 @@ export default function FormularioEvento({ ingresoId, eventoExistente, onClose, 
   }, [tipo])
 
   function setDato(key: string, val: string) {
-    setDatos(d => ({ ...d, [key]: val }))
+    setDatos((d) => ({ ...d, [key]: val }))
   }
 
   async function guardar() {
     setError('')
-    if (!tipo) { setError('Selecciona el tipo de evento.'); return }
-    if (!fecha) { setError('La fecha es obligatoria.'); return }
-    if (!profesionalId) { setError('Indica quién registra el evento.'); return }
+    if (!tipo) {
+      setError('Selecciona el tipo de incidencia.')
+      return
+    }
+    if (!fecha) {
+      setError('La fecha es obligatoria.')
+      return
+    }
+    if (!profesionalId) {
+      setError('Indica quién registra la incidencia.')
+      return
+    }
 
     // Validar campos requeridos del tipo
     const campos = CAMPOS_POR_TIPO[tipo]
@@ -96,11 +106,12 @@ export default function FormularioEvento({ ingresoId, eventoExistente, onClose, 
           {/* Tipo */}
           <div>
             <label className="label">Tipo de evento *</label>
-            <select className="input" value={tipo}
-              onChange={e => setTipo(e.target.value as TipoEvento)}>
+            <select className="input" value={tipo} onChange={(e) => setTipo(e.target.value as TipoEvento)}>
               <option value="">— Selecciona —</option>
-              {(Object.keys(TIPO_EVENTO_LABEL) as TipoEvento[]).map(t => (
-                <option key={t} value={t}>{TIPO_EVENTO_LABEL[t]}</option>
+              {(Object.keys(TIPO_EVENTO_LABEL) as TipoEvento[]).map((t) => (
+                <option key={t} value={t}>
+                  {TIPO_EVENTO_LABEL[t]}
+                </option>
               ))}
             </select>
           </div>
@@ -109,21 +120,20 @@ export default function FormularioEvento({ ingresoId, eventoExistente, onClose, 
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="label">Fecha *</label>
-              <input type="date" className="input" value={fecha}
-                onChange={e => setFecha(e.target.value)} />
+              <input type="date" className="input" value={fecha} onChange={(e) => setFecha(e.target.value)} />
             </div>
             <div>
               <label className="label">Hora</label>
-              <input type="time" className="input" value={hora}
-                onChange={e => setHora(e.target.value)} />
+              <input type="time" className="input" value={hora} onChange={(e) => setHora(e.target.value)} />
             </div>
             <div>
               <label className="label">Turno</label>
-              <select className="input" value={turno}
-                onChange={e => setTurno(e.target.value)}>
+              <select className="input" value={turno} onChange={(e) => setTurno(e.target.value)}>
                 <option value="">—</option>
                 {Object.entries(TURNO_LABEL).map(([k, v]) => (
-                  <option key={k} value={k}>{v}</option>
+                  <option key={k} value={k}>
+                    {v}
+                  </option>
                 ))}
               </select>
             </div>
@@ -132,26 +142,33 @@ export default function FormularioEvento({ ingresoId, eventoExistente, onClose, 
           {/* Campos específicos del tipo */}
           {tipo && (
             <div className="space-y-3 pt-1">
-              <p className="text-xs font-bold text-primary-600 uppercase tracking-widest">
-                {TIPO_EVENTO_LABEL[tipo]}
-              </p>
-              {camposActuales.map(campo => (
+              <p className="text-xs font-bold text-primary-600 uppercase tracking-widest">{TIPO_EVENTO_LABEL[tipo]}</p>
+              {camposActuales.map((campo) => (
                 <div key={campo.key}>
                   <label className="label">
-                    {campo.label}{campo.requerido && ' *'}
+                    {campo.label}
+                    {campo.requerido && ' *'}
                   </label>
                   {campo.tipo === 'select' ? (
-                    <select className="input" value={datos[campo.key] ?? ''}
-                      onChange={e => setDato(campo.key, e.target.value)}>
+                    <select
+                      className="input"
+                      value={datos[campo.key] ?? ''}
+                      onChange={(e) => setDato(campo.key, e.target.value)}
+                    >
                       <option value="">—</option>
-                      {campo.opciones?.map(op => (
-                        <option key={op} value={op}>{op}</option>
+                      {campo.opciones?.map((op) => (
+                        <option key={op} value={op}>
+                          {op}
+                        </option>
                       ))}
                     </select>
                   ) : (
-                    <input type="text" className="input"
+                    <input
+                      type="text"
+                      className="input"
                       value={datos[campo.key] ?? ''}
-                      onChange={e => setDato(campo.key, e.target.value)} />
+                      onChange={(e) => setDato(campo.key, e.target.value)}
+                    />
                   )}
                 </div>
               ))}
@@ -161,18 +178,21 @@ export default function FormularioEvento({ ingresoId, eventoExistente, onClose, 
           {/* Notas */}
           <div>
             <label className="label">Notas adicionales</label>
-            <textarea className="textarea" rows={3} value={notas}
-              onChange={e => setNotas(e.target.value)}
-              placeholder="Descripción libre, contexto adicional…" />
+            <textarea
+              className="textarea"
+              rows={3}
+              value={notas}
+              onChange={(e) => setNotas(e.target.value)}
+              placeholder="Descripción libre, contexto adicional…"
+            />
           </div>
 
           {/* Profesional */}
           <div>
             <label className="label">Registrado por *</label>
-            <select className="input" value={profesionalId}
-              onChange={e => setProfesionalId(e.target.value)}>
+            <select className="input" value={profesionalId} onChange={(e) => setProfesionalId(e.target.value)}>
               <option value="">— Selecciona —</option>
-              {profesionales.map(p => (
+              {profesionales.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.nombre} {p.apellidos} · {p.rol}
                 </option>
@@ -180,19 +200,17 @@ export default function FormularioEvento({ ingresoId, eventoExistente, onClose, 
             </select>
           </div>
 
-          {error && (
-            <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg">
-              {error}
-            </div>
-          )}
+          {error && <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg">{error}</div>}
         </div>
 
         {/* Footer */}
         <div className="px-6 py-4 border-t flex justify-end gap-3">
-          <button onClick={onClose} className="btn-secondary">Cancelar</button>
+          <button onClick={onClose} className="btn-secondary">
+            Cancelar
+          </button>
           <button onClick={guardar} disabled={saving} className="btn-primary">
             <Save className="w-4 h-4" />
-            {saving ? 'Guardando…' : 'Guardar evento'}
+            {saving ? 'Guardando…' : 'Guardar incidencia'}
           </button>
         </div>
       </div>
