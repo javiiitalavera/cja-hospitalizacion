@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { ChevronLeft, Plus, FileText, ClipboardList, AlertTriangle, History } from 'lucide-react'
+import { ChevronLeft, Plus, FileText, ClipboardList, AlertTriangle, History, Pencil, Save, X } from 'lucide-react'
+import { TIPO_EVENTO_LABEL, TIPO_EVENTO_COLOR, CAMPOS_POR_TIPO, type TipoEvento } from '../types/eventos'
 
 interface Ingreso {
   id: string
@@ -11,7 +12,6 @@ interface Ingreso {
   habitacion?: number
   motivo_ingreso?: string
   medico_responsable?: { nombre: string; apellidos: string }
-  _evento_count?: number
 }
 
 interface Paciente {
@@ -39,17 +39,6 @@ const ESTADO_COLOR: Record<string, string> = {
   alta_traslado: 'bg-blue-100 text-blue-600',
   exitus: 'bg-red-100 text-red-600',
 }
-const TIPO_LABEL: Record<string, string> = {
-  caida: 'Caída', ulcera: 'Úlcera', error_medicacion: 'Error medicación',
-  efecto_adverso_medicacion: 'Efecto adverso', infeccion_nosocomial: 'Infección nosocomial',
-  contencion_fisica: 'Contención física', agresividad_fisica: 'Agresividad física', fuga: 'Fuga',
-}
-const TIPO_COLOR: Record<string, string> = {
-  caida: 'bg-orange-100 text-orange-700', ulcera: 'bg-red-100 text-red-700',
-  error_medicacion: 'bg-purple-100 text-purple-700', efecto_adverso_medicacion: 'bg-pink-100 text-pink-700',
-  infeccion_nosocomial: 'bg-yellow-100 text-yellow-700', contencion_fisica: 'bg-blue-100 text-blue-700',
-  agresividad_fisica: 'bg-rose-100 text-rose-700', fuga: 'bg-slate-100 text-slate-700',
-}
 
 function edad(fnac?: string) {
   if (!fnac) return null
@@ -70,11 +59,18 @@ export default function DetallePaciente() {
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<'ingresos' | 'eventos' | 'datos'>('ingresos')
 
+  // Edición de datos personales
+  const [editando, setEditando] = useState(false)
+  const [editData, setEditData] = useState<Partial<Paciente>>({})
+  const [savingEdit, setSavingEdit] = useState(false)
+  const [editError, setEditError] = useState('')
+
   useEffect(() => {
     if (!id) return
     async function fetch() {
       const { data: p } = await supabase.from('pacientes').select('*').eq('id', id).single()
       setPaciente(p)
+      setEditData(p ?? {})
 
       const { data: ings } = await supabase
         .from('ingresos')
@@ -85,7 +81,6 @@ export default function DetallePaciente() {
       const ingList = ings ?? []
       setIngresos(ingList as Ingreso[])
 
-      // Fetch events for all ingresos
       const ingIds = ingList.map((i: any) => i.id)
       if (ingIds.length > 0) {
         const { data: evs } = await supabase
@@ -100,10 +95,28 @@ export default function DetallePaciente() {
     fetch()
   }, [id])
 
+  async function guardarEdicion() {
+    if (!paciente) return
+    setSavingEdit(true)
+    setEditError('')
+    const { error } = await supabase
+      .from('pacientes')
+      .update(editData)
+      .eq('id', paciente.id)
+    if (error) {
+      setEditError('Error al guardar: ' + error.message)
+      setSavingEdit(false)
+      return
+    }
+    setPaciente(prev => prev ? { ...prev, ...editData } : prev)
+    setEditando(false)
+    setSavingEdit(false)
+  }
+
   if (loading) return <div className="p-8 text-slate-400">Cargando…</div>
   if (!paciente) return <div className="p-8 text-slate-400">Paciente no encontrado</div>
 
-  const nombreCompleto = `${paciente.primer_apellido} ${paciente.segundo_apellido ?? ''}, ${paciente.nombre}`.trim()
+  const nombreCompleto = `${paciente.primer_apellido}${paciente.segundo_apellido ? ' ' + paciente.segundo_apellido : ''}, ${paciente.nombre}`
   const e = edad(paciente.fecha_nacimiento)
   const ingresoActivo = ingresos.find(i => i.estado === 'activo')
 
@@ -143,7 +156,8 @@ export default function DetallePaciente() {
               </div>
             </div>
           </div>
-          <Link to="/pacientes/nuevo" className="btn-primary text-xs">
+          {/* Fix 1+5: pasar paciente_id para saltar búsqueda */}
+          <Link to={`/pacientes/nuevo?paciente_id=${paciente.id}`} className="btn-primary text-xs">
             <Plus className="w-3.5 h-3.5" /> Nuevo ingreso
           </Link>
         </div>
@@ -166,6 +180,7 @@ export default function DetallePaciente() {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-8">
+
         {/* EPISODIOS */}
         {tab === 'ingresos' && (
           <div className="max-w-3xl space-y-3">
@@ -175,6 +190,10 @@ export default function DetallePaciente() {
               const dias = diasEstancia(ing.fecha_ingreso, ing.fecha_alta)
               const evCount = eventos.filter(ev => ev.ingreso_id === ing.id).length
               const esActual = ing.estado === 'activo'
+              // Fix 2: médico con apellidos
+              const medicoNombre = ing.medico_responsable
+                ? `${ing.medico_responsable.nombre} ${ing.medico_responsable.apellidos}`.trim()
+                : '—'
               return (
                 <div key={ing.id}
                   className={`card p-5 cursor-pointer hover:shadow-md transition-shadow ${esActual ? 'border-primary-200 bg-primary-50/30' : ''}`}
@@ -207,7 +226,7 @@ export default function DetallePaciente() {
                         </div>
                         <div>
                           <span className="text-slate-400">Médico: </span>
-                          {ing.medico_responsable?.nombre ?? '—'}
+                          {medicoNombre}
                         </div>
                       </div>
                       {ing.motivo_ingreso && (
@@ -216,9 +235,10 @@ export default function DetallePaciente() {
                     </div>
                     <div className="text-right shrink-0">
                       <div className="flex gap-3 text-xs text-slate-400 justify-end mb-2">
+                        {/* Fix 4: "incidencias" en lugar de "eventos" */}
                         {evCount > 0 && (
                           <span className="flex items-center gap-1">
-                            <AlertTriangle className="w-3 h-3" />{evCount} eventos
+                            <AlertTriangle className="w-3 h-3" />{evCount} incidencia{evCount !== 1 ? 's' : ''}
                           </span>
                         )}
                         <span className="flex items-center gap-1">
@@ -237,20 +257,22 @@ export default function DetallePaciente() {
           </div>
         )}
 
-        {/* EVENTOS */}
+        {/* INCIDENCIAS */}
         {tab === 'eventos' && (
           <div className="max-w-3xl space-y-2">
             {eventos.length === 0 ? (
-              <div className="card p-10 text-center text-slate-400 text-sm">Sin eventos registrados.</div>
+              <div className="card p-10 text-center text-slate-400 text-sm">Sin incidencias registradas.</div>
             ) : eventos.map(ev => {
               const ing = ingresos.find(i => i.id === ev.ingreso_id)
+              // Fix 3: usar CAMPOS_POR_TIPO para traducir labels
+              const campos = CAMPOS_POR_TIPO[ev.tipo as TipoEvento] ?? []
               return (
                 <div key={ev.id} className="card p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${TIPO_COLOR[ev.tipo] ?? 'bg-slate-100'}`}>
-                          {TIPO_LABEL[ev.tipo] ?? ev.tipo}
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${TIPO_EVENTO_COLOR[ev.tipo as TipoEvento] ?? 'bg-slate-100'}`}>
+                          {TIPO_EVENTO_LABEL[ev.tipo as TipoEvento] ?? ev.tipo}
                         </span>
                         {ing && (
                           <span className="text-xs text-slate-400 cursor-pointer hover:text-primary-600"
@@ -261,12 +283,15 @@ export default function DetallePaciente() {
                       </div>
                       {Object.entries(ev.datos ?? {}).length > 0 && (
                         <div className="flex flex-wrap gap-x-3 gap-y-0.5 mb-1">
-                          {Object.entries(ev.datos).map(([k, v]: any) => (
-                            <span key={k} className="text-xs text-slate-500">
-                              <span className="capitalize">{k.replace(/_/g, ' ')}: </span>
-                              <span className="font-medium text-slate-700">{v}</span>
-                            </span>
-                          ))}
+                          {Object.entries(ev.datos).map(([k, v]: any) => {
+                            const campo = campos.find(c => c.key === k)
+                            return (
+                              <span key={k} className="text-xs text-slate-500">
+                                <span className="capitalize">{campo?.label ?? k.replace(/_/g, ' ')}: </span>
+                                <span className="font-medium text-slate-700">{v}</span>
+                              </span>
+                            )
+                          })}
                         </div>
                       )}
                       {ev.notas && <p className="text-xs text-slate-500 italic">{ev.notas}</p>}
@@ -287,26 +312,78 @@ export default function DetallePaciente() {
           </div>
         )}
 
-        {/* DATOS PERSONALES */}
+        {/* DATOS PERSONALES — Fix 6: modo edición */}
         {tab === 'datos' && (
           <div className="max-w-xl">
-            <div className="card overflow-hidden">
-              {[
-                ['CIPNA', paciente.cipna],
-                ['NHC', paciente.nhc],
-                ['DNI', paciente.dni],
-                ['Fecha de nacimiento', paciente.fecha_nacimiento ? new Date(paciente.fecha_nacimiento).toLocaleDateString('es-ES') : null],
-                ['Sexo', paciente.sexo],
-                ['Municipio', paciente.municipio],
-                ['Médico de cabecera', paciente.medico_cabecera],
-                ['Contacto familiar', paciente.contacto_familiar_nombre],
-                ['Teléfono familiar', paciente.contacto_familiar_telefono],
-              ].map(([k, v]) => (
-                <div key={k} className="flex px-5 py-3 text-sm border-b last:border-0">
-                  <span className="w-44 text-slate-400 shrink-0">{k}</span>
-                  <span className="text-slate-800">{v || <span className="text-slate-300">—</span>}</span>
+            <div className="flex justify-end mb-3">
+              {editando ? (
+                <div className="flex gap-2">
+                  <button onClick={() => { setEditando(false); setEditData(paciente); setEditError('') }}
+                    className="btn-secondary">
+                    <X className="w-4 h-4" /> Cancelar
+                  </button>
+                  <button onClick={guardarEdicion} disabled={savingEdit} className="btn-primary">
+                    <Save className="w-4 h-4" /> {savingEdit ? 'Guardando…' : 'Guardar'}
+                  </button>
                 </div>
-              ))}
+              ) : (
+                <button onClick={() => setEditando(true)} className="btn-secondary">
+                  <Pencil className="w-4 h-4" /> Editar
+                </button>
+              )}
+            </div>
+
+            {editError && (
+              <div className="mb-3 px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm">{editError}</div>
+            )}
+
+            <div className="card overflow-hidden">
+              {([
+                { key: 'primer_apellido', label: 'Primer apellido', type: 'text' },
+                { key: 'segundo_apellido', label: 'Segundo apellido', type: 'text' },
+                { key: 'nombre', label: 'Nombre', type: 'text' },
+                { key: 'fecha_nacimiento', label: 'Fecha de nacimiento', type: 'date' },
+                { key: 'sexo', label: 'Sexo', type: 'select', opciones: ['hombre', 'mujer', 'otro'] },
+                { key: 'cipna', label: 'CIPNA', type: 'text' },
+                { key: 'nhc', label: 'NHC', type: 'text' },
+                { key: 'dni', label: 'DNI', type: 'text' },
+                { key: 'municipio', label: 'Municipio', type: 'text' },
+                { key: 'medico_cabecera', label: 'Médico de cabecera', type: 'text' },
+                { key: 'contacto_familiar_nombre', label: 'Contacto familiar', type: 'text' },
+                { key: 'contacto_familiar_telefono', label: 'Teléfono familiar', type: 'text' },
+              ] as const).map(({ key, label, type, ...rest }) => {
+                const val = (paciente as any)[key]
+                const editVal = (editData as any)[key] ?? ''
+                const opciones = (rest as any).opciones as string[] | undefined
+                return (
+                  <div key={key} className="flex items-center px-5 py-3 text-sm border-b last:border-0">
+                    <span className="w-44 text-slate-400 shrink-0">{label}</span>
+                    {editando ? (
+                      opciones ? (
+                        <select className="input py-1 text-sm"
+                          value={editVal}
+                          onChange={e => setEditData(prev => ({ ...prev, [key]: e.target.value }))}>
+                          <option value="">—</option>
+                          {opciones.map(o => <option key={o} value={o}>{o}</option>)}
+                        </select>
+                      ) : (
+                        <input
+                          type={type}
+                          className="input py-1 text-sm"
+                          value={editVal}
+                          onChange={e => setEditData(prev => ({ ...prev, [key]: e.target.value }))}
+                        />
+                      )
+                    ) : (
+                      <span className="text-slate-800">
+                        {type === 'date' && val
+                          ? new Date(val).toLocaleDateString('es-ES')
+                          : val || <span className="text-slate-300">—</span>}
+                      </span>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           </div>
         )}

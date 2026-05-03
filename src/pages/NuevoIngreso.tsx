@@ -8,17 +8,19 @@ export default function NuevoIngreso() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const habitacionParam = searchParams.get('habitacion') ?? ''
+  const pacienteIdParam = searchParams.get('paciente_id') ?? ''
 
   const [medicos, setMedicos] = useState<Profesional[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   // Flujo: 'buscar' → 'nuevo_paciente' | 'reingreso'
-  const [paso, setPaso] = useState<'buscar' | 'nuevo_paciente' | 'reingreso'>('buscar')
+  const [paso, setPaso] = useState<'buscar' | 'nuevo_paciente' | 'reingreso'>(pacienteIdParam ? 'reingreso' : 'buscar')
   const [busqueda, setBusqueda] = useState('')
   const [resultados, setResultados] = useState<Paciente[]>([])
   const [buscando, setBuscando] = useState(false)
   const [pacienteSeleccionado, setPacienteSeleccionado] = useState<Paciente | null>(null)
+  const [cargandoPacienteParam, setCargandoPacienteParam] = useState(!!pacienteIdParam)
 
   const [paciente, setPaciente] = useState({
     nombre: '', primer_apellido: '', segundo_apellido: '',
@@ -37,6 +39,15 @@ export default function NuevoIngreso() {
     supabase.from('profesionales').select('*').eq('rol', 'medico').eq('activo', true)
       .then(({ data }) => setMedicos(data ?? []))
   }, [])
+
+  useEffect(() => {
+    if (!pacienteIdParam) return
+    supabase.from('pacientes').select('*').eq('id', pacienteIdParam).single()
+      .then(({ data }) => {
+        if (data) setPacienteSeleccionado(data as Paciente)
+        setCargandoPacienteParam(false)
+      })
+  }, [pacienteIdParam])
 
   async function buscarPaciente() {
     if (!busqueda.trim()) return
@@ -289,7 +300,10 @@ export default function NuevoIngreso() {
       )}
 
       {/* PASO 2a: Reingreso */}
-      {paso === 'reingreso' && pacienteSeleccionado && (
+      {paso === 'reingreso' && cargandoPacienteParam && (
+        <div className="text-slate-400 text-center py-10">Cargando paciente…</div>
+      )}
+      {paso === 'reingreso' && !cargandoPacienteParam && pacienteSeleccionado && (
         <div>
           <div className="card p-5 mb-5 bg-primary-50 border-primary-200">
             <div className="flex items-center justify-between">
