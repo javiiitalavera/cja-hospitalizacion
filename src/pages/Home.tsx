@@ -105,11 +105,10 @@ export default function Home() {
         <div className="grid grid-cols-1 gap-1">
           {/* Cabecera */}
           <div className="grid gap-px text-xs font-semibold text-slate-400 uppercase tracking-wide px-3 pb-1"
-            style={{ gridTemplateColumns: '2.5rem minmax(0,1.4fr) 3rem 7rem 3.5rem 5.5rem minmax(0,0.9fr) 7rem 2rem' }}>
+            style={{ gridTemplateColumns: '2.5rem minmax(0,1.4fr) 3rem 3.5rem 5.5rem minmax(0,0.9fr) 7rem 2rem' }}>
             <div>Hab.</div>
             <div>Paciente</div>
             <div>Edad</div>
-            <div>NHC</div>
             <div>Días</div>
             <div>Ingreso</div>
             <div>Médico</div>
@@ -126,11 +125,13 @@ export default function Home() {
             if (!ingreso) {
               return (
                 <div key={n}
-                  className="grid items-center border border-dashed border-slate-150 rounded-lg px-3 py-1.5"
-                  style={{ gridTemplateColumns: '2.5rem minmax(0,1.4fr) 3rem 7rem 3.5rem 5.5rem minmax(0,0.9fr) 7rem 2rem' }}>
+                  className="grid items-center border border-dashed border-slate-150 rounded-lg px-3 py-1.5 cursor-pointer hover:border-primary-300 hover:bg-primary-50/30 transition-colors"
+                  style={{ gridTemplateColumns: '2.5rem minmax(0,1.4fr) 3rem 3.5rem 5.5rem minmax(0,0.9fr) 7rem 2rem' }}
+                  onClick={() => navigate(`/pacientes/nuevo?habitacion=${n}`)}
+                  title={`Ingresar en habitación ${n}`}>
                   <span className="text-xs font-bold text-slate-200">{n}</span>
                   <span className="text-xs text-slate-200">— libre —</span>
-                  <span/><span/><span/><span/><span/><span/><span/>
+                  <span/><span/><span/><span/><span/><span/>
                 </div>
               )
             }
@@ -144,7 +145,9 @@ export default function Home() {
             const fingreso = ingreso.fecha_ingreso
               ? new Date(ingreso.fecha_ingreso).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: '2-digit' })
               : '—'
-            const medico = ingreso.medico_responsable?.nombre ?? '—'
+            const medico = ingreso.medico_responsable
+              ? `${ingreso.medico_responsable.nombre} ${ingreso.medico_responsable.apellidos}`.trim()
+              : '—'
             const diagnostico = informes[ingreso.id]?.impresion_diagnostica
               ?? ingreso.motivo_ingreso
               ?? ''
@@ -156,7 +159,7 @@ export default function Home() {
               <div key={n} className="group">
                 <div
                   className="grid items-center bg-white border border-slate-200 rounded-lg px-3 py-2 hover:shadow-sm hover:border-primary-200 transition-all cursor-pointer"
-                  style={{ gridTemplateColumns: '2.5rem minmax(0,1.4fr) 3rem 7rem 3.5rem 5.5rem minmax(0,0.9fr) 7rem 2rem' }}
+                  style={{ gridTemplateColumns: '2.5rem minmax(0,1.4fr) 3rem 3.5rem 5.5rem minmax(0,0.9fr) 7rem 2rem' }}
                   onClick={() => navigate(`/ingresos/${ingreso.id}`)}>
                   {/* Hab con semáforo */}
                   <div>
@@ -176,9 +179,7 @@ export default function Home() {
                   </div>
                   {/* Edad */}
                   <div className="text-slate-500 text-xs">{e != null ? `${e}a` : '—'}</div>
-                  {/* NHC */}
-                  <div className="text-slate-400 text-xs font-mono truncate">{p?.nhc ?? '—'}</div>
-                  {/* Días */}
+                  {/* Días */
                   <div>
                     {dias != null && (
                       <span className={`text-xs font-medium px-1.5 py-0.5 rounded-full ${
@@ -218,7 +219,7 @@ export default function Home() {
           ingresoId={modalEvento}
           eventoExistente={null}
           onClose={() => setModalEvento(null)}
-          onGuardado={() => setModalEvento(null)}
+          onGuardado={() => { setModalEvento(null); fetchData() }}
         />
       )}
     </div>

@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import type { Profesional, Paciente } from '../types'
 import { ChevronLeft, Save, Search, UserPlus, RefreshCw } from 'lucide-react'
 
 export default function NuevoIngreso() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const habitacionParam = searchParams.get('habitacion') ?? ''
+
   const [medicos, setMedicos] = useState<Profesional[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -25,7 +28,7 @@ export default function NuevoIngreso() {
   })
   const [ingreso, setIngreso] = useState({
     fecha_ingreso: new Date().toISOString().split('T')[0],
-    habitacion: '',
+    habitacion: habitacionParam,
     medico_responsable_id: '',
     motivo_ingreso: '',
   })
