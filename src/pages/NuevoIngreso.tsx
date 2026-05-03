@@ -57,6 +57,22 @@ export default function NuevoIngreso() {
   }
 
   async function crearIngreso(pacienteId: string, esReingreso = false) {
+    // Verificar que la habitación no está ocupada
+    if (ingreso.habitacion) {
+      const { data: ocupada } = await supabase
+        .from('ingresos')
+        .select('id, paciente:pacientes(nombre, primer_apellido)')
+        .eq('habitacion', parseInt(ingreso.habitacion))
+        .eq('estado', 'activo')
+        .maybeSingle()
+      if (ocupada) {
+        const p = (ocupada as any).paciente
+        const nombre = p ? `${p.primer_apellido}, ${p.nombre}` : 'otro paciente'
+        setError(`La habitación ${ingreso.habitacion} ya está ocupada por ${nombre}.`)
+        return null
+      }
+    }
+
     const { data: ingresoData, error: errIngreso } = await supabase
       .from('ingresos')
       .insert([{
