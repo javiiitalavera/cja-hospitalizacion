@@ -909,7 +909,7 @@ function TabEventos({ ingresoId }: { ingresoId: string }) {
   return (
     <div className="max-w-3xl space-y-4">
       <div className="flex justify-between items-center">
-        <p className="text-sm text-slate-500">{eventos.length} evento{incidencias.length !== 1 ? 's' : ''} registrada{incidencias.length !== 1 ? 's' : ''}</p>
+        <p className="text-sm text-slate-500">{eventos.length} incidencia{eventos.length !== 1 ? 's' : ''} registrada{eventos.length !== 1 ? 's' : ''}</p>
         <button onClick={() => setModal(true)} className="btn-primary">
           <Plus className="w-4 h-4" />
           Registrar incidencia

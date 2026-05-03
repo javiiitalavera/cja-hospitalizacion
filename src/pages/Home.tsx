@@ -179,7 +179,7 @@ export default function Home() {
                   </div>
                   {/* Edad */}
                   <div className="text-slate-500 text-xs">{e != null ? `${e}a` : '—'}</div>
-                  {/* Días */
+                  {/* Días */}
                   <div>
                     {dias != null && (
                       <span className={`text-xs font-medium px-1.5 py-0.5 rounded-full ${
