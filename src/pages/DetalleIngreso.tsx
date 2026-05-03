@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import type { Ingreso } from '../types'
-import { ChevronLeft, User, FileText, ClipboardList, AlertTriangle, FileCheck, History, LogOut } from 'lucide-react'
+import { ChevronLeft, User, FileText, ClipboardList, AlertTriangle, FileCheck, History, LogOut, Database } from 'lucide-react'
 import { TabDatos } from './ingreso/TabDatos'
 import { TabInformeIngreso } from './ingreso/TabInformeIngreso'
 import { TabInformeAlta } from './ingreso/TabInformeAlta'
@@ -18,6 +18,7 @@ const TABS = [
   { id: 'items', label: 'Ítems', icon: ClipboardList },
   { id: 'eventos', label: 'Incidencias', icon: AlertTriangle },
   { id: 'historial', label: 'Historial', icon: History },
+  { id: 'cmbd',      label: 'CMBD',      icon: Database },
 ]
 
 const ESTADO_COLOR: Record<string, string> = {
