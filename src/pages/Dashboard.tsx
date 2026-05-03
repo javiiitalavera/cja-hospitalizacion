@@ -330,41 +330,27 @@ export function Dashboard() {
             {eventosData.length === 0 ? (
               <div className="card p-6 text-center text-slate-400 text-sm">Sin eventos registrados en este periodo.</div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="card overflow-hidden">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b bg-slate-50">
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Tipo</th>
-                        <th className="px-4 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wide">N</th>
-                        <th className="px-4 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wide">Tasa / 100 días-estancia</th>
+              <div className="card overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-slate-50">
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Tipo</th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wide">N</th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wide">Tasa / 100 días-estancia</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {eventosData.map(e => (
+                      <tr key={e.tipo} className="hover:bg-slate-50">
+                        <td className="px-4 py-2.5">
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${e.color}`}>{e.label}</span>
+                        </td>
+                        <td className="px-4 py-2.5 text-center font-bold text-slate-800">{e.n}</td>
+                        <td className="px-4 py-2.5 text-center text-slate-500 text-xs">{e.tasa}</td>
                       </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                      {eventosData.map(e => (
-                        <tr key={e.tipo} className="hover:bg-slate-50">
-                          <td className="px-4 py-2.5">
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${e.color}`}>{e.label}</span>
-                          </td>
-                          <td className="px-4 py-2.5 text-center font-bold text-slate-800">{e.n}</td>
-                          <td className="px-4 py-2.5 text-center text-slate-500 text-xs">{e.tasa}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <div className="card p-4">
-                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Distribución</p>
-                  <ResponsiveContainer width="100%" height={200}>
-                    <BarChart data={eventosData} layout="vertical" margin={{ left: 80, right: 20 }}>
-                      <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                      <XAxis type="number" tick={{ fontSize: 11 }} allowDecimals={false} />
-                      <YAxis type="category" dataKey="label" tick={{ fontSize: 11 }} width={80} />
-                      <Tooltip formatter={(v: number) => [v, 'Eventos']} />
-                      <Bar dataKey="n" fill="#6175f5" radius={[0, 4, 4, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </section>
