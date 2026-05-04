@@ -53,6 +53,7 @@ export interface InformeIngreso {
   antecedentes_quirurgicos?: string
   antecedentes_familiares?: string
   tratamiento_ingreso?: string
+  tratamiento_ingreso_estructurado?: FilaMedicacion[]
   vgi_social?: string
   vgi_funcional?: string
   barthel?: number
@@ -76,6 +77,7 @@ export interface InformeIngreso {
   impresion_diagnostica?: string
   plan_objetivos?: string
   plan_medicacion?: string
+  plan_medicacion_estructurado?: FilaMedicacion[]
   plan_otros_cuidados?: string
   created_at: string
   updated_at: string

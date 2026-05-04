@@ -1,8 +1,9 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
-import type { Ingreso, InformeIngreso } from '../../types'
+import type { FilaMedicacion, Ingreso, InformeIngreso } from '../../types'
 import { Download } from 'lucide-react'
 import { AutoTextarea } from './AutoTextarea'
+import { TablaMedicacion } from './TablaMedicacion'
 import { exportarInformeIngreso } from '../../lib/exportWord'
 
 function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso: Ingreso | null }) {
@@ -29,7 +30,7 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
     setTimeout(() => setSaved(false), 2000)
   }
 
-  function update(key: keyof InformeIngreso, value: string | number | undefined) {
+  function update(key: keyof InformeIngreso, value: any) {
     const next = { ...dataRef.current, [key]: value }
     setData(next)
     if (debounceRef.current) clearTimeout(debounceRef.current)
@@ -38,20 +39,20 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
 
   const field = (key: keyof InformeIngreso, label: string) => (
     <div key={key}>
-      <label className="label">{label}</label>
-      <AutoTextarea
-        value={(data[key] as string) ?? ''}
-        onChange={v => update(key, v)}
-      />
+      <span className="label">{label}</span>
+      <AutoTextarea value={(data[key] as string) ?? ''} onChange={(v) => update(key, v)} />
     </div>
   )
+
+  const filasIngreso: FilaMedicacion[] = (data.tratamiento_ingreso_estructurado as FilaMedicacion[]) ?? []
+  const filasPlan: FilaMedicacion[] = (data.plan_medicacion_estructurado as FilaMedicacion[]) ?? []
 
   return (
     <div className="max-w-3xl space-y-6">
       <div className="flex items-center justify-end gap-3 text-xs text-slate-400">
-        {saving && <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse inline-block"/> Guardando…</span>}
-        {!saving && saved && <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"/> Guardado</span>}
-        {saveError && <span className="flex items-center gap-1.5 text-red-600 font-semibold"><span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block"/> Error al guardar — comprueba la conexión</span>}
+        {saving && <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse inline-block" /> Guardando…</span>}
+        {!saving && saved && <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" /> Guardado</span>}
+        {saveError && <span className="flex items-center gap-1.5 text-red-600 font-semibold"><span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block" /> Error al guardar — comprueba la conexión</span>}
       </div>
 
       <div className="card p-6 space-y-4">
@@ -60,7 +61,11 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
         {field('antecedentes_medicos', 'Antecedentes médicos')}
         {field('antecedentes_quirurgicos', 'Intervenciones quirúrgicas')}
         {field('antecedentes_familiares', 'Antecedentes familiares')}
-        {field('tratamiento_ingreso', 'Tratamiento al ingreso')}
+        <div>
+          <span className="label">Tratamiento al ingreso</span>
+          <TablaMedicacion filas={filasIngreso}
+            onChange={v => update('tratamiento_ingreso_estructurado', v)} />
+        </div>
       </div>
 
       <div className="card p-6 space-y-4">
@@ -69,16 +74,16 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
         {field('vgi_funcional', 'Funcional')}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="label">I. Barthel (/100)</label>
+            <span className="label">I. Barthel (/100)</span>
             <input type="number" min={0} max={100} className="input"
               value={data.barthel ?? ''}
-              onChange={e => update('barthel', parseInt(e.target.value) || undefined)} />
+              onChange={e => update('barthel', parseInt(e.target.value, 10) || undefined)} />
           </div>
           <div>
-            <label className="label">I. Lawton (/8)</label>
+            <span className="label">I. Lawton (/8)</span>
             <input type="number" min={0} max={8} className="input"
               value={data.lawton ?? ''}
-              onChange={e => update('lawton', parseInt(e.target.value) || undefined)} />
+              onChange={e => update('lawton', parseInt(e.target.value, 10) || undefined)} />
           </div>
         </div>
         {field('vgi_cognitivo', 'Cognitivo')}
@@ -111,29 +116,31 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
         <p className="section-title">Diagnóstico y plan</p>
         {field('impresion_diagnostica', 'Impresión diagnóstica')}
         {field('plan_objetivos', 'Objetivos')}
-        {field('plan_medicacion', 'Medicación')}
+        <div>
+          <span className="label">Medicación</span>
+          <TablaMedicacion filas={filasPlan}
+            onChange={v => update('plan_medicacion_estructurado', v)} />
+        </div>
         {field('plan_otros_cuidados', 'Otros cuidados / intervenciones')}
       </div>
 
       <div className="flex justify-end gap-3">
-        <button
+        <button type="button"
           onClick={async () => {
             if (!ingreso) return
             await save()
             await exportarInformeIngreso(ingreso, data as InformeIngreso)
           }}
-          className="btn-secondary"
-        >
+          className="btn-secondary">
           <Download className="w-4 h-4" />
           Exportar Word
         </button>
-        <button onClick={() => save()} className="btn-primary">
+        <button type="button" onClick={() => save()} className="btn-primary">
           Guardar ahora
         </button>
       </div>
     </div>
   )
 }
-
 
 export { TabInformeIngreso }
