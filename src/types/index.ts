@@ -1,5 +1,5 @@
 export type Rol = 'medico' | 'enfermeria' | 'auxiliar' | 'administrativo' | 'tecnico'
-export type EstadoIngreso = 'activo' | 'alta' | 'exitus'
+export type EstadoIngreso = 'activo' | 'alta' | 'alta_traslado' | 'exitus'
 export type Sexo = 'hombre' | 'mujer' | 'otro'
 
 export interface Profesional {
@@ -8,6 +8,8 @@ export interface Profesional {
   apellidos: string
   rol: Rol
   activo: boolean
+  colegiado?: string
+  especialidad?: string
   created_at: string
 }
 
@@ -79,6 +81,17 @@ export interface InformeIngreso {
   updated_at: string
 }
 
+export interface FilaMedicacion {
+  farmaco: string
+  dosis: string
+  desayuno: string
+  comida: string
+  merienda: string
+  cena: string
+  acostar: string
+  observaciones: string
+}
+
 export interface InformeAlta {
   id: string
   ingreso_id: string
@@ -91,6 +104,7 @@ export interface InformeAlta {
   recomendaciones_conductuales?: string
   cuidados_enfermeria?: string
   medicacion_alta?: string
+  medicacion_estructurada?: FilaMedicacion[]
   otras_recomendaciones?: string
   created_at: string
   updated_at: string
@@ -132,17 +146,4 @@ export interface ItemsPaciente {
   semaforo_caidas?: 'verde' | 'amarillo' | 'naranja' | 'rojo'
   created_at: string
   updated_at: string
-}
-
-export interface Evento {
-  id: string
-  ingreso_id: string
-  fecha: string
-  tipo: 'caida' | 'ulcera' | 'infeccion_nosocomial' | 'agresion' | 'autoagresion' | 'elopement' | 'otro'
-  descripcion?: string
-  consecuencias?: string
-  medidas_tomadas?: string
-  registrado_por_id?: string
-  created_at: string
-  registrado_por?: Profesional
 }
