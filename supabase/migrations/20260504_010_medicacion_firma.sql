@@ -11,5 +11,4 @@ alter table profesionales
 
 -- Medicación estructurada en informe_ingreso (tratamiento al ingreso + plan medicación)
 alter table informe_ingreso
-  add column if not exists tratamiento_ingreso_estructurado jsonb,
-  add column if not exists plan_medicacion_estructurado jsonb;
+  add column if not exists tratamiento_ingreso_estructurado jsonb;

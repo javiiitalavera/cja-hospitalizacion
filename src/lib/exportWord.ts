@@ -192,7 +192,7 @@ export async function exportarInformeIngreso(ingreso: Ingreso, inf: InformeIngre
     parrafoBoldXml('Objetivos: ', '', font),
     lineasXml(inf.plan_objetivos, font),
     parrafoBoldXml('Medicación: ', '', font),
-    tablaMedicacionXml(inf.plan_medicacion_estructurado ?? [], font),
+    lineasXml(inf.plan_medicacion, font),
     parrafoBoldXml('Otros cuidados/intervenciones: ', '', font),
     lineasXml(inf.plan_otros_cuidados, font),
     parrafoXml('', font),

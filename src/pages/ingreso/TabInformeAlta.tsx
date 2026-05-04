@@ -30,8 +30,8 @@ function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
           // Pre-rellenar medicación al alta con el plan del ingreso si está vacía
           setData(prev => {
             const yaRellenada = (prev.medicacion_estructurada as FilaMedicacion[] | undefined)?.length ?? 0
-            if (yaRellenada === 0 && d.plan_medicacion_estructurado) {
-              return { ...prev, medicacion_estructurada: d.plan_medicacion_estructurado }
+            if (yaRellenada === 0 && d.tratamiento_ingreso_estructurado) {
+              return { ...prev, medicacion_estructurada: d.tratamiento_ingreso_estructurado }
             }
             return prev
           })
@@ -69,7 +69,7 @@ function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
 
       <div className="flex items-center justify-between">
         <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-xs text-blue-700">
-          Los antecedentes e informe de ingreso se heredan al exportar. La medicación se pre-rellena desde el plan del ingreso.
+          Los antecedentes e informe de ingreso se heredan al exportar. La medicación al alta se pre-rellena desde el tratamiento al ingreso.
         </div>
         <div className="text-xs text-slate-400 shrink-0 ml-3">
           {saving && <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse inline-block" /> Guardando…</span>}
@@ -98,7 +98,7 @@ function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
         {field('cuidados_enfermeria', 'Cuidados de enfermería')}
         <div>
           <span className="label">Medicación al alta</span>
-          <p className="text-xs text-slate-400 mb-2">Pre-rellenada desde el plan de medicación del ingreso. Edita lo que necesites.</p>
+          <p className="text-xs text-slate-400 mb-2">Pre-rellenada desde el tratamiento al ingreso. Edita lo que necesites.</p>
           <TablaMedicacion filas={filasMed}
             onChange={v => update('medicacion_estructurada', v)} />
         </div>

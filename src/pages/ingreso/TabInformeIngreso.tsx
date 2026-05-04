@@ -45,7 +45,6 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
   )
 
   const filasIngreso: FilaMedicacion[] = (data.tratamiento_ingreso_estructurado as FilaMedicacion[]) ?? []
-  const filasPlan: FilaMedicacion[] = (data.plan_medicacion_estructurado as FilaMedicacion[]) ?? []
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -116,11 +115,7 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
         <p className="section-title">Diagnóstico y plan</p>
         {field('impresion_diagnostica', 'Impresión diagnóstica')}
         {field('plan_objetivos', 'Objetivos')}
-        <div>
-          <span className="label">Medicación</span>
-          <TablaMedicacion filas={filasPlan}
-            onChange={v => update('plan_medicacion_estructurado', v)} />
-        </div>
+        {field('plan_medicacion', 'Medicación')}
         {field('plan_otros_cuidados', 'Otros cuidados / intervenciones')}
       </div>
 
