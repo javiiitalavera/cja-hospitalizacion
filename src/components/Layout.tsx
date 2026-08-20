@@ -2,8 +2,17 @@ import { useState } from 'react'
 import { NavLink, Outlet } from "react-router-dom"
 import {
   Users, ClipboardList, AlertTriangle,
-  BarChart2, Settings, Activity, Home, ChevronLeft
+  BarChart2, Settings, Activity, Home, ChevronLeft, LogOut
 } from 'lucide-react'
+import { useAuth } from '../lib/AuthContext'
+
+const ROL_LABEL: Record<string, string> = {
+  medico: 'Médico/a',
+  enfermeria: 'Enfermería',
+  auxiliar: 'Auxiliar',
+  administrativo: 'Administrativo/a',
+  tecnico: 'Técnico/a',
+}
 
 const navItems = [
   { to: '/', icon: Home, label: 'Inicio', end: true },
@@ -16,6 +25,7 @@ const navItems = [
 
 export default function Layout() {
   const [collapsed, setCollapsed] = useState(false)
+  const { profesional, rol, signOut } = useAuth()
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50">
@@ -70,13 +80,39 @@ export default function Layout() {
           ))}
         </nav>
 
-        {/* Footer */}
-        {!collapsed && (
-          <div className="px-4 py-3 border-t">
-            <p className="text-[10px] text-slate-400">Clínica Josefina Arregui</p>
-            <p className="text-[10px] text-slate-400">Alsasua · v1.0.0</p>
-          </div>
-        )}
+        {/* Footer: usuario + cerrar sesión */}
+        <div className="border-t">
+          {!collapsed ? (
+            <div className="px-3 py-3">
+              {profesional && (
+                <div className="mb-2">
+                  <p className="text-xs font-semibold text-slate-700 leading-tight truncate">
+                    {profesional.nombre} {profesional.apellidos}
+                  </p>
+                  <p className="text-[10px] text-slate-400">{rol ? ROL_LABEL[rol] ?? rol : ''}</p>
+                </div>
+              )}
+              <button
+                onClick={signOut}
+                className="flex items-center gap-2 text-xs text-slate-500 hover:text-red-600 transition-colors"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                Cerrar sesión
+              </button>
+              <p className="text-[10px] text-slate-300 mt-2">Clínica Josefina Arregui · Alsasua · v1.0.0</p>
+            </div>
+          ) : (
+            <div className="py-3 flex justify-center">
+              <button
+                onClick={signOut}
+                title="Cerrar sesión"
+                className="text-slate-400 hover:text-red-600 transition-colors p-1"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+        </div>
       </aside>
 
       <main className="flex-1 overflow-y-auto">
