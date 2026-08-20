@@ -54,7 +54,15 @@ export function Personal() {
   }
 
   async function alternarActivo(p: Profesional) {
-    await supabase.from('profesionales').update({ activo: !p.activo }).eq('id', p.id)
+    // Baja/alta completa: la función segura marca la ficha Y bloquea o
+    // desbloquea el acceso, todo a la vez y sin borrar nada.
+    const { data, error } = await supabase.functions.invoke('acceso-profesional', {
+      body: { profesionalId: p.id, activo: !p.activo },
+    })
+    if (error || (data && (data as any).error)) {
+      alert((data as any)?.error ?? 'No se pudo cambiar el acceso.')
+      return
+    }
     cargar()
   }
 
@@ -81,13 +89,16 @@ export function Personal() {
                 <th className="px-4 py-2 font-medium">Rol</th>
                 <th className="px-4 py-2 font-medium">Cuenta</th>
                 <th className="px-4 py-2 font-medium text-center">Admin</th>
-                <th className="px-4 py-2 font-medium text-center">Activo</th>
+                <th className="px-4 py-2 font-medium text-center" title="Desmarcar = baja completa: bloquea el acceso sin borrar datos">Activo</th>
               </tr>
             </thead>
             <tbody>
               {lista.map((p) => (
-                <tr key={p.id} className="border-t border-slate-100">
-                  <td className="px-4 py-2 text-slate-800">{p.nombre} {p.apellidos}</td>
+                <tr key={p.id} className={`border-t border-slate-100 ${!p.activo ? 'opacity-50' : ''}`}>
+                  <td className="px-4 py-2 text-slate-800">
+                    {p.nombre} {p.apellidos}
+                    {!p.activo && <span className="ml-2 text-xs text-slate-400">(inactivo)</span>}
+                  </td>
                   <td className="px-4 py-2">
                     <select
                       className="input py-1 text-sm"
