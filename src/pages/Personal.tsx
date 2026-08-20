@@ -8,7 +8,6 @@ const ROLES: { valor: Rol; etiqueta: string }[] = [
   { valor: 'medico', etiqueta: 'Médico/a' },
   { valor: 'enfermeria', etiqueta: 'Enfermería' },
   { valor: 'auxiliar', etiqueta: 'Auxiliar' },
-  { valor: 'administrativo', etiqueta: 'Administrativo/a' },
   { valor: 'tecnico', etiqueta: 'Técnico/a' },
 ]
 

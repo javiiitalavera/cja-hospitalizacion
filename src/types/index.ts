@@ -1,4 +1,4 @@
-export type Rol = 'medico' | 'enfermeria' | 'auxiliar' | 'administrativo' | 'tecnico'
+export type Rol = 'medico' | 'enfermeria' | 'auxiliar' | 'tecnico'
 export type EstadoIngreso = 'activo' | 'alta' | 'alta_traslado' | 'exitus'
 export type Sexo = 'hombre' | 'mujer' | 'otro'
 

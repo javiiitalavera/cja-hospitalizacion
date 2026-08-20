@@ -9,7 +9,6 @@ const ROL_LABEL: Record<Rol, string> = {
   medico: 'Médico',
   enfermeria: 'Enfermería',
   auxiliar: 'Auxiliar de enfermería',
-  administrativo: 'Administrativo',
   tecnico: 'Técnico',
 }
 
@@ -17,7 +16,6 @@ const ROL_COLOR: Record<Rol, string> = {
   medico: 'bg-primary-50 text-primary-700',
   enfermeria: 'bg-emerald-50 text-emerald-700',
   auxiliar: 'bg-teal-50 text-teal-700',
-  administrativo: 'bg-slate-100 text-slate-600',
   tecnico: 'bg-violet-50 text-violet-700',
 }
 

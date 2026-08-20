@@ -10,7 +10,6 @@ const ROL_LABEL: Record<string, string> = {
   medico: 'Médico/a',
   enfermeria: 'Enfermería',
   auxiliar: 'Auxiliar',
-  administrativo: 'Administrativo/a',
   tecnico: 'Técnico/a',
 }
 
