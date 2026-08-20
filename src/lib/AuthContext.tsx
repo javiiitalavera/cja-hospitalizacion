@@ -9,7 +9,7 @@ interface AuthState {
   session: Session | null
   profesional: Profesional | null   // ficha enlazada del profesional
   rol: Rol | null                    // atajo cómodo para permisos por rol
-  loading: boolean                   // true mientras comprobamos la sesión
+  loading: boolean                   // true mientras aún no sabemos a dónde llevar al usuario
   signOut: () => Promise<void>
 }
 
@@ -20,33 +20,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profesional, setProfesional] = useState<Profesional | null>(null)
   const [loading, setLoading] = useState(true)
 
-  // Busca la ficha de profesional enlazada a la cuenta que ha entrado.
-  async function cargarProfesional(userId: string) {
-    const { data } = await supabase
-      .from('profesionales')
-      .select('*')
-      .eq('user_id', userId)
-      .maybeSingle()
-    setProfesional((data as Profesional) ?? null)
-  }
-
+  // ── Paso 1: la sesión ───────────────────────────────────────
+  // IMPORTANTE: dentro de estos callbacks de Supabase solo tocamos
+  // la sesión (nada de consultas a la base de datos aquí, o se bloquea).
   useEffect(() => {
-    // 1) Al arrancar, recuperamos la sesión guardada (si la hay).
-    supabase.auth.getSession().then(async ({ data }) => {
+    supabase.auth.getSession().then(({ data }) => {
       setSession(data.session)
-      if (data.session) await cargarProfesional(data.session.user.id)
-      setLoading(false)
+      if (!data.session) setLoading(false) // sin sesión, ya podemos decidir: al login
     })
 
-    // 2) Nos suscribimos a cambios: login, logout, renovación de token…
-    const { data: sub } = supabase.auth.onAuthStateChange(async (_evento, nuevaSesion) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((_evento, nuevaSesion) => {
       setSession(nuevaSesion)
-      if (nuevaSesion) await cargarProfesional(nuevaSesion.user.id)
-      else setProfesional(null)
+      if (!nuevaSesion) setLoading(false)   // al cerrar sesión, decisión inmediata
     })
 
     return () => sub.subscription.unsubscribe()
   }, [])
+
+  // ── Paso 2: la ficha del profesional ────────────────────────
+  // Efecto separado que reacciona cuando cambia el usuario. Al estar
+  // fuera de los callbacks de auth, la consulta ya no se bloquea.
+  useEffect(() => {
+    const userId = session?.user?.id
+    if (!userId) {
+      setProfesional(null)
+      return
+    }
+    let cancelado = false
+    setLoading(true)
+    supabase
+      .from('profesionales')
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (cancelado) return
+        setProfesional((data as Profesional) ?? null)
+        setLoading(false) // ya sabemos todo lo necesario para decidir
+      })
+    return () => { cancelado = true }
+  }, [session?.user?.id])
 
   async function signOut() {
     await supabase.auth.signOut()
