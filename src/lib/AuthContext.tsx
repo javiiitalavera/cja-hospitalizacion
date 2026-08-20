@@ -9,6 +9,7 @@ interface AuthState {
   session: Session | null
   profesional: Profesional | null   // ficha enlazada del profesional
   rol: Rol | null                    // atajo cómodo para permisos por rol
+  esAdmin: boolean                   // true si gestiona el personal
   loading: boolean                   // true mientras aún no sabemos a dónde llevar al usuario
   signOut: () => Promise<void>
 }
@@ -68,7 +69,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ session, profesional, rol: profesional?.rol ?? null, loading, signOut }}
+      value={{
+        session,
+        profesional,
+        rol: profesional?.rol ?? null,
+        esAdmin: profesional?.es_admin ?? false,
+        loading,
+        signOut,
+      }}
     >
       {children}
     </AuthContext.Provider>

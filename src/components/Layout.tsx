@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { NavLink, Outlet } from "react-router-dom"
 import {
   Users, ClipboardList, AlertTriangle,
-  BarChart2, Settings, Activity, Home, ChevronLeft, LogOut
+  BarChart2, Settings, Activity, Home, ChevronLeft, LogOut, UserCog
 } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext'
 
@@ -20,12 +20,14 @@ const navItems = [
   { to: '/items', icon: ClipboardList, label: 'Hoja de Ítems' },
   { to: '/eventos', icon: AlertTriangle, label: 'Incidencias' },
   { to: '/dashboard', icon: BarChart2, label: 'Dashboard' },
+  { to: '/personal', icon: UserCog, label: 'Personal', soloAdmin: true },
   { to: '/configuracion', icon: Settings, label: 'Configuración' },
 ]
 
 export default function Layout() {
   const [collapsed, setCollapsed] = useState(false)
-  const { profesional, rol, signOut } = useAuth()
+  const { profesional, rol, esAdmin, signOut } = useAuth()
+  const items = navItems.filter((i) => !i.soloAdmin || esAdmin)
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50">
@@ -58,7 +60,7 @@ export default function Layout() {
 
         {/* Nav */}
         <nav className="flex-1 py-4 px-2 space-y-0.5 overflow-y-auto">
-          {navItems.map(({ to, icon: Icon, label, end }) => (
+          {items.map(({ to, icon: Icon, label, end }) => (
             <NavLink
               key={to}
               to={to}

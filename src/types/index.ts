@@ -8,6 +8,8 @@ export interface Profesional {
   apellidos: string
   rol: Rol
   activo: boolean
+  es_admin: boolean
+  user_id?: string | null
   colegiado?: string
   especialidad?: string
   created_at: string
