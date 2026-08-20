@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import type { Profesional, Rol } from '../types'
-import { UserPlus, Shield, Loader2, X } from 'lucide-react'
+import { UserPlus, Shield, Loader2, X, Trash2 } from 'lucide-react'
 
 const ROLES: { valor: Rol; etiqueta: string }[] = [
   { valor: 'medico', etiqueta: 'Médico/a' },
@@ -66,6 +66,23 @@ export function Personal() {
     cargar()
   }
 
+  async function eliminar(p: Profesional) {
+    const ok = window.confirm(
+      `¿Eliminar por completo a ${p.nombre} ${p.apellidos}?\n\n` +
+      `Esto borra su ficha y su cuenta de acceso y no se puede deshacer. ` +
+      `Si tiene registros clínicos a su nombre, no se podrá borrar (usa la baja en su lugar).`
+    )
+    if (!ok) return
+    const { data, error } = await supabase.functions.invoke('eliminar-profesional', {
+      body: { profesionalId: p.id },
+    })
+    if (error || (data && (data as any).error)) {
+      alert((data as any)?.error ?? 'No se pudo eliminar.')
+      return
+    }
+    cargar()
+  }
+
   return (
     <div className="p-6 md:p-8 max-w-4xl">
       <div className="flex items-center justify-between mb-6">
@@ -90,6 +107,7 @@ export function Personal() {
                 <th className="px-4 py-2 font-medium">Cuenta</th>
                 <th className="px-4 py-2 font-medium text-center">Admin</th>
                 <th className="px-4 py-2 font-medium text-center" title="Desmarcar = baja completa: bloquea el acceso sin borrar datos">Activo</th>
+                <th className="px-4 py-2"></th>
               </tr>
             </thead>
             <tbody>
@@ -130,6 +148,17 @@ export function Personal() {
                       onChange={() => alternarActivo(p)}
                       disabled={p.id === yo?.id}
                     />
+                  </td>
+                  <td className="px-4 py-2 text-center">
+                    {p.id !== yo?.id && (
+                      <button
+                        onClick={() => eliminar(p)}
+                        title="Eliminar por completo"
+                        className="text-slate-300 hover:text-red-600 transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
