@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { NavLink, Outlet } from "react-router-dom"
 import {
   Users, ClipboardList, AlertTriangle,
-  BarChart2, Activity, Home, ChevronLeft, LogOut, UserCog
+  BarChart2, Activity, Home, ChevronLeft, LogOut, UserCog, History
 } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext'
 
@@ -20,6 +20,7 @@ const navItems = [
   { to: '/eventos', icon: AlertTriangle, label: 'Incidencias' },
   { to: '/dashboard', icon: BarChart2, label: 'Dashboard' },
   { to: '/personal', icon: UserCog, label: 'Personal', soloAdmin: true },
+  { to: '/auditoria', icon: History, label: 'Auditoría', soloAdmin: true },
 ]
 
 export default function Layout() {

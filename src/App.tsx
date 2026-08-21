@@ -11,6 +11,7 @@ import HojaItems from './pages/HojaItems'
 import { Eventos } from './pages/Eventos'
 import { Dashboard } from './pages/Dashboard'
 import { Personal } from './pages/Personal'
+import { Auditoria } from './pages/Auditoria'
 
 // Guardián: decide si se puede pasar a las rutas protegidas.
 function RequireAuth() {
@@ -62,6 +63,7 @@ export default function App() {
               <Route path="eventos" element={<Eventos />} />
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="personal" element={<Personal />} />
+              <Route path="auditoria" element={<Auditoria />} />
             </Route>
           </Route>
         </Routes>

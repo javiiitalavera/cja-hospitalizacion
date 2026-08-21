@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import type { Profesional, Rol } from '../types'
-import { UserPlus, Shield, Loader2, X, Trash2 } from 'lucide-react'
+import { UserPlus, Shield, Loader2, X, Trash2, KeyRound } from 'lucide-react'
 
 const ROLES: { valor: Rol; etiqueta: string }[] = [
   { valor: 'medico', etiqueta: 'Médico/a' },
@@ -16,6 +16,7 @@ export function Personal() {
   const [lista, setLista] = useState<Profesional[]>([])
   const [cargando, setCargando] = useState(true)
   const [mostrarForm, setMostrarForm] = useState(false)
+  const [resetTarget, setResetTarget] = useState<Profesional | null>(null)
 
   async function cargar() {
     const { data } = await supabase
@@ -149,15 +150,26 @@ export function Personal() {
                     />
                   </td>
                   <td className="px-4 py-2 text-center">
-                    {p.id !== yo?.id && (
-                      <button
-                        onClick={() => eliminar(p)}
-                        title="Eliminar por completo"
-                        className="text-slate-300 hover:text-red-600 transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
+                    <div className="flex items-center justify-center gap-2">
+                      {p.user_id && (
+                        <button
+                          onClick={() => setResetTarget(p)}
+                          title="Restablecer contraseña"
+                          className="text-slate-300 hover:text-primary-600 transition-colors"
+                        >
+                          <KeyRound className="w-4 h-4" />
+                        </button>
+                      )}
+                      {p.id !== yo?.id && (
+                        <button
+                          onClick={() => eliminar(p)}
+                          title="Eliminar por completo"
+                          className="text-slate-300 hover:text-red-600 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -177,6 +189,92 @@ export function Personal() {
           onCreado={() => { setMostrarForm(false); cargar() }}
         />
       )}
+
+      {resetTarget && (
+        <ModalPassword
+          profesional={resetTarget}
+          onCerrar={() => setResetTarget(null)}
+        />
+      )}
+    </div>
+  )
+}
+
+function ModalPassword({ profesional, onCerrar }: { profesional: Profesional; onCerrar: () => void }) {
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [hecho, setHecho] = useState(false)
+  const [enviando, setEnviando] = useState(false)
+
+  async function guardar() {
+    setError('')
+    if (password.length < 8) {
+      setError('La contraseña debe tener al menos 8 caracteres.')
+      return
+    }
+    setEnviando(true)
+    const { data, error: fnError } = await supabase.functions.invoke('restablecer-password', {
+      body: { profesionalId: profesional.id, nuevaPassword: password },
+    })
+    setEnviando(false)
+    if (fnError || (data && (data as any).error)) {
+      setError((data as any)?.error ?? 'No se pudo restablecer la contraseña.')
+      return
+    }
+    setHecho(true)
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/30 flex items-center justify-center p-4 z-50">
+      <div className="card p-6 w-full max-w-sm">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-semibold text-slate-800">Restablecer contraseña</h2>
+          <button onClick={onCerrar} className="text-slate-400 hover:text-slate-600">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {hecho ? (
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600">
+              Contraseña cambiada para <span className="font-medium">{profesional.nombre} {profesional.apellidos}</span>.
+              Comunícasela de forma segura.
+            </p>
+            <div className="flex justify-end">
+              <button onClick={onCerrar} className="btn-primary">Hecho</button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-sm text-slate-500">
+              Nueva contraseña para <span className="font-medium">{profesional.nombre} {profesional.apellidos}</span>.
+            </p>
+            <div>
+              <label className="label">Nueva contraseña</label>
+              <input
+                className="input"
+                type="text"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && guardar()}
+              />
+              <p className="text-[11px] text-slate-400 mt-1">Mínimo 8 caracteres.</p>
+            </div>
+
+            {error && (
+              <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{error}</p>
+            )}
+
+            <div className="flex justify-end gap-2 pt-1">
+              <button onClick={onCerrar} className="text-sm text-slate-500 px-3 py-2">Cancelar</button>
+              <button onClick={guardar} disabled={enviando} className="btn-primary">
+                {enviando ? <Loader2 className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}
+                {enviando ? 'Guardando…' : 'Restablecer'}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
