@@ -1,14 +1,7 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, Legend,
-} from 'recharts'
-import {
-  Calendar, ChevronDown, X,
-  Pencil, Trash2, TrendingUp, TrendingDown, Minus, Download,
-} from 'lucide-react'
+import { X, Pencil, Trash2, Download } from 'lucide-react'
 import FormularioEvento from '../components/FormularioEvento'
 import {
   TIPO_EVENTO_LABEL, TIPO_EVENTO_COLOR,
@@ -23,147 +16,10 @@ const TIPOS_ORDEN: TipoEvento[] = [
   'fuga', 'infeccion_nosocomial', 'error_medicacion', 'efecto_adverso_medicacion',
 ]
 
-// Colores para el gráfico de líneas (uno por tipo)
-const LINEA_COLOR: Record<TipoEvento, string> = {
-  caida: '#f97316',
-  ulcera: '#ef4444',
-  error_medicacion: '#a855f7',
-  efecto_adverso_medicacion: '#ec4899',
-  infeccion_nosocomial: '#eab308',
-  contencion_fisica: '#3b82f6',
-  agresividad_fisica: '#f43f5e',
-  fuga: '#64748b',
-}
-
-// ─── HELPERS ──────────────────────────────────────────────────
-
-function getDesde(periodo: string): string {
-  const now = new Date()
-  if (periodo === 'mes')       return new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
-  if (periodo === 'trimestre') return new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1).toISOString().split('T')[0]
-  if (periodo === 'semestre')  return new Date(now.getFullYear(), now.getMonth() >= 6 ? 6 : 0, 1).toISOString().split('T')[0]
-  if (periodo === 'anio')      return new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0]
-  return '2020-01-01'
-}
-
-function getPeriodoAnterior(periodo: string): [string, string] {
-  const now = new Date()
-  if (periodo === 'mes') {
-    const ini = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-    const fin = new Date(now.getFullYear(), now.getMonth(), 0)
-    return [ini.toISOString().split('T')[0], fin.toISOString().split('T')[0]]
-  }
-  if (periodo === 'trimestre') {
-    const q = Math.floor(now.getMonth() / 3)
-    const ini = new Date(now.getFullYear(), (q - 1) * 3, 1)
-    const fin = new Date(now.getFullYear(), q * 3, 0)
-    return [ini.toISOString().split('T')[0], fin.toISOString().split('T')[0]]
-  }
-  if (periodo === 'anio') {
-    return [`${now.getFullYear() - 1}-01-01`, `${now.getFullYear() - 1}-12-31`]
-  }
-  return ['2020-01-01', getDesde(periodo)]
-}
-
-function mesLabel(ym: string) {
-  return new Date(ym + '-01').toLocaleDateString('es-ES', { month: 'short', year: '2-digit' })
-}
-
-function variacion(actual: number, anterior: number): 'up' | 'down' | 'equal' {
-  if (anterior === 0) return actual > 0 ? 'up' : 'equal'
-  const pct = (actual - anterior) / anterior
-  if (pct > 0.1) return 'up'
-  if (pct < -0.1) return 'down'
-  return 'equal'
-}
-
-// ─── SUBCOMPONENTES ────────────────────────────────────────────
-
-function PeriodoSelector({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const [open, setOpen] = useState(false)
-  const opciones = [
-    { v: 'mes', l: 'Este mes' },
-    { v: 'trimestre', l: 'Este trimestre' },
-    { v: 'semestre', l: 'Este semestre' },
-    { v: 'anio', l: 'Este año' },
-    { v: 'todo', l: 'Todo el historial' },
-  ]
-  const label = opciones.find(o => o.v === value)?.l ?? value
-
-  return (
-    <div className="relative">
-      <button onClick={() => setOpen(v => !v)} className="btn-secondary gap-2">
-        <Calendar className="w-4 h-4" />
-        {label}
-        <ChevronDown className="w-3.5 h-3.5" />
-      </button>
-      {open && (
-        <div className="absolute right-0 top-full mt-1 bg-white border rounded-xl shadow-lg z-10 overflow-hidden min-w-[170px]">
-          {opciones.map(({ v, l }) => (
-            <button key={v} onClick={() => { onChange(v); setOpen(false) }}
-              className={`w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50 transition-colors ${value === v ? 'text-primary-700 font-semibold' : 'text-slate-600'}`}>
-              {l}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function KpiCard({ tipo, n, nAnterior, tasa }: {
-  tipo: TipoEvento; n: number; nAnterior: number; tasa: string
-}) {
-  const var_ = variacion(n, nAnterior)
-  const colorClass = TIPO_EVENTO_COLOR[tipo]
-  const pctDiff = nAnterior === 0
-    ? null
-    : Math.round(Math.abs((n - nAnterior) / nAnterior) * 100)
-
-  return (
-    <div className="card p-4 flex flex-col gap-2">
-      <div className="flex items-start justify-between gap-2">
-        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${colorClass}`}>
-          {TIPO_EVENTO_LABEL[tipo]}
-        </span>
-        {var_ === 'up' && (
-          <span className="flex items-center gap-0.5 text-xs font-semibold text-red-600">
-            <TrendingUp className="w-3.5 h-3.5" />
-            {pctDiff != null ? `+${pctDiff}%` : ''}
-          </span>
-        )}
-        {var_ === 'down' && (
-          <span className="flex items-center gap-0.5 text-xs font-semibold text-emerald-600">
-            <TrendingDown className="w-3.5 h-3.5" />
-            {pctDiff != null ? `-${pctDiff}%` : ''}
-          </span>
-        )}
-        {var_ === 'equal' && (
-          <span className="flex items-center gap-0.5 text-xs text-slate-400">
-            <Minus className="w-3.5 h-3.5" />
-          </span>
-        )}
-      </div>
-      <div>
-        <p className="text-3xl font-bold text-slate-800 leading-none">{n}</p>
-        <p className="text-xs text-slate-400 mt-1">{tasa} / 100 estancias</p>
-      </div>
-    </div>
-  )
-}
-
 // ─── PÁGINA PRINCIPAL ─────────────────────────────────────────
 
 export function Eventos() {
   const navigate = useNavigate()
-
-  // ── Estado análisis ───────────────────────────────────────
-  const [periodo, setPeriodo] = useState('trimestre')
-  const [loadingAnalisis, setLoadingAnalisis] = useState(true)
-  const [eventosActual, setEventosActual] = useState<any[]>([])
-  const [eventosAnterior, setEventosAnterior] = useState<any[]>([])
-  const [diasEstanciaActual, setDiasEstanciaActual] = useState(0)
-  const [tiposVisibles, setTiposVisibles] = useState<Set<TipoEvento>>(new Set(TIPOS_ORDEN))
 
   // ── Estado listado ────────────────────────────────────────
   const [loadingLista, setLoadingLista] = useState(true)
@@ -174,47 +30,6 @@ export function Eventos() {
   const [filtroPaciente, setFiltroPaciente] = useState('')
   const [modalEvento, setModalEvento] = useState<Evento | null>(null)
   const [editandoEvento, setEditandoEvento] = useState<Evento | null>(null)
-
-  // ── Fetch análisis ────────────────────────────────────────
-  useEffect(() => {
-    fetchAnalisis()
-  }, [periodo])
-
-  async function fetchAnalisis() {
-    setLoadingAnalisis(true)
-    const desde = getDesde(periodo)
-    const [iniAnt, finAnt] = getPeriodoAnterior(periodo)
-
-    const [
-      { data: evAct },
-      { data: evAnt },
-      { data: ings },
-    ] = await Promise.all([
-      supabase.from('eventos')
-        .select('tipo, fecha, ingreso:ingresos(medico_responsable:profesionales(nombre,apellidos))')
-        .gte('fecha', desde),
-      supabase.from('eventos').select('tipo, fecha').gte('fecha', iniAnt).lte('fecha', finAnt),
-      supabase.from('ingresos')
-        .select('fecha_ingreso, fecha_alta, estado, medico_responsable:profesionales(nombre,apellidos)')
-        .or(`fecha_alta.gte.${desde},fecha_alta.is.null`)
-        .lte('fecha_ingreso', new Date().toISOString().split('T')[0]),
-    ])
-
-    setEventosActual(evAct ?? [])
-    setEventosAnterior(evAnt ?? [])
-
-    // Calcular días-estancia del periodo
-    const hoy = new Date()
-    const desdeDate = new Date(desde)
-    const dias = (ings ?? []).reduce((sum: number, ing: any) => {
-      const ini = new Date(Math.max(new Date(ing.fecha_ingreso).getTime(), desdeDate.getTime()))
-      const fin = ing.fecha_alta ? new Date(ing.fecha_alta) : hoy
-      const d = Math.max(0, Math.round((fin.getTime() - ini.getTime()) / 86400000))
-      return sum + d
-    }, 0)
-    setDiasEstanciaActual(dias)
-    setLoadingAnalisis(false)
-  }
 
   // ── Fetch listado ─────────────────────────────────────────
   useEffect(() => {
@@ -251,53 +66,7 @@ export function Eventos() {
     await supabase.from('eventos').delete().eq('id', id)
     setModalEvento(null)
     fetchLista()
-    fetchAnalisis()
   }
-
-  // ── Datos derivados para análisis ─────────────────────────
-
-  const kpis = useMemo(() => TIPOS_ORDEN.map(tipo => {
-    const n = eventosActual.filter(e => e.tipo === tipo).length
-    const nAnt = eventosAnterior.filter(e => e.tipo === tipo).length
-    const tasa = diasEstanciaActual > 0
-      ? (n / diasEstanciaActual * 100).toFixed(1)
-      : '—'
-    return { tipo, n, nAnterior: nAnt, tasa }
-  }), [eventosActual, eventosAnterior, diasEstanciaActual])
-
-  // Datos para el gráfico de tendencia — agrupa por mes y tipo
-  const tendenciaData = useMemo(() => {
-    const map: Record<string, Record<TipoEvento, number>> = {}
-    eventosActual.forEach((e: any) => {
-      const mes = (e.fecha as string).slice(0, 7)
-      if (!map[mes]) map[mes] = {} as Record<TipoEvento, number>
-      map[mes][e.tipo as TipoEvento] = (map[mes][e.tipo as TipoEvento] ?? 0) + 1
-    })
-    return Object.entries(map)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([ym, counts]) => ({
-        mes: mesLabel(ym),
-        ...counts,
-      }))
-  }, [eventosActual])
-
-  const totalActual = eventosActual.length
-  const totalAnterior = eventosAnterior.length
-
-  // Análisis por médico: eventos agrupados por médico responsable del ingreso
-  const medicoData = useMemo(() => {
-    const map: Record<string, { eventos: number; tipos: Partial<Record<TipoEvento, number>> }> = {}
-    eventosActual.forEach((e: any) => {
-      const med = e.ingreso?.medico_responsable
-      const nombre = med ? `${med.nombre} ${med.apellidos}` : 'Sin asignar'
-      if (!map[nombre]) map[nombre] = { eventos: 0, tipos: {} }
-      map[nombre].eventos++
-      map[nombre].tipos[e.tipo as TipoEvento] = (map[nombre].tipos[e.tipo as TipoEvento] ?? 0) + 1
-    })
-    return Object.entries(map)
-      .map(([nombre, d]) => ({ nombre, ...d }))
-      .sort((a, b) => b.eventos - a.eventos)
-  }, [eventosActual])
 
   // Exportación CSV del listado actual
   function exportarCSV() {
@@ -335,14 +104,6 @@ export function Eventos() {
     URL.revokeObjectURL(url)
   }
 
-  function toggleTipo(tipo: TipoEvento) {
-    setTiposVisibles(prev => {
-      const next = new Set(prev)
-      next.has(tipo) ? next.delete(tipo) : next.add(tipo)
-      return next
-    })
-  }
-
   // ── Render ────────────────────────────────────────────────
 
   return (
@@ -352,144 +113,9 @@ export function Eventos() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Incidencias</h1>
-          <p className="text-sm text-slate-400 mt-0.5">Seguimiento de incidencias y seguridad del paciente</p>
+          <p className="text-sm text-slate-400 mt-0.5">Registro de incidencias y seguridad del paciente</p>
         </div>
-        <PeriodoSelector value={periodo} onChange={setPeriodo} />
       </div>
-
-      {/* ── BLOQUE ANÁLISIS ── */}
-      {loadingAnalisis ? (
-        <div className="text-slate-400 text-center py-10">Cargando análisis…</div>
-      ) : (
-        <>
-          {/* KPI resumen total */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="card p-4 col-span-1">
-              <p className="text-xs font-bold uppercase tracking-widest text-primary-600 mb-1">Total incidencias</p>
-              <p className="text-4xl font-bold text-slate-800">{totalActual}</p>
-              <p className="text-xs text-slate-400 mt-1">
-                {totalAnterior > 0
-                  ? `Periodo anterior: ${totalAnterior} (${totalActual > totalAnterior ? '+' : ''}${totalActual - totalAnterior})`
-                  : 'Sin datos periodo anterior'}
-              </p>
-            </div>
-            <div className="card p-4 col-span-1">
-              <p className="text-xs font-bold uppercase tracking-widest text-primary-600 mb-1">Días-estancia</p>
-              <p className="text-4xl font-bold text-slate-800">{diasEstanciaActual}</p>
-              <p className="text-xs text-slate-400 mt-1">Base para calcular tasas</p>
-            </div>
-            <div className="card p-4 col-span-1">
-              <p className="text-xs font-bold uppercase tracking-widest text-primary-600 mb-1">Tasa global</p>
-              <p className="text-4xl font-bold text-slate-800">
-                {diasEstanciaActual > 0 ? (totalActual / diasEstanciaActual * 100).toFixed(2) : '—'}
-              </p>
-              <p className="text-xs text-slate-400 mt-1">Incidencias / 100 días-estancia</p>
-            </div>
-          </div>
-
-          {/* KPIs por tipo */}
-          <section>
-            <p className="section-title">Por tipo de incidencia</p>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {kpis.map(k => (
-                <KpiCard key={k.tipo} {...k} />
-              ))}
-            </div>
-          </section>
-
-          {/* Análisis por médico */}
-          {medicoData.length > 0 && (
-            <section>
-              <p className="section-title">Por médico responsable</p>
-              <div className="card overflow-hidden">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b bg-slate-50">
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Médico</th>
-                      <th className="px-4 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wide">Total</th>
-                      {TIPOS_ORDEN.map(t => (
-                        <th key={t} className="px-3 py-3 text-center text-xs font-semibold text-slate-400 uppercase tracking-wide hidden md:table-cell">
-                          {TIPO_EVENTO_LABEL[t].split(' ')[0]}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {medicoData.map(m => (
-                      <tr key={m.nombre} className="hover:bg-slate-50">
-                        <td className="px-4 py-2.5 font-medium text-slate-800">{m.nombre}</td>
-                        <td className="px-4 py-2.5 text-center font-bold text-slate-800">{m.eventos}</td>
-                        {TIPOS_ORDEN.map(t => (
-                          <td key={t} className="px-3 py-2.5 text-center text-slate-500 hidden md:table-cell">
-                            {m.tipos[t] ? (
-                              <span className={`px-1.5 py-0.5 rounded text-xs font-semibold ${TIPO_EVENTO_COLOR[t]}`}>
-                                {m.tipos[t]}
-                              </span>
-                            ) : (
-                              <span className="text-slate-200">—</span>
-                            )}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-          )}
-
-          {/* Gráfico de tendencia */}
-          {tendenciaData.length > 1 && (
-            <section>
-              <div className="flex items-center justify-between mb-3">
-                <p className="section-title mb-0">Tendencia temporal</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {TIPOS_ORDEN.map(tipo => (
-                    <button
-                      key={tipo}
-                      onClick={() => toggleTipo(tipo)}
-                      className={`px-2 py-0.5 rounded-full text-xs font-medium border transition-opacity ${
-                        tiposVisibles.has(tipo) ? TIPO_EVENTO_COLOR[tipo] : 'bg-slate-100 text-slate-400 border-slate-200'
-                      }`}
-                    >
-                      {TIPO_EVENTO_LABEL[tipo]}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="card p-5">
-                <ResponsiveContainer width="100%" height={260}>
-                  <LineChart data={tendenciaData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="mes" tick={{ fontSize: 11 }} />
-                    <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
-                    <Tooltip />
-                    <Legend wrapperStyle={{ fontSize: 11 }} />
-                    {TIPOS_ORDEN.filter(t => tiposVisibles.has(t)).map(tipo => (
-                      <Line
-                        key={tipo}
-                        type="monotone"
-                        dataKey={tipo}
-                        name={TIPO_EVENTO_LABEL[tipo]}
-                        stroke={LINEA_COLOR[tipo]}
-                        strokeWidth={2}
-                        dot={{ r: 3 }}
-                        connectNulls
-                      />
-                    ))}
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </section>
-          )}
-
-          {tendenciaData.length <= 1 && totalActual > 0 && (
-            <div className="card p-5 text-center text-slate-400 text-sm">
-              Se necesitan datos de al menos 2 meses para mostrar la tendencia temporal.
-            </div>
-          )}
-        </>
-      )}
 
       {/* ── BLOQUE LISTADO ── */}
       <section>
@@ -680,7 +306,6 @@ export function Eventos() {
             setEditandoEvento(null)
             setModalEvento(null)
             fetchLista()
-            fetchAnalisis()
           }}
         />
       )}
