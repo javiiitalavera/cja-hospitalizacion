@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import type { Profesional, Rol } from '../types'
-import { UserPlus, Shield, Loader2, X, Trash2, KeyRound } from 'lucide-react'
+import { UserPlus, Shield, Loader2, X, Trash2, KeyRound, Pencil } from 'lucide-react'
 
 const ROLES: { valor: Rol; etiqueta: string }[] = [
   { valor: 'medico', etiqueta: 'Médico/a' },
@@ -17,6 +17,7 @@ export function Personal() {
   const [cargando, setCargando] = useState(true)
   const [mostrarForm, setMostrarForm] = useState(false)
   const [resetTarget, setResetTarget] = useState<Profesional | null>(null)
+  const [editTarget, setEditTarget] = useState<Profesional | null>(null)
 
   async function cargar() {
     const { data } = await supabase
@@ -151,6 +152,13 @@ export function Personal() {
                   </td>
                   <td className="px-4 py-2 text-center">
                     <div className="flex items-center justify-center gap-2">
+                      <button
+                        onClick={() => setEditTarget(p)}
+                        title="Editar datos"
+                        className="text-slate-300 hover:text-primary-600 transition-colors"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
                       {p.user_id && (
                         <button
                           onClick={() => setResetTarget(p)}
@@ -194,6 +202,14 @@ export function Personal() {
         <ModalPassword
           profesional={resetTarget}
           onCerrar={() => setResetTarget(null)}
+        />
+      )}
+
+      {editTarget && (
+        <ModalEditar
+          profesional={editTarget}
+          onCerrar={() => setEditTarget(null)}
+          onGuardado={() => { setEditTarget(null); cargar() }}
         />
       )}
     </div>
@@ -363,6 +379,152 @@ function FormularioNuevo({ onCerrar, onCreado }: { onCerrar: () => void; onCread
             </button>
           </div>
         </div>
+      </div>
+    </div>
+  )
+}
+
+function ModalEditar({ profesional, onCerrar, onGuardado }: {
+  profesional: Profesional
+  onCerrar: () => void
+  onGuardado: () => void
+}) {
+  const [nombre, setNombre] = useState(profesional.nombre)
+  const [apellidos, setApellidos] = useState(profesional.apellidos)
+  const [colegiado, setColegiado] = useState(profesional.colegiado ?? '')
+  const [especialidad, setEspecialidad] = useState(profesional.especialidad ?? '')
+  const [error, setError] = useState('')
+  const [guardando, setGuardando] = useState(false)
+
+  // Sección de cuenta (solo si aún no tiene)
+  const sinCuenta = !profesional.user_id
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [errorCuenta, setErrorCuenta] = useState('')
+  const [creandoCuenta, setCreandoCuenta] = useState(false)
+
+  async function guardarDatos() {
+    setError('')
+    if (!nombre.trim() || !apellidos.trim()) {
+      setError('Nombre y apellidos son obligatorios.')
+      return
+    }
+    setGuardando(true)
+    const { error } = await supabase
+      .from('profesionales')
+      .update({
+        nombre: nombre.trim(),
+        apellidos: apellidos.trim(),
+        colegiado: colegiado.trim() || null,
+        especialidad: especialidad.trim() || null,
+      })
+      .eq('id', profesional.id)
+    setGuardando(false)
+    if (error) {
+      setError('No se pudieron guardar los datos.')
+      return
+    }
+    onGuardado()
+  }
+
+  async function crearCuenta() {
+    setErrorCuenta('')
+    if (!email.trim() || !password) {
+      setErrorCuenta('Escribe correo y contraseña.')
+      return
+    }
+    if (password.length < 8) {
+      setErrorCuenta('La contraseña debe tener al menos 8 caracteres.')
+      return
+    }
+    setCreandoCuenta(true)
+    const { data, error: fnError } = await supabase.functions.invoke('crear-cuenta-existente', {
+      body: { profesionalId: profesional.id, email: email.trim(), password },
+    })
+    setCreandoCuenta(false)
+    if (fnError || (data && (data as any).error)) {
+      setErrorCuenta((data as any)?.error ?? 'No se pudo crear la cuenta.')
+      return
+    }
+    onGuardado()
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/30 flex items-center justify-center p-4 z-50">
+      <div className="card p-6 w-full max-w-md">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-semibold text-slate-800">Editar profesional</h2>
+          <button onClick={onCerrar} className="text-slate-400 hover:text-slate-600">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="label">Nombre</label>
+              <input className="input" value={nombre} onChange={(e) => setNombre(e.target.value)} />
+            </div>
+            <div>
+              <label className="label">Apellidos</label>
+              <input className="input" value={apellidos} onChange={(e) => setApellidos(e.target.value)} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="label">Nº Colegiado</label>
+              <input className="input" value={colegiado} onChange={(e) => setColegiado(e.target.value)} />
+            </div>
+            <div>
+              <label className="label">Especialidad</label>
+              <input className="input" value={especialidad} onChange={(e) => setEspecialidad(e.target.value)} />
+            </div>
+          </div>
+
+          {error && (
+            <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{error}</p>
+          )}
+
+          <div className="flex justify-end gap-2 pt-1">
+            <button onClick={onCerrar} className="text-sm text-slate-500 px-3 py-2">Cerrar</button>
+            <button onClick={guardarDatos} disabled={guardando} className="btn-primary">
+              {guardando ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+              {guardando ? 'Guardando…' : 'Guardar datos'}
+            </button>
+          </div>
+        </div>
+
+        {/* Cuenta de acceso: solo si aún no la tiene */}
+        {sinCuenta && (
+          <div className="mt-5 pt-4 border-t">
+            <p className="text-sm font-semibold text-slate-700 mb-1">Dar acceso</p>
+            <p className="text-xs text-slate-400 mb-3">
+              Esta persona no tiene cuenta. Créale una para que pueda entrar.
+            </p>
+            <div className="space-y-3">
+              <div>
+                <label className="label">Correo (usuario de acceso)</label>
+                <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+              </div>
+              <div>
+                <label className="label">Contraseña inicial</label>
+                <input className="input" type="text" value={password} onChange={(e) => setPassword(e.target.value)} />
+                <p className="text-[11px] text-slate-400 mt-1">Mínimo 8 caracteres. Comunícasela de forma segura.</p>
+              </div>
+
+              {errorCuenta && (
+                <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{errorCuenta}</p>
+              )}
+
+              <div className="flex justify-end">
+                <button onClick={crearCuenta} disabled={creandoCuenta} className="btn-primary">
+                  {creandoCuenta ? <Loader2 className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}
+                  {creandoCuenta ? 'Creando…' : 'Crear cuenta'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
