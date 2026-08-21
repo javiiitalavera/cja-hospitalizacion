@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../lib/AuthContext'
 import type { Profesional, Paciente } from '../types'
-import { ChevronLeft, Save, Search, UserPlus, RefreshCw } from 'lucide-react'
+import { ChevronLeft, Save, Search, UserPlus, RefreshCw, Lock } from 'lucide-react'
 
 export default function NuevoIngreso() {
   const navigate = useNavigate()
+  const { rol } = useAuth()
   const [searchParams] = useSearchParams()
   const habitacionParam = searchParams.get('habitacion') ?? ''
   const pacienteIdParam = searchParams.get('paciente_id') ?? ''
@@ -235,11 +237,11 @@ export default function NuevoIngreso() {
           />
         </div>
         <div>
-          <label className="label">Habitación (1-33)</label>
+          <label className="label">Habitación (1-32)</label>
           <input
             type="number"
             min={1}
-            max={33}
+            max={32}
             className="input"
             value={ingreso.habitacion}
             onChange={(e) => setIngreso((i) => ({ ...i, habitacion: e.target.value }))}
@@ -272,6 +274,24 @@ export default function NuevoIngreso() {
       </div>
     </div>
   )
+
+  // Solo un médico puede crear ingresos (además, el candado de la BD lo exige).
+  if (rol !== 'medico') {
+    return (
+      <div className="p-8">
+        <div className="card p-6 max-w-md flex items-start gap-3">
+          <Lock className="w-5 h-5 text-slate-400 mt-0.5 shrink-0" />
+          <div>
+            <p className="font-semibold text-slate-800">Acceso restringido</p>
+            <p className="text-sm text-slate-500 mt-1">
+              Solo un médico puede crear ingresos y pacientes. Si necesitas registrar uno, avisa al médico responsable.
+            </p>
+            <button onClick={() => navigate(-1)} className="btn-secondary mt-3 text-sm">Volver</button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="p-8 max-w-3xl">

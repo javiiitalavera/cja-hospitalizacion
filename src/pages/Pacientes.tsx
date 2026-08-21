@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../lib/AuthContext'
 import { Plus, Search, ChevronLeft, ChevronRight } from 'lucide-react'
 
 interface PacienteRow {
@@ -38,6 +39,8 @@ function edad(fnac?: string) {
 const PAGE_SIZE = 50
 
 export default function Pacientes() {
+  const { rol } = useAuth()
+  const esMedico = rol === 'medico'
   const [pacientes, setPacientes] = useState<PacienteRow[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -151,9 +154,11 @@ export default function Pacientes() {
             {loading ? '…' : `${total} resultado${total !== 1 ? 's' : ''}`}
           </p>
         </div>
-        <Link to="/pacientes/nuevo" className="btn-primary">
-          <Plus className="w-4 h-4" /> Nuevo ingreso
-        </Link>
+        {esMedico && (
+          <Link to="/pacientes/nuevo" className="btn-primary">
+            <Plus className="w-4 h-4" /> Nuevo ingreso
+          </Link>
+        )}
       </div>
 
       <div className="flex gap-3 mb-5 flex-wrap">

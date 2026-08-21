@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../lib/AuthContext'
 import type { Ingreso } from '../types'
-import { ChevronLeft, User, FileText, ClipboardList, AlertTriangle, FileCheck, History, LogOut, Database } from 'lucide-react'
+import { ChevronLeft, User, FileText, ClipboardList, AlertTriangle, FileCheck, History, LogOut, Database, Lock } from 'lucide-react'
 import { TabDatos } from './ingreso/TabDatos'
 import { TabInformeIngreso } from './ingreso/TabInformeIngreso'
 import { TabInformeAlta } from './ingreso/TabInformeAlta'
@@ -37,6 +38,8 @@ const ESTADO_LABEL: Record<string, string> = {
 export default function DetalleIngreso() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { rol } = useAuth()
+  const esMedico = rol === 'medico'
   const [tab, setTab] = useState('datos')
   const [ingreso, setIngreso] = useState<Ingreso | null>(null)
   const [loading, setLoading] = useState(true)
@@ -112,7 +115,7 @@ export default function DetalleIngreso() {
               </div>
             </div>
           </div>
-          {ingreso.estado === 'activo' && (
+          {ingreso.estado === 'activo' && esMedico && (
             <button
               onClick={() => setModalAlta(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-800 text-white text-xs font-medium transition-colors shrink-0"
@@ -188,15 +191,28 @@ export default function DetalleIngreso() {
 
       {/* Tab content */}
       <div className="flex-1 overflow-y-auto p-8">
-        {tab === 'datos' && <TabDatos ingreso={ingreso} onUpdate={setIngreso} />}
-        {tab === 'ingreso' && id && <TabInformeIngreso ingresoId={id} ingreso={ingreso} />}
-        {tab === 'alta' && id && <TabInformeAlta ingresoId={id} ingreso={ingreso} />}
-        {tab === 'items' && id && <TabItems ingresoId={id} />}
-        {tab === 'eventos' && id && <TabEventos ingresoId={id} />}
-        {tab === 'historial' && ingreso?.paciente_id && (
-          <TabHistorial pacienteId={ingreso.paciente_id} ingresoActualId={id ?? ''} />
+        {/* Aviso de solo lectura en las pestañas médicas para roles sin permiso */}
+        {!esMedico && ['datos', 'ingreso', 'alta', 'cmbd'].includes(tab) && (
+          <div className="mb-4 flex items-center gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+            <Lock className="w-4 h-4 shrink-0" />
+            Solo lectura: tu rol puede consultar esta sección, pero solo un médico puede editarla.
+          </div>
         )}
-        {tab === 'cmbd' && id && <TabCMBD ingresoId={id} ingreso={ingreso} />}
+        {/* fieldset disabled desactiva de golpe todos los campos de dentro */}
+        <fieldset
+          disabled={!esMedico && ['datos', 'ingreso', 'alta', 'cmbd'].includes(tab)}
+          className="min-w-0 border-0 p-0 m-0"
+        >
+          {tab === 'datos' && <TabDatos ingreso={ingreso} onUpdate={setIngreso} />}
+          {tab === 'ingreso' && id && <TabInformeIngreso ingresoId={id} ingreso={ingreso} />}
+          {tab === 'alta' && id && <TabInformeAlta ingresoId={id} ingreso={ingreso} />}
+          {tab === 'items' && id && <TabItems ingresoId={id} />}
+          {tab === 'eventos' && id && <TabEventos ingresoId={id} />}
+          {tab === 'historial' && ingreso?.paciente_id && (
+            <TabHistorial pacienteId={ingreso.paciente_id} ingresoActualId={id ?? ''} />
+          )}
+          {tab === 'cmbd' && id && <TabCMBD ingresoId={id} ingreso={ingreso} />}
+        </fieldset>
       </div>
     </div>
   )

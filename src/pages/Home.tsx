@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../lib/AuthContext'
 import type { Ingreso } from '../types'
 import { Plus, ClipboardList, ChevronRight, AlertTriangle } from 'lucide-react'
 import FormularioEvento from '../components/FormularioEvento'
@@ -42,6 +43,8 @@ export default function Home() {
   const [loading, setLoading] = useState(true)
   const [modalEvento, setModalEvento] = useState<string | null>(null) // ingresoId
   const navigate = useNavigate()
+  const { rol } = useAuth()
+  const esMedico = rol === 'medico'
 
   const today = new Date().toLocaleDateString('es-ES', {
     weekday: 'long',
@@ -89,13 +92,13 @@ export default function Home() {
     fetchData()
   }, [])
 
-  const slots: (IngresoConPaciente | null)[] = Array(33).fill(null)
+  const slots: (IngresoConPaciente | null)[] = Array(32).fill(null)
   ingresos.forEach((i) => {
-    if (i.habitacion && i.habitacion >= 1 && i.habitacion <= 33) slots[i.habitacion - 1] = i
+    if (i.habitacion && i.habitacion >= 1 && i.habitacion <= 32) slots[i.habitacion - 1] = i
   })
 
   const ocupadas = ingresos.length
-  const libres = 33 - ocupadas
+  const libres = 32 - ocupadas
 
   // Find the ingreso for the evento modal
   const ingresoParaEvento = ingresos.find((i) => i.id === modalEvento) ?? null
@@ -118,9 +121,11 @@ export default function Home() {
 
       {/* Acciones rápidas */}
       <div className="flex gap-2 mb-5">
-        <Link to="/pacientes/nuevo" className="btn-primary">
-          <Plus className="w-4 h-4" /> Nuevo ingreso
-        </Link>
+        {esMedico && (
+          <Link to="/pacientes/nuevo" className="btn-primary">
+            <Plus className="w-4 h-4" /> Nuevo ingreso
+          </Link>
+        )}
         <Link to="/items" className="btn-secondary">
           <ClipboardList className="w-4 h-4" /> Hoja de ítems
         </Link>
@@ -156,10 +161,12 @@ export default function Home() {
               return (
                 <div
                   key={n}
-                  className="grid items-center border border-dashed border-slate-150 rounded-lg px-3 py-1.5 cursor-pointer hover:border-primary-300 hover:bg-primary-50/30 transition-colors"
+                  className={`grid items-center border border-dashed border-slate-150 rounded-lg px-3 py-1.5 transition-colors ${
+                    esMedico ? 'cursor-pointer hover:border-primary-300 hover:bg-primary-50/30' : ''
+                  }`}
                   style={{ gridTemplateColumns: '2.5rem minmax(0,1.4fr) 3rem 3.5rem 5.5rem minmax(0,0.9fr) 7rem 2rem' }}
-                  onClick={() => navigate(`/pacientes/nuevo?habitacion=${n}`)}
-                  title={`Ingresar en habitación ${n}`}
+                  onClick={esMedico ? () => navigate(`/pacientes/nuevo?habitacion=${n}`) : undefined}
+                  title={esMedico ? `Ingresar en habitación ${n}` : `Habitación ${n} libre`}
                 >
                   <span className="text-xs font-bold text-slate-200">{n}</span>
                   <span className="text-xs text-slate-200">— libre —</span>

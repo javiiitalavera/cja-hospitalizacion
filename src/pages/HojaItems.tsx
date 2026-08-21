@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../lib/AuthContext'
 import type { Ingreso, ItemsPaciente } from '../types'
 import { Printer, X, Save, History } from 'lucide-react'
 
@@ -280,8 +281,8 @@ function PanelEdicion({
 
   async function cambiarHabitacion() {
     const n = parseInt(habEdit)
-    if (!n || n < 1 || n > 33) {
-      setHabError('Hab. inválida (1-33)')
+    if (!n || n < 1 || n > 32) {
+      setHabError('Hab. inválida (1-32)')
       return
     }
     if (n === ingreso.habitacion) {
@@ -411,7 +412,7 @@ function PanelEdicion({
             <input
               type="number"
               min={1}
-              max={33}
+              max={32}
               className="w-14 text-xs border border-slate-200 rounded px-1.5 py-0.5 text-slate-700 font-medium"
               value={habEdit}
               onChange={(e) => {
@@ -756,6 +757,8 @@ function Bloque({
 
 export default function HojaItems() {
   const navigate = useNavigate()
+  const { rol } = useAuth()
+  const esMedico = rol === 'medico'
   const [data, setData] = useState<IngresoConItems[]>([])
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<IngresoConItems | null>(null)
@@ -1142,7 +1145,7 @@ export default function HojaItems() {
               offset={0}
               count={16}
               onSelect={setSelected}
-              onSelectVacia={(n) => navigate(`/pacientes/nuevo?habitacion=${n}`)}
+              onSelectVacia={esMedico ? (n) => navigate(`/pacientes/nuevo?habitacion=${n}`) : undefined}
               selectedId={selected?.id ?? null}
             />
           </div>
@@ -1153,7 +1156,7 @@ export default function HojaItems() {
               offset={16}
               count={maxHab - 16}
               onSelect={setSelected}
-              onSelectVacia={(n) => navigate(`/pacientes/nuevo?habitacion=${n}`)}
+              onSelectVacia={esMedico ? (n) => navigate(`/pacientes/nuevo?habitacion=${n}`) : undefined}
               selectedId={selected?.id ?? null}
             />
           </div>

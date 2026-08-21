@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../lib/AuthContext'
 import { ChevronLeft, Plus, FileText, ClipboardList, AlertTriangle, History, Pencil, Save, X } from 'lucide-react'
 import { TIPO_EVENTO_LABEL, TIPO_EVENTO_COLOR, CAMPOS_POR_TIPO, type TipoEvento } from '../types/eventos'
 
@@ -53,6 +54,8 @@ function diasEstancia(fi: string, fa?: string) {
 export default function DetallePaciente() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { rol } = useAuth()
+  const esMedico = rol === 'medico'
   const [paciente, setPaciente] = useState<Paciente | null>(null)
   const [ingresos, setIngresos] = useState<Ingreso[]>([])
   const [eventos, setEventos] = useState<any[]>([])
@@ -157,9 +160,11 @@ export default function DetallePaciente() {
             </div>
           </div>
           {/* Fix 1+5: pasar paciente_id para saltar búsqueda */}
-          <Link to={`/pacientes/nuevo?paciente_id=${paciente.id}`} className="btn-primary text-xs">
-            <Plus className="w-3.5 h-3.5" /> Nuevo ingreso
-          </Link>
+          {esMedico && (
+            <Link to={`/pacientes/nuevo?paciente_id=${paciente.id}`} className="btn-primary text-xs">
+              <Plus className="w-3.5 h-3.5" /> Nuevo ingreso
+            </Link>
+          )}
         </div>
 
         {/* Tabs */}
@@ -316,7 +321,7 @@ export default function DetallePaciente() {
         {tab === 'datos' && (
           <div className="max-w-xl">
             <div className="flex justify-end mb-3">
-              {editando ? (
+              {!esMedico ? null : editando ? (
                 <div className="flex gap-2">
                   <button onClick={() => { setEditando(false); setEditData(paciente); setEditError('') }}
                     className="btn-secondary">
