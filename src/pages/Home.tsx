@@ -103,13 +103,13 @@ export default function Home() {
     fetchData()
   }, [])
 
-  const slots: (IngresoConPaciente | null)[] = Array(32).fill(null)
+  const slots: (IngresoConPaciente | null)[] = Array(33).fill(null)
   ingresos.forEach((i) => {
-    if (i.habitacion && i.habitacion >= 1 && i.habitacion <= 32) slots[i.habitacion - 1] = i
+    if (i.habitacion && i.habitacion >= 1 && i.habitacion <= 33) slots[i.habitacion - 1] = i
   })
 
   const ocupadas = ingresos.length
-  const libres = 32 - ocupadas
+  const libres = 33 - ocupadas
 
   // Find the ingreso for the evento modal
   const ingresoParaEvento = ingresos.find((i) => i.id === modalEvento) ?? null

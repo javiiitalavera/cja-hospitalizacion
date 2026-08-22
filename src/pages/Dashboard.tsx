@@ -190,7 +190,7 @@ export function Dashboard() {
   const diasEstancia = calcDiasEstancia(ingresosperiodo, desde)
 
   // ── KPIs snapshot actual ──────────────────────────────────────
-  const ocupacion = Math.round((pacientesActivos.length / 32) * 100)
+  const ocupacion = Math.round((pacientesActivos.length / 33) * 100)
   const estanciasLargas = pacientesActivos.filter(i => {
     const dias = Math.floor((Date.now() - new Date(i.fecha_ingreso).getTime()) / 86400000)
     return dias > 60
@@ -565,7 +565,7 @@ export function Dashboard() {
               <span className="normal-case font-normal text-slate-400">(snapshot — independiente del período)</span>
             </p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <StatCard label="Ocupación" value={`${ocupacion}%`} sub={`${pacientesActivos.length} / 32 camas`} icon={BedDouble} color="text-amber-600 bg-amber-50" />
+              <StatCard label="Ocupación" value={`${ocupacion}%`} sub={`${pacientesActivos.length} / 33 camas`} icon={BedDouble} color="text-amber-600 bg-amber-50" />
               <StatCard label="Edad media" value={edadMedia ? `${edadMedia}a` : '—'} sub="pacientes actuales" icon={Users} color="text-violet-600 bg-violet-50" />
               <div className="card p-5">
                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Por sexo (actuales)</p>

@@ -237,11 +237,11 @@ export default function NuevoIngreso() {
           />
         </div>
         <div>
-          <label className="label">Habitación (1-32)</label>
+          <label className="label">Habitación (1-33)</label>
           <input
             type="number"
             min={1}
-            max={32}
+            max={33}
             className="input"
             value={ingreso.habitacion}
             onChange={(e) => setIngreso((i) => ({ ...i, habitacion: e.target.value }))}

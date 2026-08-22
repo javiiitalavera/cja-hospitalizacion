@@ -143,7 +143,7 @@ const LABEL_BOLD_ROWS = new Set(['nombre', 'medico', 'dep'])
 function buildPrintHTML(data: IngresoConItems[], today: string): string {
   const habs1_16 = data.filter((i) => i.habitacion && i.habitacion <= 16)
   const habs17_max = data.filter((i) => i.habitacion && i.habitacion > 16)
-  const maxHab = Math.max(32, ...data.map((i) => i.habitacion ?? 0))
+  const maxHab = Math.max(33, ...data.map((i) => i.habitacion ?? 0))
 
   function buildBloque(habs: IngresoConItems[], offset: number, count: number): string {
     const slots: (IngresoConItems | null)[] = Array(count).fill(null)
@@ -282,8 +282,8 @@ function PanelEdicion({
 
   async function cambiarHabitacion() {
     const n = parseInt(habEdit)
-    if (!n || n < 1 || n > 32) {
-      setHabError('Hab. inválida (1-32)')
+    if (!n || n < 1 || n > 33) {
+      setHabError('Hab. inválida (1-33)')
       return
     }
     if (n === ingreso.habitacion) {
@@ -444,7 +444,7 @@ function PanelEdicion({
             <input
               type="number"
               min={1}
-              max={32}
+              max={33}
               className="w-14 text-xs border border-slate-200 rounded px-1.5 py-0.5 text-slate-700 font-medium"
               value={habEdit}
               onChange={(e) => {
@@ -923,7 +923,7 @@ export default function HojaItems() {
 
   const habs1_16 = data.filter((i) => i.habitacion && i.habitacion <= 16)
   const habs17_max = data.filter((i) => i.habitacion && i.habitacion > 16)
-  const maxHab = Math.max(32, ...data.map((i) => i.habitacion ?? 0))
+  const maxHab = Math.max(33, ...data.map((i) => i.habitacion ?? 0))
 
   if (loading) return <div className="p-8 text-slate-400">Cargando…</div>
 
@@ -1037,10 +1037,14 @@ export default function HojaItems() {
                       const converted = snapshotToIngresos(snapshotData)
                       const habs1 = converted.filter((i) => i.habitacion && i.habitacion <= 16)
                       const habs2 = converted.filter((i) => i.habitacion && i.habitacion > 16)
+                      // Igual que en la vista actual: el segundo bloque se
+                      // adapta a cuántas habitaciones haya de verdad, para
+                      // no perder la 33 (u otras futuras) en el histórico.
+                      const maxHabSnapshot = Math.max(33, ...converted.map((i) => i.habitacion ?? 0))
                       return (
                         <>
                           <Bloque habs={habs1} offset={0} count={16} onSelect={() => {}} selectedId={null} readOnly />
-                          <Bloque habs={habs2} offset={16} count={16} onSelect={() => {}} selectedId={null} readOnly />
+                          <Bloque habs={habs2} offset={16} count={maxHabSnapshot - 16} onSelect={() => {}} selectedId={null} readOnly />
                         </>
                       )
                     })()}
