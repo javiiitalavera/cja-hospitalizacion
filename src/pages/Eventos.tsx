@@ -16,22 +16,21 @@ const TIPOS_ORDEN: TipoEvento[] = [
   'fuga', 'infeccion_nosocomial', 'error_medicacion', 'efecto_adverso_medicacion',
 ]
 
-const SEMAFORO_LABEL: Record<string, string> = {
-  amarillo: 'Riesgo leve', naranja: 'Riesgo moderado', rojo: 'Riesgo alto',
-}
-const SEMAFORO_COLOR: Record<string, string> = {
-  amarillo: 'bg-yellow-100 text-yellow-700',
-  naranja: 'bg-orange-100 text-orange-700',
-  rojo: 'bg-red-100 text-red-700',
-}
 const SUJECION_LABEL: Record<string, string> = { silla_ruedas: 'Silla de ruedas', sillon: 'Sillón', cama: 'Cama' }
 
-interface PacienteEstado {
+interface PacienteContencion {
   ingresoId: string
   habitacion?: number
   nombre: string
   contenciones: string[]  // ['silla_ruedas', 'sillon', 'cama']
-  semaforoCaidas?: string // amarillo | naranja | rojo (verde/null no entra en el panel)
+}
+
+interface PacienteCaidas {
+  ingresoId: string
+  habitacion?: number
+  nombre: string
+  numCaidas: number
+  ultimaFecha: string
 }
 
 // ─── PÁGINA PRINCIPAL ─────────────────────────────────────────
@@ -39,10 +38,10 @@ interface PacienteEstado {
 export function Eventos() {
   const navigate = useNavigate()
 
-  // ── Panel de estado activo (contenciones + riesgo de caídas) ──
+  // ── Panel de estado activo (contenciones + caídas registradas) ──
   const [loadingEstado, setLoadingEstado] = useState(true)
-  const [conContencion, setConContencion] = useState<PacienteEstado[]>([])
-  const [conRiesgoCaidas, setConRiesgoCaidas] = useState<PacienteEstado[]>([])
+  const [conContencion, setConContencion] = useState<PacienteContencion[]>([])
+  const [conCaidas, setConCaidas] = useState<PacienteCaidas[]>([])
 
   // ── Estado listado ────────────────────────────────────────
   const [loadingLista, setLoadingLista] = useState(true)
@@ -59,46 +58,71 @@ export function Eventos() {
   useEffect(() => { fetchEstadoActivo() }, [])
   useEffect(() => { fetchLista() }, [filtroTipo, filtroDesde, filtroHasta, soloIngresados])
 
-  // ── Panel de estado: contenciones y riesgo de caídas AHORA MISMO ──
-  // Se basa en la Hoja de Ítems de los ingresos activos, que es donde
-  // se registra si una sujeción sigue puesta o no (no en el registro
-  // de incidencias, que son eventos puntuales).
+  // ── Panel de estado: contenciones AHORA MISMO + caídas registradas
+  // durante el ingreso activo. Las contenciones vienen de la Hoja de
+  // Ítems (si sigue puesta o no); las caídas son incidencias reales ya
+  // registradas, no una estimación de riesgo.
   async function fetchEstadoActivo() {
     setLoadingEstado(true)
-    const { data } = await supabase
-      .from('items_paciente')
-      .select(`
-        sujecion_cama, sujecion_silla_ruedas, sujecion_sillon, semaforo_caidas,
-        ingreso:ingresos!inner(id, habitacion, estado, paciente:pacientes(nombre, primer_apellido))
-      `)
-      .eq('ingreso.estado', 'activo')
 
-    const contencion: PacienteEstado[] = []
-    const riesgo: PacienteEstado[] = []
+    const [{ data: itemsData }, { data: caidasData }] = await Promise.all([
+      supabase
+        .from('items_paciente')
+        .select(`
+          sujecion_cama, sujecion_silla_ruedas, sujecion_sillon,
+          ingreso:ingresos!inner(id, habitacion, estado, paciente:pacientes(nombre, primer_apellido))
+        `)
+        .eq('ingreso.estado', 'activo'),
+      supabase
+        .from('eventos')
+        .select(`
+          fecha,
+          ingreso:ingresos!inner(id, habitacion, estado, paciente:pacientes(nombre, primer_apellido))
+        `)
+        .eq('tipo', 'caida')
+        .eq('ingreso.estado', 'activo'),
+    ])
 
-    ;(data ?? []).forEach((it: any) => {
+    const contencion: PacienteContencion[] = []
+    ;(itemsData ?? []).forEach((it: any) => {
       const ing = it.ingreso
       if (!ing?.paciente) return
-      const base: PacienteEstado = {
-        ingresoId: ing.id,
-        habitacion: ing.habitacion,
-        nombre: `${ing.paciente.primer_apellido}, ${ing.paciente.nombre}`,
-        contenciones: [],
-      }
-
       const cont: string[] = []
       if (it.sujecion_silla_ruedas === 'continuo') cont.push('silla_ruedas')
       if (it.sujecion_sillon === 'continuo') cont.push('sillon')
       if (Array.isArray(it.sujecion_cama) && it.sujecion_cama.length > 0) cont.push('cama')
-      if (cont.length > 0) contencion.push({ ...base, contenciones: cont })
-
-      if (it.semaforo_caidas && it.semaforo_caidas !== 'verde') {
-        riesgo.push({ ...base, semaforoCaidas: it.semaforo_caidas })
+      if (cont.length > 0) {
+        contencion.push({
+          ingresoId: ing.id,
+          habitacion: ing.habitacion,
+          nombre: `${ing.paciente.primer_apellido}, ${ing.paciente.nombre}`,
+          contenciones: cont,
+        })
       }
     })
-
     setConContencion(contencion)
-    setConRiesgoCaidas(riesgo)
+
+    // Agrupar caídas por ingreso: cuántas y la más reciente
+    const caidasMap: Record<string, PacienteCaidas> = {}
+    ;(caidasData ?? []).forEach((ev: any) => {
+      const ing = ev.ingreso
+      if (!ing?.paciente) return
+      const existente = caidasMap[ing.id]
+      if (existente) {
+        existente.numCaidas += 1
+        if (ev.fecha > existente.ultimaFecha) existente.ultimaFecha = ev.fecha
+      } else {
+        caidasMap[ing.id] = {
+          ingresoId: ing.id,
+          habitacion: ing.habitacion,
+          nombre: `${ing.paciente.primer_apellido}, ${ing.paciente.nombre}`,
+          numCaidas: 1,
+          ultimaFecha: ev.fecha,
+        }
+      }
+    })
+    setConCaidas(Object.values(caidasMap).sort((a, b) => b.numCaidas - a.numCaidas))
+
     setLoadingEstado(false)
   }
 
@@ -231,24 +255,29 @@ export function Eventos() {
         <div className="card p-4">
           <div className="flex items-center gap-2 mb-3">
             <AlertTriangle className="w-4 h-4 text-amber-500" />
-            <p className="font-semibold text-sm text-slate-700">Riesgo de caídas elevado</p>
-            <span className="text-xs text-slate-400 ml-auto">{loadingEstado ? '…' : conRiesgoCaidas.length}</span>
+            <p className="font-semibold text-sm text-slate-700">Caídas registradas (ingreso actual)</p>
+            <span className="text-xs text-slate-400 ml-auto">{loadingEstado ? '…' : conCaidas.length}</span>
           </div>
           {loadingEstado ? (
             <p className="text-xs text-slate-400">Cargando…</p>
-          ) : conRiesgoCaidas.length === 0 ? (
-            <p className="text-xs text-slate-400">Nadie con riesgo de caídas por encima de verde.</p>
+          ) : conCaidas.length === 0 ? (
+            <p className="text-xs text-slate-400">Nadie tiene caídas registradas en este ingreso.</p>
           ) : (
             <div className="space-y-1.5">
-              {conRiesgoCaidas.map((p) => (
+              {conCaidas.map((p) => (
                 <div key={p.ingresoId}
                   className="flex items-center justify-between text-sm cursor-pointer hover:bg-slate-50 rounded-lg px-2 py-1 -mx-2"
                   onClick={() => navigate(`/ingresos/${p.ingresoId}`)}>
                   <span className="text-slate-700">
                     {p.nombre} {p.habitacion && <span className="text-slate-400 text-xs">· Hab. {p.habitacion}</span>}
                   </span>
-                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${SEMAFORO_COLOR[p.semaforoCaidas!] ?? ''}`}>
-                    {SEMAFORO_LABEL[p.semaforoCaidas!] ?? p.semaforoCaidas}
+                  <span className="flex items-center gap-1.5 shrink-0">
+                    <span className="text-[10px] text-slate-400">
+                      última: {new Date(p.ultimaFecha).toLocaleDateString('es-ES')}
+                    </span>
+                    <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 text-[10px] font-medium">
+                      {p.numCaidas}×
+                    </span>
                   </span>
                 </div>
               ))}

@@ -5,7 +5,7 @@ import { useAuth } from '../lib/AuthContext'
 import type { Ingreso } from '../types'
 import { Plus, ClipboardList, ChevronRight, AlertTriangle } from 'lucide-react'
 import FormularioEvento from '../components/FormularioEvento'
-import { TIPO_EVENTO_LABEL, type TipoEvento } from '../types/eventos'
+import { TIPO_EVENTO_LABEL, TIPO_EVENTO_COLOR, type TipoEvento } from '../types/eventos'
 
 type IngresoConPaciente = Ingreso & {
   paciente: {
@@ -265,18 +265,35 @@ export default function Home() {
                   {(() => {
                     const tipos = eventosPorIngreso[ingreso.id]
                     if (!tipos || tipos.length === 0) return <div />
-                    const etiquetas = tipos.map((t) => TIPO_EVENTO_LABEL[t as TipoEvento] ?? t)
-                    // Contar por tipo para el tooltip: "2× Caída, 1× Contención física"
+                    // Contar por tipo, respetando el orden habitual de tipos
                     const conteo: Record<string, number> = {}
-                    etiquetas.forEach((e) => { conteo[e] = (conteo[e] ?? 0) + 1 })
-                    const resumen = Object.entries(conteo).map(([e, n]) => `${n}× ${e}`).join(', ')
+                    tipos.forEach((t) => { conteo[t] = (conteo[t] ?? 0) + 1 })
+                    const entradas = Object.entries(conteo).sort((a, b) => b[1] - a[1])
                     return (
-                      <div
-                        className="flex items-center gap-1 text-red-600 text-xs font-medium"
-                        title={`Incidencias registradas: ${resumen}`}
-                      >
-                        <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                        {tipos.length}
+                      <div className="relative group/badge">
+                        <div className="flex items-center gap-1 text-red-600 text-xs font-medium cursor-default w-fit">
+                          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                          {tipos.length}
+                        </div>
+                        {/* Tooltip a medida: oculto por defecto, aparece al pasar el ratón */}
+                        <div className="hidden group-hover/badge:block absolute z-20 left-1/2 -translate-x-1/2 bottom-full mb-1.5 w-max max-w-[220px]">
+                          <div className="bg-slate-800 text-white rounded-lg shadow-lg py-2 px-3 space-y-1">
+                            <p className="text-[10px] font-semibold text-slate-300 uppercase tracking-wide mb-1">
+                              Incidencias registradas
+                            </p>
+                            {entradas.map(([tipo, n]) => (
+                              <div key={tipo} className="flex items-center gap-1.5 text-xs">
+                                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                                  (TIPO_EVENTO_COLOR[tipo as TipoEvento] ?? '').split(' ').find(c => c.startsWith('bg-')) ?? 'bg-slate-400'
+                                }`} />
+                                <span className="text-slate-100">{TIPO_EVENTO_LABEL[tipo as TipoEvento] ?? tipo}</span>
+                                <span className="text-slate-400 ml-auto">×{n}</span>
+                              </div>
+                            ))}
+                          </div>
+                          {/* Flechita apuntando hacia el icono */}
+                          <div className="w-2 h-2 bg-slate-800 rotate-45 absolute left-1/2 -translate-x-1/2 -bottom-1" />
+                        </div>
                       </div>
                     )
                   })()}
