@@ -1,5 +1,21 @@
 export type Rol = 'medico' | 'enfermeria' | 'auxiliar' | 'tecnico'
 export type EstadoIngreso = 'activo' | 'alta' | 'alta_traslado' | 'exitus'
+
+// Etiqueta y color de cada estado de ingreso. Vive aquí, junto al tipo,
+// para que no se redefina por separado en cada pantalla que lo usa
+// (antes estaba repetido igual en 5 archivos distintos).
+export const ESTADO_INGRESO_LABEL: Record<string, string> = {
+  activo: 'Ingresado',
+  alta: 'Alta',
+  alta_traslado: 'Traslado',
+  exitus: 'Éxitus',
+}
+export const ESTADO_INGRESO_COLOR: Record<string, string> = {
+  activo: 'bg-emerald-100 text-emerald-700',
+  alta: 'bg-slate-100 text-slate-500',
+  alta_traslado: 'bg-blue-100 text-blue-600',
+  exitus: 'bg-red-100 text-red-600',
+}
 export type Sexo = 'hombre' | 'mujer' | 'otro'
 
 export interface Profesional {

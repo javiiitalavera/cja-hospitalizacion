@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import { Plus, Search, ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-react'
+import { ESTADO_INGRESO_LABEL as ESTADO_LABEL, ESTADO_INGRESO_COLOR as ESTADO_COLOR } from '../types'
 
 interface PacienteRow {
   id: string
@@ -19,16 +20,6 @@ interface PacienteRow {
     fecha_alta?: string
     habitacion?: number
   }
-}
-
-const ESTADO_LABEL: Record<string, string> = {
-  activo: 'Ingresado', alta: 'Alta', alta_traslado: 'Traslado', exitus: 'Éxitus',
-}
-const ESTADO_COLOR: Record<string, string> = {
-  activo: 'bg-emerald-100 text-emerald-700',
-  alta: 'bg-slate-100 text-slate-500',
-  alta_traslado: 'bg-blue-100 text-blue-600',
-  exitus: 'bg-red-100 text-red-600',
 }
 
 const ORDEN_OPCIONES = [

@@ -140,6 +140,18 @@ const LABEL_BOLD_ROWS = new Set(['nombre', 'medico', 'dep'])
 
 // ─── TABLA HTML PURA PARA IMPRESIÓN ──────────────────────────
 
+// Escapa texto libre antes de meterlo en el HTML de impresión. Sin esto,
+// un campo de texto con "<" o similar podía romper la tabla impresa o,
+// en el peor caso, colarse como HTML/JS en esa ventana.
+function escapeHtml(val: string): string {
+  return val
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 function buildPrintHTML(data: IngresoConItems[], today: string): string {
   const habs1_16 = data.filter((i) => i.habitacion && i.habitacion <= 16)
   const habs17_max = data.filter((i) => i.habitacion && i.habitacion > 16)
@@ -192,7 +204,7 @@ function buildPrintHTML(data: IngresoConItems[], today: string): string {
                   ? '#d4edaa'
                   : '#ffffff'
           : '#ffffff'
-        html += `<td style="border:1px solid #aaa;background:${cellBg};text-align:center;padding:2px 1px;font-weight:${isBoldVal ? 600 : 400};overflow:hidden;font-size:7.5pt;">${val || '&nbsp;'}</td>`
+        html += `<td style="border:1px solid #aaa;background:${cellBg};text-align:center;padding:2px 1px;font-weight:${isBoldVal ? 600 : 400};overflow:hidden;font-size:7.5pt;">${val ? escapeHtml(String(val)) : '&nbsp;'}</td>`
       }
       html += `</tr>`
     }

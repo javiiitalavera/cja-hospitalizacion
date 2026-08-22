@@ -236,8 +236,11 @@ interface CMBDData {
 // ─── EXPORTACIÓN EXCEL ───────────────────────────────────────
 
 async function exportarExcel(data: CMBDData, ingreso: Ingreso | null) {
-  // Importar xlsx dinámicamente
-  const XLSX = await import('https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs' as any)
+  // Import dinámico del paquete LOCAL (ya no de un CDN externo): Vite lo
+  // empaqueta como un archivo aparte, así que solo se descarga cuando
+  // alguien realmente exporta un CMBD, sin depender de que un servidor
+  // externo esté disponible en ese momento.
+  const XLSX = await import('xlsx')
 
   const p = ingreso?.paciente as any
 
@@ -301,7 +304,7 @@ async function exportarExcel(data: CMBDData, ingreso: Ingreso | null) {
   const wb = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(wb, ws, 'Datos CMBD')
 
-  const apellidos = p ? `${p.primer_apellido}_${p.primer_apellido}` : 'paciente'
+  const apellidos = p ? `${p.primer_apellido}_${p.segundo_apellido ?? ''}`.replace(/_$/, '') : 'paciente'
   XLSX.writeFile(wb, `CMBD_${apellidos}_${ingreso?.fecha_alta ?? 'alta'}.xlsx`)
 }
 

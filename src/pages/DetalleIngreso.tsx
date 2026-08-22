@@ -3,6 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import type { Ingreso } from '../types'
+import { ESTADO_INGRESO_LABEL as ESTADO_LABEL, ESTADO_INGRESO_COLOR as ESTADO_COLOR } from '../types'
 import { ChevronLeft, User, FileText, ClipboardList, AlertTriangle, FileCheck, LogOut, Database, Lock } from 'lucide-react'
 import { TabDatos } from './ingreso/TabDatos'
 import { TabInformeIngreso } from './ingreso/TabInformeIngreso'
@@ -19,19 +20,6 @@ const TABS = [
   { id: 'eventos', label: 'Incidencias', icon: AlertTriangle },
   { id: 'cmbd',      label: 'CMBD',      icon: Database },
 ]
-
-const ESTADO_COLOR: Record<string, string> = {
-  activo: 'bg-emerald-100 text-emerald-700',
-  alta: 'bg-slate-100 text-slate-500',
-  alta_traslado: 'bg-blue-100 text-blue-600',
-  exitus: 'bg-red-100 text-red-600',
-}
-const ESTADO_LABEL: Record<string, string> = {
-  activo: 'Ingresado',
-  alta: 'Alta',
-  alta_traslado: 'Traslado',
-  exitus: 'Éxitus',
-}
 
 export default function DetalleIngreso() {
   const { id } = useParams<{ id: string }>()
