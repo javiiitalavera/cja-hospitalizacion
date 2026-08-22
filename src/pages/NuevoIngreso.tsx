@@ -87,7 +87,7 @@ export default function NuevoIngreso() {
     setPaso('reingreso')
   }
 
-  async function crearIngreso(pacienteId: string, esReingreso = false) {
+  async function crearIngreso(pacienteId: string, esReingreso = false): Promise<{ id: string; conAviso: boolean } | null> {
     // Verificar que la habitación no está ocupada
     if (ingreso.habitacion) {
       const { data: ocupada } = await supabase
@@ -120,6 +120,9 @@ export default function NuevoIngreso() {
       .single()
 
     if (errIngreso || !ingresoData) {
+      // Un error típico aquí, con los nuevos índices únicos, es que el
+      // paciente ya tenga otro ingreso activo o la habitación ya esté
+      // ocupada (si dos personas actuaron casi a la vez).
       setError('Error al crear el ingreso: ' + errIngreso?.message)
       return null
     }
@@ -181,12 +184,23 @@ export default function NuevoIngreso() {
       }
     }
 
-    await Promise.all([
+    const [rInfIngreso, rInfAlta, rItems] = await Promise.all([
       supabase.from('informe_ingreso').insert([{ ingreso_id: ingresoData.id, ...informeBase }]),
       supabase.from('informe_alta').insert([{ ingreso_id: ingresoData.id }]),
       supabase.from('items_paciente').insert([{ ingreso_id: ingresoData.id, ...itemsBase }]),
     ])
-    return ingresoData.id
+    const fallos = [rInfIngreso, rInfAlta, rItems].filter((r) => r.error)
+    if (fallos.length > 0) {
+      // El ingreso en sí ya se creó correctamente; avisamos igualmente,
+      // porque alguna de sus piezas asociadas no se pudo inicializar.
+      setError(
+        'El ingreso se creó, pero algo no se inicializó bien (' +
+        fallos.map((f) => f.error?.message).join('; ') +
+        '). Revisa las pestañas del ingreso al entrar.'
+      )
+      return { id: ingresoData.id, conAviso: true }
+    }
+    return { id: ingresoData.id, conAviso: false }
   }
 
   async function handleNuevoPaciente() {
@@ -206,8 +220,8 @@ export default function NuevoIngreso() {
       setLoading(false)
       return
     }
-    const ingresoId = await crearIngreso(pacienteData.id)
-    if (ingresoId) navigate(`/ingresos/${ingresoId}`)
+    const resultado = await crearIngreso(pacienteData.id)
+    if (resultado && !resultado.conAviso) navigate(`/ingresos/${resultado.id}`)
     setLoading(false)
   }
 
@@ -218,8 +232,8 @@ export default function NuevoIngreso() {
       return
     }
     setLoading(true)
-    const ingresoId = await crearIngreso(pacienteSeleccionado.id, true)
-    if (ingresoId) navigate(`/ingresos/${ingresoId}`)
+    const resultado = await crearIngreso(pacienteSeleccionado.id, true)
+    if (resultado && !resultado.conAviso) navigate(`/ingresos/${resultado.id}`)
     setLoading(false)
   }
 
