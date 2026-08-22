@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import type { Ingreso, Profesional } from '../../types'
+import { ExternalLink } from 'lucide-react'
 
 const ESTADO_LABEL: Record<string, string> = {
   activo: 'Ingresado',
@@ -12,7 +14,6 @@ const ESTADO_LABEL: Record<string, string> = {
 function TabDatos({ ingreso, onUpdate }: { ingreso: Ingreso; onUpdate: (i: Ingreso) => void }) {
   const p = ingreso.paciente!
   const [editando, setEditando] = useState(false)
-  const [paciente, setPaciente] = useState({ ...p })
   const [ingresoEdit, setIngresoEdit] = useState({
     habitacion: ingreso.habitacion?.toString() ?? '',
     motivo_ingreso: ingreso.motivo_ingreso ?? '',
@@ -33,44 +34,64 @@ function TabDatos({ ingreso, onUpdate }: { ingreso: Ingreso; onUpdate: (i: Ingre
   async function guardar() {
     setSaving(true)
     setError('')
-    const [rPaciente, rIngreso] = await Promise.all([
-      supabase.from('pacientes').update({
-        nombre: paciente.nombre,
-        primer_apellido: paciente.primer_apellido,
-        segundo_apellido: paciente.segundo_apellido,
-        cipna: paciente.cipna,
-        nhc: paciente.nhc,
-        dni: paciente.dni,
-        fecha_nacimiento: paciente.fecha_nacimiento || null,
-        sexo: paciente.sexo,
-        municipio: paciente.municipio,
-        medico_cabecera: paciente.medico_cabecera,
-        contacto_familiar_nombre: paciente.contacto_familiar_nombre,
-        contacto_familiar_telefono: paciente.contacto_familiar_telefono,
-      }).eq('id', p.id),
-      // Nota: "estado" NO se toca aquí a propósito. Cambiar de activo a
-      // alta/exitus/traslado pasa siempre por el flujo de "Dar de alta",
-      // que genera el informe y dispara la auditoría correspondiente.
-      supabase.from('ingresos').update({
+    // Nota: "estado" NO se toca aquí a propósito. Cambiar de activo a
+    // alta/exitus/traslado pasa siempre por el flujo de "Dar de alta",
+    // que genera el informe y dispara la auditoría correspondiente.
+    const { data, error: dbError } = await supabase
+      .from('ingresos')
+      .update({
         habitacion: ingresoEdit.habitacion ? parseInt(ingresoEdit.habitacion) : null,
         motivo_ingreso: ingresoEdit.motivo_ingreso,
         fecha_ingreso: ingresoEdit.fecha_ingreso,
         fecha_alta: ingresoEdit.fecha_alta || null,
         medico_responsable_id: ingresoEdit.medico_responsable_id || null,
-      }).eq('id', ingreso.id).select('*, paciente:pacientes(*)').single(),
-    ])
+      })
+      .eq('id', ingreso.id)
+      .select('*, paciente:pacientes(*)')
+      .single()
     setSaving(false)
-    if (rPaciente.error || rIngreso.error) {
+    if (dbError) {
       setError('No se pudieron guardar los cambios. Inténtalo de nuevo.')
       return
     }
     // Sincronizamos el estado del padre para que el encabezado y el resto
     // de pestañas reflejen los cambios sin necesidad de recargar la página.
-    if (rIngreso.data) onUpdate(rIngreso.data as unknown as Ingreso)
+    if (data) onUpdate(data as unknown as Ingreso)
     setSaved(true)
     setEditando(false)
     setTimeout(() => setSaved(false), 2000)
   }
+
+  // Datos del paciente: siempre en modo lectura aquí. Se editan desde su
+  // propia ficha (/pacientes/:id), para que solo haya un sitio donde tocarlos.
+  const filaPaciente = (
+    <div className="card p-6 space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="section-title mb-0">Datos del paciente</p>
+        <Link
+          to={`/pacientes/${ingreso.paciente_id}`}
+          className="flex items-center gap-1 text-xs text-primary-600 hover:underline"
+        >
+          Editar en la ficha del paciente <ExternalLink className="w-3 h-3" />
+        </Link>
+      </div>
+      <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-sm">
+        {([
+          ['CIPNA', p.cipna], ['NHC', p.nhc], ['DNI', p.dni],
+          ['Fecha nacimiento', p.fecha_nacimiento ? new Date(p.fecha_nacimiento).toLocaleDateString('es-ES') : null],
+          ['Sexo', p.sexo], ['Municipio', p.municipio],
+          ['Médico de cabecera', p.medico_cabecera],
+          ['Contacto familiar', p.contacto_familiar_nombre],
+          ['Teléfono familiar', p.contacto_familiar_telefono],
+        ] as [string, string | null | undefined][]).map(([k, v]) => (
+          <div key={k} className="flex py-1">
+            <span className="w-40 text-slate-400 shrink-0">{k}</span>
+            <span className="text-slate-700">{v || <span className="text-slate-300">—</span>}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
 
   if (editando) {
     const inp = (label: string, val: string, onChange: (v: string) => void, type = 'text') => (
@@ -82,32 +103,7 @@ function TabDatos({ ingreso, onUpdate }: { ingreso: Ingreso; onUpdate: (i: Ingre
     )
     return (
       <div className="max-w-2xl space-y-5">
-        <div className="card p-6 space-y-4">
-          <p className="section-title">Datos del paciente</p>
-          <div className="grid grid-cols-2 gap-4">
-            {inp('Nombre', paciente.nombre ?? '', v => setPaciente(p => ({ ...p, nombre: v })))}
-            {inp('Primer apellido', paciente.primer_apellido ?? '', v => setPaciente(p => ({ ...p, primer_apellido: v })))}
-            {inp('Segundo apellido', paciente.segundo_apellido ?? '', v => setPaciente(p => ({ ...p, segundo_apellido: v })))}
-            {inp('Fecha nacimiento', paciente.fecha_nacimiento ?? '', v => setPaciente(p => ({ ...p, fecha_nacimiento: v })), 'date')}
-            <div>
-              <label className="label">Sexo</label>
-              <select className="input" value={paciente.sexo ?? ''}
-                onChange={e => setPaciente(p => ({ ...p, sexo: e.target.value as any }))}>
-                <option value="">—</option>
-                <option value="hombre">Hombre</option>
-                <option value="mujer">Mujer</option>
-                <option value="otro">Otro</option>
-              </select>
-            </div>
-            {inp('CIPNA', paciente.cipna ?? '', v => setPaciente(p => ({ ...p, cipna: v })))}
-            {inp('NHC', paciente.nhc ?? '', v => setPaciente(p => ({ ...p, nhc: v })))}
-            {inp('DNI / NIE', paciente.dni ?? '', v => setPaciente(p => ({ ...p, dni: v })))}
-            {inp('Municipio', paciente.municipio ?? '', v => setPaciente(p => ({ ...p, municipio: v })))}
-            {inp('Médico de cabecera', paciente.medico_cabecera ?? '', v => setPaciente(p => ({ ...p, medico_cabecera: v })))}
-            {inp('Contacto familiar', paciente.contacto_familiar_nombre ?? '', v => setPaciente(p => ({ ...p, contacto_familiar_nombre: v })))}
-            {inp('Teléfono familiar', paciente.contacto_familiar_telefono ?? '', v => setPaciente(p => ({ ...p, contacto_familiar_telefono: v })))}
-          </div>
-        </div>
+        {filaPaciente}
         <div className="card p-6 space-y-4">
           <p className="section-title">Datos del ingreso</p>
           <div className="grid grid-cols-2 gap-4">
@@ -154,27 +150,22 @@ function TabDatos({ ingreso, onUpdate }: { ingreso: Ingreso; onUpdate: (i: Ingre
   }
 
   // Modo lectura
-  const rows: [string, string | null | undefined][] = [
-    ['CIPNA', p.cipna], ['NHC', p.nhc], ['DNI', p.dni],
-    ['Fecha nacimiento', p.fecha_nacimiento ? new Date(p.fecha_nacimiento).toLocaleDateString('es-ES') : null],
-    ['Sexo', p.sexo], ['Municipio', p.municipio],
-    ['Médico de cabecera', p.medico_cabecera],
-    ['Contacto familiar', p.contacto_familiar_nombre],
-    ['Teléfono familiar', p.contacto_familiar_telefono],
+  const rowsIngreso: [string, string | null | undefined][] = [
     ['Motivo de ingreso', ingreso.motivo_ingreso],
     ['Estado', ESTADO_LABEL[ingreso.estado] ?? ingreso.estado],
     ['Habitación', ingreso.habitacion?.toString()],
   ]
   return (
-    <div className="max-w-2xl space-y-4">
+    <div className="max-w-2xl space-y-5">
+      {filaPaciente}
       <div className="flex justify-end">
         <button onClick={() => setEditando(true)} className="btn-secondary">
-          Editar datos
+          Editar datos del ingreso
         </button>
       </div>
       <div className="card overflow-hidden">
         <div className="divide-y">
-          {rows.map(([k, v]) => (
+          {rowsIngreso.map(([k, v]) => (
             <div key={k} className="flex px-5 py-3 text-sm">
               <span className="w-44 text-slate-500 shrink-0">{k}</span>
               <span className="text-slate-800">{v || <span className="text-slate-300">—</span>}</span>

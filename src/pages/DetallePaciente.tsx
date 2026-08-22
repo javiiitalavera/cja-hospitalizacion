@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
-import { ChevronLeft, Plus, FileText, ClipboardList, AlertTriangle, History, Pencil, Save, X } from 'lucide-react'
+import { ChevronLeft, Plus, FileText, AlertTriangle, History, Pencil, Save, X } from 'lucide-react'
 
 interface Ingreso {
   id: string
@@ -58,6 +58,8 @@ export default function DetallePaciente() {
   const [paciente, setPaciente] = useState<Paciente | null>(null)
   const [ingresos, setIngresos] = useState<Ingreso[]>([])
   const [eventos, setEventos] = useState<any[]>([])
+  const [conInformeIngreso, setConInformeIngreso] = useState<Set<string>>(new Set())
+  const [conInformeAlta, setConInformeAlta] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<'ingresos' | 'datos'>('ingresos')
 
@@ -85,12 +87,18 @@ export default function DetallePaciente() {
 
       const ingIds = ingList.map((i: any) => i.id)
       if (ingIds.length > 0) {
-        const { data: evs } = await supabase
-          .from('eventos')
-          .select('*, registrado_por:profesionales(nombre,apellidos)')
-          .in('ingreso_id', ingIds)
-          .order('fecha', { ascending: false })
+        const [{ data: evs }, { data: infIng }, { data: infAlta }] = await Promise.all([
+          supabase
+            .from('eventos')
+            .select('*, registrado_por:profesionales(nombre,apellidos)')
+            .in('ingreso_id', ingIds)
+            .order('fecha', { ascending: false }),
+          supabase.from('informe_ingreso').select('ingreso_id').in('ingreso_id', ingIds),
+          supabase.from('informe_alta').select('ingreso_id').in('ingreso_id', ingIds),
+        ])
         setEventos(evs ?? [])
+        setConInformeIngreso(new Set((infIng ?? []).map((r: any) => r.ingreso_id)))
+        setConInformeAlta(new Set((infAlta ?? []).map((r: any) => r.ingreso_id)))
       }
       setLoading(false)
     }
@@ -237,19 +245,28 @@ export default function DetallePaciente() {
                       )}
                     </div>
                     <div className="text-right shrink-0">
-                      <div className="flex gap-3 text-xs text-slate-400 justify-end mb-2">
-                        {/* Fix 4: "incidencias" en lugar de "eventos" */}
+                      <div className="flex gap-2 justify-end mb-2" onClick={(e) => e.stopPropagation()}>
                         {evCount > 0 && (
-                          <span className="flex items-center gap-1">
-                            <AlertTriangle className="w-3 h-3" />{evCount} incidencia{evCount !== 1 ? 's' : ''}
+                          <span className="flex items-center gap-1 text-xs text-slate-400">
+                            <AlertTriangle className="w-3 h-3" />{evCount}
                           </span>
                         )}
-                        <span className="flex items-center gap-1">
-                          <FileText className="w-3 h-3" />Informes
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <ClipboardList className="w-3 h-3" />Ítems
-                        </span>
+                        {conInformeIngreso.has(ing.id) && (
+                          <button
+                            onClick={() => navigate(`/ingresos/${ing.id}?tab=ingreso`)}
+                            className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary-50 text-primary-700 text-xs font-medium hover:bg-primary-100 transition-colors"
+                          >
+                            <FileText className="w-3 h-3" /> Ingreso
+                          </button>
+                        )}
+                        {conInformeAlta.has(ing.id) && (
+                          <button
+                            onClick={() => navigate(`/ingresos/${ing.id}?tab=alta`)}
+                            className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-xs font-medium hover:bg-slate-200 transition-colors"
+                          >
+                            <FileText className="w-3 h-3" /> Alta
+                          </button>
+                        )}
                       </div>
                       <span className="text-primary-600 text-xs font-medium">Abrir episodio →</span>
                     </div>

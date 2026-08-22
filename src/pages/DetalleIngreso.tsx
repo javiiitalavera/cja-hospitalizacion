@@ -3,13 +3,12 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import type { Ingreso } from '../types'
-import { ChevronLeft, User, FileText, ClipboardList, AlertTriangle, FileCheck, History, LogOut, Database, Lock } from 'lucide-react'
+import { ChevronLeft, User, FileText, ClipboardList, AlertTriangle, FileCheck, LogOut, Database, Lock } from 'lucide-react'
 import { TabDatos } from './ingreso/TabDatos'
 import { TabInformeIngreso } from './ingreso/TabInformeIngreso'
 import { TabInformeAlta } from './ingreso/TabInformeAlta'
 import { TabItems } from './ingreso/TabItems'
 import { TabEventos } from './ingreso/TabEventos'
-import { TabHistorial } from './ingreso/TabHistorial'
 import { TabCMBD } from './ingreso/TabCMBD'
 
 const TABS = [
@@ -18,7 +17,6 @@ const TABS = [
   { id: 'alta', label: 'Informe alta', icon: FileCheck },
   { id: 'items', label: 'Ítems', icon: ClipboardList },
   { id: 'eventos', label: 'Incidencias', icon: AlertTriangle },
-  { id: 'historial', label: 'Historial', icon: History },
   { id: 'cmbd',      label: 'CMBD',      icon: Database },
 ]
 
@@ -235,9 +233,6 @@ export default function DetalleIngreso() {
           {tab === 'alta' && id && <TabInformeAlta ingresoId={id} ingreso={ingreso} />}
           {tab === 'items' && id && <TabItems ingresoId={id} />}
           {tab === 'eventos' && id && <TabEventos ingresoId={id} />}
-          {tab === 'historial' && ingreso?.paciente_id && (
-            <TabHistorial pacienteId={ingreso.paciente_id} ingresoActualId={id ?? ''} />
-          )}
           {tab === 'cmbd' && id && <TabCMBD ingresoId={id} ingreso={ingreso} />}
         </fieldset>
       </div>
