@@ -5,6 +5,7 @@ import { useAuth } from '../lib/AuthContext'
 import type { Ingreso } from '../types'
 import { Plus, ClipboardList, ChevronRight, AlertTriangle } from 'lucide-react'
 import FormularioEvento from '../components/FormularioEvento'
+import { TIPO_EVENTO_LABEL, type TipoEvento } from '../types/eventos'
 
 type IngresoConPaciente = Ingreso & {
   paciente: {
@@ -40,6 +41,7 @@ export default function Home() {
   const [informes, setInformes] = useState<Record<string, { impresion_diagnostica?: string; motivo_ingreso?: string }>>(
     {}
   )
+  const [eventosPorIngreso, setEventosPorIngreso] = useState<Record<string, string[]>>({})
   const [loading, setLoading] = useState(true)
   const [modalEvento, setModalEvento] = useState<string | null>(null) // ingresoId
   const navigate = useNavigate()
@@ -68,9 +70,10 @@ export default function Home() {
     if (list.length > 0) {
       const ids = list.map((i) => i.id)
 
-      const [{ data: itemsData }, { data: informesData }] = await Promise.all([
+      const [{ data: itemsData }, { data: informesData }, { data: eventosData }] = await Promise.all([
         supabase.from('items_paciente').select('ingreso_id,semaforo_caidas').in('ingreso_id', ids),
         supabase.from('informe_ingreso').select('ingreso_id,impresion_diagnostica').in('ingreso_id', ids),
+        supabase.from('eventos').select('ingreso_id,tipo').in('ingreso_id', ids),
       ])
 
       const itemsMap: Record<string, { semaforo_caidas?: string }> = {}
@@ -84,6 +87,14 @@ export default function Home() {
         informesMap[inf.ingreso_id] = inf
       })
       setInformes(informesMap)
+
+      // Tipos de incidencia por ingreso, para el aviso rápido en la tabla.
+      const eventosMap: Record<string, string[]> = {}
+      ;(eventosData ?? []).forEach((ev: any) => {
+        if (!eventosMap[ev.ingreso_id]) eventosMap[ev.ingreso_id] = []
+        eventosMap[ev.ingreso_id].push(ev.tipo)
+      })
+      setEventosPorIngreso(eventosMap)
     }
     setLoading(false)
   }
@@ -139,7 +150,7 @@ export default function Home() {
           {/* Cabecera */}
           <div
             className="grid gap-px text-xs font-semibold text-slate-400 uppercase tracking-wide px-3 pb-1"
-            style={{ gridTemplateColumns: '2.5rem minmax(0,1.4fr) 3rem 3.5rem 5.5rem minmax(0,0.9fr) 7rem 2rem' }}
+            style={{ gridTemplateColumns: '2.5rem minmax(0,1.4fr) 3rem 3.5rem 5.5rem minmax(0,0.9fr) 3rem 7rem 2rem' }}
           >
             <div>Hab.</div>
             <div>Paciente</div>
@@ -147,6 +158,7 @@ export default function Home() {
             <div>Días</div>
             <div>Ingreso</div>
             <div>Médico</div>
+            <div></div>
             <div>Incidencia</div>
             <div></div>
           </div>
@@ -164,12 +176,13 @@ export default function Home() {
                   className={`grid items-center border border-dashed border-slate-150 rounded-lg px-3 py-1.5 transition-colors ${
                     esMedico ? 'cursor-pointer hover:border-primary-300 hover:bg-primary-50/30' : ''
                   }`}
-                  style={{ gridTemplateColumns: '2.5rem minmax(0,1.4fr) 3rem 3.5rem 5.5rem minmax(0,0.9fr) 7rem 2rem' }}
+                  style={{ gridTemplateColumns: '2.5rem minmax(0,1.4fr) 3rem 3.5rem 5.5rem minmax(0,0.9fr) 3rem 7rem 2rem' }}
                   onClick={esMedico ? () => navigate(`/pacientes/nuevo?habitacion=${n}`) : undefined}
                   title={esMedico ? `Ingresar en habitación ${n}` : `Habitación ${n} libre`}
                 >
                   <span className="text-xs font-bold text-slate-200">{n}</span>
                   <span className="text-xs text-slate-200">— libre —</span>
+                  <span />
                   <span />
                   <span />
                   <span />
@@ -203,7 +216,7 @@ export default function Home() {
               <div key={n} className="group">
                 <div
                   className="grid items-center bg-white border border-slate-200 rounded-lg px-3 py-2 hover:shadow-sm hover:border-primary-200 transition-all cursor-pointer"
-                  style={{ gridTemplateColumns: '2.5rem minmax(0,1.4fr) 3rem 3.5rem 5.5rem minmax(0,0.9fr) 7rem 2rem' }}
+                  style={{ gridTemplateColumns: '2.5rem minmax(0,1.4fr) 3rem 3.5rem 5.5rem minmax(0,0.9fr) 3rem 7rem 2rem' }}
                   onClick={() => navigate(`/ingresos/${ingreso.id}`)}
                 >
                   {/* Hab con semáforo */}
@@ -248,6 +261,25 @@ export default function Home() {
                   <div className="text-slate-400 text-xs">{fingreso}</div>
                   {/* Médico */}
                   <div className="text-slate-500 text-xs truncate">{medico}</div>
+                  {/* Aviso de incidencias registradas, si las hay */}
+                  {(() => {
+                    const tipos = eventosPorIngreso[ingreso.id]
+                    if (!tipos || tipos.length === 0) return <div />
+                    const etiquetas = tipos.map((t) => TIPO_EVENTO_LABEL[t as TipoEvento] ?? t)
+                    // Contar por tipo para el tooltip: "2× Caída, 1× Contención física"
+                    const conteo: Record<string, number> = {}
+                    etiquetas.forEach((e) => { conteo[e] = (conteo[e] ?? 0) + 1 })
+                    const resumen = Object.entries(conteo).map(([e, n]) => `${n}× ${e}`).join(', ')
+                    return (
+                      <div
+                        className="flex items-center gap-1 text-red-600 text-xs font-medium"
+                        title={`Incidencias registradas: ${resumen}`}
+                      >
+                        <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                        {tipos.length}
+                      </div>
+                    )
+                  })()}
                   {/* Botón evento */}
                   <div
                     onClick={(e) => {

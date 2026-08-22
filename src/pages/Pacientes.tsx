@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
-import { Plus, Search, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, Search, ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-react'
 
 interface PacienteRow {
   id: string
@@ -31,6 +31,14 @@ const ESTADO_COLOR: Record<string, string> = {
   exitus: 'bg-red-100 text-red-600',
 }
 
+const ORDEN_OPCIONES = [
+  { valor: 'apellido', etiqueta: 'Apellidos', columna: 'primer_apellido', asc: true },
+  { valor: 'nhc', etiqueta: 'Nº historia clínica', columna: 'nhc', asc: true },
+  { valor: 'ultimo_ingreso', etiqueta: 'Fecha de último ingreso', columna: 'ingreso_fecha_ingreso', asc: false },
+  { valor: 'estado', etiqueta: 'Estado actual', columna: 'ingreso_estado', asc: true },
+] as const
+type OrdenValor = typeof ORDEN_OPCIONES[number]['valor']
+
 function edad(fnac?: string) {
   if (!fnac) return null
   return Math.floor((Date.now() - new Date(fnac).getTime()) / 31557600000)
@@ -47,99 +55,63 @@ export default function Pacientes() {
   const [busqueda, setBusqueda] = useState('')
   const [busquedaActiva, setBusquedaActiva] = useState('')
   const [filtroEstado, setFiltroEstado] = useState<'activo' | 'alta' | 'todos'>('activo')
+  const [orden, setOrden] = useState<OrdenValor>('apellido')
   const [pagina, setPagina] = useState(0)
   const navigate = useNavigate()
 
-  useEffect(() => { setPagina(0) }, [filtroEstado, busquedaActiva])
-  useEffect(() => { fetchPacientes() }, [filtroEstado, busquedaActiva, pagina])
+  useEffect(() => { setPagina(0) }, [filtroEstado, busquedaActiva, orden])
+  useEffect(() => { fetchPacientes() }, [filtroEstado, busquedaActiva, orden, pagina])
 
   async function fetchPacientes() {
     setLoading(true)
 
+    // Todo (filtro + orden + paginación) ocurre en la propia consulta,
+    // sobre la vista que ya trae el último ingreso de cada paciente.
+    // Así el número de resultados y las páginas son siempre correctos,
+    // se filtre por lo que se filtre (antes, "Altas / Éxitus" filtraba
+    // en el navegador DESPUÉS de paginar, y podía dar cifras erróneas).
+    let query = supabase
+      .from('pacientes_con_ultimo_ingreso')
+      .select('id, nombre, primer_apellido, segundo_apellido, fecha_nacimiento, nhc, cipna, ingreso_id, ingreso_estado, ingreso_fecha_ingreso, ingreso_fecha_alta, ingreso_habitacion', { count: 'exact' })
+
     if (filtroEstado === 'activo') {
-      // Query directa sobre ingresos activos — rápida y acotada (máx 33 filas)
-      let query = supabase
-        .from('ingresos')
-        .select('id, estado, fecha_ingreso, fecha_alta, habitacion, paciente:pacientes(id, nombre, primer_apellido, segundo_apellido, fecha_nacimiento, nhc, cipna)', { count: 'exact' })
-        .eq('estado', 'activo')
-        .order('habitacion', { ascending: true })
-
-      const { data, count } = await query
-      let rows = (data ?? []).map((ing: any) => ({
-        id: ing.paciente.id,
-        nombre: ing.paciente.nombre,
-        primer_apellido: ing.paciente.primer_apellido,
-        segundo_apellido: ing.paciente.segundo_apellido,
-        fecha_nacimiento: ing.paciente.fecha_nacimiento,
-        nhc: ing.paciente.nhc,
-        cipna: ing.paciente.cipna,
-        ultimo_ingreso: { id: ing.id, estado: ing.estado, fecha_ingreso: ing.fecha_ingreso, fecha_alta: ing.fecha_alta, habitacion: ing.habitacion },
-      })) as PacienteRow[]
-
-      if (busquedaActiva.trim()) {
-        const q = busquedaActiva.toLowerCase()
-        rows = rows.filter(p => {
-          const nombre = `${p.primer_apellido} ${p.segundo_apellido ?? ''} ${p.nombre}`.toLowerCase()
-          return nombre.includes(q) || p.nhc?.toLowerCase().includes(q) || p.cipna?.toLowerCase().includes(q)
-        })
-      }
-
-      setPacientes(rows)
-      setTotal(busquedaActiva.trim() ? rows.length : (count ?? 0))
-    } else {
-      // Todos / altas — paginado desde tabla pacientes
-      let query = supabase
-        .from('pacientes')
-        .select('id, nombre, primer_apellido, segundo_apellido, fecha_nacimiento, nhc, cipna', { count: 'exact' })
-        .order('primer_apellido')
-
-      if (busquedaActiva.trim()) {
-        const q = busquedaActiva.trim()
-        query = query.or(`primer_apellido.ilike.%${q}%,nombre.ilike.%${q}%,nhc.ilike.%${q}%,cipna.ilike.%${q}%`)
-      }
-
-      query = query.range(pagina * PAGE_SIZE, (pagina + 1) * PAGE_SIZE - 1)
-      const { data: pacs, count } = await query
-
-      if (!pacs || pacs.length === 0) {
-        setPacientes([])
-        setTotal(count ?? 0)
-        setLoading(false)
-        return
-      }
-
-      // Un solo fetch para el último ingreso de todos los pacientes de la página
-      const ids = pacs.map((p: any) => p.id)
-      const { data: ingresos } = await supabase
-        .from('ingresos')
-        .select('id, estado, fecha_ingreso, fecha_alta, habitacion, paciente_id')
-        .in('paciente_id', ids)
-        .order('fecha_ingreso', { ascending: false })
-
-      const ultimoMap: Record<string, any> = {}
-      for (const ing of (ingresos ?? [])) {
-        if (!ultimoMap[ing.paciente_id]) ultimoMap[ing.paciente_id] = ing
-      }
-
-      let rows: PacienteRow[] = pacs.map((p: any) => ({
-        id: p.id,
-        nombre: p.nombre,
-        primer_apellido: p.primer_apellido,
-        segundo_apellido: p.segundo_apellido,
-        fecha_nacimiento: p.fecha_nacimiento,
-        nhc: p.nhc,
-        cipna: p.cipna,
-        ultimo_ingreso: ultimoMap[p.id] ?? undefined,
-      }))
-
-      if (filtroEstado === 'alta') {
-        rows = rows.filter(p => ['alta', 'alta_traslado', 'exitus'].includes(p.ultimo_ingreso?.estado ?? ''))
-      }
-
-      setPacientes(rows)
-      setTotal(count ?? 0)
+      query = query.eq('ingreso_estado', 'activo')
+    } else if (filtroEstado === 'alta') {
+      query = query.in('ingreso_estado', ['alta', 'alta_traslado', 'exitus'])
     }
 
+    if (busquedaActiva.trim()) {
+      const q = busquedaActiva.trim()
+      query = query.or(`primer_apellido.ilike.%${q}%,nombre.ilike.%${q}%,nhc.ilike.%${q}%,cipna.ilike.%${q}%`)
+    }
+
+    const opcion = ORDEN_OPCIONES.find(o => o.valor === orden)!
+    query = query.order(opcion.columna, { ascending: opcion.asc, nullsFirst: false })
+    query = query.range(pagina * PAGE_SIZE, (pagina + 1) * PAGE_SIZE - 1)
+
+    const { data, count } = await query
+
+    const rows: PacienteRow[] = (data ?? []).map((p: any) => ({
+      id: p.id,
+      nombre: p.nombre,
+      primer_apellido: p.primer_apellido,
+      segundo_apellido: p.segundo_apellido,
+      fecha_nacimiento: p.fecha_nacimiento,
+      nhc: p.nhc,
+      cipna: p.cipna,
+      ultimo_ingreso: p.ingreso_id
+        ? {
+            id: p.ingreso_id,
+            estado: p.ingreso_estado,
+            fecha_ingreso: p.ingreso_fecha_ingreso,
+            fecha_alta: p.ingreso_fecha_alta,
+            habitacion: p.ingreso_habitacion,
+          }
+        : undefined,
+    }))
+
+    setPacientes(rows)
+    setTotal(count ?? 0)
     setLoading(false)
   }
 
@@ -161,7 +133,7 @@ export default function Pacientes() {
         )}
       </div>
 
-      <div className="flex gap-3 mb-5 flex-wrap">
+      <div className="flex gap-3 mb-5 flex-wrap items-center">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
@@ -182,6 +154,14 @@ export default function Pacientes() {
             {e === 'activo' ? 'Ingresados' : e === 'alta' ? 'Altas / Éxitus' : 'Todos'}
           </button>
         ))}
+        <div className="flex items-center gap-1.5 ml-auto">
+          <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
+          <select className="input py-1.5 text-sm w-auto" value={orden} onChange={e => setOrden(e.target.value as OrdenValor)}>
+            {ORDEN_OPCIONES.map(o => (
+              <option key={o.valor} value={o.valor}>Ordenar por {o.etiqueta.toLowerCase()}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="card overflow-hidden">
