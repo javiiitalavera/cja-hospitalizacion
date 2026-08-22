@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../lib/AuthContext'
 import type { Profesional } from '../types'
 import { TIPO_EVENTO_LABEL, CAMPOS_POR_TIPO, TURNO_LABEL, type TipoEvento, type Evento } from '../types/eventos'
 import { X, Save } from 'lucide-react'
@@ -12,13 +13,17 @@ interface Props {
 }
 
 export default function FormularioEvento({ ingresoId, eventoExistente, onClose, onGuardado }: Props) {
+  const { profesional: yo } = useAuth()
   const [tipo, setTipo] = useState<TipoEvento | ''>(eventoExistente?.tipo ?? '')
   const [fecha, setFecha] = useState(eventoExistente?.fecha ?? new Date().toISOString().split('T')[0])
   const [hora, setHora] = useState(eventoExistente?.hora?.slice(0, 5) ?? '')
   const [turno, setTurno] = useState(eventoExistente?.turno ?? '')
   const [datos, setDatos] = useState<Record<string, string>>(eventoExistente?.datos ?? {})
   const [notas, setNotas] = useState(eventoExistente?.notas ?? '')
-  const [profesionalId, setProfesionalId] = useState(eventoExistente?.registrado_por_id ?? '')
+  // "Registrado por" ya no es un desplegable libre: es quien registra, es
+  // decir, quien ha iniciado sesión. Al editar una incidencia existente,
+  // se conserva el autor original en vez de poder cambiarlo.
+  const profesionalId = eventoExistente?.registrado_por_id ?? yo?.id ?? ''
   const [profesionales, setProfesionales] = useState<Profesional[]>([])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -52,7 +57,7 @@ export default function FormularioEvento({ ingresoId, eventoExistente, onClose, 
       return
     }
     if (!profesionalId) {
-      setError('Indica quién registra la incidencia.')
+      setError('No se ha podido identificar tu sesión. Recarga la página e inténtalo de nuevo.')
       return
     }
 
@@ -77,12 +82,15 @@ export default function FormularioEvento({ ingresoId, eventoExistente, onClose, 
       registrado_por_id: profesionalId,
     }
 
-    if (eventoExistente) {
-      await supabase.from('eventos').update(payload).eq('id', eventoExistente.id)
-    } else {
-      await supabase.from('eventos').insert([payload])
-    }
+    const { error: dbError } = eventoExistente
+      ? await supabase.from('eventos').update(payload).eq('id', eventoExistente.id)
+      : await supabase.from('eventos').insert([payload])
+
     setSaving(false)
+    if (dbError) {
+      setError('No se pudo guardar la incidencia. Inténtalo de nuevo.')
+      return
+    }
     onGuardado()
   }
 
@@ -187,17 +195,19 @@ export default function FormularioEvento({ ingresoId, eventoExistente, onClose, 
             />
           </div>
 
-          {/* Profesional */}
+          {/* Profesional: ya no se elige, es quien ha iniciado sesión */}
           <div>
-            <label className="label">Registrado por *</label>
-            <select className="input" value={profesionalId} onChange={(e) => setProfesionalId(e.target.value)}>
-              <option value="">— Selecciona —</option>
-              {profesionales.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.nombre} {p.apellidos} · {p.rol}
-                </option>
-              ))}
-            </select>
+            <label className="label">Registrado por</label>
+            <p className="input bg-slate-50 text-slate-600 cursor-not-allowed">
+              {eventoExistente
+                ? (() => {
+                    const autor = profesionales.find((p) => p.id === profesionalId)
+                    return autor ? `${autor.nombre} ${autor.apellidos}` : 'Autor original'
+                  })()
+                : yo
+                ? `${yo.nombre} ${yo.apellidos} (tú)`
+                : '—'}
+            </p>
           </div>
 
           {error && <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg">{error}</div>}

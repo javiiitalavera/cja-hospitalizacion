@@ -49,6 +49,7 @@ export default function DetalleIngreso() {
     estado: 'alta',
   })
   const [procesandoAlta, setProcesandoAlta] = useState(false)
+  const [errorAlta, setErrorAlta] = useState('')
 
   useEffect(() => {
     if (!id) return
@@ -66,16 +67,21 @@ export default function DetalleIngreso() {
   async function darAlta() {
     if (!id) return
     setProcesandoAlta(true)
-    await supabase
+    setErrorAlta('')
+    const { error } = await supabase
       .from('ingresos')
       .update({
         estado: altaForm.estado,
         fecha_alta: altaForm.fecha_alta,
       })
       .eq('id', id)
+    setProcesandoAlta(false)
+    if (error) {
+      setErrorAlta('No se pudo registrar el alta. Inténtalo de nuevo.')
+      return
+    }
     setIngreso((prev) => (prev ? { ...prev, estado: altaForm.estado as any, fecha_alta: altaForm.fecha_alta } : prev))
     setModalAlta(false)
-    setProcesandoAlta(false)
   }
 
   if (loading) return <div className="p-8 text-slate-400">Cargando…</div>
@@ -181,6 +187,11 @@ export default function DetalleIngreso() {
                 </select>
               </div>
             </div>
+            {errorAlta && (
+              <p className="mt-4 text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+                {errorAlta}
+              </p>
+            )}
             <div className="flex gap-3 mt-6">
               <button onClick={() => setModalAlta(false)} className="btn-secondary flex-1">
                 Cancelar
