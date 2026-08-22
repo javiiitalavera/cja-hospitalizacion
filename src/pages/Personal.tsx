@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import type { Profesional, Rol } from '../types'
@@ -18,6 +18,17 @@ export function Personal() {
   const [mostrarForm, setMostrarForm] = useState(false)
   const [resetTarget, setResetTarget] = useState<Profesional | null>(null)
   const [editTarget, setEditTarget] = useState<Profesional | null>(null)
+  const [busyId, setBusyId] = useState<string | null>(null)
+  const [feedback, setFeedback] = useState<{ tipo: 'ok' | 'error'; texto: string } | null>(null)
+  const [confirmar, setConfirmar] = useState<ConfirmData | null>(null)
+  const timerRef = useRef<number | undefined>(undefined)
+
+  // Aviso en línea (verde/rojo) que se desvanece solo. Sustituye a los alert().
+  function notificar(tipo: 'ok' | 'error', texto: string) {
+    setFeedback({ tipo, texto })
+    if (timerRef.current) window.clearTimeout(timerRef.current)
+    timerRef.current = window.setTimeout(() => setFeedback(null), 4000)
+  }
 
   async function cargar() {
     const { data } = await supabase
@@ -44,44 +55,80 @@ export function Personal() {
     )
   }
 
-  async function cambiarRol(id: string, rol: Rol) {
-    await supabase.from('profesionales').update({ rol }).eq('id', id)
+  async function cambiarRol(p: Profesional, nuevoRol: Rol) {
+    setBusyId(p.id)
+    const { error } = await supabase.from('profesionales').update({ rol: nuevoRol }).eq('id', p.id)
+    setBusyId(null)
+    if (error) { notificar('error', 'No se pudo cambiar el rol.'); return }
+    notificar('ok', `Rol de ${p.nombre} actualizado.`)
     cargar()
   }
 
-  async function alternarAdmin(p: Profesional) {
-    await supabase.from('profesionales').update({ es_admin: !p.es_admin }).eq('id', p.id)
-    cargar()
+  function pedirAlternarAdmin(p: Profesional) {
+    const quitar = p.es_admin
+    setConfirmar({
+      titulo: quitar ? 'Quitar administrador' : 'Nombrar administrador',
+      mensaje: quitar
+        ? `${p.nombre} ${p.apellidos} dejará de poder gestionar personal, permisos y auditoría.`
+        : `${p.nombre} ${p.apellidos} podrá gestionar personal, permisos y contraseñas, y ver la auditoría.`,
+      textoBoton: quitar ? 'Quitar admin' : 'Nombrar admin',
+      peligro: quitar,
+      accion: async () => {
+        setBusyId(p.id)
+        const { error } = await supabase.from('profesionales').update({ es_admin: !p.es_admin }).eq('id', p.id)
+        setBusyId(null)
+        if (error) { notificar('error', 'No se pudo cambiar el permiso.'); return }
+        notificar('ok', quitar ? `${p.nombre} ya no es administrador.` : `${p.nombre} es ahora administrador.`)
+        cargar()
+      },
+    })
   }
 
-  async function alternarActivo(p: Profesional) {
-    // Baja/alta completa: la función segura marca la ficha Y bloquea o
-    // desbloquea el acceso, todo a la vez y sin borrar nada.
+  async function ejecutarActivo(p: Profesional) {
+    setBusyId(p.id)
     const { data, error } = await supabase.functions.invoke('acceso-profesional', {
       body: { profesionalId: p.id, activo: !p.activo },
     })
+    setBusyId(null)
     if (error || (data && (data as any).error)) {
-      alert((data as any)?.error ?? 'No se pudo cambiar el acceso.')
+      notificar('error', (data as any)?.error ?? 'No se pudo cambiar el acceso.')
       return
     }
+    notificar('ok', p.activo ? `${p.nombre} ${p.apellidos} dado de baja.` : `${p.nombre} ${p.apellidos} reactivado.`)
     cargar()
   }
 
-  async function eliminar(p: Profesional) {
-    const ok = window.confirm(
-      `¿Eliminar por completo a ${p.nombre} ${p.apellidos}?\n\n` +
-      `Esto borra su ficha y su cuenta de acceso y no se puede deshacer. ` +
-      `Si tiene registros clínicos a su nombre, no se podrá borrar (usa la baja en su lugar).`
-    )
-    if (!ok) return
-    const { data, error } = await supabase.functions.invoke('eliminar-profesional', {
-      body: { profesionalId: p.id },
+  function pedirAlternarActivo(p: Profesional) {
+    if (!p.activo) { ejecutarActivo(p); return } // reactivar es restaurar: directo
+    setConfirmar({
+      titulo: 'Dar de baja',
+      mensaje: `${p.nombre} ${p.apellidos} quedará inactivo y se bloqueará su acceso: no podrá iniciar sesión. No se borra nada y es reversible.`,
+      textoBoton: 'Dar de baja',
+      peligro: true,
+      accion: () => ejecutarActivo(p),
     })
-    if (error || (data && (data as any).error)) {
-      alert((data as any)?.error ?? 'No se pudo eliminar.')
-      return
-    }
-    cargar()
+  }
+
+  function pedirEliminar(p: Profesional) {
+    setConfirmar({
+      titulo: 'Eliminar profesional',
+      mensaje: `Se borrará por completo la ficha y la cuenta de ${p.nombre} ${p.apellidos}. No se puede deshacer. Si tiene registros clínicos a su nombre, no se podrá borrar (usa la baja en su lugar).`,
+      textoBoton: 'Eliminar',
+      peligro: true,
+      accion: async () => {
+        setBusyId(p.id)
+        const { data, error } = await supabase.functions.invoke('eliminar-profesional', {
+          body: { profesionalId: p.id },
+        })
+        setBusyId(null)
+        if (error || (data && (data as any).error)) {
+          notificar('error', (data as any)?.error ?? 'No se pudo eliminar.')
+          return
+        }
+        notificar('ok', `${p.nombre} ${p.apellidos} eliminado.`)
+        cargar()
+      },
+    })
   }
 
   return (
@@ -95,6 +142,16 @@ export function Personal() {
           <UserPlus className="w-4 h-4" /> Nuevo profesional
         </button>
       </div>
+
+      {feedback && (
+        <div className={`mb-4 text-sm rounded-lg px-3 py-2 border ${
+          feedback.tipo === 'ok'
+            ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+            : 'bg-red-50 text-red-600 border-red-100'
+        }`}>
+          {feedback.texto}
+        </div>
+      )}
 
       {cargando ? (
         <p className="text-slate-400">Cargando…</p>
@@ -112,7 +169,10 @@ export function Personal() {
               </tr>
             </thead>
             <tbody>
-              {lista.map((p) => (
+              {lista.map((p) => {
+                const ocupada = busyId === p.id
+                const esYo = p.id === yo?.id
+                return (
                 <tr key={p.id} className={`border-t border-slate-100 ${!p.activo ? 'opacity-50' : ''}`}>
                   <td className="px-4 py-2 text-slate-800">
                     {p.nombre} {p.apellidos}
@@ -122,65 +182,82 @@ export function Personal() {
                     <select
                       className="input py-1 text-sm"
                       value={p.rol}
-                      onChange={(e) => cambiarRol(p.id, e.target.value as Rol)}
+                      disabled={ocupada}
+                      onChange={(e) => cambiarRol(p, e.target.value as Rol)}
                     >
                       {ROLES.map((r) => (
                         <option key={r.valor} value={r.valor}>{r.etiqueta}</option>
                       ))}
                     </select>
                   </td>
-                  <td className="px-4 py-2 text-slate-500">
-                    {p.user_id ? 'Con cuenta' : <span className="text-amber-600">Sin cuenta</span>}
+                  <td className="px-4 py-2">
+                    {p.user_id ? (
+                      <span className="text-slate-500">Con cuenta</span>
+                    ) : (
+                      <button
+                        onClick={() => setEditTarget(p)}
+                        className="text-amber-600 font-medium hover:underline"
+                      >
+                        Dar acceso →
+                      </button>
+                    )}
                   </td>
                   <td className="px-4 py-2 text-center">
                     <input
                       type="checkbox"
                       checked={p.es_admin}
-                      onChange={() => alternarAdmin(p)}
-                      // No permitirse quitarse a uno mismo el último admin por error.
-                      disabled={p.id === yo?.id}
-                      title={p.id === yo?.id ? 'No puedes cambiar tu propio permiso de admin' : ''}
+                      onChange={() => pedirAlternarAdmin(p)}
+                      disabled={esYo || ocupada}
+                      title={esYo ? 'No puedes cambiar tu propio permiso de admin' : 'Nombrar o quitar administrador'}
                     />
                   </td>
                   <td className="px-4 py-2 text-center">
                     <input
                       type="checkbox"
                       checked={p.activo}
-                      onChange={() => alternarActivo(p)}
-                      disabled={p.id === yo?.id}
+                      onChange={() => pedirAlternarActivo(p)}
+                      disabled={esYo || ocupada}
+                      title={esYo ? 'No puedes cambiar tu propio acceso' : 'Activo · desmarcar da de baja completa'}
                     />
                   </td>
-                  <td className="px-4 py-2 text-center">
-                    <div className="flex items-center justify-center gap-2">
-                      <button
-                        onClick={() => setEditTarget(p)}
-                        title="Editar datos"
-                        className="text-slate-300 hover:text-primary-600 transition-colors"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                      {p.user_id && (
+                  <td className="px-4 py-2">
+                    {ocupada ? (
+                      <div className="flex justify-center">
+                        <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center gap-3">
                         <button
-                          onClick={() => setResetTarget(p)}
-                          title="Restablecer contraseña"
-                          className="text-slate-300 hover:text-primary-600 transition-colors"
+                          onClick={() => setEditTarget(p)}
+                          title="Editar datos"
+                          className="text-slate-400 hover:text-primary-600 transition-colors"
                         >
-                          <KeyRound className="w-4 h-4" />
+                          <Pencil className="w-4 h-4" />
                         </button>
-                      )}
-                      {p.id !== yo?.id && (
-                        <button
-                          onClick={() => eliminar(p)}
-                          title="Eliminar por completo"
-                          className="text-slate-300 hover:text-red-600 transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
+                        {p.user_id && (
+                          <button
+                            onClick={() => setResetTarget(p)}
+                            title="Restablecer contraseña"
+                            className="text-slate-400 hover:text-primary-600 transition-colors"
+                          >
+                            <KeyRound className="w-4 h-4" />
+                          </button>
+                        )}
+                        {!esYo && (
+                          <button
+                            onClick={() => pedirEliminar(p)}
+                            title="Eliminar por completo"
+                            className="text-slate-400 hover:text-red-600 transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </td>
                 </tr>
-              ))}
+                )
+              })}
             </tbody>
           </table>
         </div>
@@ -209,9 +286,56 @@ export function Personal() {
         <ModalEditar
           profesional={editTarget}
           onCerrar={() => setEditTarget(null)}
-          onGuardado={() => { setEditTarget(null); cargar() }}
+          onGuardado={(msg) => { setEditTarget(null); notificar('ok', msg); cargar() }}
         />
       )}
+
+      {confirmar && (
+        <ConfirmDialog
+          datos={confirmar}
+          onCerrar={() => setConfirmar(null)}
+        />
+      )}
+    </div>
+  )
+}
+
+// ── Diálogo de confirmación reutilizable ──────────────────────
+interface ConfirmData {
+  titulo: string
+  mensaje: string
+  textoBoton: string
+  peligro?: boolean
+  accion: () => void | Promise<void>
+}
+
+function ConfirmDialog({ datos, onCerrar }: { datos: ConfirmData; onCerrar: () => void }) {
+  const [procesando, setProcesando] = useState(false)
+  async function confirmar() {
+    setProcesando(true)
+    await datos.accion()
+    setProcesando(false)
+    onCerrar()
+  }
+  return (
+    <div className="fixed inset-0 bg-black/30 flex items-center justify-center p-4 z-50">
+      <div className="card p-6 w-full max-w-sm">
+        <h2 className="font-semibold text-slate-800 mb-1">{datos.titulo}</h2>
+        <p className="text-sm text-slate-500 mb-5">{datos.mensaje}</p>
+        <div className="flex justify-end gap-2">
+          <button onClick={onCerrar} disabled={procesando} className="text-sm text-slate-500 px-3 py-2">
+            Cancelar
+          </button>
+          <button
+            onClick={confirmar}
+            disabled={procesando}
+            className={datos.peligro ? 'btn-danger' : 'btn-primary'}
+          >
+            {procesando && <Loader2 className="w-4 h-4 animate-spin" />}
+            {procesando ? 'Un momento…' : datos.textoBoton}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
@@ -387,7 +511,7 @@ function FormularioNuevo({ onCerrar, onCreado }: { onCerrar: () => void; onCread
 function ModalEditar({ profesional, onCerrar, onGuardado }: {
   profesional: Profesional
   onCerrar: () => void
-  onGuardado: () => void
+  onGuardado: (mensaje: string) => void
 }) {
   const [nombre, setNombre] = useState(profesional.nombre)
   const [apellidos, setApellidos] = useState(profesional.apellidos)
@@ -424,7 +548,7 @@ function ModalEditar({ profesional, onCerrar, onGuardado }: {
       setError('No se pudieron guardar los datos.')
       return
     }
-    onGuardado()
+    onGuardado('Datos actualizados.')
   }
 
   async function crearCuenta() {
@@ -446,7 +570,7 @@ function ModalEditar({ profesional, onCerrar, onGuardado }: {
       setErrorCuenta((data as any)?.error ?? 'No se pudo crear la cuenta.')
       return
     }
-    onGuardado()
+    onGuardado('Cuenta de acceso creada.')
   }
 
   return (
