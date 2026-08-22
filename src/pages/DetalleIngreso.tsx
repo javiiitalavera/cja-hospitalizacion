@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import type { Ingreso } from '../types'
@@ -38,9 +38,10 @@ const ESTADO_LABEL: Record<string, string> = {
 export default function DetalleIngreso() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { rol } = useAuth()
   const esMedico = rol === 'medico'
-  const [tab, setTab] = useState('datos')
+  const [tab, setTab] = useState(searchParams.get('tab') ?? 'datos')
   const [ingreso, setIngreso] = useState<Ingreso | null>(null)
   const [loading, setLoading] = useState(true)
   const [modalAlta, setModalAlta] = useState(false)

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { NavLink, Outlet } from "react-router-dom"
 import {
   Users, ClipboardList, AlertTriangle,
-  BarChart2, Activity, Home, ChevronLeft, LogOut, UserCog, History
+  BarChart2, Activity, Home, ChevronLeft, LogOut, UserCog, History, FileText
 } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext'
 
@@ -18,6 +18,7 @@ const navItems = [
   { to: '/pacientes', icon: Users, label: 'Pacientes' },
   { to: '/items', icon: ClipboardList, label: 'Hoja de Ítems' },
   { to: '/eventos', icon: AlertTriangle, label: 'Incidencias' },
+  { to: '/informes', icon: FileText, label: 'Informes' },
   { to: '/dashboard', icon: BarChart2, label: 'Dashboard' },
   { to: '/personal', icon: UserCog, label: 'Personal', soloAdmin: true },
   { to: '/auditoria', icon: History, label: 'Auditoría', soloAdmin: true },

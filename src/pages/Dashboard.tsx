@@ -29,19 +29,50 @@ function calcDiasEstancia(ingresos: any[], desde: string): number {
   }, 0)
 }
 
-function periodoLabel(p: string) {
+const MESES = [
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+]
+
+function fmt(d: Date): string { return d.toISOString().split('T')[0] }
+
+function periodoLabel(p: string, anioSel: number, mesSel: number | 'todos'): string {
+  if (p === 'personalizado') {
+    return mesSel === 'todos' ? `Año ${anioSel}` : `${MESES[mesSel]} ${anioSel}`
+  }
   const map: Record<string, string> = {
     mes: 'Este mes', trimestre: 'Este trimestre', anio: 'Este año', todo: 'Todo el historial'
   }
   return map[p] ?? p
 }
 
-function getDesde(periodo: string): string {
+// Calcula el rango [desde, hasta] según el periodo elegido. "hasta" nunca
+// pasa de hoy, para no incluir fechas futuras por error.
+function getRango(periodo: string, anioSel: number, mesSel: number | 'todos'): { desde: string; hasta: string } {
   const now = new Date()
-  if (periodo === 'mes') return new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
-  if (periodo === 'trimestre') return new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1).toISOString().split('T')[0]
-  if (periodo === 'anio') return new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0]
-  return '2000-01-01'
+  const hoy = fmt(now)
+
+  if (periodo === 'mes') {
+    return { desde: fmt(new Date(now.getFullYear(), now.getMonth(), 1)), hasta: hoy }
+  }
+  if (periodo === 'trimestre') {
+    return { desde: fmt(new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1)), hasta: hoy }
+  }
+  if (periodo === 'anio') {
+    return { desde: fmt(new Date(now.getFullYear(), 0, 1)), hasta: hoy }
+  }
+  if (periodo === 'personalizado') {
+    if (mesSel === 'todos') {
+      const desde = fmt(new Date(anioSel, 0, 1))
+      const hastaCalc = fmt(new Date(anioSel, 11, 31))
+      return { desde, hasta: hastaCalc > hoy ? hoy : hastaCalc }
+    }
+    const desde = fmt(new Date(anioSel, mesSel, 1))
+    const hastaCalc = fmt(new Date(anioSel, mesSel + 1, 0)) // día 0 del mes siguiente = último día del mes
+    return { desde, hasta: hastaCalc > hoy ? hoy : hastaCalc }
+  }
+  // todo
+  return { desde: '2000-01-01', hasta: hoy }
 }
 
 // ─── STAT CARD ────────────────────────────────────────────────
@@ -74,6 +105,8 @@ const SEM_ORDER = ['rojo', 'naranja', 'amarillo', 'verde']
 
 export function Dashboard() {
   const [periodo, setPeriodo] = useState('mes')
+  const [anioSel, setAnioSel] = useState(new Date().getFullYear())
+  const [mesSel, setMesSel] = useState<number | 'todos'>('todos')
   const [loading, setLoading] = useState(true)
   // Ingresos que solapan con el período (para días-estancia y altas reales)
   const [ingresosperiodo, setIngresosperiodo] = useState<any[]>([])
@@ -88,12 +121,11 @@ export function Dashboard() {
   const [semaforoItems, setSemaforoItems] = useState<any[]>([])
   const [showPeriodo, setShowPeriodo] = useState(false)
 
-  useEffect(() => { fetchData() }, [periodo])
+  useEffect(() => { fetchData() }, [periodo, anioSel, mesSel])
 
   async function fetchData() {
     setLoading(true)
-    const desde = getDesde(periodo)
-    const hoy = new Date().toISOString().split('T')[0]
+    const { desde, hasta } = getRango(periodo, anioSel, mesSel)
 
     const [
       { data: ingsPeriodo },
@@ -105,13 +137,14 @@ export function Dashboard() {
       supabase.from('ingresos')
         .select('*, paciente:pacientes(sexo, fecha_nacimiento), medico_responsable:profesionales(nombre)')
         .or(`fecha_alta.gte.${desde},fecha_alta.is.null`)
-        .lte('fecha_ingreso', hoy)
+        .lte('fecha_ingreso', hasta)
         .order('fecha_ingreso', { ascending: true }),
       supabase.from('ingresos')
         .select('fecha_ingreso, fecha_alta, estado, paciente_id, medico_responsable:profesionales(nombre)')
         .gte('fecha_ingreso', desde)
+        .lte('fecha_ingreso', hasta)
         .order('fecha_ingreso', { ascending: true }),
-      supabase.from('eventos').select('*').gte('fecha', desde),
+      supabase.from('eventos').select('*').gte('fecha', desde).lte('fecha', hasta),
       supabase.from('ingresos')
         .select('id, fecha_ingreso, paciente_id, paciente:pacientes(sexo, fecha_nacimiento)')
         .eq('estado', 'activo'),
@@ -143,7 +176,7 @@ export function Dashboard() {
     setLoading(false)
   }
 
-  const desde = getDesde(periodo)
+  const { desde } = getRango(periodo, anioSel, mesSel)
 
   // ── KPIs actividad (período) ──────────────────────────────────
   const totalIngresosNuevos = ingresosNuevos.length
@@ -157,7 +190,7 @@ export function Dashboard() {
   const diasEstancia = calcDiasEstancia(ingresosperiodo, desde)
 
   // ── KPIs snapshot actual ──────────────────────────────────────
-  const ocupacion = Math.round((pacientesActivos.length / 33) * 100)
+  const ocupacion = Math.round((pacientesActivos.length / 32) * 100)
   const estanciasLargas = pacientesActivos.filter(i => {
     const dias = Math.floor((Date.now() - new Date(i.fecha_ingreso).getTime()) / 86400000)
     return dias > 60
@@ -305,11 +338,11 @@ export function Dashboard() {
         <div className="relative">
           <button onClick={() => setShowPeriodo(v => !v)} className="btn-secondary gap-2">
             <Calendar className="w-4 h-4" />
-            {periodoLabel(periodo)}
+            {periodoLabel(periodo, anioSel, mesSel)}
             <ChevronDown className="w-3.5 h-3.5" />
           </button>
           {showPeriodo && (
-            <div className="absolute right-0 top-full mt-1 bg-white border rounded-xl shadow-lg z-10 overflow-hidden min-w-[160px]">
+            <div className="absolute right-0 top-full mt-1 bg-white border rounded-xl shadow-lg z-10 overflow-hidden min-w-[220px]">
               {[
                 { v: 'mes', l: 'Este mes' },
                 { v: 'trimestre', l: 'Este trimestre' },
@@ -322,6 +355,43 @@ export function Dashboard() {
                   {l}
                 </button>
               ))}
+              {/* Mes y año concretos */}
+              <div className="border-t px-4 py-3">
+                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-2">Mes y año concretos</p>
+                <div className="flex gap-2">
+                  <select
+                    className="input py-1.5 text-xs flex-1"
+                    value={mesSel}
+                    onChange={(e) => {
+                      setMesSel(e.target.value === 'todos' ? 'todos' : Number(e.target.value))
+                      setPeriodo('personalizado')
+                    }}
+                  >
+                    <option value="todos">Todo el año</option>
+                    {MESES.map((m, i) => <option key={i} value={i}>{m}</option>)}
+                  </select>
+                  <select
+                    className="input py-1.5 text-xs w-24"
+                    value={anioSel}
+                    onChange={(e) => {
+                      setAnioSel(Number(e.target.value))
+                      setPeriodo('personalizado')
+                    }}
+                  >
+                    {Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - i).map((a) => (
+                      <option key={a} value={a}>{a}</option>
+                    ))}
+                  </select>
+                </div>
+                {periodo === 'personalizado' && (
+                  <button
+                    onClick={() => setShowPeriodo(false)}
+                    className="btn-primary text-xs py-1.5 w-full mt-2 justify-center"
+                  >
+                    Ver {periodoLabel('personalizado', anioSel, mesSel)}
+                  </button>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -334,7 +404,7 @@ export function Dashboard() {
 
           {/* BLOQUE 1: Actividad asistencial */}
           <section>
-            <p className="section-title mb-3">Actividad asistencial · {periodoLabel(periodo)}</p>
+            <p className="section-title mb-3">Actividad asistencial · {periodoLabel(periodo, anioSel, mesSel)}</p>
             <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
               <StatCard label="Ingresos nuevos" value={totalIngresosNuevos} icon={TrendingUp} color="text-primary-600 bg-primary-50" />
               <StatCard label="Altas" value={totalAltas} icon={Users} color="text-emerald-600 bg-emerald-50" />
@@ -347,7 +417,7 @@ export function Dashboard() {
 
           {/* BLOQUE 2: Indicadores de seguridad */}
           <section>
-            <p className="section-title mb-3">Seguridad del paciente · {periodoLabel(periodo)}</p>
+            <p className="section-title mb-3">Seguridad del paciente · {periodoLabel(periodo, anioSel, mesSel)}</p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 
               {/* Caídas con/sin lesión */}
@@ -495,7 +565,7 @@ export function Dashboard() {
               <span className="normal-case font-normal text-slate-400">(snapshot — independiente del período)</span>
             </p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <StatCard label="Ocupación" value={`${ocupacion}%`} sub={`${pacientesActivos.length} / 33 camas`} icon={BedDouble} color="text-amber-600 bg-amber-50" />
+              <StatCard label="Ocupación" value={`${ocupacion}%`} sub={`${pacientesActivos.length} / 32 camas`} icon={BedDouble} color="text-amber-600 bg-amber-50" />
               <StatCard label="Edad media" value={edadMedia ? `${edadMedia}a` : '—'} sub="pacientes actuales" icon={Users} color="text-violet-600 bg-violet-50" />
               <div className="card p-5">
                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Por sexo (actuales)</p>
@@ -519,7 +589,7 @@ export function Dashboard() {
                 )}
               </div>
               <div className="card p-5">
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Por médico · {periodoLabel(periodo)}</p>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Por médico · {periodoLabel(periodo, anioSel, mesSel)}</p>
                 {medicoData.length === 0 ? <p className="text-slate-400 text-sm">Sin datos</p> : (
                   <div className="space-y-2">
                     {medicoData.map(m => {
@@ -544,7 +614,7 @@ export function Dashboard() {
 
           {/* BLOQUE 4: Incidencias */}
           <section>
-            <p className="section-title mb-3">Incidencias · {periodoLabel(periodo)}</p>
+            <p className="section-title mb-3">Incidencias · {periodoLabel(periodo, anioSel, mesSel)}</p>
             {eventosData.length === 0 ? (
               <div className="card p-6 text-center text-slate-400 text-sm">Sin incidencias registradas en este periodo.</div>
             ) : (
@@ -576,7 +646,7 @@ export function Dashboard() {
           {/* BLOQUE 5: Evolución temporal */}
           {evolucionData.length > 1 && (
             <section>
-              <p className="section-title mb-3">Evolución temporal · {periodoLabel(periodo)}</p>
+              <p className="section-title mb-3">Evolución temporal · {periodoLabel(periodo, anioSel, mesSel)}</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="card p-5">
                   <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-4">Ingresos y altas por mes</p>
