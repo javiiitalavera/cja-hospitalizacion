@@ -16,6 +16,15 @@ export const ESTADO_INGRESO_COLOR: Record<string, string> = {
   alta_traslado: 'bg-blue-100 text-blue-600',
   exitus: 'bg-red-100 text-red-600',
 }
+
+// Colores del semáforo de caídas. Antes repetidos, idénticos, en
+// Home.tsx, HojaItems.tsx y Dashboard.tsx.
+export const SEMAFORO_CAIDAS_COLOR: Record<string, string> = {
+  verde: '#92D050',
+  amarillo: '#FFFF00',
+  naranja: '#FF9900',
+  rojo: '#FF0000',
+}
 export type Sexo = 'hombre' | 'mujer' | 'otro'
 
 export interface Profesional {

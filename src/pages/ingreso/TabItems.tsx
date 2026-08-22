@@ -6,6 +6,7 @@ function TabItems({ ingresoId }: { ingresoId: string }) {
   const [data, setData] = useState<Partial<ItemsPaciente>>({})
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [saveError, setSaveError] = useState(false)
   const [verHistorico, setVerHistorico] = useState(false)
 
   useEffect(() => {
@@ -15,8 +16,14 @@ function TabItems({ ingresoId }: { ingresoId: string }) {
 
   async function save() {
     setSaving(true)
-    await supabase.from('items_paciente').upsert({ ...data, ingreso_id: ingresoId })
+    setSaveError(false)
+    const { error } = await supabase.from('items_paciente').upsert({ ...data, ingreso_id: ingresoId })
     setSaving(false)
+    if (error) {
+      setSaveError(true)
+      setTimeout(() => setSaveError(false), 4000)
+      return
+    }
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
@@ -203,7 +210,7 @@ function TabItems({ ingresoId }: { ingresoId: string }) {
           {verHistorico ? 'Ocultar histórico' : 'Ver histórico de snapshots'}
         </button>
         <button onClick={save} disabled={saving} className="btn-primary">
-          {saving ? 'Guardando…' : saved ? '✓ Guardado' : 'Guardar cambios'}
+          {saving ? 'Guardando…' : saveError ? '✗ Error al guardar' : saved ? '✓ Guardado' : 'Guardar cambios'}
         </button>
       </div>
 

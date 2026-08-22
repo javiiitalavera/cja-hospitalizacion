@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { hoyLocal } from '../lib/fechas'
 import { useAuth } from '../lib/AuthContext'
 import type { Ingreso } from '../types'
 import { ESTADO_INGRESO_LABEL as ESTADO_LABEL, ESTADO_INGRESO_COLOR as ESTADO_COLOR } from '../types'
@@ -32,7 +33,7 @@ export default function DetalleIngreso() {
   const [loading, setLoading] = useState(true)
   const [modalAlta, setModalAlta] = useState(false)
   const [altaForm, setAltaForm] = useState({
-    fecha_alta: new Date().toISOString().split('T')[0],
+    fecha_alta: hoyLocal(),
     estado: 'alta',
   })
   const [procesandoAlta, setProcesandoAlta] = useState(false)
@@ -194,15 +195,18 @@ export default function DetalleIngreso() {
 
       {/* Tab content */}
       <div className="flex-1 overflow-y-auto p-8">
-        {/* Episodio cerrado: solo lectura para TODOS, incluido el médico */}
-        {episodioCerrado && ['datos', 'ingreso', 'alta', 'items', 'eventos', 'cmbd'].includes(tab) && (
+        {/* Episodio cerrado: solo lectura para TODOS, salvo Informe de alta
+            y CMBD, que se siguen escribiendo en torno al propio momento
+            del alta y deben poder terminarse después de confirmarla. */}
+        {episodioCerrado && ['datos', 'ingreso', 'items', 'eventos'].includes(tab) && (
           <div className="mb-4 flex items-center gap-2 text-sm text-slate-600 bg-slate-100 border border-slate-200 rounded-lg px-3 py-2">
             <Lock className="w-4 h-4 shrink-0" />
             Episodio cerrado ({ESTADO_LABEL[ingreso.estado] ?? ingreso.estado}): solo lectura, ya no se puede editar.
           </div>
         )}
-        {/* Aviso de solo lectura en las pestañas médicas para roles sin permiso (episodio activo) */}
-        {!episodioCerrado && !esMedico && ['datos', 'ingreso', 'alta', 'cmbd'].includes(tab) && (
+        {/* Aviso de solo lectura por rol (independiente de si el episodio
+            sigue activo o ya está cerrado: siempre es cosa del médico) */}
+        {!esMedico && ['datos', 'ingreso', 'alta', 'cmbd'].includes(tab) && (
           <div className="mb-4 flex items-center gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
             <Lock className="w-4 h-4 shrink-0" />
             Solo lectura: tu rol puede consultar esta sección, pero solo un médico puede editarla.
@@ -211,8 +215,8 @@ export default function DetalleIngreso() {
         {/* fieldset disabled desactiva de golpe todos los campos de dentro */}
         <fieldset
           disabled={
-            (episodioCerrado && ['datos', 'ingreso', 'alta', 'items', 'eventos', 'cmbd'].includes(tab)) ||
-            (!episodioCerrado && !esMedico && ['datos', 'ingreso', 'alta', 'cmbd'].includes(tab))
+            (episodioCerrado && ['datos', 'ingreso', 'items', 'eventos'].includes(tab)) ||
+            (!esMedico && ['datos', 'ingreso', 'alta', 'cmbd'].includes(tab))
           }
           className="min-w-0 border-0 p-0 m-0"
         >

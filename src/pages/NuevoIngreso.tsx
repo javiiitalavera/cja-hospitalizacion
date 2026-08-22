@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { hoyLocal } from '../lib/fechas'
 import { useAuth } from '../lib/AuthContext'
 import type { Profesional, Paciente } from '../types'
 import { ChevronLeft, Save, Search, UserPlus, RefreshCw, Lock } from 'lucide-react'
@@ -39,7 +40,7 @@ export default function NuevoIngreso() {
     contacto_familiar_telefono: '',
   })
   const [ingreso, setIngreso] = useState({
-    fecha_ingreso: new Date().toISOString().split('T')[0],
+    fecha_ingreso: hoyLocal(),
     habitacion: habitacionParam,
     medico_responsable_id: '',
     motivo_ingreso: '',

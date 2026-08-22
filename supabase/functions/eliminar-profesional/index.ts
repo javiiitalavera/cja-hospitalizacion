@@ -48,6 +48,7 @@ Deno.serve(async (req) => {
       .from('profesionales')
       .select('es_admin')
       .eq('user_id', userData.user.id)
+      .eq('activo', true)
       .maybeSingle()
 
     if (!perfilAdmin?.es_admin) {

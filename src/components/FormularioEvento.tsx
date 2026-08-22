@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { hoyLocal } from '../lib/fechas'
 import { useAuth } from '../lib/AuthContext'
 import type { Profesional } from '../types'
 import { TIPO_EVENTO_LABEL, CAMPOS_POR_TIPO, TURNO_LABEL, type TipoEvento, type Evento } from '../types/eventos'
@@ -15,7 +16,7 @@ interface Props {
 export default function FormularioEvento({ ingresoId, eventoExistente, onClose, onGuardado }: Props) {
   const { profesional: yo } = useAuth()
   const [tipo, setTipo] = useState<TipoEvento | ''>(eventoExistente?.tipo ?? '')
-  const [fecha, setFecha] = useState(eventoExistente?.fecha ?? new Date().toISOString().split('T')[0])
+  const [fecha, setFecha] = useState(eventoExistente?.fecha ?? hoyLocal())
   const [hora, setHora] = useState(eventoExistente?.hora?.slice(0, 5) ?? '')
   const [turno, setTurno] = useState(eventoExistente?.turno ?? '')
   const [datos, setDatos] = useState<Record<string, string>>(eventoExistente?.datos ?? {})

@@ -3,16 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import type { Ingreso, ItemsPaciente } from '../types'
+import { SEMAFORO_CAIDAS_COLOR as SEMAFORO_COLOR } from '../types'
 import { Printer, X, Save, History } from 'lucide-react'
 
 type IngresoConItems = Ingreso & { items: ItemsPaciente | null }
-
-const SEMAFORO_COLOR: Record<string, string> = {
-  verde: '#92D050',
-  amarillo: '#FFFF00',
-  naranja: '#FF9900',
-  rojo: '#FF0000',
-}
 
 function habBg(ingreso: IngresoConItems | null): string {
   if (!ingreso) return '#FFFFFF'

@@ -67,14 +67,18 @@ const CIE10: { code: string; desc: string }[] = [
 const N_SECUNDARIOS = 8
 const N_PROCEDIMIENTOS = 8
 
+// Códigos verificados contra documentación oficial del Ministerio de Sanidad
+// (Tipo de Alta / TIPOALTA): 1.Domicilio 2.Traslado a otro hospital
+// 3.Alta voluntaria 4.Éxitus 5.Traslado a centro sociosanitario 9.Otros/desconocido.
+// "Fuga" no tiene código propio en la norma estatal consultada; se deja bajo
+// "Otros" (9) — conviene confirmarlo con administración antes de usarlo en serio.
 const TIPALT: Record<string, string> = {
-  '1': '1 — Alta voluntaria',
-  '2': '2 — Alta por curación/mejoría',
-  '3': '3 — Alta por traslado a otro hospital',
-  '4': '4 — Alta por traslado a centro sociosanitario',
-  '5': '5 — Alta por fuga',
-  '8': '8 — Éxitus',
-  '9': '9 — Otras circunstancias',
+  '1': '1 — Domicilio',
+  '2': '2 — Traslado a otro hospital',
+  '3': '3 — Alta voluntaria',
+  '4': '4 — Éxitus',
+  '5': '5 — Traslado a centro sociosanitario',
+  '9': '9 — Otras circunstancias / fuga / desconocido',
 }
 
 const PROCEDENCIA: Record<string, string> = {
@@ -329,13 +333,14 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
       })
   }, [ingresoId])
 
-  async function save(d = dataRef.current) {
+  async function save(d = dataRef.current): Promise<boolean> {
     setSaving(true); setSaveError(false)
     const { error } = await supabase.from('cmbd').upsert({ ...d, ingreso_id: ingresoId })
     setSaving(false)
-    if (error) { setSaveError(true); return }
+    if (error) { setSaveError(true); return false }
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
+    return true
   }
 
   function update<K extends keyof CMBDData>(key: K, value: CMBDData[K]) {
@@ -364,8 +369,8 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
 
   async function handleExportar() {
     setExportando(true)
-    await save()
-    await exportarExcel(dataRef.current, ingreso)
+    const ok = await save()
+    if (ok) await exportarExcel(dataRef.current, ingreso)
     setExportando(false)
   }
 

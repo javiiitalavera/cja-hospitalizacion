@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { formatFechaLocal as fmt } from '../lib/fechas'
+import { SEMAFORO_CAIDAS_COLOR as SEM_HEX } from '../types'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, Legend
@@ -19,12 +21,15 @@ function calcEstanciaMedia(ingresos: any[]): number {
   return Math.round(total / conAlta.length)
 }
 
-function calcDiasEstancia(ingresos: any[], desde: string): number {
-  const hoy = new Date()
+function calcDiasEstancia(ingresos: any[], desde: string, hasta: string): number {
+  const hastaDate = new Date(hasta)
   const desdeDate = new Date(desde)
   return ingresos.reduce((sum: number, ing: any) => {
     const ini = new Date(Math.max(new Date(ing.fecha_ingreso).getTime(), desdeDate.getTime()))
-    const fin = ing.fecha_alta ? new Date(ing.fecha_alta) : hoy
+    // El final del recuento nunca puede pasar de "hasta": un ingreso
+    // todavía activo hoy no debe contar días más allá del periodo elegido.
+    const finReal = ing.fecha_alta ? new Date(ing.fecha_alta) : new Date()
+    const fin = new Date(Math.min(finReal.getTime(), hastaDate.getTime()))
     return sum + Math.max(0, Math.round((fin.getTime() - ini.getTime()) / 86400000))
   }, 0)
 }
@@ -33,8 +38,6 @@ const MESES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
 ]
-
-function fmt(d: Date): string { return d.toISOString().split('T')[0] }
 
 function periodoLabel(p: string, anioSel: number, mesSel: number | 'todos'): string {
   if (p === 'personalizado') {
@@ -92,10 +95,6 @@ function StatCard({ label, value, sub, icon: Icon, color = 'text-primary-600 bg-
   )
 }
 
-// Colores semáforo (hex para coincidir con Home.tsx)
-const SEM_HEX: Record<string, string> = {
-  verde: '#92D050', amarillo: '#FFFF00', naranja: '#FF9900', rojo: '#FF0000'
-}
 const SEM_LABEL: Record<string, string> = {
   verde: 'Verde', amarillo: 'Amarillo', naranja: 'Naranja', rojo: 'Rojo'
 }
@@ -176,18 +175,24 @@ export function Dashboard() {
     setLoading(false)
   }
 
-  const { desde } = getRango(periodo, anioSel, mesSel)
+  const { desde, hasta } = getRango(periodo, anioSel, mesSel)
 
   // ── KPIs actividad (período) ──────────────────────────────────
   const totalIngresosNuevos = ingresosNuevos.length
   const totalAltas = ingresosperiodo.filter(i =>
-    ['alta', 'alta_traslado'].includes(i.estado) && i.fecha_alta >= desde
+    ['alta', 'alta_traslado'].includes(i.estado) && i.fecha_alta >= desde && i.fecha_alta <= hasta
   ).length
   const totalExitus = ingresosperiodo.filter(i =>
-    i.estado === 'exitus' && i.fecha_alta >= desde
+    i.estado === 'exitus' && i.fecha_alta >= desde && i.fecha_alta <= hasta
   ).length
-  const estanciaMedia = calcEstanciaMedia(ingresosNuevos)
-  const diasEstancia = calcDiasEstancia(ingresosperiodo, desde)
+  // "Estancia media" se anuncia como "ingresos con alta en período": la
+  // cohorte tiene que ser esa (altas dentro del rango), no los que
+  // ingresaron en el período, que es un conjunto distinto.
+  const altasEnPeriodo = ingresosperiodo.filter(i =>
+    i.fecha_alta && i.fecha_alta >= desde && i.fecha_alta <= hasta
+  )
+  const estanciaMedia = calcEstanciaMedia(altasEnPeriodo)
+  const diasEstancia = calcDiasEstancia(ingresosperiodo, desde, hasta)
 
   // ── KPIs snapshot actual ──────────────────────────────────────
   const ocupacion = Math.round((pacientesActivos.length / 33) * 100)
@@ -299,7 +304,7 @@ export function Dashboard() {
       map[mes].ingresos++
     })
     ingresosperiodo.forEach(i => {
-      if (['alta', 'alta_traslado', 'exitus'].includes(i.estado) && i.fecha_alta && i.fecha_alta >= desde) {
+      if (['alta', 'alta_traslado', 'exitus'].includes(i.estado) && i.fecha_alta && i.fecha_alta >= desde && i.fecha_alta <= hasta) {
         const mesAlta = i.fecha_alta.slice(0, 7)
         if (!map[mesAlta]) map[mesAlta] = { mes: mesAlta, ingresos: 0, altas: 0 }
         map[mesAlta].altas++

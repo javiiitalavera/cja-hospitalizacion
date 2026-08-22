@@ -105,7 +105,7 @@ function inyectarHeader(
   return headerXml
     .replace(/(<w:t[^>]*>)Nombre: (<\/w:t>)/, `$1Nombre: ${esc(p.nombre)}$2`)
     .replace(/(<w:t[^>]*>)Primer Apellido: (<\/w:t>)/, `$1Primer Apellido: ${esc(p.primer_apellido)}$2`)
-    .replace(/(<w:t[^>]*>)Segundo Apellido:(<\/w:t>)/, `$1Segundo Apellido: ${esc(p.segundo_apellido ?? '')}$2`)
+    .replace(/(<w:t[^>]*>)Segundo Apellido:(?: )?(<\/w:t>)/, `$1Segundo Apellido: ${esc(p.segundo_apellido ?? '')}$2`)
     .replace(
       /(<w:t[^>]*>)Fecha de nacimiento: (<\/w:t>)/,
       `$1Fecha de nacimiento: ${p.fecha_nacimiento ? new Date(p.fecha_nacimiento).toLocaleDateString('es-ES') : ''}$2`

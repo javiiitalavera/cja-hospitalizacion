@@ -39,13 +39,14 @@ function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
       })
   }, [ingresoId])
 
-  async function save(d = dataRef.current) {
+  async function save(d = dataRef.current): Promise<boolean> {
     setSaving(true); setSaveError(false)
     const { error } = await supabase.from('informe_alta').upsert({ ...d, ingreso_id: ingresoId })
     setSaving(false)
-    if (error) { setSaveError(true); return }
+    if (error) { setSaveError(true); return false }
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
+    return true
   }
 
   function update(key: keyof InformeAlta, value: any) {
@@ -109,7 +110,8 @@ function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
         <button type="button"
           onClick={async () => {
             if (!ingreso) return
-            await save()
+            const ok = await save()
+            if (!ok) return
             await exportarInformeAlta(ingreso, informeIngreso as InformeIngreso, data as InformeAlta)
           }}
           className="btn-secondary">

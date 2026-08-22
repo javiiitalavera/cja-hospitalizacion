@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import type { Ingreso } from '../types'
+import { SEMAFORO_CAIDAS_COLOR as SEMAFORO } from '../types'
 import { Plus, ClipboardList, ChevronRight, AlertTriangle } from 'lucide-react'
 import FormularioEvento from '../components/FormularioEvento'
 import { TIPO_EVENTO_LABEL, TIPO_EVENTO_COLOR, type TipoEvento } from '../types/eventos'
@@ -16,13 +17,6 @@ type IngresoConPaciente = Ingreso & {
     nhc?: string
   } | null
   medico_responsable: { nombre: string; apellidos: string } | null
-}
-
-const SEMAFORO: Record<string, string> = {
-  verde: '#92D050',
-  amarillo: '#FFFF00',
-  naranja: '#FF9900',
-  rojo: '#FF0000',
 }
 
 function edad(fnac?: string) {

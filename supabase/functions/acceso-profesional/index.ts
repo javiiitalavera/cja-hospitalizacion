@@ -54,6 +54,7 @@ Deno.serve(async (req) => {
       .from('profesionales')
       .select('es_admin')
       .eq('user_id', userData.user.id)
+      .eq('activo', true)
       .maybeSingle()
 
     if (!perfilAdmin?.es_admin) {
@@ -80,22 +81,34 @@ Deno.serve(async (req) => {
       return respuesta(400, { error: 'No puedes cambiar tu propio acceso.' })
     }
 
-    // ── 5. Actualizar la ficha (activo / inactivo) ──────────
-    const { error: updErr } = await admin
-      .from('profesionales')
-      .update({ activo })
-      .eq('id', profesionalId)
-    if (updErr) return respuesta(400, { error: 'No se pudo actualizar la ficha: ' + updErr.message })
-
-    // ── 6. Bloquear o desbloquear la cuenta de acceso ───────
-    // (solo si el profesional tiene cuenta enlazada)
+    // ── 5. Bloquear o desbloquear PRIMERO la cuenta de acceso ──
+    // (solo si el profesional tiene cuenta enlazada). Se hace antes que
+    // el cambio en la ficha para poder deshacerlo limpiamente si falla.
     if (objetivo.user_id) {
       const { error: banErr } = await admin.auth.admin.updateUserById(objetivo.user_id, {
         ban_duration: activo ? 'none' : BLOQUEO,
       })
       if (banErr) {
-        return respuesta(400, { error: 'Ficha actualizada, pero fallo al cambiar el acceso: ' + banErr.message })
+        return respuesta(400, { error: 'No se pudo cambiar el acceso: ' + banErr.message + '. Nada se ha modificado, puedes reintentarlo.' })
       }
+    }
+
+    // ── 6. Actualizar la ficha (activo / inactivo) ──────────
+    const { error: updErr } = await admin
+      .from('profesionales')
+      .update({ activo })
+      .eq('id', profesionalId)
+
+    if (updErr) {
+      // La cuenta ya se bloqueó/desbloqueó pero la ficha no se pudo
+      // actualizar: deshacemos el paso de Auth para no dejar un estado
+      // a medias (ficha y cuenta desincronizadas).
+      if (objetivo.user_id) {
+        await admin.auth.admin.updateUserById(objetivo.user_id, {
+          ban_duration: activo ? BLOQUEO : 'none',
+        })
+      }
+      return respuesta(400, { error: 'No se pudo actualizar la ficha: ' + updErr.message + '. Se ha deshecho el cambio de acceso, puedes reintentarlo.' })
     }
 
     return respuesta(200, { ok: true })
