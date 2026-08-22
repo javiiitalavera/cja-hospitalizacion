@@ -76,13 +76,13 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
             <span className="label">I. Barthel (/100)</span>
             <input type="number" min={0} max={100} className="input"
               value={data.barthel ?? ''}
-              onChange={e => update('barthel', parseInt(e.target.value, 10) || undefined)} />
+              onChange={e => update('barthel', e.target.value === '' ? undefined : parseInt(e.target.value, 10))} />
           </div>
           <div>
             <span className="label">I. Lawton (/8)</span>
             <input type="number" min={0} max={8} className="input"
               value={data.lawton ?? ''}
-              onChange={e => update('lawton', parseInt(e.target.value, 10) || undefined)} />
+              onChange={e => update('lawton', e.target.value === '' ? undefined : parseInt(e.target.value, 10))} />
           </div>
         </div>
         {field('vgi_cognitivo', 'Cognitivo')}

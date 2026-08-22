@@ -270,6 +270,7 @@ function PanelEdicion({
   const [data, setData] = useState<Partial<ItemsPaciente>>(ingreso.items ?? {})
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [saveError, setSaveError] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const dataRef = useRef(data)
   dataRef.current = data
@@ -311,12 +312,18 @@ function PanelEdicion({
 
   async function save(d = dataRef.current) {
     setSaving(true)
-    const { data: updated } = await supabase
+    const { data: updated, error } = await supabase
       .from('items_paciente')
       .upsert({ ...d, ingreso_id: ingreso.id })
       .select()
       .single()
     setSaving(false)
+    if (error) {
+      setSaved(false)
+      setSaveError(true)
+      setTimeout(() => setSaveError(false), 4000)
+      return
+    }
     setSaved(true)
     if (updated) onSaved(updated as ItemsPaciente)
     setTimeout(() => setSaved(false), 2000)
@@ -325,10 +332,35 @@ function PanelEdicion({
   async function limpiarItems() {
     if (debounceRef.current) clearTimeout(debounceRef.current)
     setSaving(true)
-    const { data: updated } = await supabase.from('items_paciente').upsert({ ingreso_id: ingreso.id }).select().single()
+    // Vacío explícito de cada campo: un upsert que solo mande ingreso_id
+    // NO borra el resto de columnas, solo las deja tal como estaban.
+    const vacio = {
+      ingreso_id: ingreso.id,
+      dependencia_avd: null, panial_dia: null, panial_noche: null,
+      colector: false, sonda_vesical: false,
+      dentadura: null, audifonos: null, gafas: null,
+      higiene: null, vestido: null, ducha: null, banio: false, siestas: false,
+      deambulacion: null, ayudas_deambulacion: null,
+      bipedestador: false, grua: false, cambios_posturales: false, cama_45: false,
+      ingestas: null, oxigenoterapia: false, botella_noche: false,
+      sujecion_cama: [], sujecion_silla_ruedas: null, sujecion_sillon: null,
+      colchon_antiescaras: false, patucos_coderas: false, sensor_cama: false,
+      motivo_sujecion: [], observaciones_sujeciones: null,
+      semaforo_caidas: null,
+    }
+    const { data: updated, error } = await supabase
+      .from('items_paciente')
+      .upsert(vacio)
+      .select()
+      .single()
     setSaving(false)
-    setData({})
     setConfirmLimpiar(false)
+    if (error) {
+      setSaveError(true)
+      setTimeout(() => setSaveError(false), 4000)
+      return
+    }
+    setData({})
     if (updated) onSaved(updated as ItemsPaciente)
   }
 
@@ -430,6 +462,7 @@ function PanelEdicion({
           <span className="text-xs text-slate-400">
             {saving && '● Guardando…'}
             {!saving && saved && <span className="text-emerald-600">✓ Guardado</span>}
+            {!saving && saveError && <span className="text-red-600">✗ Error al guardar, inténtalo de nuevo</span>}
           </span>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 ml-1">
             <X className="w-4 h-4" />

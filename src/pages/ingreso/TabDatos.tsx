@@ -2,7 +2,14 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import type { Ingreso, Profesional } from '../../types'
 
-function TabDatos({ ingreso }: { ingreso: Ingreso; onUpdate: (i: Ingreso) => void }) {
+const ESTADO_LABEL: Record<string, string> = {
+  activo: 'Ingresado',
+  alta: 'Alta',
+  alta_traslado: 'Traslado',
+  exitus: 'Éxitus',
+}
+
+function TabDatos({ ingreso, onUpdate }: { ingreso: Ingreso; onUpdate: (i: Ingreso) => void }) {
   const p = ingreso.paciente!
   const [editando, setEditando] = useState(false)
   const [paciente, setPaciente] = useState({ ...p })
@@ -11,12 +18,12 @@ function TabDatos({ ingreso }: { ingreso: Ingreso; onUpdate: (i: Ingreso) => voi
     motivo_ingreso: ingreso.motivo_ingreso ?? '',
     fecha_ingreso: ingreso.fecha_ingreso ?? '',
     fecha_alta: ingreso.fecha_alta ?? '',
-    estado: ingreso.estado ?? 'activo',
     medico_responsable_id: ingreso.medico_responsable_id ?? '',
   })
   const [medicos, setMedicos] = useState<Profesional[]>([])
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     supabase.from('profesionales').select('*').eq('rol', 'medico').eq('activo', true)
@@ -25,7 +32,8 @@ function TabDatos({ ingreso }: { ingreso: Ingreso; onUpdate: (i: Ingreso) => voi
 
   async function guardar() {
     setSaving(true)
-    await Promise.all([
+    setError('')
+    const [rPaciente, rIngreso] = await Promise.all([
       supabase.from('pacientes').update({
         nombre: paciente.nombre,
         primer_apellido: paciente.primer_apellido,
@@ -40,16 +48,25 @@ function TabDatos({ ingreso }: { ingreso: Ingreso; onUpdate: (i: Ingreso) => voi
         contacto_familiar_nombre: paciente.contacto_familiar_nombre,
         contacto_familiar_telefono: paciente.contacto_familiar_telefono,
       }).eq('id', p.id),
+      // Nota: "estado" NO se toca aquí a propósito. Cambiar de activo a
+      // alta/exitus/traslado pasa siempre por el flujo de "Dar de alta",
+      // que genera el informe y dispara la auditoría correspondiente.
       supabase.from('ingresos').update({
         habitacion: ingresoEdit.habitacion ? parseInt(ingresoEdit.habitacion) : null,
         motivo_ingreso: ingresoEdit.motivo_ingreso,
         fecha_ingreso: ingresoEdit.fecha_ingreso,
         fecha_alta: ingresoEdit.fecha_alta || null,
-        estado: ingresoEdit.estado,
         medico_responsable_id: ingresoEdit.medico_responsable_id || null,
-      }).eq('id', ingreso.id),
+      }).eq('id', ingreso.id).select('*, paciente:pacientes(*)').single(),
     ])
     setSaving(false)
+    if (rPaciente.error || rIngreso.error) {
+      setError('No se pudieron guardar los cambios. Inténtalo de nuevo.')
+      return
+    }
+    // Sincronizamos el estado del padre para que el encabezado y el resto
+    // de pestañas reflejen los cambios sin necesidad de recargar la página.
+    if (rIngreso.data) onUpdate(rIngreso.data as unknown as Ingreso)
     setSaved(true)
     setEditando(false)
     setTimeout(() => setSaved(false), 2000)
@@ -99,12 +116,12 @@ function TabDatos({ ingreso }: { ingreso: Ingreso; onUpdate: (i: Ingreso) => voi
             {inp('Habitación', ingresoEdit.habitacion, v => setIngresoEdit(i => ({ ...i, habitacion: v })), 'number')}
             <div>
               <label className="label">Estado</label>
-              <select className="input" value={ingresoEdit.estado}
-                onChange={e => setIngresoEdit(i => ({ ...i, estado: e.target.value as any }))}>
-                <option value="activo">Ingresado</option>
-                <option value="alta">Alta</option>
-                <option value="exitus">Éxitus</option>
-              </select>
+              <p className="input bg-slate-50 text-slate-500 cursor-not-allowed">
+                {ESTADO_LABEL[ingreso.estado] ?? ingreso.estado}
+              </p>
+              <p className="text-[11px] text-slate-400 mt-1">
+                Se cambia desde "Dar de alta", no aquí.
+              </p>
             </div>
             <div>
               <label className="label">Médico responsable</label>
@@ -123,6 +140,9 @@ function TabDatos({ ingreso }: { ingreso: Ingreso; onUpdate: (i: Ingreso) => voi
             </div>
           </div>
         </div>
+        {error && (
+          <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{error}</p>
+        )}
         <div className="flex justify-end gap-3">
           <button onClick={() => setEditando(false)} className="btn-secondary">Cancelar</button>
           <button onClick={guardar} disabled={saving} className="btn-primary">
@@ -142,7 +162,7 @@ function TabDatos({ ingreso }: { ingreso: Ingreso; onUpdate: (i: Ingreso) => voi
     ['Contacto familiar', p.contacto_familiar_nombre],
     ['Teléfono familiar', p.contacto_familiar_telefono],
     ['Motivo de ingreso', ingreso.motivo_ingreso],
-    ['Estado', ingreso.estado],
+    ['Estado', ESTADO_LABEL[ingreso.estado] ?? ingreso.estado],
     ['Habitación', ingreso.habitacion?.toString()],
   ]
   return (

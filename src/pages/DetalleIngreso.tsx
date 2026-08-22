@@ -81,6 +81,11 @@ export default function DetalleIngreso() {
   if (loading) return <div className="p-8 text-slate-400">Cargando…</div>
   if (!ingreso) return <div className="p-8 text-slate-400">Ingreso no encontrado</div>
 
+  // Un episodio ya cerrado (alta, traslado o éxitus) pasa a ser solo lectura
+  // para todo el mundo, médico incluido. Corregir algo después del cierre
+  // requiere un mecanismo de rectificación explícito, no editar en caliente.
+  const episodioCerrado = ingreso.estado !== 'activo'
+
   const p = ingreso.paciente!
   const nombreCompleto = `${p.primer_apellido}${p.segundo_apellido ? ' ' + p.segundo_apellido : ''}, ${p.nombre}`
   const edad = p.fecha_nacimiento
@@ -191,8 +196,15 @@ export default function DetalleIngreso() {
 
       {/* Tab content */}
       <div className="flex-1 overflow-y-auto p-8">
-        {/* Aviso de solo lectura en las pestañas médicas para roles sin permiso */}
-        {!esMedico && ['datos', 'ingreso', 'alta', 'cmbd'].includes(tab) && (
+        {/* Episodio cerrado: solo lectura para TODOS, incluido el médico */}
+        {episodioCerrado && ['datos', 'ingreso', 'alta', 'items', 'eventos', 'cmbd'].includes(tab) && (
+          <div className="mb-4 flex items-center gap-2 text-sm text-slate-600 bg-slate-100 border border-slate-200 rounded-lg px-3 py-2">
+            <Lock className="w-4 h-4 shrink-0" />
+            Episodio cerrado ({ESTADO_LABEL[ingreso.estado] ?? ingreso.estado}): solo lectura, ya no se puede editar.
+          </div>
+        )}
+        {/* Aviso de solo lectura en las pestañas médicas para roles sin permiso (episodio activo) */}
+        {!episodioCerrado && !esMedico && ['datos', 'ingreso', 'alta', 'cmbd'].includes(tab) && (
           <div className="mb-4 flex items-center gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
             <Lock className="w-4 h-4 shrink-0" />
             Solo lectura: tu rol puede consultar esta sección, pero solo un médico puede editarla.
@@ -200,7 +212,10 @@ export default function DetalleIngreso() {
         )}
         {/* fieldset disabled desactiva de golpe todos los campos de dentro */}
         <fieldset
-          disabled={!esMedico && ['datos', 'ingreso', 'alta', 'cmbd'].includes(tab)}
+          disabled={
+            (episodioCerrado && ['datos', 'ingreso', 'alta', 'items', 'eventos', 'cmbd'].includes(tab)) ||
+            (!episodioCerrado && !esMedico && ['datos', 'ingreso', 'alta', 'cmbd'].includes(tab))
+          }
           className="min-w-0 border-0 p-0 m-0"
         >
           {tab === 'datos' && <TabDatos ingreso={ingreso} onUpdate={setIngreso} />}
