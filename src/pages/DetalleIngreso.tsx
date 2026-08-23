@@ -29,6 +29,17 @@ export default function DetalleIngreso() {
   const { rol } = useAuth()
   const esMedico = rol === 'medico'
   const [tab, setTab] = useState(searchParams.get('tab') ?? 'datos')
+
+  // El useState de arriba solo se ejecuta al primer montaje. Si se
+  // navega de un ingreso a otro (p. ej. desde Informes o desde
+  // Episodios del paciente) sin recargar la página completa, React
+  // reutiliza el mismo componente y la pestaña se quedaría "pegada"
+  // a la anterior, ignorando el nuevo ?tab= de la URL. Este efecto lo
+  // corrige, resincronizando cuando cambia el ingreso mostrado.
+  useEffect(() => {
+    const tabUrl = searchParams.get('tab')
+    if (tabUrl) setTab(tabUrl)
+  }, [id])
   const [ingreso, setIngreso] = useState<Ingreso | null>(null)
   const [loading, setLoading] = useState(true)
   const [modalAlta, setModalAlta] = useState(false)

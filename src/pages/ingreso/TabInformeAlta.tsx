@@ -18,25 +18,27 @@ function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
   dataRef.current = data
 
   useEffect(() => {
-    // Cargar informe de alta
-    supabase.from('informe_alta').select('*').eq('ingreso_id', ingresoId).single()
-      .then(({ data: d }) => { if (d) setData(d) })
+    // Antes esto eran dos .then() independientes: si "informe_alta"
+    // resolvía DESPUÉS de "informe_ingreso", su setData(d) (un
+    // reemplazo completo, no una fusión) borraba la medicación que el
+    // otro acababa de pre-rellenar. Esperamos a que las dos peticiones
+    // terminen y calculamos el estado final una sola vez.
+    Promise.all([
+      supabase.from('informe_alta').select('*').eq('ingreso_id', ingresoId).single(),
+      supabase.from('informe_ingreso').select('*').eq('ingreso_id', ingresoId).single(),
+    ]).then(([rAlta, rIngreso]) => {
+      const dAlta = rAlta.data as Partial<InformeAlta> | null
+      const dIngreso = rIngreso.data as InformeIngreso | null
 
-    // Cargar informe de ingreso para heredar medicación si el alta aún no tiene
-    supabase.from('informe_ingreso').select('*').eq('ingreso_id', ingresoId).single()
-      .then(({ data: d }) => {
-        if (d) {
-          setInformeIngreso(d)
-          // Pre-rellenar medicación al alta con el plan del ingreso si está vacía
-          setData(prev => {
-            const yaRellenada = (prev.medicacion_estructurada as FilaMedicacion[] | undefined)?.length ?? 0
-            if (yaRellenada === 0 && d.tratamiento_ingreso_estructurado) {
-              return { ...prev, medicacion_estructurada: d.tratamiento_ingreso_estructurado }
-            }
-            return prev
-          })
-        }
-      })
+      if (dIngreso) setInformeIngreso(dIngreso)
+
+      let base: Partial<InformeAlta> = dAlta ?? {}
+      const yaRellenada = (base.medicacion_estructurada as FilaMedicacion[] | undefined)?.length ?? 0
+      if (yaRellenada === 0 && dIngreso?.tratamiento_ingreso_estructurado) {
+        base = { ...base, medicacion_estructurada: dIngreso.tratamiento_ingreso_estructurado }
+      }
+      setData(base)
+    })
   }, [ingresoId])
 
   async function save(d = dataRef.current): Promise<boolean> {

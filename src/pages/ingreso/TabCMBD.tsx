@@ -90,11 +90,12 @@ const PROCEDENCIA: Record<string, string> = {
 
 function fmtFecha(iso?: string) {
   if (!iso) return ''
-  // ddmmaaaa
-  const d = new Date(iso)
-  const dd = String(d.getDate()).padStart(2, '0')
-  const mm = String(d.getMonth() + 1).padStart(2, '0')
-  return `${dd}${mm}${d.getFullYear()}`
+  // ddmmaaaa. Se parsea el texto directamente (AAAA-MM-DD), sin pasar
+  // por un objeto Date: así no hay ninguna conversión de zona horaria
+  // de por medio que pueda desplazar el día.
+  const [aaaa, mm, dd] = iso.split('-')
+  if (!aaaa || !mm || !dd) return ''
+  return `${dd}${mm}${aaaa}`
 }
 
 function fmtSexo(sexo?: string) {
@@ -326,11 +327,15 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
   dataRef.current = data
 
   useEffect(() => {
-    supabase.from('cmbd').select('*').eq('ingreso_id', ingresoId).maybeSingle()
-      .then(({ data: d }) => {
+    async function cargar() {
+      try {
+        const { data: d } = await supabase.from('cmbd').select('*').eq('ingreso_id', ingresoId).maybeSingle()
         if (d) setData(d as CMBDData)
+      } finally {
         setLoading(false)
-      })
+      }
+    }
+    cargar()
   }, [ingresoId])
 
   async function save(d = dataRef.current): Promise<boolean> {

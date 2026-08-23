@@ -83,15 +83,26 @@ Deno.serve(async (req) => {
     }
 
     // ── 6. Enlazar la cuenta a la ficha existente ───────────
-    const { error: linkErr } = await admin
+    // La condición ".is('user_id', null)" cierra la ventana de carrera:
+    // si dos peticiones casi simultáneas llegan aquí para la misma
+    // ficha, solo la primera consigue enlazar (afecta a una fila); la
+    // segunda no actualiza nada y lo detectamos por el "select" vacío.
+    const { data: linked, error: linkErr } = await admin
       .from('profesionales')
       .update({ user_id: creada.user.id })
       .eq('id', profesionalId)
+      .is('user_id', null)
+      .select('id')
 
     if (linkErr) {
-      // Deshacer la cuenta para no dejar huérfanos.
       await admin.auth.admin.deleteUser(creada.user.id)
       return respuesta(400, { error: 'La cuenta se creó pero falló el enlace: ' + linkErr.message })
+    }
+    if (!linked || linked.length === 0) {
+      // Alguien más enlazó esta ficha justo antes: deshacemos la cuenta
+      // que acabamos de crear para no dejarla huérfana.
+      await admin.auth.admin.deleteUser(creada.user.id)
+      return respuesta(409, { error: 'Este profesional ya ha recibido una cuenta desde otra petición. Recarga y revisa antes de reintentar.' })
     }
 
     return respuesta(200, { ok: true })

@@ -11,14 +11,20 @@ function TabEventos({ ingresoId }: { ingresoId: string }) {
   const [editando, setEditando] = useState<Evento | null>(null)
 
   async function fetchEventos() {
-    const { data } = await supabase
-      .from('eventos')
-      .select('*, registrado_por:profesionales(nombre, apellidos, rol)')
-      .eq('ingreso_id', ingresoId)
-      .order('fecha', { ascending: false })
-      .order('created_at', { ascending: false })
-    setEventos((data ?? []) as Evento[])
-    setLoading(false)
+    try {
+      const { data } = await supabase
+        .from('eventos')
+        .select('*, registrado_por:profesionales(nombre, apellidos, rol)')
+        .eq('ingreso_id', ingresoId)
+        .order('fecha', { ascending: false })
+        .order('created_at', { ascending: false })
+      setEventos((data ?? []) as Evento[])
+    } finally {
+      // "finally" en vez de dejarlo al final del try: así, si la
+      // petición falla del todo (p. ej. sin red), la pantalla no se
+      // queda en "Cargando…" para siempre.
+      setLoading(false)
+    }
   }
 
   useEffect(() => { fetchEventos() }, [ingresoId])

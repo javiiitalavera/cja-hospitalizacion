@@ -273,6 +273,8 @@ function PanelEdicion({
   onSaved: (updated: ItemsPaciente) => void
   onHabitacionChange: (ingresoId: string, nuevaHab: number) => void
 }) {
+  const { rol } = useAuth()
+  const esMedico = rol === 'medico'
   const [data, setData] = useState<Partial<ItemsPaciente>>(ingreso.items ?? {})
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -311,9 +313,13 @@ function PanelEdicion({
       setSavingHab(false)
       return
     }
-    await supabase.from('ingresos').update({ habitacion: n }).eq('id', ingreso.id)
-    onHabitacionChange(ingreso.id, n)
+    const { error: errHab } = await supabase.from('ingresos').update({ habitacion: n }).eq('id', ingreso.id)
     setSavingHab(false)
+    if (errHab) {
+      setHabError('No se pudo cambiar la habitación (¿tienes permiso?).')
+      return
+    }
+    onHabitacionChange(ingreso.id, n)
   }
 
   async function save(d = dataRef.current) {
@@ -451,7 +457,9 @@ function PanelEdicion({
               type="number"
               min={1}
               max={33}
-              className="w-14 text-xs border border-slate-200 rounded px-1.5 py-0.5 text-slate-700 font-medium"
+              disabled={!esMedico}
+              title={esMedico ? '' : 'Solo un médico puede cambiar la habitación'}
+              className="w-14 text-xs border border-slate-200 rounded px-1.5 py-0.5 text-slate-700 font-medium disabled:bg-slate-50 disabled:text-slate-400"
               value={habEdit}
               onChange={(e) => {
                 setHabEdit(e.target.value)
@@ -1208,6 +1216,7 @@ export default function HojaItems() {
 
       {selected && (
         <PanelEdicion
+          key={selected.id}
           ingreso={selected}
           onClose={() => setSelected(null)}
           onSaved={(updated) => handleSaved(selected.id, updated)}
