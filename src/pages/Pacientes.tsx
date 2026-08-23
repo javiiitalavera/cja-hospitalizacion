@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { escaparBusquedaIlike } from '../lib/busqueda'
+import { escaparBusquedaIlike, quitarTildes } from '../lib/busqueda'
 import { edad } from '../lib/fechas'
 import { useAuth } from '../lib/AuthContext'
 import { Plus, Search, ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-react'
@@ -68,8 +68,11 @@ export default function Pacientes() {
     }
 
     if (busquedaActiva.trim()) {
-      const q = escaparBusquedaIlike(busquedaActiva.trim())
-      query = query.or(`primer_apellido.ilike.${q},nombre.ilike.${q},nhc.ilike.${q},cipna.ilike.${q}`)
+      // Se busca sin tildes en los dos lados (columna normalizada en
+      // la base de datos, término también sin tildes aquí): así da
+      // igual si el usuario escribe "gonzalez" o "González".
+      const q = escaparBusquedaIlike(quitarTildes(busquedaActiva.trim()))
+      query = query.or(`primer_apellido_normalizado.ilike.${q},segundo_apellido_normalizado.ilike.${q},nombre_normalizado.ilike.${q},nhc.ilike.${q},cipna.ilike.${q}`)
     }
 
     const opcion = ORDEN_OPCIONES.find(o => o.valor === orden)!

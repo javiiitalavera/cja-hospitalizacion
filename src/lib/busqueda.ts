@@ -12,3 +12,13 @@ export function escaparBusquedaIlike(q: string): string {
   const escapado = q.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
   return `"%${escapado}%"`
 }
+
+// Quita tildes/diacríticos de un texto ("González" -> "Gonzalez"),
+// para buscar sin que importe si el usuario escribió la tilde o no.
+// Debe dar el mismo resultado que unaccent() en PostgreSQL, porque se
+// compara contra columnas ya normalizadas del mismo modo en la base
+// de datos — si un lado quita tildes y el otro no, la búsqueda deja
+// de encontrar coincidencias en uno de los dos sentidos.
+export function quitarTildes(q: string): string {
+  return q.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+}

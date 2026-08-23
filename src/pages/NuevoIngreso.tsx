@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { hoyLocal } from '../lib/fechas'
-import { escaparBusquedaIlike } from '../lib/busqueda'
+import { escaparBusquedaIlike, quitarTildes } from '../lib/busqueda'
 import { useAuth } from '../lib/AuthContext'
 import type { Profesional, Paciente } from '../types'
 import { nombreCompleto } from '../types'
@@ -73,12 +73,12 @@ export default function NuevoIngreso() {
   async function buscarPaciente() {
     if (!busqueda.trim()) return
     setBuscando(true)
-    const q = escaparBusquedaIlike(busqueda.trim())
+    const q = escaparBusquedaIlike(quitarTildes(busqueda.trim()))
     const { data } = await supabase
       .from('pacientes')
       .select('*')
       .or(
-        `primer_apellido.ilike.${q},nombre.ilike.${q},nhc.ilike.${q},cipna.ilike.${q}`
+        `primer_apellido_normalizado.ilike.${q},segundo_apellido_normalizado.ilike.${q},nombre_normalizado.ilike.${q},nhc.ilike.${q},cipna.ilike.${q}`
       )
       .order('primer_apellido')
       .limit(10)
