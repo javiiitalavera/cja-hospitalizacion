@@ -24,6 +24,7 @@ begin;
 
 create extension if not exists pgcrypto;
 create extension if not exists pg_cron;
+create extension if not exists unaccent;
 
 -- Esquema para funciones auxiliares de RLS. Separado de "public" para
 -- que no sean invocables directamente por el cliente (solo se usan
@@ -35,7 +36,22 @@ create schema if not exists private;
 -- TABLAS
 -- ────────────────────────────────────────────────────────────
 
--- Pacientes: identidad y datos que no cambian entre ingresos.
+-- Envoltorio de unaccent() marcado como IMMUTABLE: unaccent() en sí
+-- no lo está (aunque en la práctica el diccionario de acentos no
+-- cambia), y una columna generada exige que su expresión sí lo sea.
+-- Se define aquí, antes de "pacientes", porque las columnas
+-- generadas de esa tabla la necesitan ya creada.
+create function public.inmutable_unaccent(text)
+returns text
+language sql immutable parallel safe
+as $$
+  select unaccent('unaccent', $1)
+$$;
+
+-- Pacientes: identidad y datos que no cambian entre ingresos. Las
+-- columnas *_normalizado las calcula sola la base de datos (sin
+-- tildes, en minúsculas) para poder buscar sin que importe si el
+-- usuario escribe la tilde o no.
 create table public.pacientes (
     id uuid primary key default gen_random_uuid(),
     cipna text,
@@ -50,7 +66,10 @@ create table public.pacientes (
     medico_cabecera text,
     contacto_familiar_nombre text,
     contacto_familiar_telefono text,
-    created_at timestamptz default now()
+    created_at timestamptz default now(),
+    nombre_normalizado text generated always as (public.inmutable_unaccent(lower(nombre))) stored,
+    primer_apellido_normalizado text generated always as (public.inmutable_unaccent(lower(primer_apellido))) stored,
+    segundo_apellido_normalizado text generated always as (public.inmutable_unaccent(lower(coalesce(segundo_apellido, '')))) stored
 );
 
 -- Profesionales: personal de la unidad. user_id enlaza con la cuenta
@@ -303,7 +322,10 @@ select
     i.estado as ingreso_estado,
     i.fecha_ingreso as ingreso_fecha_ingreso,
     i.fecha_alta as ingreso_fecha_alta,
-    i.habitacion as ingreso_habitacion
+    i.habitacion as ingreso_habitacion,
+    p.nombre_normalizado,
+    p.primer_apellido_normalizado,
+    p.segundo_apellido_normalizado
 from public.pacientes p
 left join lateral (
     select i2.id, i2.paciente_id, i2.fecha_ingreso, i2.fecha_alta, i2.habitacion,
@@ -576,6 +598,8 @@ create index items_historico_fecha_idx on public.items_historico (fecha);
 create index auditoria_tabla_registro_idx on public.auditoria (tabla, registro_id);
 create index auditoria_fecha_idx on public.auditoria (fecha desc);
 create index profesionales_user_id_idx on public.profesionales (user_id);
+create index pacientes_nombre_normalizado_idx on public.pacientes (nombre_normalizado);
+create index pacientes_primer_apellido_normalizado_idx on public.pacientes (primer_apellido_normalizado);
 
 
 -- ────────────────────────────────────────────────────────────

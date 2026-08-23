@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase'
 import type { Ingreso } from '../../types'
 import { nombreCompleto } from '../../types'
 import { edad } from '../../lib/fechas'
+import { quitarTildes } from '../../lib/busqueda'
 import { CheckCircle, Circle, Download, Save } from 'lucide-react'
 
 // ─── REPERTORIO CIE-10 PSICOGERIÁTRICO ───────────────────────
@@ -66,6 +67,14 @@ const CIE10: { code: string; desc: string }[] = [
   { code: 'Z74.1', desc: 'Necesidad de asistencia personal' },
 ]
 
+// Versión sin tildes, calculada una sola vez (la lista es fija, no
+// tiene sentido recalcularla en cada tecla que se pulse al buscar).
+const CIE10_NORMALIZADO = CIE10.map((c) => ({
+  ...c,
+  codeSinTildes: quitarTildes(c.code.toLowerCase()),
+  descSinTildes: quitarTildes(c.desc.toLowerCase()),
+}))
+
 const N_SECUNDARIOS = 8
 const N_PROCEDIMIENTOS = 8
 
@@ -117,10 +126,12 @@ function BuscadorCIE({ value, onChange }: {
   useEffect(() => { setQ(value) }, [value])
 
   const resultados = q.trim().length >= 1
-    ? CIE10.filter(c =>
-        c.code.toLowerCase().includes(q.toLowerCase()) ||
-        c.desc.toLowerCase().includes(q.toLowerCase())
-      ).slice(0, 8)
+    ? (() => {
+        const qSinTildes = quitarTildes(q.toLowerCase())
+        return CIE10_NORMALIZADO.filter(c =>
+          c.codeSinTildes.includes(qSinTildes) || c.descSinTildes.includes(qSinTildes)
+        ).slice(0, 8)
+      })()
     : []
 
   useEffect(() => {

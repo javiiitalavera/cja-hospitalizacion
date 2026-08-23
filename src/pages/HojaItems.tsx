@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useMemo, useCallback, memo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { escaparBusquedaIlike, quitarTildes } from '../lib/busqueda'
 import { useAuth } from '../lib/AuthContext'
 import type { Ingreso, ItemsPaciente } from '../types'
 import { SEMAFORO_CAIDAS_COLOR as SEMAFORO_COLOR, nombreCompleto } from '../types'
@@ -847,10 +848,14 @@ export default function HojaItems() {
       setPacienteResultados([])
       return
     }
+    // Mismo criterio que en Pacientes y Nuevo Ingreso: se escapa el
+    // texto (una coma o un paréntesis, si no, rompía la consulta) y
+    // se busca sin tildes en los dos lados.
+    const qEscapado = escaparBusquedaIlike(quitarTildes(q.trim()))
     const { data } = await supabase
       .from('pacientes')
       .select('id, nombre, primer_apellido, segundo_apellido')
-      .or(`primer_apellido.ilike.%${q}%,nombre.ilike.%${q}%`)
+      .or(`primer_apellido_normalizado.ilike.${qEscapado},segundo_apellido_normalizado.ilike.${qEscapado},nombre_normalizado.ilike.${qEscapado}`)
       .order('primer_apellido')
       .limit(8)
     setPacienteResultados(data ?? [])

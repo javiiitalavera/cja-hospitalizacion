@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { Search, FileText, LogOut, ArrowUpDown } from 'lucide-react'
 import { ESTADO_INGRESO_LABEL as ESTADO_LABEL, ESTADO_INGRESO_COLOR as ESTADO_COLOR, nombreCompleto } from '../types'
+import { quitarTildes } from '../lib/busqueda'
 
 type TipoInforme = 'ingreso' | 'alta'
 
@@ -102,8 +103,8 @@ export function Informes() {
     lista = lista.filter(r => r.tipo === filtroTipo)
   }
   if (busqueda.trim()) {
-    const q = busqueda.trim().toLowerCase()
-    lista = lista.filter(r => r.paciente.toLowerCase().includes(q))
+    const q = quitarTildes(busqueda.trim().toLowerCase())
+    lista = lista.filter(r => quitarTildes(r.paciente.toLowerCase()).includes(q))
   }
   lista = [...lista].sort((a, b) => {
     const fa = a.fecha ?? ''
