@@ -147,7 +147,8 @@ export default function DetallePaciente() {
               </div>
             </div>
           </div>
-          {/* Fix 1+5: pasar paciente_id para saltar búsqueda */}
+          {/* El enlace lleva el paciente ya elegido, así el formulario
+              de reingreso se abre directamente sobre él, sin buscarlo. */}
           {esMedico && (
             <Link to={`/pacientes/nuevo?paciente_id=${paciente.id}`} className="btn-primary text-xs">
               <Plus className="w-3.5 h-3.5" /> Nuevo ingreso
@@ -183,7 +184,7 @@ export default function DetallePaciente() {
               const dias = diasEntre(ing.fecha_ingreso, ing.fecha_alta)
               const evCount = eventos.filter(ev => ev.ingreso_id === ing.id).length
               const esActual = ing.estado === 'activo'
-              // Fix 2: médico con apellidos
+              // Nombre y apellidos del médico, en un único texto.
               const medicoNombre = ing.medico_responsable
                 ? `${ing.medico_responsable.nombre} ${ing.medico_responsable.apellidos}`.trim()
                 : '—'
@@ -259,7 +260,7 @@ export default function DetallePaciente() {
           </div>
         )}
 
-        {/* DATOS PERSONALES — Fix 6: modo edición */}
+        {/* DATOS PERSONALES */}
         {tab === 'datos' && (
           <div className="max-w-xl">
             <div className="flex justify-end mb-3">

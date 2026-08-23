@@ -138,11 +138,9 @@ function BuscadorCIE({ value, onChange }: {
         onChange={e => { setQ(e.target.value); setOpen(true) }}
         onFocus={() => resultados.length > 0 && setOpen(true)}
         onBlur={() => {
-          // Antes, si se tecleaba un código y se salía del campo sin
-          // hacer clic en una sugerencia, lo escrito se veía en
-          // pantalla pero nunca llegaba a guardarse. Al perder el
-          // foco, confirmamos el texto tal cual: si coincide con un
-          // código conocido, completamos su descripción oficial.
+          // Confirma el texto al perder el foco, aunque no se haya
+          // hecho clic en una sugerencia: si coincide con un código
+          // conocido, completa su descripción oficial.
           setTimeout(() => {
             setOpen(false)
             const texto = q.trim()

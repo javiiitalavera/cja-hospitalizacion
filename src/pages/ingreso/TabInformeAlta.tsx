@@ -18,11 +18,12 @@ function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
   dataRef.current = data
 
   useEffect(() => {
-    // Antes esto eran dos .then() independientes: si "informe_alta"
-    // resolvía DESPUÉS de "informe_ingreso", su setData(d) (un
-    // reemplazo completo, no una fusión) borraba la medicación que el
-    // otro acababa de pre-rellenar. Esperamos a que las dos peticiones
-    // terminen y calculamos el estado final una sola vez.
+    // Se cargan las dos fuentes en paralelo y se espera a que ambas
+    // terminen antes de fijar el estado, calculándolo una sola vez.
+    // (Si cada una fijase el estado por separado en su propio then(),
+    // la que resolviera más tarde podría pisar lo que la otra ya
+    // había combinado — en concreto, borraría la medicación heredada
+    // del ingreso si "informe_alta" resolviera después.)
     Promise.all([
       supabase.from('informe_alta').select('*').eq('ingreso_id', ingresoId).single(),
       supabase.from('informe_ingreso').select('*').eq('ingreso_id', ingresoId).single(),

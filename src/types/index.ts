@@ -2,8 +2,8 @@ export type Rol = 'medico' | 'enfermeria' | 'auxiliar' | 'tecnico'
 export type EstadoIngreso = 'activo' | 'alta' | 'alta_traslado' | 'exitus'
 
 // Etiqueta y color de cada estado de ingreso. Vive aquí, junto al tipo,
-// para que no se redefina por separado en cada pantalla que lo usa
-// (antes estaba repetido igual en 5 archivos distintos).
+// para que sea el único sitio que lo define; el resto de la app importa
+// esta constante en vez de redefinirla.
 export const ESTADO_INGRESO_LABEL: Record<string, string> = {
   activo: 'Ingresado',
   alta: 'Alta',
@@ -17,8 +17,8 @@ export const ESTADO_INGRESO_COLOR: Record<string, string> = {
   exitus: 'bg-red-100 text-red-600',
 }
 
-// Colores del semáforo de caídas. Antes repetidos, idénticos, en
-// Home.tsx, HojaItems.tsx y Dashboard.tsx.
+// Colores del semáforo de caídas: único sitio que los define, usado
+// en Home.tsx, HojaItems.tsx y Dashboard.tsx.
 export const SEMAFORO_CAIDAS_COLOR: Record<string, string> = {
   verde: '#92D050',
   amarillo: '#FFFF00',
@@ -57,10 +57,9 @@ export interface Paciente {
   created_at: string
 }
 
-// "Apellidos, Nombre" con los dos apellidos si existen. Antes estaba
-// repetido en al menos 8 archivos, y dos variantes distintas convivían:
-// unas pantallas mostraban el segundo apellido y otras lo omitían en
-// silencio. Se usa siempre la versión completa.
+// "Apellidos, Nombre", con los dos apellidos si el paciente tiene
+// segundo apellido. Único sitio que da formato al nombre completo,
+// para que todas las pantallas lo muestren igual.
 export function nombreCompleto(p: { nombre: string; primer_apellido: string; segundo_apellido?: string | null }): string {
   const apellidos = p.segundo_apellido ? `${p.primer_apellido} ${p.segundo_apellido}` : p.primer_apellido
   return `${apellidos}, ${p.nombre}`

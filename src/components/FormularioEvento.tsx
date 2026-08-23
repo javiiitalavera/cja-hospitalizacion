@@ -196,7 +196,9 @@ export default function FormularioEvento({ ingresoId, eventoExistente, onClose, 
             />
           </div>
 
-          {/* Profesional: ya no se elige, es quien ha iniciado sesión */}
+          {/* El autor es siempre quien tiene la sesión abierta: no es
+              un campo que se pueda elegir, para que quede fiable quién
+              registró cada incidencia. */}
           <div>
             <label className="label">Registrado por</label>
             <p className="input bg-slate-50 text-slate-600 cursor-not-allowed">

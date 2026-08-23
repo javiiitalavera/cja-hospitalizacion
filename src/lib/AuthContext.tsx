@@ -47,8 +47,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   // ── Paso 2: la ficha del profesional ────────────────────────
-  // Efecto separado que reacciona cuando cambia el usuario. Al estar
-  // fuera de los callbacks de auth, la consulta ya no se bloquea.
+  // Efecto separado, fuera de los callbacks de auth: así la consulta
+  // a la base de datos no bloquea el flujo de inicio/cierre de sesión.
   useEffect(() => {
     const userId = session?.user?.id
     if (!userId) {

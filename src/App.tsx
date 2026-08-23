@@ -5,11 +5,7 @@ import Layout from './components/Layout'
 import Login from './pages/Login'
 
 // Carga diferida: cada pantalla se descarga solo cuando se entra en
-// ella, no todas de golpe al arrancar la app. Antes, toda la app
-// (Dashboard, CMBD, Auditoría, la Hoja de Ítems…) viajaba en un único
-// bloque de ~1,1 MB, así que la primera vez que se abría cualquier
-// pantalla pesada había que descargar y ejecutar el código de todas
-// las demás también.
+// ella, no todas de golpe al arrancar la app.
 const Home = lazy(() => import('./pages/Home'))
 const Pacientes = lazy(() => import('./pages/Pacientes'))
 const DetallePaciente = lazy(() => import('./pages/DetallePaciente'))
