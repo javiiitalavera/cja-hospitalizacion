@@ -113,7 +113,6 @@ export interface InformeIngreso {
   impresion_diagnostica?: string
   plan_objetivos?: string
   plan_medicacion?: string
-  plan_medicacion_estructurado?: FilaMedicacion[]
   plan_otros_cuidados?: string
   created_at: string
   updated_at: string

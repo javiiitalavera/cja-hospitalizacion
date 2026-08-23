@@ -4,10 +4,12 @@
 // Borra por completo a un profesional (ficha + cuenta de acceso).
 // Pensado para limpiar entradas de PRUEBA o creadas por error.
 //
-// Protección de trazabilidad: si la persona tiene registros clínicos
-// asociados (incidencias, ingresos, informes…), la base de datos
-// rechaza el borrado y se devuelve un aviso para usar la baja. Así
-// nunca se puede destruir por accidente el rastro de alguien real.
+// Protección de trazabilidad: se comprueba ANTES de tocar nada si la
+// persona tiene registros clínicos a su nombre (ingresos donde es
+// médico responsable, incidencias que registró). Si los tiene, se
+// rechaza sin más y no se borra nada — ni ficha ni cuenta. Así se
+// evita el estado a medias de intentar borrar y deshacerlo si falla:
+// o se puede borrar entero, o no se toca nada.
 //
 // Seguridad: solo un administrador, y nadie puede borrarse a sí mismo.
 // ============================================================
@@ -72,31 +74,63 @@ Deno.serve(async (req) => {
       return respuesta(400, { error: 'No puedes eliminarte a ti mismo.' })
     }
 
-    // ── 5. Borrar la ficha ──────────────────────────────────
-    // Si tiene registros clínicos asociados, la BD lo rechaza (FK).
+    // ── 5. Comprobar ANTES de tocar nada si tiene datos clínicos ──
+    // Las dos únicas tablas que de verdad referencian a un profesional
+    // en producción: ingresos (médico responsable) y eventos
+    // (quién registró la incidencia).
+    const [{ count: comoMedico }, { count: comoRegistrador }] = await Promise.all([
+      admin.from('ingresos').select('id', { count: 'exact', head: true }).eq('medico_responsable_id', profesionalId),
+      admin.from('eventos').select('id', { count: 'exact', head: true }).eq('registrado_por_id', profesionalId),
+    ])
+
+    if ((comoMedico ?? 0) > 0 || (comoRegistrador ?? 0) > 0) {
+      return respuesta(409, {
+        error:
+          'No se puede eliminar: esta persona tiene registros clínicos a su nombre ' +
+          '(como médico responsable de un ingreso o como autora de una incidencia). ' +
+          'Para conservar la trazabilidad, dale de baja en su lugar.',
+      })
+    }
+
+    // ── 6. Borrar la ficha ──────────────────────────────────
+    // Ya sabemos que no tiene datos asociados, así que esto debería
+    // funcionar; el candado de la BD (FK) queda como red de seguridad
+    // por si algo cambió justo en este instante.
     const { error: delErr } = await admin
       .from('profesionales')
       .delete()
       .eq('id', profesionalId)
 
     if (delErr) {
-      // 23503 = violación de clave foránea → tiene datos asociados.
       const tieneDatos =
         delErr.code === '23503' ||
         /foreign key|violates|referenced/i.test(delErr.message ?? '')
       if (tieneDatos) {
         return respuesta(409, {
           error:
-            'No se puede eliminar: esta persona tiene registros clínicos a su nombre ' +
-            '(incidencias, ingresos o informes). Para conservar la trazabilidad, dale de baja en su lugar.',
+            'No se puede eliminar: esta persona tiene registros clínicos a su nombre. ' +
+            'Para conservar la trazabilidad, dale de baja en su lugar.',
         })
       }
       return respuesta(400, { error: 'No se pudo eliminar: ' + delErr.message })
     }
 
-    // ── 6. Borrar también la cuenta de acceso (si tenía) ────
+    // ── 7. Borrar también la cuenta de acceso (si tenía) ────
     if (objetivo.user_id) {
-      await admin.auth.admin.deleteUser(objetivo.user_id)
+      const { error: authErr } = await admin.auth.admin.deleteUser(objetivo.user_id)
+      if (authErr) {
+        // La ficha ya se borró (paso 6) y no hay vuelta atrás sencilla
+        // para eso; avisamos con claridad de que queda una cuenta de
+        // acceso suelta, para que se resuelva a mano si hace falta.
+        // (200, no un código de error HTTP: así el aviso llega tal
+        // cual a la pantalla en vez de perderse en el manejo genérico
+        // de errores de red de la librería de Supabase.)
+        return respuesta(200, {
+          error:
+            'La ficha se eliminó, pero no se pudo borrar la cuenta de acceso (' + authErr.message + '). ' +
+            'Puede quedar bloqueando ese correo para futuras cuentas; revísalo en Supabase Auth.',
+        })
+      }
     }
 
     return respuesta(200, { ok: true })

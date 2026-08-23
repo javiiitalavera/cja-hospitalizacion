@@ -225,11 +225,18 @@ function HistoricoItems({ ingresoId }: { ingresoId: string }) {
   const [selected, setSelected] = useState<any>(null)
 
   useEffect(() => {
-    supabase.from('items_historico')
-      .select('*')
-      .eq('ingreso_id', ingresoId)
-      .order('fecha', { ascending: false })
-      .then(({ data }) => { setSnapshots(data ?? []); setLoading(false) })
+    async function cargar() {
+      try {
+        const { data } = await supabase.from('items_historico')
+          .select('*')
+          .eq('ingreso_id', ingresoId)
+          .order('fecha', { ascending: false })
+        setSnapshots(data ?? [])
+      } finally {
+        setLoading(false)
+      }
+    }
+    cargar()
   }, [ingresoId])
 
   const LABELS: Record<string, string> = {

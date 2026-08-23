@@ -52,15 +52,19 @@ export default function DetalleIngreso() {
 
   useEffect(() => {
     if (!id) return
-    supabase
-      .from('ingresos')
-      .select('*, paciente:pacientes(*), medico_responsable:profesionales(*)')
-      .eq('id', id)
-      .single()
-      .then(({ data }) => {
+    async function cargar() {
+      try {
+        const { data } = await supabase
+          .from('ingresos')
+          .select('*, paciente:pacientes(*), medico_responsable:profesionales(*)')
+          .eq('id', id)
+          .single()
         setIngreso(data as Ingreso)
+      } finally {
         setLoading(false)
-      })
+      }
+    }
+    cargar()
   }, [id])
 
   async function darAlta() {

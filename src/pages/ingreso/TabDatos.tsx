@@ -24,6 +24,22 @@ function TabDatos({ ingreso, onUpdate }: { ingreso: Ingreso; onUpdate: (i: Ingre
       .then(({ data }) => setMedicos(data ?? []))
   }, [])
 
+  // Si el ingreso se refresca desde fuera (p. ej. otra pestaña llama a
+  // onUpdate), el formulario de edición se queda con los valores viejos
+  // porque el useState de arriba solo se inicializa una vez. Este efecto
+  // lo resincroniza — pero solo cuando NO se está editando ahora mismo,
+  // para no borrar en silencio un cambio a medio escribir.
+  useEffect(() => {
+    if (editando) return
+    setIngresoEdit({
+      habitacion: ingreso.habitacion?.toString() ?? '',
+      motivo_ingreso: ingreso.motivo_ingreso ?? '',
+      fecha_ingreso: ingreso.fecha_ingreso ?? '',
+      medico_responsable_id: ingreso.medico_responsable_id ?? '',
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ingreso.habitacion, ingreso.motivo_ingreso, ingreso.fecha_ingreso, ingreso.medico_responsable_id, editando])
+
   async function guardar() {
     setSaving(true)
     setError('')

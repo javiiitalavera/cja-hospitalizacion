@@ -172,7 +172,6 @@ export default function NuevoIngreso() {
             impresion_diagnostica,
             plan_objetivos,
             plan_medicacion,
-            plan_medicacion_estructurado,
             plan_otros_cuidados,
             barthel,
             lawton,
