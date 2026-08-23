@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { escaparBusquedaIlike, quitarTildes } from '../lib/busqueda'
@@ -46,8 +46,10 @@ export default function Pacientes() {
   const [orden, setOrden] = useState<OrdenValor>('apellido')
   const [pagina, setPagina] = useState(0)
   const navigate = useNavigate()
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => { fetchPacientes() }, [filtroEstado, busquedaActiva, orden, pagina])
+  useEffect(() => () => { if (debounceRef.current) clearTimeout(debounceRef.current) }, [])
 
   async function fetchPacientes() {
     setLoading(true)
@@ -130,9 +132,27 @@ export default function Pacientes() {
             className="input pl-9"
             placeholder="Apellido, nombre, NHC…"
             value={busqueda}
-            onChange={e => setBusqueda(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') { setBusquedaActiva(busqueda); setPagina(0) } }}
-            onBlur={() => { setBusquedaActiva(busqueda); setPagina(0) }}
+            onChange={e => {
+              const valor = e.target.value
+              setBusqueda(valor)
+              if (debounceRef.current) clearTimeout(debounceRef.current)
+              // Busca en vivo, con una pequeña espera tras la última
+              // tecla para no lanzar una consulta a la base de datos
+              // en cada pulsación — igual de "en vivo" que el resto de
+              // buscadores de la app, sin recargar de más.
+              debounceRef.current = setTimeout(() => {
+                setBusquedaActiva(valor)
+                setPagina(0)
+              }, 300)
+            }}
+            onKeyDown={e => {
+              // Intro confirma al instante, sin esperar los 300 ms.
+              if (e.key === 'Enter') {
+                if (debounceRef.current) clearTimeout(debounceRef.current)
+                setBusquedaActiva(busqueda)
+                setPagina(0)
+              }
+            }}
           />
         </div>
         {(['activo', 'alta', 'todos'] as const).map(e => (

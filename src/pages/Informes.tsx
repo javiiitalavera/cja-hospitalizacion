@@ -13,6 +13,7 @@ interface InformeRow {
   tipo: TipoInforme
   fecha: string | null
   paciente: string
+  nhc: string | null
   medico: string
   estadoIngreso: string
   preview: string
@@ -41,7 +42,7 @@ export function Informes() {
           id, impresion_diagnostica, ingreso_id,
           ingreso:ingresos(id, fecha_ingreso, estado,
             medico_responsable:profesionales(nombre, apellidos),
-            paciente:pacientes(nombre, primer_apellido, segundo_apellido))
+            paciente:pacientes(nombre, primer_apellido, segundo_apellido, nhc))
         `)
         .limit(2000), // tope de seguridad: esta pantalla no pagina todavía
       supabase
@@ -50,7 +51,7 @@ export function Informes() {
           id, juicios_clinicos, ingreso_id,
           ingreso:ingresos(id, fecha_alta, fecha_ingreso, estado,
             medico_responsable:profesionales(nombre, apellidos),
-            paciente:pacientes(nombre, primer_apellido, segundo_apellido))
+            paciente:pacientes(nombre, primer_apellido, segundo_apellido, nhc))
         `)
         .limit(2000),
     ])
@@ -66,6 +67,7 @@ export function Informes() {
         tipo: 'ingreso',
         fecha: i.fecha_ingreso,
         paciente: nombreCompleto(i.paciente),
+        nhc: i.paciente.nhc ?? null,
         medico: i.medico_responsable ? `${i.medico_responsable.nombre} ${i.medico_responsable.apellidos}` : '—',
         estadoIngreso: i.estado,
         preview: r.impresion_diagnostica ?? '',
@@ -81,6 +83,7 @@ export function Informes() {
         tipo: 'alta',
         fecha: i.fecha_alta ?? i.fecha_ingreso,
         paciente: nombreCompleto(i.paciente),
+        nhc: i.paciente.nhc ?? null,
         medico: i.medico_responsable ? `${i.medico_responsable.nombre} ${i.medico_responsable.apellidos}` : '—',
         estadoIngreso: i.estado,
         preview: r.juicios_clinicos ?? '',
@@ -104,7 +107,10 @@ export function Informes() {
   }
   if (busqueda.trim()) {
     const q = quitarTildes(busqueda.trim().toLowerCase())
-    lista = lista.filter(r => quitarTildes(r.paciente.toLowerCase()).includes(q))
+    lista = lista.filter(r =>
+      quitarTildes(r.paciente.toLowerCase()).includes(q) ||
+      (r.nhc ?? '').toLowerCase().includes(q)
+    )
   }
   lista = [...lista].sort((a, b) => {
     const fa = a.fecha ?? ''
@@ -131,7 +137,7 @@ export function Informes() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             className="input pl-9"
-            placeholder="Buscar por paciente…"
+            placeholder="Buscar por paciente o NHC…"
             value={busqueda}
             onChange={e => setBusqueda(e.target.value)}
           />
@@ -168,6 +174,7 @@ export function Informes() {
             <tr className="border-b bg-slate-50">
               <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Tipo</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Paciente</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">NHC</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Fecha</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Médico</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Estado</th>
@@ -176,9 +183,9 @@ export function Informes() {
           </thead>
           <tbody className="divide-y">
             {loading ? (
-              <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-400">Cargando…</td></tr>
+              <tr><td colSpan={7} className="px-4 py-12 text-center text-slate-400">Cargando…</td></tr>
             ) : lista.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-400">No hay informes con estos filtros.</td></tr>
+              <tr><td colSpan={7} className="px-4 py-12 text-center text-slate-400">No hay informes con estos filtros.</td></tr>
             ) : lista.map(r => (
               <tr key={`${r.tipo}-${r.id}`}
                 className="hover:bg-slate-50 transition-colors cursor-pointer"
@@ -192,6 +199,7 @@ export function Informes() {
                   </span>
                 </td>
                 <td className="px-4 py-3 font-medium text-slate-800">{r.paciente}</td>
+                <td className="px-4 py-3 text-slate-500 text-xs font-mono">{r.nhc || <span className="text-slate-300">—</span>}</td>
                 <td className="px-4 py-3 text-slate-500 text-xs">
                   {r.fecha ? new Date(r.fecha).toLocaleDateString('es-ES') : '—'}
                 </td>
