@@ -5,6 +5,7 @@ import { hoyLocal } from '../lib/fechas'
 import { escaparBusquedaIlike } from '../lib/busqueda'
 import { useAuth } from '../lib/AuthContext'
 import type { Profesional, Paciente } from '../types'
+import { nombreCompleto } from '../types'
 import { ChevronLeft, Save, Search, UserPlus, RefreshCw, Lock } from 'lucide-react'
 
 export default function NuevoIngreso() {
@@ -101,7 +102,7 @@ export default function NuevoIngreso() {
         .maybeSingle()
       if (ocupada) {
         const p = (ocupada as any).paciente
-        const nombre = p ? `${p.primer_apellido}, ${p.nombre}` : 'otro paciente'
+        const nombre = p ? nombreCompleto(p) : 'otro paciente'
         setError(`La habitación ${ingreso.habitacion} ya está ocupada por ${nombre}.`)
         return null
       }

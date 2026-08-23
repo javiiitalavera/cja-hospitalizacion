@@ -1,6 +1,8 @@
 import JSZip from 'jszip'
 import type { FilaMedicacion, Ingreso, InformeIngreso, InformeAlta } from '../types'
+import { nombreCompleto } from '../types'
 import { TOMAS } from '../pages/ingreso/TablaMedicacion'
+import { edad, hoyLocal } from './fechas'
 
 // ─── UTILIDADES ───────────────────────────────────────────────────────────────
 
@@ -125,15 +127,16 @@ export async function exportarInformeIngreso(ingreso: Ingreso, inf: InformeIngre
   const zip = await cargarPlantilla('plantilla_ingreso.docx')
   const p = ingreso.paciente!
   const font = 'Calibri'
-  const edad = p.fecha_nacimiento
-    ? Math.floor((Date.now() - new Date(p.fecha_nacimiento).getTime()) / 31557600000)
-    : '?'
+  // Edad EN LA FECHA DE INGRESO, no en la fecha en que se exporte el
+  // documento — si se vuelve a exportar un informe antiguo, la edad
+  // que debe salir es la que tenía entonces, no la que tiene ahora.
+  const edadPaciente = edad(p.fecha_nacimiento, ingreso.fecha_ingreso) ?? '?'
   const fingreso = ingreso.fecha_ingreso ? new Date(ingreso.fecha_ingreso).toLocaleDateString('es-ES') : ''
-  const nombreCompleto = `${p.primer_apellido ?? ''} ${p.segundo_apellido ?? ''}, ${p.nombre ?? ''}`.trim()
+  const nombreDelPaciente = nombreCompleto(p)
 
   const cuerpo = [
     parrafoXml(
-      `D. ${nombreCompleto} de ${edad} años, ingresa en nuestra Unidad de Hospitalización${ingreso.motivo_ingreso ? `, a petición de su médico de cabecera, por ${ingreso.motivo_ingreso.toLowerCase()}` : ''}.`,
+      `D. ${nombreDelPaciente} de ${edadPaciente} años, ingresa en nuestra Unidad de Hospitalización${ingreso.motivo_ingreso ? `, a petición de su médico de cabecera, por ${ingreso.motivo_ingreso.toLowerCase()}` : ''}.`,
       font
     ),
     parrafoXml('', font),
@@ -212,7 +215,7 @@ export async function exportarInformeIngreso(ingreso: Ingreso, inf: InformeIngre
   const headerRaw = await zip.file('word/header1.xml')!.async('string')
   zip.file('word/header1.xml', inyectarHeader(headerRaw, p, fingreso, ''))
 
-  descargar(zip, `Informe_Ingreso_${p.primer_apellido ?? 'paciente'}_${new Date().toISOString().split('T')[0]}.docx`)
+  descargar(zip, `Informe_Ingreso_${p.primer_apellido ?? 'paciente'}_${hoyLocal()}.docx`)
 }
 
 // ─── INFORME DE ALTA ──────────────────────────────────────────────────────────
@@ -221,16 +224,16 @@ export async function exportarInformeAlta(ingreso: Ingreso, ii: InformeIngreso, 
   const zip = await cargarPlantilla('plantilla_alta.docx')
   const p = ingreso.paciente!
   const font = 'Calibri'
-  const edad = p.fecha_nacimiento
-    ? Math.floor((Date.now() - new Date(p.fecha_nacimiento).getTime()) / 31557600000)
-    : '?'
+  // Edad EN LA FECHA DE ALTA (o de ingreso si aún no hay alta), no en
+  // la fecha en que se vuelva a exportar el documento más adelante.
+  const edadPaciente = edad(p.fecha_nacimiento, ingreso.fecha_alta ?? ingreso.fecha_ingreso) ?? '?'
   const fingreso = ingreso.fecha_ingreso ? new Date(ingreso.fecha_ingreso).toLocaleDateString('es-ES') : ''
   const falta = ingreso.fecha_alta ? new Date(ingreso.fecha_alta).toLocaleDateString('es-ES') : ''
-  const nombreCompleto = `${p.primer_apellido ?? ''} ${p.segundo_apellido ?? ''}, ${p.nombre ?? ''}`.trim()
+  const nombreDelPaciente = nombreCompleto(p)
 
   const cuerpo = [
     parrafoXml(
-      `D. ${nombreCompleto} de ${edad} años, ingresa en nuestra Unidad de Hospitalización${ingreso.motivo_ingreso ? `, a petición de su médico de cabecera, por ${ingreso.motivo_ingreso.toLowerCase()}` : ''}.`,
+      `D. ${nombreDelPaciente} de ${edadPaciente} años, ingresa en nuestra Unidad de Hospitalización${ingreso.motivo_ingreso ? `, a petición de su médico de cabecera, por ${ingreso.motivo_ingreso.toLowerCase()}` : ''}.`,
       font
     ),
     parrafoXml('', font),
@@ -332,5 +335,5 @@ export async function exportarInformeAlta(ingreso: Ingreso, ii: InformeIngreso, 
   const headerRaw = await zip.file('word/header1.xml')!.async('string')
   zip.file('word/header1.xml', inyectarHeader(headerRaw, p, fingreso, falta))
 
-  descargar(zip, `Informe_Alta_${p.primer_apellido ?? 'paciente'}_${new Date().toISOString().split('T')[0]}.docx`)
+  descargar(zip, `Informe_Alta_${p.primer_apellido ?? 'paciente'}_${hoyLocal()}.docx`)
 }

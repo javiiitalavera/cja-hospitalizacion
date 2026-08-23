@@ -18,3 +18,27 @@ export function formatFechaLocal(d: Date): string {
 export function hoyLocal(): string {
   return formatFechaLocal(new Date())
 }
+
+// Edad aproximada en años a partir de la fecha de nacimiento. Es una
+// aproximación por 365,25 días (no compara día/mes de cumpleaños),
+// pero es la que ya usaba la app en varios sitios; se centraliza aquí
+// en vez de mantenerla repetida.
+//
+// Admite una fecha de referencia opcional (por defecto, hoy). Esto
+// importa en documentos: la edad de un informe de ingreso o de alta
+// debe calcularse con la fecha de ESE episodio, no con la fecha en la
+// que se vuelva a exportar el documento más adelante.
+export function edad(fechaNacimiento?: string | null, fechaReferencia?: string | null): number | null {
+  if (!fechaNacimiento) return null
+  const referencia = fechaReferencia ? new Date(fechaReferencia).getTime() : Date.now()
+  return Math.floor((referencia - new Date(fechaNacimiento).getTime()) / 31557600000)
+}
+
+// Días entre dos fechas (por defecto, hasta hoy si no hay fecha de fin).
+// Antes existían dos variantes ligeramente distintas de esto mismo
+// (diasIngresado / diasEstancia) en dos archivos distintos.
+export function diasEntre(desde?: string | null, hasta?: string | null): number | null {
+  if (!desde) return null
+  const fin = hasta ? new Date(hasta) : new Date()
+  return Math.round((fin.getTime() - new Date(desde).getTime()) / 86400000)
+}

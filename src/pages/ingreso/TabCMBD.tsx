@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import type { Ingreso } from '../../types'
+import { nombreCompleto } from '../../types'
+import { edad } from '../../lib/fechas'
 import { CheckCircle, Circle, Download, Save } from 'lucide-react'
 
 // ─── REPERTORIO CIE-10 PSICOGERIÁTRICO ───────────────────────
@@ -394,12 +396,8 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
   }
 
   const p = ingreso?.paciente as any
-  const nombreCompleto = p
-    ? `${p.primer_apellido}${p.segundo_apellido ? ' ' + p.segundo_apellido : ''}, ${p.nombre}`
-    : '—'
-  const edad = p?.fecha_nacimiento
-    ? Math.floor((Date.now() - new Date(p.fecha_nacimiento).getTime()) / 31557600000)
-    : null
+  const nombreDelPaciente = p ? nombreCompleto(p) : '—'
+  const edadPaciente = edad(p?.fecha_nacimiento)
 
   if (loading) return <div className="text-slate-400 text-center py-10">Cargando…</div>
 
@@ -410,7 +408,7 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide">CMBD · Conjunto Mínimo Básico de Datos</h2>
-          <p className="text-xs text-slate-400 mt-0.5">Registro al alta · {nombreCompleto}</p>
+          <p className="text-xs text-slate-400 mt-0.5">Registro al alta · {nombreDelPaciente}</p>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-slate-400">
@@ -433,8 +431,8 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
       <div className="card p-5 space-y-2">
         <p className="section-title">Datos del episodio</p>
         <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-sm">
-          <div><span className="text-slate-400 text-xs">Paciente: </span>{nombreCompleto}</div>
-          <div><span className="text-slate-400 text-xs">Edad: </span>{edad != null ? `${edad} años` : '—'}</div>
+          <div><span className="text-slate-400 text-xs">Paciente: </span>{nombreDelPaciente}</div>
+          <div><span className="text-slate-400 text-xs">Edad: </span>{edadPaciente != null ? `${edadPaciente} años` : '—'}</div>
           <div><span className="text-slate-400 text-xs">CIPNA: </span>{p?.cipna ?? '—'}</div>
           <div><span className="text-slate-400 text-xs">NHC: </span>{p?.nhc ?? '—'}</div>
           <div><span className="text-slate-400 text-xs">Sexo: </span>

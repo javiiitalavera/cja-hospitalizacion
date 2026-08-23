@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { escaparBusquedaIlike } from '../lib/busqueda'
+import { edad } from '../lib/fechas'
 import { useAuth } from '../lib/AuthContext'
 import { Plus, Search, ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-react'
 import { ESTADO_INGRESO_LABEL as ESTADO_LABEL, ESTADO_INGRESO_COLOR as ESTADO_COLOR } from '../types'
@@ -30,11 +31,6 @@ const ORDEN_OPCIONES = [
   { valor: 'estado', etiqueta: 'Estado actual', columna: 'ingreso_estado', asc: true },
 ] as const
 type OrdenValor = typeof ORDEN_OPCIONES[number]['valor']
-
-function edad(fnac?: string) {
-  if (!fnac) return null
-  return Math.floor((Date.now() - new Date(fnac).getTime()) / 31557600000)
-}
 
 const PAGE_SIZE = 50
 

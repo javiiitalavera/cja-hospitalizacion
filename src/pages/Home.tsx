@@ -3,7 +3,8 @@ import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import type { Ingreso } from '../types'
-import { SEMAFORO_CAIDAS_COLOR as SEMAFORO } from '../types'
+import { SEMAFORO_CAIDAS_COLOR as SEMAFORO, nombreCompleto } from '../types'
+import { edad, diasEntre } from '../lib/fechas'
 import { Plus, ClipboardList, ChevronRight, AlertTriangle } from 'lucide-react'
 import FormularioEvento from '../components/FormularioEvento'
 import { TIPO_EVENTO_LABEL, TIPO_EVENTO_COLOR, type TipoEvento } from '../types/eventos'
@@ -17,16 +18,6 @@ type IngresoConPaciente = Ingreso & {
     nhc?: string
   } | null
   medico_responsable: { nombre: string; apellidos: string } | null
-}
-
-function edad(fnac?: string) {
-  if (!fnac) return null
-  return Math.floor((Date.now() - new Date(fnac).getTime()) / 31557600000)
-}
-
-function diasIngresado(fecha?: string) {
-  if (!fecha) return null
-  return Math.floor((Date.now() - new Date(fecha).getTime()) / 86400000)
 }
 
 export default function Home() {
@@ -188,11 +179,11 @@ export default function Home() {
             }
 
             const p = ingreso.paciente
-            const nombreCompleto = p
-              ? `${p.primer_apellido}${p.segundo_apellido ? ' ' + p.segundo_apellido : ''}, ${p.nombre}`
+            const nombreDelPaciente = p
+              ? nombreCompleto(p)
               : '—'
             const e = edad(p?.fecha_nacimiento ?? undefined)
-            const dias = diasIngresado(ingreso.fecha_ingreso)
+            const dias = diasEntre(ingreso.fecha_ingreso)
             const fingreso = ingreso.fecha_ingreso
               ? new Date(ingreso.fecha_ingreso).toLocaleDateString('es-ES', {
                   day: '2-digit',
@@ -228,7 +219,7 @@ export default function Home() {
                   </div>
                   {/* Nombre + diagnóstico */}
                   <div className="min-w-0 pr-2">
-                    <p className="font-semibold text-slate-800 text-sm leading-tight truncate">{nombreCompleto}</p>
+                    <p className="font-semibold text-slate-800 text-sm leading-tight truncate">{nombreDelPaciente}</p>
                     {diagnosticoCorto && (
                       <p className="text-xs text-slate-400 truncate leading-tight">{diagnosticoCorto}</p>
                     )}

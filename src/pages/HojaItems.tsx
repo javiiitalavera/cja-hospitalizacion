@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import type { Ingreso, ItemsPaciente } from '../types'
-import { SEMAFORO_CAIDAS_COLOR as SEMAFORO_COLOR } from '../types'
+import { SEMAFORO_CAIDAS_COLOR as SEMAFORO_COLOR, nombreCompleto } from '../types'
 import { Printer, X, Save, History } from 'lucide-react'
 
 type IngresoConItems = Ingreso & { items: ItemsPaciente | null }
@@ -443,7 +443,7 @@ function PanelEdicion({
   }
 
   const semaforo = (data as any).semaforo_caidas as string | undefined
-  const nombre = `${ingreso.paciente?.primer_apellido ?? ''}, ${ingreso.paciente?.nombre ?? ''}`
+  const nombre = ingreso.paciente ? nombreCompleto(ingreso.paciente) : ''
 
   return (
     <div className="fixed inset-y-0 right-0 w-80 bg-white shadow-2xl border-l flex flex-col z-40">
@@ -860,7 +860,7 @@ export default function HojaItems() {
     setLoadingHistorial(true)
     setPacienteSeleccionadoHist(paciente)
     setPacienteResultados([])
-    setBusquedaPaciente(`${paciente.primer_apellido}, ${paciente.nombre}`)
+    setBusquedaPaciente(nombreCompleto(paciente))
     // Buscar todos los ingresos del paciente que tengan histórico
     const { data: ings } = await supabase
       .from('ingresos')

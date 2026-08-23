@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { formatFechaLocal as fmt } from '../lib/fechas'
+import { formatFechaLocal as fmt, edad } from '../lib/fechas'
 import { SEMAFORO_CAIDAS_COLOR as SEM_HEX } from '../types'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -204,8 +204,7 @@ export function Dashboard() {
   const edadMedia = (() => {
     const conFnac = pacientesActivos.filter(i => i.paciente?.fecha_nacimiento)
     if (!conFnac.length) return null
-    const sum = conFnac.reduce((s: number, i: any) =>
-      s + Math.floor((Date.now() - new Date(i.paciente.fecha_nacimiento).getTime()) / 31557600000), 0)
+    const sum = conFnac.reduce((s: number, i: any) => s + (edad(i.paciente.fecha_nacimiento) ?? 0), 0)
     return Math.round(sum / conFnac.length)
   })()
 

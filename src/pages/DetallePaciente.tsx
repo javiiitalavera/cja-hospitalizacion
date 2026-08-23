@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
+import { edad, diasEntre } from '../lib/fechas'
 import { ChevronLeft, Plus, FileText, AlertTriangle, History, Pencil, Save, X } from 'lucide-react'
-import { ESTADO_INGRESO_LABEL as ESTADO_LABEL, ESTADO_INGRESO_COLOR as ESTADO_COLOR } from '../types'
+import { ESTADO_INGRESO_LABEL as ESTADO_LABEL, ESTADO_INGRESO_COLOR as ESTADO_COLOR, nombreCompleto } from '../types'
 
 interface Ingreso {
   id: string
@@ -29,16 +30,6 @@ interface Paciente {
   medico_cabecera?: string
   contacto_familiar_nombre?: string
   contacto_familiar_telefono?: string
-}
-
-function edad(fnac?: string) {
-  if (!fnac) return null
-  return Math.floor((Date.now() - new Date(fnac).getTime()) / 31557600000)
-}
-
-function diasEstancia(fi: string, fa?: string) {
-  const hasta = fa ? new Date(fa) : new Date()
-  return Math.round((hasta.getTime() - new Date(fi).getTime()) / 86400000)
 }
 
 export default function DetallePaciente() {
@@ -117,7 +108,7 @@ export default function DetallePaciente() {
   if (loading) return <div className="p-8 text-slate-400">Cargando…</div>
   if (!paciente) return <div className="p-8 text-slate-400">Paciente no encontrado</div>
 
-  const nombreCompleto = `${paciente.primer_apellido}${paciente.segundo_apellido ? ' ' + paciente.segundo_apellido : ''}, ${paciente.nombre}`
+  const nombreDelPaciente = nombreCompleto(paciente)
   const e = edad(paciente.fecha_nacimiento)
   const ingresoActivo = ingresos.find(i => i.estado === 'activo')
 
@@ -136,7 +127,7 @@ export default function DetallePaciente() {
               <ChevronLeft className="w-5 h-5" />
             </button>
             <div>
-              <h1 className="text-xl font-bold text-slate-800">{nombreCompleto}</h1>
+              <h1 className="text-xl font-bold text-slate-800">{nombreDelPaciente}</h1>
               <div className="flex items-center gap-3 mt-0.5 text-xs text-slate-500 flex-wrap">
                 {e != null && <span>{e} años</span>}
                 {paciente.fecha_nacimiento && (
@@ -189,7 +180,7 @@ export default function DetallePaciente() {
             {ingresos.length === 0 ? (
               <div className="card p-10 text-center text-slate-400 text-sm">Sin ingresos registrados.</div>
             ) : ingresos.map((ing, idx) => {
-              const dias = diasEstancia(ing.fecha_ingreso, ing.fecha_alta)
+              const dias = diasEntre(ing.fecha_ingreso, ing.fecha_alta)
               const evCount = eventos.filter(ev => ev.ingreso_id === ing.id).length
               const esActual = ing.estado === 'activo'
               // Fix 2: médico con apellidos

@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { hoyLocal } from '../lib/fechas'
+import { hoyLocal, edad } from '../lib/fechas'
 import { useAuth } from '../lib/AuthContext'
 import type { Ingreso } from '../types'
-import { ESTADO_INGRESO_LABEL as ESTADO_LABEL, ESTADO_INGRESO_COLOR as ESTADO_COLOR } from '../types'
+import { ESTADO_INGRESO_LABEL as ESTADO_LABEL, ESTADO_INGRESO_COLOR as ESTADO_COLOR, nombreCompleto } from '../types'
 import { ChevronLeft, User, FileText, ClipboardList, AlertTriangle, FileCheck, LogOut, Database, Lock } from 'lucide-react'
 import { TabDatos } from './ingreso/TabDatos'
 import { TabInformeIngreso } from './ingreso/TabInformeIngreso'
@@ -92,10 +92,8 @@ export default function DetalleIngreso() {
   const episodioCerrado = ingreso.estado !== 'activo'
 
   const p = ingreso.paciente!
-  const nombreCompleto = `${p.primer_apellido}${p.segundo_apellido ? ' ' + p.segundo_apellido : ''}, ${p.nombre}`
-  const edad = p.fecha_nacimiento
-    ? Math.floor((Date.now() - new Date(p.fecha_nacimiento).getTime()) / 31557600000)
-    : null
+  const nombreDelPaciente = nombreCompleto(p)
+  const edadPaciente = edad(p.fecha_nacimiento)
 
   return (
     <div className="flex flex-col h-full">
@@ -107,9 +105,9 @@ export default function DetalleIngreso() {
               <ChevronLeft className="w-5 h-5" />
             </button>
             <div>
-              <h1 className="text-xl font-bold text-slate-800">{nombreCompleto}</h1>
+              <h1 className="text-xl font-bold text-slate-800">{nombreDelPaciente}</h1>
               <div className="flex items-center gap-3 mt-0.5 text-xs text-slate-500 flex-wrap">
-                {edad != null && <span>{edad} años</span>}
+                {edadPaciente != null && <span>{edadPaciente} años</span>}
                 {ingreso.habitacion && <span>· Hab. {ingreso.habitacion}</span>}
                 {ingreso.medico_responsable && (
                   <span>

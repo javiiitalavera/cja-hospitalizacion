@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { Search, FileText, LogOut, ArrowUpDown } from 'lucide-react'
-import { ESTADO_INGRESO_LABEL as ESTADO_LABEL, ESTADO_INGRESO_COLOR as ESTADO_COLOR } from '../types'
+import { ESTADO_INGRESO_LABEL as ESTADO_LABEL, ESTADO_INGRESO_COLOR as ESTADO_COLOR, nombreCompleto } from '../types'
 
 type TipoInforme = 'ingreso' | 'alta'
 
@@ -61,7 +61,7 @@ export function Informes() {
         ingresoId: i.id,
         tipo: 'ingreso',
         fecha: i.fecha_ingreso,
-        paciente: `${i.paciente.primer_apellido}${i.paciente.segundo_apellido ? ' ' + i.paciente.segundo_apellido : ''}, ${i.paciente.nombre}`,
+        paciente: nombreCompleto(i.paciente),
         medico: i.medico_responsable ? `${i.medico_responsable.nombre} ${i.medico_responsable.apellidos}` : '—',
         estadoIngreso: i.estado,
         preview: r.impresion_diagnostica ?? '',
@@ -76,7 +76,7 @@ export function Informes() {
         ingresoId: i.id,
         tipo: 'alta',
         fecha: i.fecha_alta ?? i.fecha_ingreso,
-        paciente: `${i.paciente.primer_apellido}${i.paciente.segundo_apellido ? ' ' + i.paciente.segundo_apellido : ''}, ${i.paciente.nombre}`,
+        paciente: nombreCompleto(i.paciente),
         medico: i.medico_responsable ? `${i.medico_responsable.nombre} ${i.medico_responsable.apellidos}` : '—',
         estadoIngreso: i.estado,
         preview: r.juicios_clinicos ?? '',

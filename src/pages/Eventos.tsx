@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { nombreCompleto } from '../types'
 import { X, Pencil, Trash2, Download, ShieldAlert, AlertTriangle, ChevronDown, ChevronRight as ChevronRightIcon } from 'lucide-react'
 import FormularioEvento from '../components/FormularioEvento'
 import {
@@ -95,7 +96,7 @@ export function Eventos() {
         contencion.push({
           ingresoId: ing.id,
           habitacion: ing.habitacion,
-          nombre: `${ing.paciente.primer_apellido}, ${ing.paciente.nombre}`,
+          nombre: nombreCompleto(ing.paciente),
           contenciones: cont,
         })
       }
@@ -115,7 +116,7 @@ export function Eventos() {
         caidasMap[ing.id] = {
           ingresoId: ing.id,
           habitacion: ing.habitacion,
-          nombre: `${ing.paciente.primer_apellido}, ${ing.paciente.nombre}`,
+          nombre: nombreCompleto(ing.paciente),
           numCaidas: 1,
           ultimaFecha: ev.fecha,
         }
@@ -170,7 +171,7 @@ export function Eventos() {
   function exportarCSV() {
     const filas = eventosLista.map((ev: any) => {
       const p = ev.ingreso?.paciente
-      const paciente = p ? `${p.primer_apellido}, ${p.nombre}` : ''
+      const paciente = p ? nombreCompleto(p) : ''
       const campos = CAMPOS_POR_TIPO[ev.tipo as TipoEvento] ?? []
       const datosStr = campos
         .map(c => `${c.label}: ${ev.datos?.[c.key] ?? ''}`)
@@ -380,7 +381,7 @@ export function Eventos() {
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <span className="font-medium text-sm text-slate-800">
-                                    {p ? `${p.primer_apellido}, ${p.nombre}` : '—'}
+                                    {p ? nombreCompleto(p) : '—'}
                                   </span>
                                   {hab && <span className="text-xs text-slate-400">Hab. {hab}</span>}
                                   {ev.ingreso?.estado !== 'activo' && (
