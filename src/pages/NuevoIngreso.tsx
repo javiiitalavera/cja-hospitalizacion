@@ -311,7 +311,7 @@ export default function NuevoIngreso() {
   }
 
   return (
-    <div className="p-8 max-w-3xl">
+    <div className="p-6 md:p-8 max-w-3xl">
       <div className="flex items-center gap-3 mb-7">
         <button
           onClick={() => (paso === 'buscar' ? navigate(-1) : setPaso('buscar'))}

@@ -84,7 +84,7 @@ export function Auditoria() {
     <div className="p-6 md:p-8 max-w-4xl">
       <div className="flex items-center gap-2 mb-1">
         <History className="w-5 h-5 text-slate-400" />
-        <h1 className="text-xl font-bold text-slate-800">Auditoría de cambios</h1>
+        <h1 className="text-2xl font-bold text-slate-800">Auditoría de cambios</h1>
       </div>
       <p className="text-sm text-slate-500 mb-6">Quién ha creado, editado o borrado, y cuándo.</p>
 

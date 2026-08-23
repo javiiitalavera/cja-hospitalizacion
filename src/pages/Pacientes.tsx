@@ -55,7 +55,8 @@ export default function Pacientes() {
     // Todo (filtro + orden + paginación) ocurre en la propia consulta,
     // sobre la vista que ya trae el último ingreso de cada paciente.
     // Así el número de resultados y las páginas son siempre correctos,
-    // se filtre por lo que se filtre.
+    // se filtre por lo que se filtre (antes, "Altas / Éxitus" filtraba
+    // en el navegador DESPUÉS de paginar, y podía dar cifras erróneas).
     let query = supabase
       .from('pacientes_con_ultimo_ingreso')
       .select('id, nombre, primer_apellido, segundo_apellido, fecha_nacimiento, nhc, cipna, ingreso_id, ingreso_estado, ingreso_fecha_ingreso, ingreso_fecha_alta, ingreso_habitacion', { count: 'exact' })
@@ -104,7 +105,7 @@ export default function Pacientes() {
   const totalPaginas = Math.ceil(total / PAGE_SIZE)
 
   return (
-    <div className="p-8">
+    <div className="p-6 md:p-8">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Pacientes</h1>

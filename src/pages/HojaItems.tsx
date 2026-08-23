@@ -956,7 +956,7 @@ export default function HojaItems() {
     <div className={`p-4 transition-all duration-200 ${selected ? 'mr-80' : ''}`}>
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-xl font-bold text-slate-800">Hoja de ítems</h1>
+          <h1 className="text-2xl font-bold text-slate-800">Hoja de ítems</h1>
           <p className="text-sm text-slate-400 capitalize">{today}</p>
           {!selected && <p className="text-xs text-slate-400 mt-0.5">Click en un paciente para editar sus ítems</p>}
         </div>

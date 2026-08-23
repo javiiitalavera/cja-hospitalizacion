@@ -135,7 +135,7 @@ export function Personal() {
     <div className="p-6 md:p-8 max-w-4xl">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-bold text-slate-800">Personal</h1>
+          <h1 className="text-2xl font-bold text-slate-800">Personal</h1>
           <p className="text-sm text-slate-500">Gestión de cuentas, roles y permisos.</p>
         </div>
         <button onClick={() => setMostrarForm(true)} className="btn-primary">

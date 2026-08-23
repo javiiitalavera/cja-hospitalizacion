@@ -226,7 +226,7 @@ export function Eventos() {
   // ── Render ────────────────────────────────────────────────
 
   return (
-    <div className="p-6 space-y-8">
+    <div className="p-6 md:p-8 space-y-8">
 
       {/* Header */}
       <div>

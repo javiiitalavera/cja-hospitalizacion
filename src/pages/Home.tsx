@@ -100,7 +100,7 @@ export default function Home() {
   const ingresoParaEvento = ingresos.find((i) => i.id === modalEvento) ?? null
 
   return (
-    <div className="p-6">
+    <div className="p-6 md:p-8">
       {/* Header */}
       <div className="flex items-start justify-between mb-5">
         <div>
