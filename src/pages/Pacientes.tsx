@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { escaparBusquedaIlike } from '../lib/busqueda'
 import { useAuth } from '../lib/AuthContext'
 import { Plus, Search, ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-react'
 import { ESTADO_INGRESO_LABEL as ESTADO_LABEL, ESTADO_INGRESO_COLOR as ESTADO_COLOR } from '../types'
@@ -50,7 +51,6 @@ export default function Pacientes() {
   const [pagina, setPagina] = useState(0)
   const navigate = useNavigate()
 
-  useEffect(() => { setPagina(0) }, [filtroEstado, busquedaActiva, orden])
   useEffect(() => { fetchPacientes() }, [filtroEstado, busquedaActiva, orden, pagina])
 
   async function fetchPacientes() {
@@ -72,8 +72,8 @@ export default function Pacientes() {
     }
 
     if (busquedaActiva.trim()) {
-      const q = busquedaActiva.trim()
-      query = query.or(`primer_apellido.ilike.%${q}%,nombre.ilike.%${q}%,nhc.ilike.%${q}%,cipna.ilike.%${q}%`)
+      const q = escaparBusquedaIlike(busquedaActiva.trim())
+      query = query.or(`primer_apellido.ilike.${q},nombre.ilike.${q},nhc.ilike.${q},cipna.ilike.${q}`)
     }
 
     const opcion = ORDEN_OPCIONES.find(o => o.valor === orden)!
@@ -132,13 +132,13 @@ export default function Pacientes() {
             placeholder="Apellido, nombre, NHC…"
             value={busqueda}
             onChange={e => setBusqueda(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && setBusquedaActiva(busqueda)}
-            onBlur={() => setBusquedaActiva(busqueda)}
+            onKeyDown={e => { if (e.key === 'Enter') { setBusquedaActiva(busqueda); setPagina(0) } }}
+            onBlur={() => { setBusquedaActiva(busqueda); setPagina(0) }}
           />
         </div>
         {(['activo', 'alta', 'todos'] as const).map(e => (
           <button key={e} type="button"
-            onClick={() => setFiltroEstado(e)}
+            onClick={() => { setFiltroEstado(e); setPagina(0) }}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
               filtroEstado === e ? 'bg-primary-600 text-white' : 'bg-white border text-slate-500 hover:bg-slate-50'
             }`}>
@@ -147,7 +147,7 @@ export default function Pacientes() {
         ))}
         <div className="flex items-center gap-1.5 ml-auto">
           <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
-          <select className="input py-1.5 text-sm w-auto" value={orden} onChange={e => setOrden(e.target.value as OrdenValor)}>
+          <select className="input py-1.5 text-sm w-auto" value={orden} onChange={e => { setOrden(e.target.value as OrdenValor); setPagina(0) }}>
             {ORDEN_OPCIONES.map(o => (
               <option key={o.valor} value={o.valor}>Ordenar por {o.etiqueta.toLowerCase()}</option>
             ))}

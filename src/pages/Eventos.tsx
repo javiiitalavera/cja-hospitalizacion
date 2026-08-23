@@ -168,7 +168,6 @@ export function Eventos() {
 
   // Exportación CSV del listado actual
   function exportarCSV() {
-    const TURNO_LABEL_CSV: Record<string, string> = { manana: 'Mañana', tarde: 'Tarde', noche: 'Noche' }
     const filas = eventosLista.map((ev: any) => {
       const p = ev.ingreso?.paciente
       const paciente = p ? `${p.primer_apellido}, ${p.nombre}` : ''
@@ -179,7 +178,7 @@ export function Eventos() {
       return [
         ev.fecha,
         ev.hora?.slice(0, 5) ?? '',
-        ev.turno ? (TURNO_LABEL_CSV[ev.turno] ?? ev.turno) : '',
+        ev.turno ? (TURNO_LABEL[ev.turno] ?? ev.turno) : '',
         TIPO_EVENTO_LABEL[ev.tipo as TipoEvento] ?? ev.tipo,
         paciente,
         ev.ingreso?.habitacion ?? '',

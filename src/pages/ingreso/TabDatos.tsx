@@ -2,14 +2,8 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import type { Ingreso, Profesional } from '../../types'
+import { ESTADO_INGRESO_LABEL as ESTADO_LABEL } from '../../types'
 import { ExternalLink } from 'lucide-react'
-
-const ESTADO_LABEL: Record<string, string> = {
-  activo: 'Ingresado',
-  alta: 'Alta',
-  alta_traslado: 'Traslado',
-  exitus: 'Éxitus',
-}
 
 function TabDatos({ ingreso, onUpdate }: { ingreso: Ingreso; onUpdate: (i: Ingreso) => void }) {
   const p = ingreso.paciente!
@@ -18,7 +12,6 @@ function TabDatos({ ingreso, onUpdate }: { ingreso: Ingreso; onUpdate: (i: Ingre
     habitacion: ingreso.habitacion?.toString() ?? '',
     motivo_ingreso: ingreso.motivo_ingreso ?? '',
     fecha_ingreso: ingreso.fecha_ingreso ?? '',
-    fecha_alta: ingreso.fecha_alta ?? '',
     medico_responsable_id: ingreso.medico_responsable_id ?? '',
   })
   const [medicos, setMedicos] = useState<Profesional[]>([])
@@ -43,7 +36,6 @@ function TabDatos({ ingreso, onUpdate }: { ingreso: Ingreso; onUpdate: (i: Ingre
         habitacion: ingresoEdit.habitacion ? parseInt(ingresoEdit.habitacion) : null,
         motivo_ingreso: ingresoEdit.motivo_ingreso,
         fecha_ingreso: ingresoEdit.fecha_ingreso,
-        fecha_alta: ingresoEdit.fecha_alta || null,
         medico_responsable_id: ingresoEdit.medico_responsable_id || null,
       })
       .eq('id', ingreso.id)
@@ -108,7 +100,15 @@ function TabDatos({ ingreso, onUpdate }: { ingreso: Ingreso; onUpdate: (i: Ingre
           <p className="section-title">Datos del ingreso</p>
           <div className="grid grid-cols-2 gap-4">
             {inp('Fecha de ingreso', ingresoEdit.fecha_ingreso, v => setIngresoEdit(i => ({ ...i, fecha_ingreso: v })), 'date')}
-            {inp('Fecha de alta', ingresoEdit.fecha_alta, v => setIngresoEdit(i => ({ ...i, fecha_alta: v })), 'date')}
+            <div>
+              <label className="label">Fecha de alta</label>
+              <p className="input bg-slate-50 text-slate-500 cursor-not-allowed">
+                {ingreso.fecha_alta ? new Date(ingreso.fecha_alta).toLocaleDateString('es-ES') : '—'}
+              </p>
+              <p className="text-[11px] text-slate-400 mt-1">
+                Se pone desde "Dar de alta", no aquí (para que vaya siempre junto con el estado).
+              </p>
+            </div>
             {inp('Habitación', ingresoEdit.habitacion, v => setIngresoEdit(i => ({ ...i, habitacion: v })), 'number')}
             <div>
               <label className="label">Estado</label>

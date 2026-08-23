@@ -25,10 +25,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // IMPORTANTE: dentro de estos callbacks de Supabase solo tocamos
   // la sesión (nada de consultas a la base de datos aquí, o se bloquea).
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session)
-      if (!data.session) setLoading(false) // sin sesión, ya podemos decidir: al login
-    })
+    supabase.auth.getSession()
+      .then(({ data }) => {
+        setSession(data.session)
+        if (!data.session) setLoading(false) // sin sesión, ya podemos decidir: al login
+      })
+      .catch(() => {
+        // Si falla incluso comprobar si hay sesión (ej. almacenamiento
+        // corrupto), no dejamos la app bloqueada en "Cargando…" para
+        // siempre: se trata como si no hubiera sesión, al login.
+        setSession(null)
+        setLoading(false)
+      })
 
     const { data: sub } = supabase.auth.onAuthStateChange((_evento, nuevaSesion) => {
       setSession(nuevaSesion)
@@ -49,16 +57,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     let cancelado = false
     setLoading(true)
-    supabase
-      .from('profesionales')
-      .select('*')
-      .eq('user_id', userId)
-      .maybeSingle()
-      .then(({ data }) => {
+
+    async function cargarProfesional() {
+      try {
+        const { data } = await supabase
+          .from('profesionales')
+          .select('*')
+          .eq('user_id', userId!)
+          .maybeSingle()
         if (cancelado) return
         setProfesional((data as Profesional) ?? null)
-        setLoading(false) // ya sabemos todo lo necesario para decidir
-      })
+      } catch {
+        // Un fallo de red aquí no debe dejar la app entera atascada.
+        // Sin ficha, RequireAuth mostrará el aviso de "cuenta sin
+        // profesional asignado" en vez de colgarse en "Cargando…".
+        if (cancelado) return
+        setProfesional(null)
+      } finally {
+        if (!cancelado) setLoading(false)
+      }
+    }
+    cargarProfesional()
     return () => { cancelado = true }
   }, [session?.user?.id])
 

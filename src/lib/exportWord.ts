@@ -1,5 +1,6 @@
 import JSZip from 'jszip'
 import type { FilaMedicacion, Ingreso, InformeIngreso, InformeAlta } from '../types'
+import { TOMAS } from '../pages/ingreso/TablaMedicacion'
 
 // ─── UTILIDADES ───────────────────────────────────────────────────────────────
 
@@ -34,8 +35,10 @@ function lineasXml(texto: string | null | undefined, font = 'Calibri'): string {
 }
 
 function tablaMedicacionXml(filas: FilaMedicacion[], font = 'Calibri'): string {
-  const cols = ['DESAYUNO', 'COMIDA', 'MERIENDA', 'CENA', 'ACOSTAR', 'OBSERVACIONES']
-  const keys: (keyof FilaMedicacion)[] = ['desayuno', 'comida', 'merienda', 'cena', 'acostar', 'observaciones']
+  // "Observaciones" es una columna extra del documento, no una toma en sí,
+  // así que se añade aparte de las 5 que ya define TOMAS.
+  const cols = [...TOMAS.map((t) => t.label.toUpperCase()), 'OBSERVACIONES']
+  const keys: (keyof FilaMedicacion)[] = [...TOMAS.map((t) => t.key), 'observaciones']
   const farmW = 1600
   const dosisW = 800
   const colW = 900

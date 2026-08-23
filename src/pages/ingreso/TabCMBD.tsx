@@ -135,6 +135,20 @@ function BuscadorCIE({ value, onChange }: {
         value={q}
         onChange={e => { setQ(e.target.value); setOpen(true) }}
         onFocus={() => resultados.length > 0 && setOpen(true)}
+        onBlur={() => {
+          // Antes, si se tecleaba un código y se salía del campo sin
+          // hacer clic en una sugerencia, lo escrito se veía en
+          // pantalla pero nunca llegaba a guardarse. Al perder el
+          // foco, confirmamos el texto tal cual: si coincide con un
+          // código conocido, completamos su descripción oficial.
+          setTimeout(() => {
+            setOpen(false)
+            const texto = q.trim()
+            if (!texto) { onChange('', ''); return }
+            const match = CIE10.find(c => c.code.toLowerCase() === texto.toLowerCase())
+            onChange(match ? match.code : texto, match ? match.desc : '')
+          }, 150) // margen para que un clic en una sugerencia se procese primero
+        }}
       />
       {open && resultados.length > 0 && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-xl shadow-lg z-30 overflow-hidden max-h-56 overflow-y-auto">
