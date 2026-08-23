@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { escaparBusquedaIlike, quitarTildes } from '../lib/busqueda'
 import { edad } from '../lib/fechas'
 import { useAuth } from '../lib/AuthContext'
-import { Plus, Search, ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-react'
+import { Plus, Search, Loader2, ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-react'
 import { ESTADO_INGRESO_LABEL as ESTADO_LABEL, ESTADO_INGRESO_COLOR as ESTADO_COLOR } from '../types'
 
 interface PacienteRow {
@@ -42,6 +42,7 @@ export default function Pacientes() {
   const [loading, setLoading] = useState(true)
   const [busqueda, setBusqueda] = useState('')
   const [busquedaActiva, setBusquedaActiva] = useState('')
+  const [escribiendo, setEscribiendo] = useState(false)
   const [filtroEstado, setFiltroEstado] = useState<'activo' | 'alta' | 'todos'>('activo')
   const [orden, setOrden] = useState<OrdenValor>('apellido')
   const [pagina, setPagina] = useState(0)
@@ -129,31 +130,36 @@ export default function Pacientes() {
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
-            className="input pl-9"
+            className="input pl-9 pr-9"
             placeholder="Apellido, nombre, NHC…"
             value={busqueda}
             onChange={e => {
               const valor = e.target.value
               setBusqueda(valor)
+              setEscribiendo(true) // señal instantánea: nunca se siente "sin respuesta"
               if (debounceRef.current) clearTimeout(debounceRef.current)
-              // Busca en vivo, con una pequeña espera tras la última
-              // tecla para no lanzar una consulta a la base de datos
-              // en cada pulsación — igual de "en vivo" que el resto de
-              // buscadores de la app, sin recargar de más.
+              // Pausa breve tras la última tecla, solo para no lanzar una
+              // consulta a la base de datos en cada pulsación — el icono
+              // ya gira desde el primer carácter, así que no se nota.
               debounceRef.current = setTimeout(() => {
+                setEscribiendo(false)
                 setBusquedaActiva(valor)
                 setPagina(0)
-              }, 300)
+              }, 150)
             }}
             onKeyDown={e => {
-              // Intro confirma al instante, sin esperar los 300 ms.
+              // Intro confirma al instante, sin esperar la pausa.
               if (e.key === 'Enter') {
                 if (debounceRef.current) clearTimeout(debounceRef.current)
+                setEscribiendo(false)
                 setBusquedaActiva(busqueda)
                 setPagina(0)
               }
             }}
           />
+          {(escribiendo || loading) && (
+            <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 animate-spin" />
+          )}
         </div>
         {(['activo', 'alta', 'todos'] as const).map(e => (
           <button key={e} type="button"
