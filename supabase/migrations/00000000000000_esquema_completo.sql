@@ -79,7 +79,7 @@ create table public.profesionales (
     id uuid primary key default gen_random_uuid(),
     nombre text not null,
     apellidos text not null,
-    rol text not null check (rol in ('medico', 'enfermeria', 'auxiliar', 'administrativo', 'tecnico')),
+    rol text not null check (rol in ('medico', 'enfermeria', 'auxiliar', 'tecnico')),
     activo boolean not null default true,
     created_at timestamptz default now(),
     colegiado text,
@@ -101,7 +101,8 @@ create table public.ingresos (
     medico_responsable_id uuid references public.profesionales(id),
     motivo_ingreso text,
     estado text not null default 'activo' check (estado in ('activo', 'alta', 'alta_traslado', 'exitus')),
-    created_at timestamptz default now()
+    created_at timestamptz default now(),
+    constraint ingresos_fecha_alta_valida check (fecha_alta is null or fecha_alta >= fecha_ingreso)
 );
 
 -- Informe de ingreso: un único informe por ingreso.
@@ -394,11 +395,15 @@ create function public.generar_snapshot_items() returns void
 language plpgsql
 as $$
 begin
+  -- Se guarda también la habitación de ESE momento (no solo los
+  -- ítems), para que consultar un día antiguo muestre la habitación
+  -- que tenía el paciente entonces, no la que tiene ahora si se ha
+  -- cambiado de habitación después.
   insert into items_historico (ingreso_id, fecha, datos)
   select
     ip.ingreso_id,
     current_date,
-    row_to_json(ip)::jsonb
+    row_to_json(ip)::jsonb || jsonb_build_object('_habitacion_snapshot', i.habitacion)
   from items_paciente ip
   inner join ingresos i on i.id = ip.ingreso_id
   where i.estado = 'activo'

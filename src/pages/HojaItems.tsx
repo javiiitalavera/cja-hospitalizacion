@@ -683,7 +683,11 @@ function PanelEdicion({
 function snapshotToIngresos(snaps: any[]): IngresoConItems[] {
   return snaps.map((s) => ({
     id: s.ingreso_id,
-    habitacion: s.ingreso?.habitacion ?? null,
+    // Prioriza la habitación tal como estaba capturada EN ESE DÍA.
+    // Las fotos anteriores a este arreglo no la tienen guardada (ese
+    // dato nunca se llegó a capturar entonces), así que para esas se
+    // recurre a la habitación actual como aproximación, no exacta.
+    habitacion: s.datos?._habitacion_snapshot ?? s.ingreso?.habitacion ?? null,
     estado: 'activo' as const,
     fecha_ingreso: '',
     paciente_id: '',
@@ -866,63 +870,71 @@ export default function HojaItems() {
     setPacienteSeleccionadoHist(paciente)
     setPacienteResultados([])
     setBusquedaPaciente(nombreCompleto(paciente))
-    // Buscar todos los ingresos del paciente que tengan histórico
-    const { data: ings } = await supabase
-      .from('ingresos')
-      .select('id, habitacion, fecha_ingreso, fecha_alta, estado')
-      .eq('paciente_id', paciente.id)
-      .order('fecha_ingreso', { ascending: false })
-    const ingresoIds = (ings ?? []).map((i: any) => i.id)
-    if (ingresoIds.length === 0) {
-      setHistorialPaciente([])
+    try {
+      // Buscar todos los ingresos del paciente que tengan histórico
+      const { data: ings } = await supabase
+        .from('ingresos')
+        .select('id, habitacion, fecha_ingreso, fecha_alta, estado')
+        .eq('paciente_id', paciente.id)
+        .order('fecha_ingreso', { ascending: false })
+      const ingresoIds = (ings ?? []).map((i: any) => i.id)
+      if (ingresoIds.length === 0) {
+        setHistorialPaciente([])
+        return
+      }
+      const { data: hist } = await supabase
+        .from('items_historico')
+        .select('fecha, datos, ingreso_id')
+        .in('ingreso_id', ingresoIds)
+        .order('fecha', { ascending: false })
+      // Enriquecer con datos del ingreso
+      const ingresoMap = Object.fromEntries((ings ?? []).map((i: any) => [i.id, i]))
+      setHistorialPaciente(
+        (hist ?? []).map((h: any) => ({
+          ...h,
+          ingreso: ingresoMap[h.ingreso_id],
+        }))
+      )
+    } finally {
       setLoadingHistorial(false)
-      return
     }
-    const { data: hist } = await supabase
-      .from('items_historico')
-      .select('fecha, datos, ingreso_id')
-      .in('ingreso_id', ingresoIds)
-      .order('fecha', { ascending: false })
-    // Enriquecer con datos del ingreso
-    const ingresoMap = Object.fromEntries((ings ?? []).map((i: any) => [i.id, i]))
-    setHistorialPaciente(
-      (hist ?? []).map((h: any) => ({
-        ...h,
-        ingreso: ingresoMap[h.ingreso_id],
-      }))
-    )
-    setLoadingHistorial(false)
   }
 
   async function cargarSnapshot(fecha: string) {
     setLoadingSnapshot(true)
     setFechaSeleccionada(fecha)
-    const { data: snaps } = await supabase
-      .from('items_historico')
-      .select(
-        '*, ingreso:ingresos(habitacion, paciente:pacientes(nombre, primer_apellido), medico_responsable:profesionales(nombre))'
-      )
-      .eq('fecha', fecha)
-      .order('ingreso(habitacion)', { ascending: true })
-    setSnapshotData(snaps ?? [])
-    setLoadingSnapshot(false)
+    try {
+      const { data: snaps } = await supabase
+        .from('items_historico')
+        .select(
+          '*, ingreso:ingresos(habitacion, paciente:pacientes(nombre, primer_apellido), medico_responsable:profesionales(nombre))'
+        )
+        .eq('fecha', fecha)
+        .order('ingreso(habitacion)', { ascending: true })
+      setSnapshotData(snaps ?? [])
+    } finally {
+      setLoadingSnapshot(false)
+    }
   }
 
   async function fetchData() {
-    const { data: ingresos } = await supabase
-      .from('ingresos')
-      .select(
-        '*, paciente:pacientes(nombre,primer_apellido), medico_responsable:profesionales(nombre), items:items_paciente(*)'
+    try {
+      const { data: ingresos } = await supabase
+        .from('ingresos')
+        .select(
+          '*, paciente:pacientes(nombre,primer_apellido), medico_responsable:profesionales(nombre), items:items_paciente(*)'
+        )
+        .eq('estado', 'activo')
+        .order('habitacion', { ascending: true })
+      setData(
+        (ingresos ?? []).map((i) => ({
+          ...i,
+          items: Array.isArray(i.items) ? (i.items[0] ?? null) : (i.items ?? null),
+        })) as IngresoConItems[]
       )
-      .eq('estado', 'activo')
-      .order('habitacion', { ascending: true })
-    setData(
-      (ingresos ?? []).map((i) => ({
-        ...i,
-        items: Array.isArray(i.items) ? (i.items[0] ?? null) : (i.items ?? null),
-      })) as IngresoConItems[]
-    )
-    setLoading(false)
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => {

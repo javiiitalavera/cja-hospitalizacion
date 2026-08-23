@@ -69,6 +69,10 @@ export default function DetalleIngreso() {
 
   async function darAlta() {
     if (!id) return
+    if (altaForm.fecha_alta < ingreso!.fecha_ingreso) {
+      setErrorAlta('La fecha de alta no puede ser anterior a la de ingreso.')
+      return
+    }
     setProcesandoAlta(true)
     setErrorAlta('')
     const { error } = await supabase
@@ -171,6 +175,7 @@ export default function DetalleIngreso() {
                 <input
                   type="date"
                   className="input"
+                  min={ingreso.fecha_ingreso}
                   value={altaForm.fecha_alta}
                   onChange={(e) => setAltaForm((f) => ({ ...f, fecha_alta: e.target.value }))}
                 />

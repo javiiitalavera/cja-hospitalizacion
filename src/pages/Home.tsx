@@ -92,9 +92,10 @@ export default function Home() {
   ingresos.forEach((i) => {
     if (i.habitacion && i.habitacion >= 1 && i.habitacion <= 33) slots[i.habitacion - 1] = i
   })
+  const sinHabitacion = ingresos.filter((i) => !i.habitacion)
 
   const ocupadas = ingresos.length
-  const libres = 33 - ocupadas
+  const libres = slots.filter((s) => s === null).length
 
   // Find the ingreso for the evento modal
   const ingresoParaEvento = ingresos.find((i) => i.id === modalEvento) ?? null
@@ -126,6 +127,33 @@ export default function Home() {
           <ClipboardList className="w-4 h-4" /> Hoja de ítems
         </Link>
       </div>
+
+      {/* Aviso: pacientes ingresados sin habitación asignada. Sin esto,
+          un paciente así simplemente no aparecía en ningún sitio de esta
+          pantalla — la rejilla solo coloca a quien tiene número de
+          habitación, así que quedaba invisible en la vista principal
+          del día a día. */}
+      {!loading && sinHabitacion.length > 0 && (
+        <div className="mb-4 border border-amber-200 bg-amber-50 rounded-lg px-4 py-3">
+          <p className="text-xs font-semibold text-amber-800 uppercase tracking-wide mb-2">
+            {sinHabitacion.length} paciente{sinHabitacion.length !== 1 ? 's' : ''} ingresado{sinHabitacion.length !== 1 ? 's' : ''} sin habitación asignada
+          </p>
+          <div className="space-y-1">
+            {sinHabitacion.map((ingreso) => (
+              <div
+                key={ingreso.id}
+                className="flex items-center justify-between text-sm cursor-pointer hover:bg-amber-100/60 rounded px-2 py-1 -mx-2"
+                onClick={() => navigate(`/ingresos/${ingreso.id}`)}
+              >
+                <span className="text-amber-900 font-medium">
+                  {ingreso.paciente ? nombreCompleto(ingreso.paciente) : '—'}
+                </span>
+                <span className="text-amber-700 text-xs">Asignar habitación →</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Tabla de habitaciones */}
       {loading ? (

@@ -34,68 +34,70 @@ export function Informes() {
 
   async function fetchInformes() {
     setLoading(true)
+    try {
+      const [{ data: ing }, { data: alta }] = await Promise.all([
+        supabase
+          .from('informe_ingreso')
+          .select(`
+            id, impresion_diagnostica, ingreso_id,
+            ingreso:ingresos(id, fecha_ingreso, estado,
+              medico_responsable:profesionales(nombre, apellidos),
+              paciente:pacientes(nombre, primer_apellido, segundo_apellido, nhc))
+          `)
+          .limit(2000), // tope de seguridad: esta pantalla no pagina todavía
+        supabase
+          .from('informe_alta')
+          .select(`
+            id, juicios_clinicos, ingreso_id,
+            ingreso:ingresos(id, fecha_alta, fecha_ingreso, estado,
+              medico_responsable:profesionales(nombre, apellidos),
+              paciente:pacientes(nombre, primer_apellido, segundo_apellido, nhc))
+          `)
+          .limit(2000),
+      ])
 
-    const [{ data: ing }, { data: alta }] = await Promise.all([
-      supabase
-        .from('informe_ingreso')
-        .select(`
-          id, impresion_diagnostica, ingreso_id,
-          ingreso:ingresos(id, fecha_ingreso, estado,
-            medico_responsable:profesionales(nombre, apellidos),
-            paciente:pacientes(nombre, primer_apellido, segundo_apellido, nhc))
-        `)
-        .limit(2000), // tope de seguridad: esta pantalla no pagina todavía
-      supabase
-        .from('informe_alta')
-        .select(`
-          id, juicios_clinicos, ingreso_id,
-          ingreso:ingresos(id, fecha_alta, fecha_ingreso, estado,
-            medico_responsable:profesionales(nombre, apellidos),
-            paciente:pacientes(nombre, primer_apellido, segundo_apellido, nhc))
-        `)
-        .limit(2000),
-    ])
+      const rows: InformeRow[] = []
 
-    const rows: InformeRow[] = []
-
-    ;(ing ?? []).forEach((r: any) => {
-      const i = r.ingreso
-      if (!i?.paciente) return
-      rows.push({
-        id: r.id,
-        ingresoId: i.id,
-        tipo: 'ingreso',
-        fecha: i.fecha_ingreso,
-        paciente: nombreCompleto(i.paciente),
-        nhc: i.paciente.nhc ?? null,
-        medico: i.medico_responsable ? `${i.medico_responsable.nombre} ${i.medico_responsable.apellidos}` : '—',
-        estadoIngreso: i.estado,
-        preview: r.impresion_diagnostica ?? '',
+      ;(ing ?? []).forEach((r: any) => {
+        const i = r.ingreso
+        if (!i?.paciente) return
+        rows.push({
+          id: r.id,
+          ingresoId: i.id,
+          tipo: 'ingreso',
+          fecha: i.fecha_ingreso,
+          paciente: nombreCompleto(i.paciente),
+          nhc: i.paciente.nhc ?? null,
+          medico: i.medico_responsable ? `${i.medico_responsable.nombre} ${i.medico_responsable.apellidos}` : '—',
+          estadoIngreso: i.estado,
+          preview: r.impresion_diagnostica ?? '',
+        })
       })
-    })
 
-    ;(alta ?? []).forEach((r: any) => {
-      const i = r.ingreso
-      if (!i?.paciente) return
-      rows.push({
-        id: r.id,
-        ingresoId: i.id,
-        tipo: 'alta',
-        fecha: i.fecha_alta ?? i.fecha_ingreso,
-        paciente: nombreCompleto(i.paciente),
-        nhc: i.paciente.nhc ?? null,
-        medico: i.medico_responsable ? `${i.medico_responsable.nombre} ${i.medico_responsable.apellidos}` : '—',
-        estadoIngreso: i.estado,
-        preview: r.juicios_clinicos ?? '',
+      ;(alta ?? []).forEach((r: any) => {
+        const i = r.ingreso
+        if (!i?.paciente) return
+        rows.push({
+          id: r.id,
+          ingresoId: i.id,
+          tipo: 'alta',
+          fecha: i.fecha_alta ?? i.fecha_ingreso,
+          paciente: nombreCompleto(i.paciente),
+          nhc: i.paciente.nhc ?? null,
+          medico: i.medico_responsable ? `${i.medico_responsable.nombre} ${i.medico_responsable.apellidos}` : '—',
+          estadoIngreso: i.estado,
+          preview: r.juicios_clinicos ?? '',
+        })
       })
-    })
 
-    setInformes(rows)
-    setPosibleTruncado((ing?.length ?? 0) >= 2000 || (alta?.length ?? 0) >= 2000)
-    const aniosDisponibles = [...new Set(rows.filter(r => r.fecha).map(r => new Date(r.fecha!).getFullYear()))]
-      .sort((a, b) => b - a)
-    setAnios(aniosDisponibles)
-    setLoading(false)
+      setInformes(rows)
+      setPosibleTruncado((ing?.length ?? 0) >= 2000 || (alta?.length ?? 0) >= 2000)
+      const aniosDisponibles = [...new Set(rows.filter(r => r.fecha).map(r => new Date(r.fecha!).getFullYear()))]
+        .sort((a, b) => b - a)
+      setAnios(aniosDisponibles)
+    } finally {
+      setLoading(false)
+    }
   }
 
   let lista = informes

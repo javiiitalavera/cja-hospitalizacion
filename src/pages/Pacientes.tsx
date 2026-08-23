@@ -54,58 +54,60 @@ export default function Pacientes() {
 
   async function fetchPacientes() {
     setLoading(true)
+    try {
+      // Todo (filtro + orden + paginación) ocurre en la propia consulta,
+      // sobre la vista que ya trae el último ingreso de cada paciente.
+      // Así el número de resultados y las páginas son siempre correctos,
+      // se filtre por lo que se filtre (antes, "Altas / Éxitus" filtraba
+      // en el navegador DESPUÉS de paginar, y podía dar cifras erróneas).
+      let query = supabase
+        .from('pacientes_con_ultimo_ingreso')
+        .select('id, nombre, primer_apellido, segundo_apellido, fecha_nacimiento, nhc, cipna, ingreso_id, ingreso_estado, ingreso_fecha_ingreso, ingreso_fecha_alta, ingreso_habitacion', { count: 'exact' })
 
-    // Todo (filtro + orden + paginación) ocurre en la propia consulta,
-    // sobre la vista que ya trae el último ingreso de cada paciente.
-    // Así el número de resultados y las páginas son siempre correctos,
-    // se filtre por lo que se filtre (antes, "Altas / Éxitus" filtraba
-    // en el navegador DESPUÉS de paginar, y podía dar cifras erróneas).
-    let query = supabase
-      .from('pacientes_con_ultimo_ingreso')
-      .select('id, nombre, primer_apellido, segundo_apellido, fecha_nacimiento, nhc, cipna, ingreso_id, ingreso_estado, ingreso_fecha_ingreso, ingreso_fecha_alta, ingreso_habitacion', { count: 'exact' })
+      if (filtroEstado === 'activo') {
+        query = query.eq('ingreso_estado', 'activo')
+      } else if (filtroEstado === 'alta') {
+        query = query.in('ingreso_estado', ['alta', 'alta_traslado', 'exitus'])
+      }
 
-    if (filtroEstado === 'activo') {
-      query = query.eq('ingreso_estado', 'activo')
-    } else if (filtroEstado === 'alta') {
-      query = query.in('ingreso_estado', ['alta', 'alta_traslado', 'exitus'])
+      if (busquedaActiva.trim()) {
+        // Se busca sin tildes en los dos lados (columna normalizada en
+        // la base de datos, término también sin tildes aquí): así da
+        // igual si el usuario escribe "gonzalez" o "González".
+        const q = escaparBusquedaIlike(quitarTildes(busquedaActiva.trim()))
+        query = query.or(`primer_apellido_normalizado.ilike.${q},segundo_apellido_normalizado.ilike.${q},nombre_normalizado.ilike.${q},nhc.ilike.${q},cipna.ilike.${q}`)
+      }
+
+      const opcion = ORDEN_OPCIONES.find(o => o.valor === orden)!
+      query = query.order(opcion.columna, { ascending: opcion.asc, nullsFirst: false })
+      query = query.range(pagina * PAGE_SIZE, (pagina + 1) * PAGE_SIZE - 1)
+
+      const { data, count } = await query
+
+      const rows: PacienteRow[] = (data ?? []).map((p: any) => ({
+        id: p.id,
+        nombre: p.nombre,
+        primer_apellido: p.primer_apellido,
+        segundo_apellido: p.segundo_apellido,
+        fecha_nacimiento: p.fecha_nacimiento,
+        nhc: p.nhc,
+        cipna: p.cipna,
+        ultimo_ingreso: p.ingreso_id
+          ? {
+              id: p.ingreso_id,
+              estado: p.ingreso_estado,
+              fecha_ingreso: p.ingreso_fecha_ingreso,
+              fecha_alta: p.ingreso_fecha_alta,
+              habitacion: p.ingreso_habitacion,
+            }
+          : undefined,
+      }))
+
+      setPacientes(rows)
+      setTotal(count ?? 0)
+    } finally {
+      setLoading(false)
     }
-
-    if (busquedaActiva.trim()) {
-      // Se busca sin tildes en los dos lados (columna normalizada en
-      // la base de datos, término también sin tildes aquí): así da
-      // igual si el usuario escribe "gonzalez" o "González".
-      const q = escaparBusquedaIlike(quitarTildes(busquedaActiva.trim()))
-      query = query.or(`primer_apellido_normalizado.ilike.${q},segundo_apellido_normalizado.ilike.${q},nombre_normalizado.ilike.${q},nhc.ilike.${q},cipna.ilike.${q}`)
-    }
-
-    const opcion = ORDEN_OPCIONES.find(o => o.valor === orden)!
-    query = query.order(opcion.columna, { ascending: opcion.asc, nullsFirst: false })
-    query = query.range(pagina * PAGE_SIZE, (pagina + 1) * PAGE_SIZE - 1)
-
-    const { data, count } = await query
-
-    const rows: PacienteRow[] = (data ?? []).map((p: any) => ({
-      id: p.id,
-      nombre: p.nombre,
-      primer_apellido: p.primer_apellido,
-      segundo_apellido: p.segundo_apellido,
-      fecha_nacimiento: p.fecha_nacimiento,
-      nhc: p.nhc,
-      cipna: p.cipna,
-      ultimo_ingreso: p.ingreso_id
-        ? {
-            id: p.ingreso_id,
-            estado: p.ingreso_estado,
-            fecha_ingreso: p.ingreso_fecha_ingreso,
-            fecha_alta: p.ingreso_fecha_alta,
-            habitacion: p.ingreso_habitacion,
-          }
-        : undefined,
-    }))
-
-    setPacientes(rows)
-    setTotal(count ?? 0)
-    setLoading(false)
   }
 
   const totalPaginas = Math.ceil(total / PAGE_SIZE)
