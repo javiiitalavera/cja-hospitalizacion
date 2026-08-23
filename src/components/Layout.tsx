@@ -47,8 +47,7 @@ export default function Layout() {
           {!collapsed && (
             <>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-slate-800 leading-tight">CJA</p>
-                <p className="text-[10px] text-slate-400 leading-tight">Hospitalización</p>
+                <p className="text-sm font-bold text-slate-800 leading-tight">CJA Hospital</p>
               </div>
               <button onClick={() => setCollapsed(true)}
                 className="text-slate-300 hover:text-slate-500 transition-colors p-1 rounded shrink-0">

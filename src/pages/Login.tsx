@@ -39,7 +39,7 @@ export default function Login() {
           <div className="w-11 h-11 bg-primary-600 rounded-xl flex items-center justify-center mb-3">
             <Activity className="w-6 h-6 text-white" />
           </div>
-          <h1 className="text-lg font-bold text-slate-800">CJA · Hospitalización</h1>
+          <h1 className="text-lg font-bold text-slate-800">CJA Hospital</h1>
           <p className="text-xs text-slate-400">Clínica Josefina Arregui · Alsasua</p>
         </div>
 

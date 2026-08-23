@@ -1,18 +1,33 @@
 import { BrowserRouter, Routes, Route, Outlet, Navigate } from 'react-router-dom'
+import { Suspense, lazy } from 'react'
 import { AuthProvider, useAuth } from './lib/AuthContext'
 import Layout from './components/Layout'
 import Login from './pages/Login'
-import Home from './pages/Home'
-import Pacientes from './pages/Pacientes'
-import DetallePaciente from './pages/DetallePaciente'
-import NuevoIngreso from './pages/NuevoIngreso'
-import DetalleIngreso from './pages/DetalleIngreso'
-import HojaItems from './pages/HojaItems'
-import { Eventos } from './pages/Eventos'
-import { Dashboard } from './pages/Dashboard'
-import { Personal } from './pages/Personal'
-import { Auditoria } from './pages/Auditoria'
-import { Informes } from './pages/Informes'
+
+// Carga diferida: cada pantalla se descarga solo cuando se entra en
+// ella, no todas de golpe al arrancar la app. Antes, toda la app
+// (Dashboard, CMBD, Auditoría, la Hoja de Ítems…) viajaba en un único
+// bloque de ~1,1 MB, así que la primera vez que se abría cualquier
+// pantalla pesada había que descargar y ejecutar el código de todas
+// las demás también.
+const Home = lazy(() => import('./pages/Home'))
+const Pacientes = lazy(() => import('./pages/Pacientes'))
+const DetallePaciente = lazy(() => import('./pages/DetallePaciente'))
+const NuevoIngreso = lazy(() => import('./pages/NuevoIngreso'))
+const DetalleIngreso = lazy(() => import('./pages/DetalleIngreso'))
+const HojaItems = lazy(() => import('./pages/HojaItems'))
+const Eventos = lazy(() => import('./pages/Eventos').then((m) => ({ default: m.Eventos })))
+const Dashboard = lazy(() => import('./pages/Dashboard').then((m) => ({ default: m.Dashboard })))
+const Personal = lazy(() => import('./pages/Personal').then((m) => ({ default: m.Personal })))
+const Auditoria = lazy(() => import('./pages/Auditoria').then((m) => ({ default: m.Auditoria })))
+const Informes = lazy(() => import('./pages/Informes').then((m) => ({ default: m.Informes })))
+
+// Pantalla breve mientras se descarga el código de la página elegida
+// (solo se ve un instante, y solo la primera vez que se visita cada
+// pantalla en la sesión: el navegador la guarda en caché después).
+function CargandoPagina() {
+  return <div className="p-8 text-slate-400 text-sm">Cargando…</div>
+}
 
 // Guardián: decide si se puede pasar a las rutas protegidas.
 function RequireAuth() {
@@ -55,17 +70,17 @@ export default function App() {
           {/* Todo lo demás queda detrás del guardián */}
           <Route element={<RequireAuth />}>
             <Route path="/" element={<Layout />}>
-              <Route index element={<Home />} />
-              <Route path="pacientes" element={<Pacientes />} />
-              <Route path="pacientes/nuevo" element={<NuevoIngreso />} />
-              <Route path="pacientes/:id" element={<DetallePaciente />} />
-              <Route path="ingresos/:id" element={<DetalleIngreso />} />
-              <Route path="items" element={<HojaItems />} />
-              <Route path="eventos" element={<Eventos />} />
-              <Route path="informes" element={<Informes />} />
-              <Route path="dashboard" element={<Dashboard />} />
-              <Route path="personal" element={<Personal />} />
-              <Route path="auditoria" element={<Auditoria />} />
+              <Route index element={<Suspense fallback={<CargandoPagina />}><Home /></Suspense>} />
+              <Route path="pacientes" element={<Suspense fallback={<CargandoPagina />}><Pacientes /></Suspense>} />
+              <Route path="pacientes/nuevo" element={<Suspense fallback={<CargandoPagina />}><NuevoIngreso /></Suspense>} />
+              <Route path="pacientes/:id" element={<Suspense fallback={<CargandoPagina />}><DetallePaciente /></Suspense>} />
+              <Route path="ingresos/:id" element={<Suspense fallback={<CargandoPagina />}><DetalleIngreso /></Suspense>} />
+              <Route path="items" element={<Suspense fallback={<CargandoPagina />}><HojaItems /></Suspense>} />
+              <Route path="eventos" element={<Suspense fallback={<CargandoPagina />}><Eventos /></Suspense>} />
+              <Route path="informes" element={<Suspense fallback={<CargandoPagina />}><Informes /></Suspense>} />
+              <Route path="dashboard" element={<Suspense fallback={<CargandoPagina />}><Dashboard /></Suspense>} />
+              <Route path="personal" element={<Suspense fallback={<CargandoPagina />}><Personal /></Suspense>} />
+              <Route path="auditoria" element={<Suspense fallback={<CargandoPagina />}><Auditoria /></Suspense>} />
             </Route>
           </Route>
         </Routes>

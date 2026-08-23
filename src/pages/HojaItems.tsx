@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useMemo, useCallback, memo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
@@ -695,7 +695,7 @@ function snapshotToIngresos(snaps: any[]): IngresoConItems[] {
 
 // ─── TABLA EN PANTALLA ────────────────────────────────────────
 
-function Bloque({
+const Bloque = memo(function Bloque({
   habs,
   offset,
   count = 16,
@@ -798,7 +798,7 @@ function Bloque({
       </tbody>
     </table>
   )
-}
+})
 
 // ─── PÁGINA PRINCIPAL ─────────────────────────────────────────
 
@@ -935,9 +935,20 @@ export default function HojaItems() {
     setSelected((prev) => (prev?.id === ingresoId ? { ...prev, habitacion: nuevaHab } : prev))
   }
 
-  const habs1_16 = data.filter((i) => i.habitacion && i.habitacion <= 16)
-  const habs17_max = data.filter((i) => i.habitacion && i.habitacion > 16)
-  const maxHab = Math.max(33, ...data.map((i) => i.habitacion ?? 0))
+  // Memoizados: sin esto, Bloque se volvería a dibujar entero en cada
+  // tecla del buscador o cualquier otra interacción, porque recibiría
+  // un array "nuevo" (aunque con el mismo contenido) en cada renderizado.
+  const habs1_16 = useMemo(() => data.filter((i) => i.habitacion && i.habitacion <= 16), [data])
+  const habs17_max = useMemo(() => data.filter((i) => i.habitacion && i.habitacion > 16), [data])
+  const maxHab = useMemo(() => Math.max(33, ...data.map((i) => i.habitacion ?? 0)), [data])
+
+  // Estable entre renderizados por el mismo motivo: si no, Bloque
+  // recibiría una función "nueva" cada vez y su memoización no serviría
+  // de nada, aunque el resto de props no hubieran cambiado.
+  const handleSelectVacia = useCallback(
+    (n: number) => { if (esMedico) navigate(`/pacientes/nuevo?habitacion=${n}`) },
+    [esMedico, navigate]
+  )
 
   if (loading) return <div className="p-8 text-slate-400">Cargando…</div>
 
@@ -1196,7 +1207,7 @@ export default function HojaItems() {
               offset={0}
               count={16}
               onSelect={setSelected}
-              onSelectVacia={esMedico ? (n) => navigate(`/pacientes/nuevo?habitacion=${n}`) : undefined}
+              onSelectVacia={handleSelectVacia}
               selectedId={selected?.id ?? null}
             />
           </div>
@@ -1207,7 +1218,7 @@ export default function HojaItems() {
               offset={16}
               count={maxHab - 16}
               onSelect={setSelected}
-              onSelectVacia={esMedico ? (n) => navigate(`/pacientes/nuevo?habitacion=${n}`) : undefined}
+              onSelectVacia={handleSelectVacia}
               selectedId={selected?.id ?? null}
             />
           </div>
