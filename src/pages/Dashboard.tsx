@@ -665,7 +665,7 @@ export function Dashboard() {
                       <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                       <Tooltip />
                       <Legend wrapperStyle={{ fontSize: 11 }} />
-                      <Line type="monotone" dataKey="ingresos" stroke="#6175f5" strokeWidth={2} dot={{ r: 3 }} name="Ingresos nuevos" />
+                      <Line type="monotone" dataKey="ingresos" stroke="#1E3A5F" strokeWidth={2} dot={{ r: 3 }} name="Ingresos nuevos" />
                       <Line type="monotone" dataKey="altas" stroke="#10b981" strokeWidth={2} dot={{ r: 3 }} name="Altas / éxitus" />
                     </LineChart>
                   </ResponsiveContainer>
