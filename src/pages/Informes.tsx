@@ -21,6 +21,7 @@ export function Informes() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [informes, setInformes] = useState<InformeRow[]>([])
+  const [posibleTruncado, setPosibleTruncado] = useState(false)
   const [anios, setAnios] = useState<number[]>([])
   const [filtroAnio, setFiltroAnio] = useState<string>('todos')
   const [filtroTipo, setFiltroTipo] = useState<'todos' | TipoInforme>('todos')
@@ -40,7 +41,8 @@ export function Informes() {
           ingreso:ingresos(id, fecha_ingreso, estado,
             medico_responsable:profesionales(nombre, apellidos),
             paciente:pacientes(nombre, primer_apellido, segundo_apellido))
-        `),
+        `)
+        .limit(2000), // tope de seguridad: esta pantalla no pagina todavía
       supabase
         .from('informe_alta')
         .select(`
@@ -48,7 +50,8 @@ export function Informes() {
           ingreso:ingresos(id, fecha_alta, fecha_ingreso, estado,
             medico_responsable:profesionales(nombre, apellidos),
             paciente:pacientes(nombre, primer_apellido, segundo_apellido))
-        `),
+        `)
+        .limit(2000),
     ])
 
     const rows: InformeRow[] = []
@@ -84,6 +87,7 @@ export function Informes() {
     })
 
     setInformes(rows)
+    setPosibleTruncado((ing?.length ?? 0) >= 2000 || (alta?.length ?? 0) >= 2000)
     const aniosDisponibles = [...new Set(rows.filter(r => r.fecha).map(r => new Date(r.fecha!).getFullYear()))]
       .sort((a, b) => b - a)
     setAnios(aniosDisponibles)
@@ -114,6 +118,11 @@ export function Informes() {
         <p className="text-sm text-slate-400 mt-0.5">
           {loading ? '…' : `${lista.length} informe${lista.length !== 1 ? 's' : ''}`} · historial de informes de ingreso y alta
         </p>
+        {posibleTruncado && (
+          <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-3 py-1.5 mt-2 inline-block">
+            El historial es muy grande: puede que falten los informes más antiguos. Filtra por año para acotar la búsqueda.
+          </p>
+        )}
       </div>
 
       <div className="flex gap-3 mb-5 flex-wrap items-center">

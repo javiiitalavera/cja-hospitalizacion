@@ -137,7 +137,8 @@ export function Dashboard() {
         .select('*, paciente:pacientes(sexo, fecha_nacimiento), medico_responsable:profesionales(nombre)')
         .or(`fecha_alta.gte.${desde},fecha_alta.is.null`)
         .lte('fecha_ingreso', hasta)
-        .order('fecha_ingreso', { ascending: true }),
+        .order('fecha_ingreso', { ascending: true })
+        .limit(5000), // tope de seguridad: "Todo el historial" no tiene límite superior de fecha
       supabase.from('ingresos')
         .select('fecha_ingreso, fecha_alta, estado, paciente_id, medico_responsable:profesionales(nombre)')
         .gte('fecha_ingreso', desde)
@@ -147,9 +148,12 @@ export function Dashboard() {
       supabase.from('ingresos')
         .select('id, fecha_ingreso, paciente_id, paciente:pacientes(sexo, fecha_nacimiento)')
         .eq('estado', 'activo'),
-      // Semáforo de caídas de todos los pacientes activos
+      // Semáforo de caídas: solo de los ingresos ACTIVOS ahora mismo,
+      // no de toda la tabla histórica de ítems (que solo crece con los
+      // años y aquí no hacía falta traerla entera).
       supabase.from('items_paciente')
-        .select('ingreso_id, semaforo_caidas'),
+        .select('ingreso_id, semaforo_caidas, ingreso:ingresos!inner(estado)')
+        .eq('ingreso.estado', 'activo'),
     ])
 
     const activosList = activos ?? []
