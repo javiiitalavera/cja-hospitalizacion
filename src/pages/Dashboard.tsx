@@ -285,12 +285,12 @@ export function Dashboard() {
   const TIPO_LABEL: Record<string, string> = {
     caida: 'Caídas', ulcera: 'Úlceras', error_medicacion: 'Errores medicación',
     efecto_adverso_medicacion: 'Efectos adversos', infeccion_nosocomial: 'Infecciones',
-    contencion_fisica: 'Contenciones', agresividad_fisica: 'Agresividad', fuga: 'Fugas',
+    agresividad_fisica: 'Agresividad', fuga: 'Fugas',
   }
   const TIPO_COLOR: Record<string, string> = {
     caida: 'bg-orange-100 text-orange-700', ulcera: 'bg-red-100 text-red-700',
     error_medicacion: 'bg-purple-100 text-purple-700', efecto_adverso_medicacion: 'bg-pink-100 text-pink-700',
-    infeccion_nosocomial: 'bg-yellow-100 text-yellow-700', contencion_fisica: 'bg-blue-100 text-blue-700',
+    infeccion_nosocomial: 'bg-yellow-100 text-yellow-700',
     agresividad_fisica: 'bg-rose-100 text-rose-700', fuga: 'bg-slate-100 text-slate-700',
   }
 

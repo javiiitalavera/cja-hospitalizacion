@@ -13,7 +13,7 @@ import { formatFechaLocal as fmt } from '../lib/fechas'
 // ─── CONSTANTES ────────────────────────────────────────────────
 
 const TIPOS_ORDEN: TipoEvento[] = [
-  'caida', 'ulcera', 'contencion_fisica', 'agresividad_fisica',
+  'caida', 'ulcera', 'agresividad_fisica',
   'fuga', 'infeccion_nosocomial', 'error_medicacion', 'efecto_adverso_medicacion',
 ]
 
@@ -22,7 +22,6 @@ const TIPOS_ORDEN: TipoEvento[] = [
 const TIPO_EVENTO_HEX: Record<TipoEvento, string> = {
   caida: '#C2703D',
   ulcera: '#B84A4A',
-  contencion_fisica: '#3C6084',
   agresividad_fisica: '#A54D5C',
   fuga: '#6B7280',
   infeccion_nosocomial: '#B99A3D',

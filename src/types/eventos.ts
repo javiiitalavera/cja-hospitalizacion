@@ -4,7 +4,6 @@ export type TipoEvento =
   | 'error_medicacion'
   | 'efecto_adverso_medicacion'
   | 'infeccion_nosocomial'
-  | 'contencion_fisica'
   | 'agresividad_fisica'
   | 'fuga'
 
@@ -14,7 +13,6 @@ export const TIPO_EVENTO_LABEL: Record<TipoEvento, string> = {
   error_medicacion: 'Error de medicación',
   efecto_adverso_medicacion: 'Efecto adverso de medicación',
   infeccion_nosocomial: 'Infección nosocomial',
-  contencion_fisica: 'Contención física',
   agresividad_fisica: 'Agresividad física grave',
   fuga: 'Fuga',
 }
@@ -25,7 +23,6 @@ export const TIPO_EVENTO_COLOR: Record<TipoEvento, string> = {
   error_medicacion: 'bg-purple-100 text-purple-700 border-purple-200',
   efecto_adverso_medicacion: 'bg-pink-100 text-pink-700 border-pink-200',
   infeccion_nosocomial: 'bg-yellow-100 text-yellow-700 border-yellow-200',
-  contencion_fisica: 'bg-blue-100 text-blue-700 border-blue-200',
   agresividad_fisica: 'bg-rose-100 text-rose-700 border-rose-200',
   fuga: 'bg-slate-100 text-slate-700 border-slate-200',
 }
@@ -96,13 +93,6 @@ export const CAMPOS_POR_TIPO: Record<TipoEvento, CampoEvento[]> = {
     { key: 'confirmacion', label: 'Confirmación diagnóstica', tipo: 'select', opciones: ['Sospecha clínica', 'Confirmada por microbiología'], requerido: true },
   ],
 
-  contencion_fisica: [
-    { key: 'tipo', label: 'Tipo de contención', tipo: 'select', opciones: ['Sujeción mecánica cama', 'Sujeción mecánica sillón', 'Contención manual', 'Aislamiento'], requerido: true },
-    { key: 'motivo', label: 'Motivo', tipo: 'select', opciones: ['Agitación', 'Riesgo de caída', 'Retirada de vías', 'Riesgo de fuga', 'Otro'], requerido: true },
-    { key: 'duracion', label: 'Duración (horas aprox.)', tipo: 'text' },
-    { key: 'autorizacion_medica', label: 'Autorización médica', tipo: 'select', opciones: ['Sí', 'No'], requerido: true },
-  ],
-
   agresividad_fisica: [
     { key: 'dirigida_a', label: 'Dirigida a', tipo: 'select', opciones: ['Personal sanitario', 'Otro paciente', 'Familiar', 'Objeto / mobiliario'], requerido: true },
     { key: 'tipo', label: 'Tipo de agresión', tipo: 'select', opciones: ['Golpes', 'Mordeduras', 'Empujones', 'Arañazos', 'Lanzamiento de objetos', 'Otra'], requerido: true },
@@ -121,4 +111,75 @@ export const TURNO_LABEL: Record<string, string> = {
   manana: 'Mañana',
   tarde: 'Tarde',
   noche: 'Noche',
+}
+
+// ─── PAUTA DE CONTENCIÓN FÍSICA ───────────────────────────────
+// A diferencia de las incidencias de arriba, esto no es un registro
+// puntual: es una orden médica vigente hasta que se retira. Por eso
+// vive en su propia tabla (pautas_contencion), no en "eventos".
+
+export type TipoContencion =
+  | 'cama_una_barra'
+  | 'cama_dos_barras'
+  | 'cama_sujecion_fisica'
+  | 'cama_sensor_presion'
+  | 'cama_cota_cero'
+  | 'sillon'
+  | 'silla_ruedas'
+  | 'contencion_manual'
+  | 'aislamiento'
+
+export type MotivoContencion =
+  | 'agitacion'
+  | 'riesgo_caida'
+  | 'retirada_vias'
+  | 'riesgo_fuga'
+  | 'otro'
+
+export const TIPO_CONTENCION_LABEL: Record<TipoContencion, string> = {
+  cama_una_barra: 'Cama — una barra',
+  cama_dos_barras: 'Cama — dos barras',
+  cama_sujecion_fisica: 'Cama — sujeción física',
+  cama_sensor_presion: 'Cama — sensor de presión',
+  cama_cota_cero: 'Cama — cota cero',
+  sillon: 'Sillón',
+  silla_ruedas: 'Silla de ruedas',
+  contencion_manual: 'Contención manual',
+  aislamiento: 'Aislamiento',
+}
+
+// Agrupación visual: todas las medidas de cama se muestran juntas en
+// la Hoja de Ítems, igual que antes se agrupaban en un único campo.
+export const CONTENCION_AMBITO: Record<TipoContencion, 'cama' | 'sillon' | 'silla_ruedas' | 'otro'> = {
+  cama_una_barra: 'cama',
+  cama_dos_barras: 'cama',
+  cama_sujecion_fisica: 'cama',
+  cama_sensor_presion: 'cama',
+  cama_cota_cero: 'cama',
+  sillon: 'sillon',
+  silla_ruedas: 'silla_ruedas',
+  contencion_manual: 'otro',
+  aislamiento: 'otro',
+}
+
+export const MOTIVO_CONTENCION_LABEL: Record<MotivoContencion, string> = {
+  agitacion: 'Agitación',
+  riesgo_caida: 'Riesgo de caída',
+  retirada_vias: 'Retirada de vías',
+  riesgo_fuga: 'Riesgo de fuga',
+  otro: 'Otro',
+}
+
+export interface PautaContencion {
+  id: string
+  ingreso_id: string
+  tipo: TipoContencion
+  motivo: MotivoContencion
+  notas?: string
+  pautada_por_id: string
+  fecha_inicio: string
+  retirada_por_id?: string
+  fecha_fin?: string
+  pautada_por?: { nombre: string; apellidos: string }
+  retirada_por?: { nombre: string; apellidos: string }
 }
