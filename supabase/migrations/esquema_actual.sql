@@ -229,7 +229,7 @@ create table public.eventos (
     ingreso_id uuid not null references public.ingresos(id) on delete cascade,
     tipo text not null check (tipo in (
         'caida', 'ulcera', 'error_medicacion', 'efecto_adverso_medicacion',
-        'infeccion_nosocomial', 'contencion_fisica', 'agresividad_fisica', 'fuga'
+        'infeccion_nosocomial', 'agresividad_fisica', 'fuga'
     )),
     fecha date not null default current_date,
     hora time,
@@ -307,6 +307,37 @@ create table public.auditoria (
     accion text not null,
     usuario_id uuid,
     fecha timestamptz not null default now()
+);
+
+-- Contención física: estado actual, un registro por ingreso. Dos ejes
+-- independientes (día y noche), no un único campo.
+--
+-- "Nunca revisado" y "revisado, no hace falta nada" son cosas
+-- DISTINTAS y se representan de forma distinta a propósito:
+--   día:   null = nunca revisado; 'ninguna' = revisado, nada pautado
+--   noche: null = nunca revisado; '{}' = revisado, nada pautado
+create table public.contenciones (
+    ingreso_id uuid primary key references public.ingresos(id) on delete cascade,
+    dia text check (dia in (
+        'ninguna', 'continua_seguridad', 'si_precisa_asistencial', 'si_precisa_paciente'
+    )),
+    noche text[] check (
+        noche <@ array['1_barra','2_barras','cota_cero','sensor_presion','contencion_fija','contencion_si_precisa']::text[]
+    ),
+    actualizado_por_id uuid references public.profesionales(id),
+    actualizado_en timestamptz not null default now()
+);
+
+-- Historial: una fila por cada cambio, para ver cómo ha evolucionado
+-- la pauta de un paciente en el tiempo. Se rellena solo, vía
+-- disparador (ver DISPARADORES más abajo) — nadie escribe aquí a mano.
+create table public.contenciones_historial (
+    id uuid primary key default gen_random_uuid(),
+    ingreso_id uuid not null references public.ingresos(id) on delete cascade,
+    dia text,
+    noche text[],
+    cambiado_por_id uuid references public.profesionales(id),
+    cambiado_en timestamptz not null default now()
 );
 
 
@@ -426,7 +457,7 @@ $$;
 -- directo de escritura sobre ella.
 create function public.registrar_auditoria() returns trigger
 language plpgsql security definer
-set search_path to 'public'
+set search_path to ''
 as $$
 declare
   v_registro_id uuid;
@@ -437,7 +468,7 @@ begin
     v_registro_id := NEW.id;
   end if;
 
-  insert into auditoria (tabla, registro_id, accion, usuario_id)
+  insert into public.auditoria (tabla, registro_id, accion, usuario_id)
   values (TG_TABLE_NAME, v_registro_id, TG_OP, auth.uid());
 
   if (TG_OP = 'DELETE') then
@@ -453,6 +484,32 @@ language plpgsql
 as $$
 begin
   new.updated_at = now();
+  return new;
+end;
+$$;
+
+-- Cada vez que se crea o cambia el estado actual de una contención,
+-- queda una foto en el historial. Es automático, así el historial no
+-- depende de que nadie se acuerde de registrarlo aparte.
+create function public.registrar_historial_contencion() returns trigger
+language plpgsql
+security definer
+set search_path to ''
+as $$
+begin
+  insert into public.contenciones_historial (ingreso_id, dia, noche, cambiado_por_id, cambiado_en)
+  values (NEW.ingreso_id, NEW.dia, NEW.noche, NEW.actualizado_por_id, NEW.actualizado_en);
+  return NEW;
+end;
+$$;
+
+-- La hora de "actualizado_en" la pone siempre el servidor, nunca el
+-- reloj del ordenador de quien guarda.
+create function public.set_actualizado_en() returns trigger
+language plpgsql
+as $$
+begin
+  new.actualizado_en = now();
   return new;
 end;
 $$;
@@ -477,6 +534,14 @@ create trigger trg_items_updated         before update on public.items_paciente 
 create trigger trg_informe_ingreso_updated before update on public.informe_ingreso for each row execute function public.update_updated_at();
 create trigger trg_informe_alta_updated  before update on public.informe_alta    for each row execute function public.update_updated_at();
 create trigger trg_cmbd_updated          before update on public.cmbd            for each row execute function public.update_updated_at();
+
+create trigger guardar_historial_tras_cambio
+  after insert or update on public.contenciones
+  for each row execute function public.registrar_historial_contencion();
+
+create trigger fijar_actualizado_en
+  before insert or update on public.contenciones
+  for each row execute function public.set_actualizado_en();
 
 
 -- ────────────────────────────────────────────────────────────
@@ -599,6 +664,42 @@ create policy borrar_evento on public.eventos for delete to authenticated
         and (registrado_por_id = (select id from profesionales where user_id = auth.uid() limit 1) or private.soy_admin())
     );
 
+-- contenciones: lectura para todo el equipo con ficha activa.
+alter table public.contenciones enable row level security;
+alter table public.contenciones_historial enable row level security;
+
+create policy leer_autenticado on public.contenciones
+    for select to authenticated using (private.mi_rol() is not null);
+
+create policy leer_autenticado on public.contenciones_historial
+    for select to authenticated using (private.mi_rol() is not null);
+-- Sin política de escritura para contenciones_historial: solo se
+-- escribe desde el disparador de arriba (SECURITY DEFINER); nadie
+-- puede tocarlo a mano, ni siquiera un administrador.
+
+-- Escritura: cualquier profesional asistencial puede pautar o
+-- modificar, mientras el episodio siga activo. La orden verbal sigue
+-- siendo del médico, pero no se restringe quién la introduce en la
+-- aplicación (decisión explícita, no un descuido).
+create policy escribir_equipo on public.contenciones
+    for insert to authenticated
+    with check (
+        private.mi_rol() in ('medico', 'enfermeria', 'auxiliar', 'tecnico')
+        and exists (select 1 from ingresos i where i.id = contenciones.ingreso_id and i.estado = 'activo')
+        and actualizado_por_id = (select id from profesionales where user_id = auth.uid() limit 1)
+    );
+
+create policy modificar_equipo on public.contenciones
+    for update to authenticated
+    using (
+        private.mi_rol() in ('medico', 'enfermeria', 'auxiliar', 'tecnico')
+        and exists (select 1 from ingresos i where i.id = contenciones.ingreso_id and i.estado = 'activo')
+    )
+    with check (
+        private.mi_rol() in ('medico', 'enfermeria', 'auxiliar', 'tecnico')
+        and actualizado_por_id = (select id from profesionales where user_id = auth.uid() limit 1)
+    );
+
 
 -- ────────────────────────────────────────────────────────────
 -- ÍNDICES
@@ -610,16 +711,27 @@ create policy borrar_evento on public.eventos for delete to authenticated
 create unique index ingresos_paciente_activo_unico on public.ingresos (paciente_id) where estado = 'activo';
 create unique index ingresos_habitacion_activa_unica on public.ingresos (habitacion) where estado = 'activo' and habitacion is not null;
 
+-- ingresos (estado): lo consulta un "exists" en casi cada política de
+-- escritura de la app — sin esto, cada INSERT/UPDATE/DELETE hace un
+-- recorrido completo de la tabla.
+create index ingresos_estado_idx on public.ingresos (estado);
+-- ingresos (paciente_id, fecha_ingreso desc): lo usa la vista
+-- pacientes_con_ultimo_ingreso (un "lateral join" que pide el último
+-- ingreso de cada paciente) y las pantallas de Paciente/Dashboard.
+create index ingresos_paciente_fecha_idx on public.ingresos (paciente_id, fecha_ingreso desc);
+
 create index eventos_ingreso_idx on public.eventos (ingreso_id);
 create index eventos_fecha_idx on public.eventos (fecha);
 create index eventos_tipo_idx on public.eventos (tipo);
-create index items_historico_ingreso_idx on public.items_historico (ingreso_id);
 create index items_historico_fecha_idx on public.items_historico (fecha);
 create index auditoria_tabla_registro_idx on public.auditoria (tabla, registro_id);
 create index auditoria_fecha_idx on public.auditoria (fecha desc);
-create index profesionales_user_id_idx on public.profesionales (user_id);
 create index pacientes_nombre_normalizado_idx on public.pacientes (nombre_normalizado);
 create index pacientes_primer_apellido_normalizado_idx on public.pacientes (primer_apellido_normalizado);
+create index contenciones_historial_ingreso_idx on public.contenciones_historial (ingreso_id, cambiado_en desc);
+-- Nota: no hace falta un índice aparte en profesionales(user_id) ni
+-- en items_historico(ingreso_id) — ya están cubiertos por el UNIQUE
+-- de esa columna y por el UNIQUE compuesto (ingreso_id, fecha).
 
 
 -- ────────────────────────────────────────────────────────────

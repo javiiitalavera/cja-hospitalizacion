@@ -83,20 +83,29 @@ export function Eventos() {
   // ── Contenciones activas (ingresos activos) ─────────────────
   const [loadingContenciones, setLoadingContenciones] = useState(true)
   const [contenciones, setContenciones] = useState<any[]>([])
+  const [errorContenciones, setErrorContenciones] = useState('')
   const [modalContencion, setModalContencion] = useState<string | null>(null)
 
   useEffect(() => { fetchContenciones() }, [])
 
   async function fetchContenciones() {
     setLoadingContenciones(true)
+    setErrorContenciones('')
     try {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('contenciones')
         .select(`
           ingreso_id, dia, noche, actualizado_en,
           ingreso:ingresos!inner(id, habitacion, estado, paciente:pacientes(nombre, primer_apellido, segundo_apellido))
         `)
         .eq('ingreso.estado', 'activo')
+      if (error) {
+        // Un error real (tabla caída, RLS, red...) no es lo mismo que
+        // "ningún paciente tiene contención" — si se confunden, esta
+        // pantalla podría dar una falsa sensación de seguridad.
+        setErrorContenciones('No se pudieron cargar las contenciones: ' + error.message)
+        return
+      }
       // Solo interesa aquí quien tiene ALGO pautado (no "ninguna").
       const activas = (data ?? []).filter((c: any) =>
         (c.dia && c.dia !== 'ninguna') || (c.noche && c.noche.length > 0)
@@ -291,6 +300,8 @@ export function Eventos() {
         <div className="card overflow-hidden">
           {loadingContenciones ? (
             <p className="px-4 py-8 text-center text-slate-400 text-sm">Cargando…</p>
+          ) : errorContenciones ? (
+            <p className="px-4 py-8 text-center text-red-600 text-sm">{errorContenciones}</p>
           ) : contenciones.length === 0 ? (
             <p className="px-4 py-8 text-center text-slate-400 text-sm">Ningún paciente ingresado tiene contención pautada ahora mismo.</p>
           ) : (
