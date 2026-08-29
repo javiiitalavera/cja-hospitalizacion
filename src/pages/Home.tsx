@@ -177,8 +177,8 @@ export default function Home() {
         <div className="grid grid-cols-1 gap-1">
           {/* Cabecera */}
           <div
-            className="grid gap-px text-xs font-semibold text-slate-400 uppercase tracking-wide px-3 pb-1"
-            style={{ gridTemplateColumns: '2.5rem minmax(0,1.4fr) 3rem 3.5rem 5.5rem minmax(0,0.9fr) 4.5rem 7rem 3rem 2rem' }}
+            className="grid gap-x-3 text-xs font-semibold text-slate-400 uppercase tracking-wide px-3 pb-1"
+            style={{ gridTemplateColumns: '2.5rem minmax(0,1.4fr) 3rem 3.5rem 5.5rem minmax(0,0.9fr) 6rem 7rem 3rem 2rem' }}
           >
             <div>Hab.</div>
             <div>Paciente</div>
@@ -205,7 +205,7 @@ export default function Home() {
                   className={`grid items-center border border-dashed border-slate-150 rounded-lg px-3 py-1.5 transition-colors ${
                     esMedico ? 'cursor-pointer hover:border-primary-300 hover:bg-primary-50/30' : ''
                   }`}
-                  style={{ gridTemplateColumns: '2.5rem minmax(0,1.4fr) 3rem 3.5rem 5.5rem minmax(0,0.9fr) 4.5rem 7rem 3rem 2rem' }}
+                  style={{ gridTemplateColumns: '2.5rem minmax(0,1.4fr) 3rem 3.5rem 5.5rem minmax(0,0.9fr) 6rem 7rem 3rem 2rem' }}
                   onClick={esMedico ? () => navigate(`/pacientes/nuevo?habitacion=${n}`) : undefined}
                   title={esMedico ? `Ingresar en habitación ${n}` : `Habitación ${n} libre`}
                 >
@@ -246,7 +246,7 @@ export default function Home() {
               <div key={n} className="group">
                 <div
                   className="grid items-center bg-white border border-slate-200 rounded-lg px-3 py-2 hover:shadow-sm hover:border-primary-200 transition-all cursor-pointer"
-                  style={{ gridTemplateColumns: '2.5rem minmax(0,1.4fr) 3rem 3.5rem 5.5rem minmax(0,0.9fr) 4.5rem 7rem 3rem 2rem' }}
+                  style={{ gridTemplateColumns: '2.5rem minmax(0,1.4fr) 3rem 3.5rem 5.5rem minmax(0,0.9fr) 6rem 7rem 3rem 2rem' }}
                   onClick={() => navigate(`/ingresos/${ingreso.id}`)}
                 >
                   {/* Hab con semáforo */}
