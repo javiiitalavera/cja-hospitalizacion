@@ -63,9 +63,10 @@ function nocheStr(arr: string[] | null | undefined): string {
 // Agrupado en bloques con sentido clínico, en vez de una lista plana
 // sin criterio. Cada grupo imprime su propia fila de cabecera antes
 // de sus ítems (ver buildBloque / Bloque más abajo).
-const GRUPOS: { titulo: string; filas: { key: string; label: string; get: (it: any, i: IngresoConItems) => string }[] }[] = [
+const GRUPOS: { titulo: string; mostrarTitulo?: boolean; filas: { key: string; label: string; get: (it: any, i: IngresoConItems) => string }[] }[] = [
   {
     titulo: 'Identidad',
+    mostrarTitulo: false, // se sobreentiende, no hace falta el rótulo
     filas: [
       { key: 'nombre', label: 'NOMBRE', get: (_: any, i: IngresoConItems) => `${i.paciente?.primer_apellido ?? ''} ${i.paciente?.nombre ?? ''}`.trim() },
       { key: 'medico', label: 'MÉDICO', get: (_: any, i: IngresoConItems) => i.medico_responsable?.nombre?.toUpperCase() ?? '' },
@@ -76,6 +77,7 @@ const GRUPOS: { titulo: string; filas: { key: string; label: string; get: (it: a
     filas: [
       { key: 'cont_dia', label: 'Contención día', get: (_: any, i: IngresoConItems) => diaStr(i.contencion?.dia) },
       { key: 'cont_noche', label: 'Contención noche', get: (_: any, i: IngresoConItems) => nocheStr(i.contencion?.noche) },
+      { key: 'sensor', label: 'Sensor', get: (_: any, i: IngresoConItems) => (i.contencion?.noche?.includes('sensor_presion') ? 'X' : '') },
       {
         key: 'alerta',
         label: 'Alerta conducta',
@@ -91,7 +93,6 @@ const GRUPOS: { titulo: string; filas: { key: string; label: string; get: (it: a
   {
     titulo: 'Movilidad',
     filas: [
-      { key: 'dep', label: 'Dependencia', get: (it: ItemsPaciente) => it?.dependencia_avd != null ? `${it.dependencia_avd}P` : '' },
       {
         key: 'deambulacion',
         label: 'Deambulación',
@@ -124,13 +125,14 @@ const GRUPOS: { titulo: string; filas: { key: string; label: string; get: (it: a
   {
     titulo: 'Higiene y continencia',
     filas: [
+      { key: 'dep', label: 'Dependencia', get: (it: ItemsPaciente) => it?.dependencia_avd != null ? `${it.dependencia_avd}P` : '' },
       { key: 'panial_dia', label: 'Pañal día', get: (it: ItemsPaciente) => it?.panial_dia ?? '' },
       { key: 'panial_noche', label: 'Pañal noche', get: (it: ItemsPaciente) => it?.panial_noche ?? '' },
       { key: 'colector', label: 'Colector', get: (it: ItemsPaciente) => (it?.colector ? 'X' : '') },
       { key: 'sonda', label: 'Sonda vesical', get: (it: ItemsPaciente) => (it?.sonda_vesical ? 'X' : '') },
       { key: 'higiene', label: 'Higiene', get: (it: ItemsPaciente) => (it?.higiene === 'lavabo' ? 'L' : it?.higiene === 'cama' ? 'C' : '') },
       { key: 'ducha', label: 'Ducha', get: (it: ItemsPaciente) => (it?.ducha === 'pie' ? 'P' : it?.ducha === 'sentado' ? 'S' : '') },
-      { key: 'vestido', label: 'Vestido', get: (it: ItemsPaciente) => it?.vestido ?? '' },
+      { key: 'vestido', label: 'Vestido', get: (it: ItemsPaciente) => ((it as any)?.vestido === 'autonomo' ? 'A' : (it as any)?.vestido === 'dependiente' ? 'D' : '') },
       { key: 'banio', label: 'Baño acompañado', get: (it: ItemsPaciente) => (it?.banio ? 'X' : '') },
     ],
   },
@@ -161,6 +163,7 @@ const GRUPOS: { titulo: string; filas: { key: string; label: string; get: (it: a
   },
   {
     titulo: 'Observaciones',
+    mostrarTitulo: false, // innecesario, la propia fila ya lo dice
     filas: [
       { key: 'observaciones', label: 'Observaciones', get: (it: ItemsPaciente) => (it as any)?.observaciones ?? '' },
     ],
@@ -218,7 +221,9 @@ function buildPrintHTML(data: IngresoConItems[], today: string): string {
 
     // Filas, agrupadas en bloques con su propia cabecera de sección
     for (const grupo of GRUPOS) {
-      html += `<tr><td colspan="${count + 1}" style="border:1px solid #555;background:#5b7a9d;color:#fff;padding:2px 4px;font-weight:700;font-size:7pt;letter-spacing:0.03em;">${grupo.titulo.toUpperCase()}</td></tr>`
+      if (grupo.mostrarTitulo !== false) {
+        html += `<tr><td colspan="${count + 1}" style="border:1px solid #555;background:#5b7a9d;color:#fff;padding:2px 4px;font-weight:700;font-size:7pt;letter-spacing:0.03em;">${grupo.titulo.toUpperCase()}</td></tr>`
+      }
       for (const fila of grupo.filas) {
         const isBoldLabel = LABEL_BOLD_ROWS.has(fila.key)
         const isBoldVal = BOLD_ROWS.has(fila.key)
@@ -226,6 +231,11 @@ function buildPrintHTML(data: IngresoConItems[], today: string): string {
         // de la propia habitación en la cabecera) — no toda la
         // columna del paciente, para no "pintar" el resto de datos.
         const tenirPorSemaforo = fila.key === 'nombre'
+        // La alerta de conducta tiene que saltar a la vista: fondo
+        // rojo fuerte en la propia celda si hay algo marcado, no solo
+        // texto — es justo el tipo de aviso que no se puede pasar por
+        // alto.
+        const esAlerta = fila.key === 'alerta'
         html += `<tr>`
         html += `<td style="border:1px solid #555;background:#e8e8e8;padding:2px 4px;font-weight:${isBoldLabel ? 700 : 500};white-space:nowrap;overflow:hidden;font-size:7.5pt;">${fila.label}</td>`
         for (const n of habNums) {
@@ -233,18 +243,23 @@ function buildPrintHTML(data: IngresoConItems[], today: string): string {
           const it = ing?.items ?? null
           const val = ing ? fila.get(it as any, ing as any) : ''
           const bg = habBg(ing)
-          const cellBg = ing && tenirPorSemaforo
-            ? bg === '#FF0000'
-              ? '#ffaaaa'
-              : bg === '#FF9900'
-                ? '#ffddaa'
-                : bg === '#FFFF00'
-                  ? '#ffffaa'
-                  : bg === '#92D050'
-                    ? '#d4edaa'
-                    : '#ffffff'
-            : '#ffffff'
-          html += `<td style="border:1px solid #aaa;background:${cellBg};text-align:center;padding:2px 1px;font-weight:${isBoldVal ? 600 : 400};overflow:hidden;font-size:7.5pt;">${val ? escapeHtml(String(val)) : '&nbsp;'}</td>`
+          const alertaActiva = esAlerta && !!val
+          const cellBg = alertaActiva
+            ? '#dc2626'
+            : ing && tenirPorSemaforo
+              ? bg === '#FF0000'
+                ? '#ffaaaa'
+                : bg === '#FF9900'
+                  ? '#ffddaa'
+                  : bg === '#FFFF00'
+                    ? '#ffffaa'
+                    : bg === '#92D050'
+                      ? '#d4edaa'
+                      : '#ffffff'
+              : '#ffffff'
+          const cellColor = alertaActiva ? '#fff' : '#000'
+          const cellWeight = alertaActiva ? 700 : (isBoldVal ? 600 : 400)
+          html += `<td style="border:1px solid #aaa;background:${cellBg};color:${cellColor};text-align:center;padding:2px 1px;font-weight:${cellWeight};overflow:hidden;font-size:7.5pt;">${val ? escapeHtml(String(val)) : '&nbsp;'}</td>`
         }
         html += `</tr>`
       }
@@ -314,11 +329,13 @@ function PanelEdicion({
   onClose,
   onSaved,
   onHabitacionChange,
+  onContencionChanged,
 }: {
   ingreso: IngresoConItems
   onClose: () => void
   onSaved: (updated: ItemsPaciente) => void
   onHabitacionChange: (ingresoId: string, nuevaHab: number) => void
+  onContencionChanged: (ingresoId: string, nueva: { dia: ContencionDia | null; noche: ContencionNoche[] | null }) => void
 }) {
   const { rol } = useAuth()
   const esMedico = rol === 'medico'
@@ -562,7 +579,11 @@ function PanelEdicion({
             onClose={() => setModalContencion(false)}
             onGuardado={() => {
               supabase.from('contenciones').select('dia, noche').eq('ingreso_id', ingreso.id).maybeSingle()
-                .then(({ data }) => setEstadoContencion(data ?? { dia: null, noche: null }))
+                .then(({ data }) => {
+                  const nueva = data ?? { dia: null, noche: null }
+                  setEstadoContencion(nueva)
+                  onContencionChanged(ingreso.id, nueva)
+                })
             }}
           />
         )}
@@ -601,34 +622,11 @@ function PanelEdicion({
         </div>
 
         <p className="section-title mt-3">Movilidad</p>
-        {sel('dependencia_avd', 'Dependencia', [
-          { v: '1', l: '1 persona' },
-          { v: '2', l: '2 personas' },
+        {sel('deambulacion', 'Deambulación', [
+          { v: 'autonomo', l: 'Autónomo' },
+          { v: '1_persona', l: '1 persona' },
+          { v: '2_personas', l: '2 personas' },
         ])}
-        <div className="py-1.5 border-b border-slate-100">
-          <span className="text-xs text-slate-600 block mb-1">Deambulación</span>
-          <div className="flex gap-2">
-            {([
-              { v: 'autonomo', l: 'Autónomo' },
-              { v: '1_persona', l: '1P' },
-              { v: '2_personas', l: '2P' },
-            ] as const).map((opt) => {
-              const activo = (data as any).deambulacion === opt.v
-              return (
-                <button
-                  key={opt.v}
-                  type="button"
-                  onClick={() => update('deambulacion' as any, activo ? null : opt.v)}
-                  className={`px-3 py-1 rounded text-xs font-medium border transition-colors ${
-                    activo ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-slate-600 border-slate-300'
-                  }`}
-                >
-                  {opt.l}
-                </button>
-              )
-            })}
-          </div>
-        </div>
         {sel('ayudas_deambulacion', 'Ayudas', [
           { v: 'ninguna', l: 'Ninguna' },
           { v: 'baston', l: 'Bastón' },
@@ -655,6 +653,10 @@ function PanelEdicion({
         ])}
 
         <p className="section-title mt-3">Higiene y continencia</p>
+        {sel('dependencia_avd', 'Dependencia', [
+          { v: '1', l: '1 persona' },
+          { v: '2', l: '2 personas' },
+        ])}
         {sel('panial_dia', 'Pañal día', [
           { v: 'ninguno', l: 'Ninguno' },
           { v: 'BP', l: 'BP' },
@@ -676,14 +678,10 @@ function PanelEdicion({
           { v: 'pie', l: 'De pie' },
           { v: 'sentado', l: 'Sentado' },
         ])}
-        <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
-          <span className="text-xs text-slate-600 w-32 shrink-0">Vestido</span>
-          <input
-            className="text-xs border border-slate-200 rounded px-1.5 py-1 flex-1 max-w-[160px]"
-            value={(data.vestido as string) ?? ''}
-            onChange={(e) => update('vestido', e.target.value)}
-          />
-        </div>
+        {sel('vestido', 'Vestido', [
+          { v: 'autonomo', l: 'Autónomo' },
+          { v: 'dependiente', l: 'Dependiente' },
+        ])}
         {bool('banio', 'Baño acompañado (no va solo)')}
 
         <p className="section-title mt-3">Piel y postura</p>
@@ -838,15 +836,20 @@ const Bloque = memo(function Bloque({
       <tbody>
         {GRUPOS.map((grupo) => (
           <Fragment key={grupo.titulo}>
-            <tr key={`g-${grupo.titulo}`}>
-              <td colSpan={count + 1} className="border border-slate-400 bg-[#5b7a9d] text-white text-[7pt] font-bold px-1 py-0.5 tracking-wide">
-                {grupo.titulo.toUpperCase()}
-              </td>
-            </tr>
+            {grupo.mostrarTitulo !== false && (
+              <tr key={`g-${grupo.titulo}`}>
+                <td colSpan={count + 1} className="border border-slate-400 bg-[#5b7a9d] text-white text-[7pt] font-bold px-1 py-0.5 tracking-wide">
+                  {grupo.titulo.toUpperCase()}
+                </td>
+              </tr>
+            )}
             {grupo.filas.map((fila) => {
               // El semáforo de caídas solo tiñe la fila del nombre, no
               // todas las filas del paciente.
               const tenirPorSemaforo = fila.key === 'nombre'
+              // La alerta de conducta debe saltar a la vista: fondo
+              // rojo fuerte en la celda si hay algo marcado.
+              const esAlerta = fila.key === 'alerta'
               return (
                 <tr key={fila.key}>
                   <td className={labelCls} style={{ fontWeight: LABEL_BOLD_ROWS.has(fila.key) ? 700 : 500 }}>
@@ -858,24 +861,27 @@ const Bloque = memo(function Bloque({
                     const it = ingreso?.items ?? null
                     const val = ingreso ? fila.get(it as any, ingreso as any) : ''
                     const bg = habBg(ingreso)
-                    const cellBg = ingreso && tenirPorSemaforo
-                      ? bg === '#FF0000'
-                        ? '#ffcccc'
-                        : bg === '#FF9900'
-                          ? '#ffe5cc'
-                          : bg === '#FFFF00'
-                            ? '#ffffcc'
-                            : bg === '#92D050'
-                              ? '#e2f5cc'
-                              : '#fff'
-                      : '#fff'
-                    const color = ingreso && tenirPorSemaforo ? textColor(bg) : '#000'
+                    const alertaActiva = esAlerta && !!val
+                    const cellBg = alertaActiva
+                      ? '#dc2626'
+                      : ingreso && tenirPorSemaforo
+                        ? bg === '#FF0000'
+                          ? '#ffcccc'
+                          : bg === '#FF9900'
+                            ? '#ffe5cc'
+                            : bg === '#FFFF00'
+                              ? '#ffffcc'
+                              : bg === '#92D050'
+                                ? '#e2f5cc'
+                                : '#fff'
+                        : '#fff'
+                    const color = alertaActiva ? '#fff' : ingreso && tenirPorSemaforo ? textColor(bg) : '#000'
                     const isSelected = ingreso?.id === selectedId
                     return (
                       <td
                         key={n}
                         className={`${cellCls} ${ingreso && !readOnly ? 'cursor-pointer hover:brightness-95' : !ingreso && !readOnly ? 'cursor-pointer hover:bg-primary-50/40' : ''} ${isSelected ? 'ring-2 ring-inset ring-primary-500' : ''}`}
-                        style={{ backgroundColor: cellBg, color, fontWeight: BOLD_ROWS.has(fila.key) ? 600 : 400 }}
+                        style={{ backgroundColor: cellBg, color, fontWeight: alertaActiva ? 700 : (BOLD_ROWS.has(fila.key) ? 600 : 400) }}
                         onClick={() => {
                           if (ingreso && !readOnly) onSelect(ingreso)
                           else if (!ingreso && !readOnly && onSelectVacia && fila.key === 'nombre') onSelectVacia(n)
@@ -1044,6 +1050,15 @@ export default function HojaItems() {
   function handleSaved(ingresoId: string, updated: ItemsPaciente) {
     setData((prev) => prev.map((i) => (i.id === ingresoId ? { ...i, items: updated } : i)))
     setSelected((prev) => (prev?.id === ingresoId ? { ...prev, items: updated } : prev))
+  }
+
+  // Sin esto, pautar o retirar una contención desde el panel lateral
+  // solo actualizaba el propio panel — la rejilla principal (que
+  // muestra "Contención día/noche" como filas) se quedaba con el
+  // valor viejo hasta recargar la página entera.
+  function handleContencionChanged(ingresoId: string, nueva: { dia: ContencionDia | null; noche: ContencionNoche[] | null }) {
+    setData((prev) => prev.map((i) => (i.id === ingresoId ? { ...i, contencion: nueva } : i)))
+    setSelected((prev) => (prev?.id === ingresoId ? { ...prev, contencion: nueva } : prev))
   }
 
   function handleHabitacionChange(ingresoId: string, nuevaHab: number) {
@@ -1348,6 +1363,7 @@ export default function HojaItems() {
           onClose={() => setSelected(null)}
           onSaved={(updated) => handleSaved(selected.id, updated)}
           onHabitacionChange={handleHabitacionChange}
+          onContencionChanged={handleContencionChanged}
         />
       )}
     </div>

@@ -158,7 +158,7 @@ export interface ItemsPaciente {
   audifonos?: 'ninguno' | 'derecho' | 'izquierdo' | 'ambos'
   gafas?: 'no' | 'si' | 'solo_tv'
   higiene?: 'lavabo' | 'cama'
-  vestido?: string
+  vestido?: 'autonomo' | 'dependiente'
   ducha?: 'pie' | 'sentado'
   banio: boolean
   siestas: boolean

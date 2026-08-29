@@ -118,30 +118,15 @@ function TabItems({ ingresoId }: { ingresoId: string }) {
       <div className="card p-6 space-y-4">
         <p className="section-title">Movilidad</p>
         <div className="grid grid-cols-2 gap-4">
-          {sel('dependencia_avd', 'Dependencia', [{ v: '1', l: '1 persona' }, { v: '2', l: '2 personas' }])}
+          {sel('deambulacion', 'Deambulación', [
+            { v: 'autonomo', l: 'Autónomo' },
+            { v: '1_persona', l: '1 persona' },
+            { v: '2_personas', l: '2 personas' },
+          ])}
           <div>
             <label className="label">Cabecero elevado (º)</label>
             <input className="input" placeholder="p. ej. 30" value={(data.cabecero_grados as string) ?? ''}
               onChange={e => setData(d => ({ ...d, cabecero_grados: e.target.value }))} />
-          </div>
-        </div>
-        <div>
-          <label className="label">Deambulación</label>
-          <div className="flex gap-2">
-            {([
-              { v: 'autonomo', l: 'Autónomo' },
-              { v: '1_persona', l: '1P' },
-              { v: '2_personas', l: '2P' },
-            ] as const).map((opt) => {
-              const activo = data.deambulacion === opt.v
-              return (
-                <button key={opt.v} type="button"
-                  onClick={() => setData(d => ({ ...d, deambulacion: activo ? undefined : opt.v } as any))}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${activo ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400'}`}>
-                  {opt.l}
-                </button>
-              )
-            })}
           </div>
         </div>
         {sel('ayudas_deambulacion', 'Ayudas', [
@@ -163,17 +148,14 @@ function TabItems({ ingresoId }: { ingresoId: string }) {
       <div className="card p-6 space-y-4">
         <p className="section-title">Higiene y continencia</p>
         <div className="grid grid-cols-2 gap-4">
+          {sel('dependencia_avd', 'Dependencia', [{ v: '1', l: '1 persona' }, { v: '2', l: '2 personas' }])}
           {sel('panial_dia', 'Pañal día', [{ v: 'ninguno', l: 'Ninguno' }, { v: 'BP', l: 'BP' }, { v: 'CA', l: 'CA' }])}
           {sel('panial_noche', 'Pañal noche', [
             { v: 'ninguno', l: 'Ninguno' }, { v: 'BP', l: 'BP' }, { v: 'CA', l: 'CA' }, { v: 'CA+malla', l: 'CA + malla' }
           ])}
           {sel('higiene', 'Higiene', [{ v: 'lavabo', l: 'Lavabo' }, { v: 'cama', l: 'Cama' }])}
           {sel('ducha', 'Ducha', [{ v: 'pie', l: 'De pie' }, { v: 'sentado', l: 'Sentado' }])}
-          <div>
-            <label className="label">Vestido</label>
-            <input className="input" value={(data.vestido as string) ?? ''}
-              onChange={e => setData(d => ({ ...d, vestido: e.target.value }))} />
-          </div>
+          {sel('vestido', 'Vestido', [{ v: 'autonomo', l: 'Autónomo' }, { v: 'dependiente', l: 'Dependiente' }])}
         </div>
         <div className="flex flex-wrap gap-4">
           {bool('colector', 'Colector')}
@@ -272,12 +254,6 @@ function HistoricoItems({ ingresoId }: { ingresoId: string }) {
     ingestas: 'Ingestas', oxigenoterapia: 'Oxigenoterapia', botella_noche: 'Botella noche',
     colchon_antiescaras: 'Colchón antiescaras', patucos_coderas: 'Patucos/coderas',
     observaciones: 'Observaciones', semaforo_caidas: 'Semáforo caídas',
-    // Campos del sistema antiguo: solo aparecen en fotos guardadas
-    // antes de este cambio, se mantienen aquí únicamente para que ese
-    // histórico pasado se siga leyendo bien.
-    cama_45: 'Cama 45° (antiguo)', sensor_cama: 'Sensor cama (antiguo)',
-    sujecion_cama: 'Sujeción cama (antiguo)', sujecion_silla_ruedas: 'Sujeción silla (antiguo)',
-    sujecion_sillon: 'Sujeción sillón (antiguo)', observaciones_sujeciones: 'Observaciones (antiguo)',
   }
   const SKIP = new Set(['id', 'ingreso_id', 'created_at', 'updated_at'])
 

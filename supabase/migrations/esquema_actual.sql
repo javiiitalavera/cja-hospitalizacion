@@ -178,7 +178,7 @@ create table public.items_paciente (
     audifonos text check (audifonos in ('ninguno', 'derecho', 'izquierdo', 'ambos')),
     gafas text check (gafas in ('no', 'si', 'solo_tv')),
     higiene text check (higiene in ('lavabo', 'cama')),
-    vestido text,
+    vestido text check (vestido in ('autonomo', 'dependiente') or vestido is null),
     ducha text check (ducha in ('pie', 'sentado')),
     banio boolean default false,
     siestas boolean default false,
