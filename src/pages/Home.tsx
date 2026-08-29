@@ -178,7 +178,7 @@ export default function Home() {
           {/* Cabecera */}
           <div
             className="grid gap-px text-xs font-semibold text-slate-400 uppercase tracking-wide px-3 pb-1"
-            style={{ gridTemplateColumns: '2.5rem minmax(0,1.4fr) 3rem 3.5rem 5.5rem minmax(0,0.9fr) 3rem 4.5rem 7rem 2rem' }}
+            style={{ gridTemplateColumns: '2.5rem minmax(0,1.4fr) 3rem 3.5rem 5.5rem minmax(0,0.9fr) 4.5rem 7rem 3rem 2rem' }}
           >
             <div>Hab.</div>
             <div>Paciente</div>
@@ -186,9 +186,9 @@ export default function Home() {
             <div>Días</div>
             <div>Ingreso</div>
             <div>Médico</div>
-            <div></div>
             <div>Contención</div>
             <div>Incidencia</div>
+            <div></div>
             <div></div>
           </div>
 
@@ -205,7 +205,7 @@ export default function Home() {
                   className={`grid items-center border border-dashed border-slate-150 rounded-lg px-3 py-1.5 transition-colors ${
                     esMedico ? 'cursor-pointer hover:border-primary-300 hover:bg-primary-50/30' : ''
                   }`}
-                  style={{ gridTemplateColumns: '2.5rem minmax(0,1.4fr) 3rem 3.5rem 5.5rem minmax(0,0.9fr) 3rem 4.5rem 7rem 2rem' }}
+                  style={{ gridTemplateColumns: '2.5rem minmax(0,1.4fr) 3rem 3.5rem 5.5rem minmax(0,0.9fr) 4.5rem 7rem 3rem 2rem' }}
                   onClick={esMedico ? () => navigate(`/pacientes/nuevo?habitacion=${n}`) : undefined}
                   title={esMedico ? `Ingresar en habitación ${n}` : `Habitación ${n} libre`}
                 >
@@ -246,7 +246,7 @@ export default function Home() {
               <div key={n} className="group">
                 <div
                   className="grid items-center bg-white border border-slate-200 rounded-lg px-3 py-2 hover:shadow-sm hover:border-primary-200 transition-all cursor-pointer"
-                  style={{ gridTemplateColumns: '2.5rem minmax(0,1.4fr) 3rem 3.5rem 5.5rem minmax(0,0.9fr) 3rem 4.5rem 7rem 2rem' }}
+                  style={{ gridTemplateColumns: '2.5rem minmax(0,1.4fr) 3rem 3.5rem 5.5rem minmax(0,0.9fr) 4.5rem 7rem 3rem 2rem' }}
                   onClick={() => navigate(`/ingresos/${ingreso.id}`)}
                 >
                   {/* Hab con semáforo */}
@@ -291,42 +291,6 @@ export default function Home() {
                   <div className="text-slate-400 text-xs">{fingreso}</div>
                   {/* Médico */}
                   <div className="text-slate-500 text-xs truncate">{medico}</div>
-                  {/* Aviso de incidencias registradas, si las hay */}
-                  {(() => {
-                    const tipos = eventosPorIngreso[ingreso.id]
-                    if (!tipos || tipos.length === 0) return <div />
-                    // Contar por tipo, respetando el orden habitual de tipos
-                    const conteo: Record<string, number> = {}
-                    tipos.forEach((t) => { conteo[t] = (conteo[t] ?? 0) + 1 })
-                    const entradas = Object.entries(conteo).sort((a, b) => b[1] - a[1])
-                    return (
-                      <div className="relative group/badge">
-                        <div className="flex items-center gap-1 text-red-600 text-xs font-medium cursor-default w-fit">
-                          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                          {tipos.length}
-                        </div>
-                        {/* Tooltip a medida: oculto por defecto, aparece al pasar el ratón */}
-                        <div className="hidden group-hover/badge:block absolute z-20 left-1/2 -translate-x-1/2 bottom-full mb-1.5 w-max max-w-[220px]">
-                          <div className="bg-slate-800 text-white rounded-lg shadow-lg py-2 px-3 space-y-1">
-                            <p className="text-[10px] font-semibold text-slate-300 uppercase tracking-wide mb-1">
-                              Incidencias registradas
-                            </p>
-                            {entradas.map(([tipo, n]) => (
-                              <div key={tipo} className="flex items-center gap-1.5 text-xs">
-                                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                                  (TIPO_EVENTO_COLOR[tipo as TipoEvento] ?? '').split(' ').find(c => c.startsWith('bg-')) ?? 'bg-slate-400'
-                                }`} />
-                                <span className="text-slate-100">{TIPO_EVENTO_LABEL[tipo as TipoEvento] ?? tipo}</span>
-                                <span className="text-slate-400 ml-auto">×{n}</span>
-                              </div>
-                            ))}
-                          </div>
-                          {/* Flechita apuntando hacia el icono */}
-                          <div className="w-2 h-2 bg-slate-800 rotate-45 absolute left-1/2 -translate-x-1/2 -bottom-1" />
-                        </div>
-                      </div>
-                    )
-                  })()}
                   {/* Contención física: día y noche, acceso rápido sin salir de Inicio */}
                   <div className="flex items-center gap-1">
                     {(['dia', 'noche'] as const).map((eje) => {
@@ -378,6 +342,42 @@ export default function Home() {
                     <AlertTriangle className="w-3 h-3 shrink-0" />
                     Incidencia
                   </div>
+                  {/* Aviso de incidencias registradas, si las hay */}
+                  {(() => {
+                    const tipos = eventosPorIngreso[ingreso.id]
+                    if (!tipos || tipos.length === 0) return <div />
+                    // Contar por tipo, respetando el orden habitual de tipos
+                    const conteo: Record<string, number> = {}
+                    tipos.forEach((t) => { conteo[t] = (conteo[t] ?? 0) + 1 })
+                    const entradas = Object.entries(conteo).sort((a, b) => b[1] - a[1])
+                    return (
+                      <div className="relative group/badge">
+                        <div className="flex items-center gap-1 text-red-600 text-xs font-medium cursor-default w-fit">
+                          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                          {tipos.length}
+                        </div>
+                        {/* Tooltip a medida: oculto por defecto, aparece al pasar el ratón */}
+                        <div className="hidden group-hover/badge:block absolute z-20 left-1/2 -translate-x-1/2 bottom-full mb-1.5 w-max max-w-[220px]">
+                          <div className="bg-slate-800 text-white rounded-lg shadow-lg py-2 px-3 space-y-1">
+                            <p className="text-[10px] font-semibold text-slate-300 uppercase tracking-wide mb-1">
+                              Incidencias registradas
+                            </p>
+                            {entradas.map(([tipo, n]) => (
+                              <div key={tipo} className="flex items-center gap-1.5 text-xs">
+                                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                                  (TIPO_EVENTO_COLOR[tipo as TipoEvento] ?? '').split(' ').find(c => c.startsWith('bg-')) ?? 'bg-slate-400'
+                                }`} />
+                                <span className="text-slate-100">{TIPO_EVENTO_LABEL[tipo as TipoEvento] ?? tipo}</span>
+                                <span className="text-slate-400 ml-auto">×{n}</span>
+                              </div>
+                            ))}
+                          </div>
+                          {/* Flechita apuntando hacia el icono */}
+                          <div className="w-2 h-2 bg-slate-800 rotate-45 absolute left-1/2 -translate-x-1/2 -bottom-1" />
+                        </div>
+                      </div>
+                    )
+                  })()}
                   {/* Arrow */}
                   <div className="flex justify-end">
                     <ChevronRight className="w-4 h-4 text-slate-200 group-hover:text-slate-400 transition-colors" />

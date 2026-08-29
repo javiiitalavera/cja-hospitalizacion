@@ -36,10 +36,10 @@ export const CONTENCION_DIA_LABEL: Record<ContencionDia, string> = {
 }
 
 export const CONTENCION_DIA_DESC: Record<ContencionDia, string> = {
-  ninguna: 'No se pauta contención durante el día.',
-  continua_seguridad: 'Puesta de forma continua por seguridad; se retira en cuanto deja de ser necesaria.',
-  si_precisa_asistencial: 'Solo cuando la carga del turno lo requiere (p. ej. falta de personal).',
-  si_precisa_paciente: 'Solo según el estado del paciente (mala deambulación, inquietud motora, agresividad…).',
+  ninguna: '',
+  continua_seguridad: 'Se retira si deja de ser necesaria.',
+  si_precisa_asistencial: 'Por falta de personal en el turno.',
+  si_precisa_paciente: 'Según el estado del paciente.',
 }
 
 export const CONTENCION_NOCHE_LABEL: Record<ContencionNoche, string> = {
@@ -101,7 +101,7 @@ export const SEVERIDAD_ESTILO: Record<SeveridadContencion, {
   bg: string; text: string; border: string; label: string
 }> = {
   sin_revisar: { bg: 'bg-slate-100', text: 'text-slate-400', border: 'border-slate-200', label: 'Sin revisar' },
-  ninguna: { bg: 'bg-slate-50', text: 'text-slate-400', border: 'border-slate-200', label: 'Ninguna' },
+  ninguna: { bg: 'bg-emerald-50', text: 'text-emerald-600', border: 'border-emerald-200', label: 'Ninguna' },
   seguridad: { bg: 'bg-blue-50', text: 'text-blue-600', border: 'border-blue-200', label: 'Medida de seguridad' },
   si_precisa: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', label: 'Si precisa' },
   activa: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200', label: 'Activa' },

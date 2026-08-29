@@ -122,22 +122,21 @@ export default function ModalContencion({ ingresoId, onClose, onGuardado }: Prop
                     const activo = dia === opt
                     const sev = severidadDia(opt)
                     const estilo = SEVERIDAD_ESTILO[sev]
+                    const desc = CONTENCION_DIA_DESC[opt]
                     return (
                       <button
                         key={opt}
                         type="button"
                         onClick={() => setDia(opt)}
-                        className={`w-full text-left px-3 py-2.5 rounded-lg border transition-colors ${
+                        className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors ${
                           activo ? `${estilo.bg} ${estilo.border}` : 'bg-white border-slate-200 hover:bg-slate-50'
                         }`}
                       >
-                        <div className="flex items-center gap-2">
-                          <span className={`w-2 h-2 rounded-full shrink-0 ${activo ? estilo.text.replace('text-', 'bg-') : 'bg-slate-200'}`} />
-                          <span className={`text-sm font-medium ${activo ? estilo.text : 'text-slate-700'}`}>
-                            {CONTENCION_DIA_LABEL[opt]}
-                          </span>
-                        </div>
-                        <p className="text-xs text-slate-400 mt-0.5 ml-4">{CONTENCION_DIA_DESC[opt]}</p>
+                        <span className={`w-2 h-2 rounded-full shrink-0 ${activo ? estilo.text.replace('text-', 'bg-') : 'bg-slate-200'}`} />
+                        <span className={`text-sm font-medium ${activo ? estilo.text : 'text-slate-700'}`}>
+                          {CONTENCION_DIA_LABEL[opt]}
+                        </span>
+                        {desc && <span className="text-xs text-slate-400">— {desc}</span>}
                       </button>
                     )
                   })}
@@ -149,6 +148,18 @@ export default function ModalContencion({ ingresoId, onClose, onGuardado }: Prop
                 <p className="text-xs font-bold text-primary-600 uppercase tracking-widest mb-2">Noche</p>
                 <p className="text-xs text-slate-400 mb-2">Se pueden marcar varias a la vez.</p>
                 <div className="flex flex-wrap gap-1.5">
+                  {/* "Normal" es excluyente: lo mismo que dejar todo lo demás sin marcar */}
+                  <button
+                    type="button"
+                    onClick={() => setNoche([])}
+                    className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+                      noche.length === 0
+                        ? `${SEVERIDAD_ESTILO.ninguna.bg} ${SEVERIDAD_ESTILO.ninguna.text} ${SEVERIDAD_ESTILO.ninguna.border}`
+                        : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    Normal
+                  </button>
                   {NOCHE_OPCIONES.map((opt) => {
                     const activo = noche.includes(opt)
                     const sev = severidadNoche([opt])
@@ -167,9 +178,6 @@ export default function ModalContencion({ ingresoId, onClose, onGuardado }: Prop
                     )
                   })}
                 </div>
-                {noche.length === 0 && (
-                  <p className="text-xs text-slate-400 italic mt-2">Sin ninguna medida marcada = ninguna contención nocturna.</p>
-                )}
               </div>
 
               {/* Último cambio conocido */}
