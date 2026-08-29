@@ -61,92 +61,8 @@ function TabItems({ ingresoId }: { ingresoId: string }) {
 
   return (
     <div className="max-w-3xl space-y-6">
-      <div className="card p-6 space-y-4">
-        <p className="section-title">Dependencia y cuidados</p>
-        <div className="grid grid-cols-2 gap-4">
-          {sel('dependencia_avd', 'Dependencia AVD', [{ v: '1', l: '1 persona' }, { v: '2', l: '2 personas' }])}
-          {sel('higiene', 'Higiene', [{ v: 'lavabo', l: 'Lavabo' }, { v: 'cama', l: 'Cama' }])}
-          {sel('ducha', 'Ducha', [{ v: 'pie', l: 'De pie' }, { v: 'sentado', l: 'Sentado' }])}
-          {sel('ingestas', 'Ingestas', [{ v: 'autonomo', l: 'Autónomo' }, { v: 'dependiente', l: 'Dependiente' }])}
-          <div>
-            <label className="label">Vestido</label>
-            <input className="input" value={(data.vestido as string) ?? ''}
-              onChange={e => setData(d => ({ ...d, vestido: e.target.value }))} />
-          </div>
-        </div>
-        <div className="flex flex-wrap gap-4 pt-1">
-          {bool('banio', 'Baño')}
-          {bool('siestas', 'Siestas')}
-        </div>
-      </div>
-
-      <div className="card p-6 space-y-4">
-        <p className="section-title">Continencia</p>
-        <div className="grid grid-cols-2 gap-4">
-          {sel('panial_dia', 'Pañal día', [{ v: 'ninguno', l: 'Ninguno' }, { v: 'BP', l: 'BP' }, { v: 'CA', l: 'CA' }])}
-          {sel('panial_noche', 'Pañal noche', [
-            { v: 'ninguno', l: 'Ninguno' }, { v: 'BP', l: 'BP' }, { v: 'CA', l: 'CA' }, { v: 'CA+malla', l: 'CA + malla' }
-          ])}
-        </div>
-        <div className="flex flex-wrap gap-4">
-          {bool('colector', 'Colector')}
-          {bool('sonda_vesical', 'Sonda vesical')}
-        </div>
-      </div>
-
-      <div className="card p-6 space-y-4">
-        <p className="section-title">Prótesis</p>
-        <div className="grid grid-cols-3 gap-4">
-          {sel('dentadura', 'Dentadura', [
-            { v: 'ninguna', l: 'Ninguna' }, { v: 'superior', l: 'Superior' },
-            { v: 'inferior', l: 'Inferior' }, { v: 'completa', l: 'Completa' },
-            { v: 'fija', l: 'Fija' }, { v: 'puente', l: 'Puente' },
-          ])}
-          {sel('audifonos', 'Audífonos', [
-            { v: 'ninguno', l: 'Ninguno' }, { v: 'derecho', l: 'Derecho' },
-            { v: 'izquierdo', l: 'Izquierdo' }, { v: 'ambos', l: 'Ambos' },
-          ])}
-          {sel('gafas', 'Gafas', [
-            { v: 'no', l: 'No' }, { v: 'si', l: 'Sí' }, { v: 'solo_tv', l: 'Solo TV' },
-          ])}
-        </div>
-      </div>
-
-      <div className="card p-6 space-y-4">
-        <p className="section-title">Movilidad</p>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="label">Deambulación</label>
-            <input className="input" value={(data.deambulacion as string) ?? ''}
-              onChange={e => setData(d => ({ ...d, deambulacion: e.target.value }))} />
-          </div>
-          {sel('ayudas_deambulacion', 'Ayudas', [
-            { v: 'ninguna', l: 'Ninguna' }, { v: 'baston', l: 'Bastón' },
-            { v: 'andador_2r', l: 'Andador 2 ruedas' }, { v: 'andador_4r', l: 'Andador 4 ruedas' },
-            { v: 'silla_ruedas', l: 'Silla de ruedas' },
-          ])}
-        </div>
-        <div className="flex flex-wrap gap-4">
-          {bool('bipedestador', 'Bipedestador')}
-          {bool('grua', 'Grúa')}
-          {bool('cambios_posturales', 'Cambios posturales')}
-          {bool('cama_45', 'Cama 45°')}
-        </div>
-      </div>
-
-      <div className="card p-6 space-y-4">
-        <p className="section-title">Otros</p>
-        <div className="flex flex-wrap gap-4">
-          {bool('oxigenoterapia', 'Oxigenoterapia')}
-          {bool('botella_noche', 'Botella noche')}
-          {bool('colchon_antiescaras', 'Colchón antiescaras')}
-          {bool('patucos_coderas', 'Patucos / coderas')}
-          {bool('sensor_cama', 'Sensor cama')}
-        </div>
-      </div>
-
       <div className="card p-6 space-y-3">
-        <p className="section-title">Contenciones</p>
+        <p className="section-title">Seguridad y conducta</p>
         {estadoContencion === 'cargando' ? (
           <p className="text-sm text-slate-400">Cargando…</p>
         ) : (
@@ -172,6 +88,142 @@ function TabItems({ ingresoId }: { ingresoId: string }) {
             onGuardado={cargarContencion}
           />
         )}
+        <div>
+          <label className="label">Alerta de conducta</label>
+          <div className="flex flex-wrap gap-2">
+            {([
+              { v: 'riesgo_autolitico', l: 'Riesgo autolítico' },
+              { v: 'agresion_imprevisible', l: 'Agresión imprevisible' },
+              { v: 'riesgo_fuga', l: 'Riesgo de fuga' },
+            ] as const).map((opt) => {
+              const actual = (data.alerta_conducta as string[]) ?? []
+              const activo = actual.includes(opt.v)
+              return (
+                <button key={opt.v} type="button"
+                  onClick={() => setData(d => ({ ...d, alerta_conducta: activo ? actual.filter(x => x !== opt.v) : [...actual, opt.v] } as any))}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${activo ? 'bg-red-50 text-red-700 border-red-200' : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400'}`}>
+                  {opt.l}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+        <div>
+          <label className="label">Objetos de calma</label>
+          <input className="input" value={(data.objetos_calma as string) ?? ''}
+            onChange={e => setData(d => ({ ...d, objetos_calma: e.target.value }))} />
+        </div>
+      </div>
+
+      <div className="card p-6 space-y-4">
+        <p className="section-title">Movilidad</p>
+        <div className="grid grid-cols-2 gap-4">
+          {sel('dependencia_avd', 'Dependencia', [{ v: '1', l: '1 persona' }, { v: '2', l: '2 personas' }])}
+          <div>
+            <label className="label">Cabecero elevado (º)</label>
+            <input className="input" placeholder="p. ej. 30" value={(data.cabecero_grados as string) ?? ''}
+              onChange={e => setData(d => ({ ...d, cabecero_grados: e.target.value }))} />
+          </div>
+        </div>
+        <div>
+          <label className="label">Deambulación</label>
+          <div className="flex gap-2">
+            {([
+              { v: 'autonomo', l: 'Autónomo' },
+              { v: '1_persona', l: '1P' },
+              { v: '2_personas', l: '2P' },
+            ] as const).map((opt) => {
+              const activo = data.deambulacion === opt.v
+              return (
+                <button key={opt.v} type="button"
+                  onClick={() => setData(d => ({ ...d, deambulacion: activo ? undefined : opt.v } as any))}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${activo ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400'}`}>
+                  {opt.l}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+        {sel('ayudas_deambulacion', 'Ayudas', [
+          { v: 'ninguna', l: 'Ninguna' }, { v: 'baston', l: 'Bastón' },
+          { v: 'andador_2r', l: 'Andador 2 ruedas' }, { v: 'andador_4r', l: 'Andador 4 ruedas' },
+          { v: 'silla_ruedas', l: 'Silla de ruedas' },
+        ])}
+        <div className="flex flex-wrap gap-4">
+          {bool('bipedestador', 'Bipedestador')}
+          {bool('grua', 'Grúa')}
+        </div>
+      </div>
+
+      <div className="card p-6 space-y-4">
+        <p className="section-title">Alimentación</p>
+        {sel('ingestas', 'Ingestas', [{ v: 'autonomo', l: 'Autónomo' }, { v: 'dependiente', l: 'Dependiente' }])}
+      </div>
+
+      <div className="card p-6 space-y-4">
+        <p className="section-title">Higiene y continencia</p>
+        <div className="grid grid-cols-2 gap-4">
+          {sel('panial_dia', 'Pañal día', [{ v: 'ninguno', l: 'Ninguno' }, { v: 'BP', l: 'BP' }, { v: 'CA', l: 'CA' }])}
+          {sel('panial_noche', 'Pañal noche', [
+            { v: 'ninguno', l: 'Ninguno' }, { v: 'BP', l: 'BP' }, { v: 'CA', l: 'CA' }, { v: 'CA+malla', l: 'CA + malla' }
+          ])}
+          {sel('higiene', 'Higiene', [{ v: 'lavabo', l: 'Lavabo' }, { v: 'cama', l: 'Cama' }])}
+          {sel('ducha', 'Ducha', [{ v: 'pie', l: 'De pie' }, { v: 'sentado', l: 'Sentado' }])}
+          <div>
+            <label className="label">Vestido</label>
+            <input className="input" value={(data.vestido as string) ?? ''}
+              onChange={e => setData(d => ({ ...d, vestido: e.target.value }))} />
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-4">
+          {bool('colector', 'Colector')}
+          {bool('sonda_vesical', 'Sonda vesical')}
+          {bool('banio', 'Baño acompañado (no va solo)')}
+        </div>
+      </div>
+
+      <div className="card p-6 space-y-4">
+        <p className="section-title">Piel y postura</p>
+        <div className="flex flex-wrap gap-4">
+          {bool('colchon_antiescaras', 'Colchón antiescaras')}
+          {bool('patucos_coderas', 'Patucos / coderas')}
+          {bool('cambios_posturales', 'Cambios posturales')}
+        </div>
+      </div>
+
+      <div className="card p-6 space-y-4">
+        <p className="section-title">Prótesis y sensorial</p>
+        <div className="grid grid-cols-3 gap-4">
+          {sel('dentadura', 'Dentadura', [
+            { v: 'ninguna', l: 'Ninguna' }, { v: 'superior', l: 'Superior' },
+            { v: 'inferior', l: 'Inferior' }, { v: 'completa', l: 'Completa' },
+            { v: 'fija', l: 'Fija' }, { v: 'puente', l: 'Puente' },
+          ])}
+          {sel('audifonos', 'Audífonos', [
+            { v: 'ninguno', l: 'Ninguno' }, { v: 'derecho', l: 'Derecho' },
+            { v: 'izquierdo', l: 'Izquierdo' }, { v: 'ambos', l: 'Ambos' },
+          ])}
+          {sel('gafas', 'Gafas', [
+            { v: 'no', l: 'No' }, { v: 'si', l: 'Sí' }, { v: 'solo_tv', l: 'Solo TV' },
+          ])}
+        </div>
+      </div>
+
+      <div className="card p-6 space-y-4">
+        <p className="section-title">Otros</p>
+        <div className="flex flex-wrap gap-4">
+          {bool('oxigenoterapia', 'Oxigenoterapia')}
+          {bool('botella_noche', 'Botella noche')}
+          {bool('timbre_habitacion', 'Timbre en habitación')}
+          {bool('siestas', 'Siesta por la tarde')}
+        </div>
+      </div>
+
+      <div className="card p-6 space-y-4">
+        <p className="section-title">Observaciones</p>
+        <textarea className="textarea" rows={3} placeholder="Notas libres…"
+          value={(data.observaciones as string) ?? ''}
+          onChange={e => setData(d => ({ ...d, observaciones: e.target.value }))} />
       </div>
 
       <div className="flex justify-between items-center">
@@ -209,17 +261,23 @@ function HistoricoItems({ ingresoId }: { ingresoId: string }) {
   }, [ingresoId])
 
   const LABELS: Record<string, string> = {
-    dependencia_avd: 'Dependencia AVD', panial_dia: 'Pañal día', panial_noche: 'Pañal noche',
+    dependencia_avd: 'Dependencia', panial_dia: 'Pañal día', panial_noche: 'Pañal noche',
     colector: 'Colector', sonda_vesical: 'Sonda vesical', dentadura: 'Dentadura',
     audifonos: 'Audífonos', gafas: 'Gafas', higiene: 'Higiene', vestido: 'Vestido',
-    ducha: 'Ducha', banio: 'Baño', siestas: 'Siestas', deambulacion: 'Deambulación',
+    ducha: 'Ducha', banio: 'Baño acompañado', siestas: 'Siesta tarde', deambulacion: 'Deambulación',
     ayudas_deambulacion: 'Ayudas deambulación', bipedestador: 'Bipedestador',
-    grua: 'Grúa', cambios_posturales: 'Cambios posturales', cama_45: 'Cama 45°',
+    grua: 'Grúa', cambios_posturales: 'Cambios posturales',
+    cabecero_grados: 'Cabecero elevado (º)', timbre_habitacion: 'Timbre habitación',
+    objetos_calma: 'Objetos de calma', alerta_conducta: 'Alerta de conducta',
     ingestas: 'Ingestas', oxigenoterapia: 'Oxigenoterapia', botella_noche: 'Botella noche',
     colchon_antiescaras: 'Colchón antiescaras', patucos_coderas: 'Patucos/coderas',
-    sensor_cama: 'Sensor cama', sujecion_cama: 'Sujeción cama',
-    sujecion_silla_ruedas: 'Sujeción silla', sujecion_sillon: 'Sujeción sillón',
-    observaciones_sujeciones: 'Observaciones sujeciones', semaforo_caidas: 'Semáforo caídas',
+    observaciones: 'Observaciones', semaforo_caidas: 'Semáforo caídas',
+    // Campos del sistema antiguo: solo aparecen en fotos guardadas
+    // antes de este cambio, se mantienen aquí únicamente para que ese
+    // histórico pasado se siga leyendo bien.
+    cama_45: 'Cama 45° (antiguo)', sensor_cama: 'Sensor cama (antiguo)',
+    sujecion_cama: 'Sujeción cama (antiguo)', sujecion_silla_ruedas: 'Sujeción silla (antiguo)',
+    sujecion_sillon: 'Sujeción sillón (antiguo)', observaciones_sujeciones: 'Observaciones (antiguo)',
   }
   const SKIP = new Set(['id', 'ingreso_id', 'created_at', 'updated_at'])
 

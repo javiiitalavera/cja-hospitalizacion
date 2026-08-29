@@ -162,23 +162,25 @@ export interface ItemsPaciente {
   ducha?: 'pie' | 'sentado'
   banio: boolean
   siestas: boolean
-  deambulacion?: string
+  // Tres niveles fijos de ayuda para caminar, no texto libre.
+  deambulacion?: 'autonomo' | '1_persona' | '2_personas'
   ayudas_deambulacion?: 'ninguna' | 'baston' | 'andador_2r' | 'andador_4r' | 'silla_ruedas'
   bipedestador: boolean
   grua: boolean
   cambios_posturales: boolean
-  cama_45: boolean
+  // Grados reales del cabecero (sustituye al antiguo "Cama 45º" sí/no).
+  cabecero_grados?: string
   ingestas?: 'autonomo' | 'dependiente'
   oxigenoterapia: boolean
   botella_noche: boolean
-  sujecion_cama: string[]
-  sujecion_silla_ruedas?: 'no' | 'si_precisa' | 'continuo'
-  sujecion_sillon?: 'no' | 'si_precisa' | 'continuo'
   colchon_antiescaras: boolean
   patucos_coderas: boolean
-  sensor_cama: boolean
-  motivo_sujecion: string[]
-  observaciones_sujeciones?: string
+  timbre_habitacion: boolean
+  objetos_calma?: string
+  alerta_conducta: ('riesgo_autolitico' | 'agresion_imprevisible' | 'riesgo_fuga')[]
+  // Antes era solo de sujeciones; ahora es el campo general de notas
+  // de la Hoja de Ítems (la contención vive en su propia pauta).
+  observaciones?: string
   semaforo_caidas?: 'verde' | 'amarillo' | 'naranja' | 'rojo'
   created_at: string
   updated_at: string

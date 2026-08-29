@@ -182,23 +182,31 @@ create table public.items_paciente (
     ducha text check (ducha in ('pie', 'sentado')),
     banio boolean default false,
     siestas boolean default false,
-    deambulacion text,
+    -- Deambulación: tres niveles fijos de ayuda necesaria, no texto libre.
+    deambulacion text check (deambulacion in ('autonomo', '1_persona', '2_personas') or deambulacion is null),
     ayudas_deambulacion text check (ayudas_deambulacion in ('ninguna', 'baston', 'andador_2r', 'andador_4r', 'silla_ruedas')),
     bipedestador boolean default false,
     grua boolean default false,
     cambios_posturales boolean default false,
-    cama_45 boolean default false,
+    -- Grados reales del cabecero, no un simple sí/no.
+    cabecero_grados text,
     ingestas text check (ingestas in ('autonomo', 'dependiente')),
     oxigenoterapia boolean default false,
     botella_noche boolean default false,
-    sujecion_cama text[] default '{}',
-    sujecion_silla_ruedas text check (sujecion_silla_ruedas in ('no', 'si_precisa', 'continuo') or sujecion_silla_ruedas is null),
-    sujecion_sillon text check (sujecion_sillon in ('no', 'si_precisa', 'continuo') or sujecion_sillon is null),
     colchon_antiescaras boolean default false,
     patucos_coderas boolean default false,
-    sensor_cama boolean default false,
-    motivo_sujecion text[] default '{}',
-    observaciones_sujeciones text,
+    -- Las contenciones (día/noche) viven en su propia tabla desde el
+    -- rediseño de pautas — aquí ya no hay sujeción_cama/silla/sillón
+    -- ni sensor_cama sueltos, para que no pueda haber un dato aquí
+    -- que contradiga a la pauta real.
+    timbre_habitacion boolean default false,
+    objetos_calma text,
+    alerta_conducta text[] default '{}' check (
+        alerta_conducta <@ array['riesgo_autolitico', 'agresion_imprevisible', 'riesgo_fuga']::text[]
+    ),
+    -- Campo general de observaciones (antes era solo de sujeciones;
+    -- se reaprovecha el mismo hueco con un propósito más amplio).
+    observaciones text,
     semaforo_caidas text check (semaforo_caidas in ('verde', 'amarillo', 'naranja', 'rojo')),
     created_at timestamptz default now(),
     updated_at timestamptz default now()

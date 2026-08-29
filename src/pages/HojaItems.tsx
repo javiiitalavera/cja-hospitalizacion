@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useMemo, useCallback, memo } from 'react'
+import { useEffect, useRef, useState, useMemo, useCallback, memo, Fragment } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { escaparBusquedaIlike, quitarTildes } from '../lib/busqueda'
@@ -7,9 +7,12 @@ import type { Ingreso, ItemsPaciente } from '../types'
 import { SEMAFORO_CAIDAS_COLOR as SEMAFORO_COLOR, nombreCompleto } from '../types'
 import { Printer, X, Save, History } from 'lucide-react'
 import ModalContencion from '../components/ModalContencion'
-import { severidadDia, severidadNoche, SEVERIDAD_ESTILO } from '../types/contenciones'
+import {
+  severidadDia, severidadNoche, SEVERIDAD_ESTILO,
+  type ContencionDia, type ContencionNoche,
+} from '../types/contenciones'
 
-type IngresoConItems = Ingreso & { items: ItemsPaciente | null }
+type IngresoConItems = Ingreso & { items: ItemsPaciente | null; contencion?: { dia: ContencionDia | null; noche: ContencionNoche[] | null } }
 
 function habBg(ingreso: IngresoConItems | null): string {
   if (!ingreso) return '#FFFFFF'
@@ -30,98 +33,142 @@ const SUJECION_SHORT: Record<string, string> = {
   cota_cero: 'C0',
 }
 
-function sujecionStr(arr: string[] | null | undefined) {
+// Etiquetas cortas de la contención día/noche actual, pensadas para
+// caber en una columna estrecha de la Hoja de Ítems (a diferencia de
+// SUJECION_SHORT arriba, que es del sistema antiguo y solo se usa ya
+// para mostrar fotos históricas de antes de este cambio).
+const DIA_SHORT: Record<string, string> = {
+  ninguna: '—',
+  continua_seguridad: 'Cont.Seg',
+  si_precisa_asistencial: 'S/P-Asist',
+  si_precisa_paciente: 'S/P-Pac',
+}
+const NOCHE_SHORT: Record<string, string> = {
+  '1_barra': '1B',
+  '2_barras': '2B',
+  cota_cero: 'C0',
+  sensor_presion: 'SP',
+  contencion_fija: 'CF',
+  contencion_si_precisa: 'CSP',
+}
+function diaStr(v: string | null | undefined): string {
+  if (!v || v === 'ninguna') return ''
+  return DIA_SHORT[v] ?? v
+}
+function nocheStr(arr: string[] | null | undefined): string {
   if (!arr || arr.length === 0) return ''
-  return arr.map((x) => SUJECION_SHORT[x] ?? x).join('+')
+  return arr.map((x) => NOCHE_SHORT[x] ?? x).join('+')
 }
 
-const FILAS = [
+// Agrupado en bloques con sentido clínico, en vez de una lista plana
+// sin criterio. Cada grupo imprime su propia fila de cabecera antes
+// de sus ítems (ver buildBloque / Bloque más abajo).
+const GRUPOS: { titulo: string; filas: { key: string; label: string; get: (it: any, i: IngresoConItems) => string }[] }[] = [
   {
-    key: 'nombre',
-    label: 'NOMBRE',
-    get: (_: any, i: IngresoConItems) => `${i.paciente?.primer_apellido ?? ''} ${i.paciente?.nombre ?? ''}`.trim(),
+    titulo: 'Identidad',
+    filas: [
+      { key: 'nombre', label: 'NOMBRE', get: (_: any, i: IngresoConItems) => `${i.paciente?.primer_apellido ?? ''} ${i.paciente?.nombre ?? ''}`.trim() },
+      { key: 'medico', label: 'MÉDICO', get: (_: any, i: IngresoConItems) => i.medico_responsable?.nombre?.toUpperCase() ?? '' },
+    ],
   },
   {
-    key: 'medico',
-    label: 'MÉDICO',
-    get: (_: any, i: IngresoConItems) => i.medico_responsable?.nombre?.toUpperCase() ?? '',
-  },
-  { key: 'dep', label: 'dependiente', get: (it: ItemsPaciente) => it?.dependencia_avd?.toString() ?? '' },
-  { key: 'panial_dia', label: 'pañal día', get: (it: ItemsPaciente) => it?.panial_dia ?? '' },
-  { key: 'panial_noche', label: 'pañal noche', get: (it: ItemsPaciente) => it?.panial_noche ?? '' },
-  { key: 'dentadura', label: 'dentadura', get: (it: ItemsPaciente) => it?.dentadura ?? '' },
-  { key: 'audifonos', label: 'audífonos', get: (it: ItemsPaciente) => it?.audifonos ?? '' },
-  {
-    key: 'gafas',
-    label: 'gafas',
-    get: (it: ItemsPaciente) => (it?.gafas === 'si' ? 'Sí' : it?.gafas === 'solo_tv' ? 'TV' : ''),
-  },
-  {
-    key: 'higiene',
-    label: 'higiene',
-    get: (it: ItemsPaciente) => (it?.higiene === 'lavabo' ? 'L' : it?.higiene === 'cama' ? 'C' : ''),
-  },
-  { key: 'vestido', label: 'vestido', get: (it: ItemsPaciente) => it?.vestido ?? '' },
-  {
-    key: 'ducha',
-    label: 'ducha',
-    get: (it: ItemsPaciente) => (it?.ducha === 'pie' ? 'P' : it?.ducha === 'sentado' ? 'S' : ''),
-  },
-  { key: 'bipedestador', label: 'bipedestador', get: (it: ItemsPaciente) => (it?.bipedestador ? 'X' : '') },
-  { key: 'grua', label: 'grúa', get: (it: ItemsPaciente) => (it?.grua ? 'X' : '') },
-  { key: 'antiescaras', label: 'c. antiescaras', get: (it: ItemsPaciente) => (it?.colchon_antiescaras ? 'X' : '') },
-  { key: 'patucos', label: 'patucos coderas', get: (it: ItemsPaciente) => (it?.patucos_coderas ? 'X' : '') },
-  { key: 'suj_cama', label: 'sujeción cama', get: (it: ItemsPaciente) => sujecionStr(it?.sujecion_cama) },
-  {
-    key: 'suj_silla',
-    label: 'sujeción silla r.',
-    get: (it: ItemsPaciente) =>
-      it?.sujecion_silla_ruedas === 'si_precisa'
-        ? 'S/P'
-        : it?.sujecion_silla_ruedas === 'continuo'
-          ? 'Cont'
-          : it?.sujecion_silla_ruedas === 'no'
-            ? 'No'
-            : '',
+    titulo: 'Seguridad y conducta',
+    filas: [
+      { key: 'cont_dia', label: 'Contención día', get: (_: any, i: IngresoConItems) => diaStr(i.contencion?.dia) },
+      { key: 'cont_noche', label: 'Contención noche', get: (_: any, i: IngresoConItems) => nocheStr(i.contencion?.noche) },
+      {
+        key: 'alerta',
+        label: 'Alerta conducta',
+        get: (it: ItemsPaciente) => {
+          const arr = (it?.alerta_conducta as string[]) ?? []
+          const short: Record<string, string> = { riesgo_autolitico: 'Autol.', agresion_imprevisible: 'Agres.', riesgo_fuga: 'Fuga' }
+          return arr.map((x) => short[x] ?? x).join('+')
+        },
+      },
+      { key: 'objetos_calma', label: 'Objetos de calma', get: (it: ItemsPaciente) => (it as any)?.objetos_calma ?? '' },
+    ],
   },
   {
-    key: 'suj_sillon',
-    label: 'sujeción sillón',
-    get: (it: ItemsPaciente) =>
-      it?.sujecion_sillon === 'si_precisa'
-        ? 'S/P'
-        : it?.sujecion_sillon === 'continuo'
-          ? 'Cont'
-          : it?.sujecion_sillon === 'no'
-            ? 'No'
-            : '',
+    titulo: 'Movilidad',
+    filas: [
+      { key: 'dep', label: 'Dependencia', get: (it: ItemsPaciente) => it?.dependencia_avd != null ? `${it.dependencia_avd}P` : '' },
+      {
+        key: 'deambulacion',
+        label: 'Deambulación',
+        get: (it: ItemsPaciente) => {
+          const v = (it as any)?.deambulacion
+          return v === 'autonomo' ? 'Autón.' : v === '1_persona' ? '1P' : v === '2_personas' ? '2P' : ''
+        },
+      },
+      {
+        key: 'ayudas',
+        label: 'Ayudas deambulación',
+        get: (it: ItemsPaciente) =>
+          it?.ayudas_deambulacion
+            ?.replace('andador_2r', 'And.2r')
+            .replace('andador_4r', 'And.4r')
+            .replace('silla_ruedas', 'SR')
+            .replace('baston', 'Bast.') ?? '',
+      },
+      { key: 'bipedestador', label: 'Bipedestador', get: (it: ItemsPaciente) => (it?.bipedestador ? 'X' : '') },
+      { key: 'grua', label: 'Grúa', get: (it: ItemsPaciente) => (it?.grua ? 'X' : '') },
+      { key: 'cabecero', label: 'Cabecero elevado', get: (it: ItemsPaciente) => (it as any)?.cabecero_grados ?? '' },
+    ],
   },
-  { key: 'sensor', label: 'sensor cama', get: (it: ItemsPaciente) => (it?.sensor_cama ? 'X' : '') },
-  { key: 'deambulacion', label: 'deambulación', get: (it: ItemsPaciente) => it?.deambulacion ?? '' },
   {
-    key: 'ayudas',
-    label: 'ayudas deambulación',
-    get: (it: ItemsPaciente) =>
-      it?.ayudas_deambulacion
-        ?.replace('andador_2r', 'And.2r')
-        .replace('andador_4r', 'And.4r')
-        .replace('silla_ruedas', 'SR')
-        .replace('baston', 'Bast.') ?? '',
+    titulo: 'Alimentación',
+    filas: [
+      { key: 'ingestas', label: 'Ingestas', get: (it: ItemsPaciente) => (it?.ingestas === 'autonomo' ? 'A' : it?.ingestas === 'dependiente' ? 'D' : '') },
+    ],
   },
-  { key: 'oxigeno', label: 'oxigenoterapia', get: (it: ItemsPaciente) => (it?.oxigenoterapia ? 'X' : '') },
   {
-    key: 'ingestas',
-    label: 'ingestas',
-    get: (it: ItemsPaciente) => (it?.ingestas === 'autonomo' ? 'A' : it?.ingestas === 'dependiente' ? 'D' : ''),
+    titulo: 'Higiene y continencia',
+    filas: [
+      { key: 'panial_dia', label: 'Pañal día', get: (it: ItemsPaciente) => it?.panial_dia ?? '' },
+      { key: 'panial_noche', label: 'Pañal noche', get: (it: ItemsPaciente) => it?.panial_noche ?? '' },
+      { key: 'colector', label: 'Colector', get: (it: ItemsPaciente) => (it?.colector ? 'X' : '') },
+      { key: 'sonda', label: 'Sonda vesical', get: (it: ItemsPaciente) => (it?.sonda_vesical ? 'X' : '') },
+      { key: 'higiene', label: 'Higiene', get: (it: ItemsPaciente) => (it?.higiene === 'lavabo' ? 'L' : it?.higiene === 'cama' ? 'C' : '') },
+      { key: 'ducha', label: 'Ducha', get: (it: ItemsPaciente) => (it?.ducha === 'pie' ? 'P' : it?.ducha === 'sentado' ? 'S' : '') },
+      { key: 'vestido', label: 'Vestido', get: (it: ItemsPaciente) => it?.vestido ?? '' },
+      { key: 'banio', label: 'Baño acompañado', get: (it: ItemsPaciente) => (it?.banio ? 'X' : '') },
+    ],
   },
-  { key: 'banio', label: 'baño', get: (it: ItemsPaciente) => (it?.banio ? 'X' : '') },
-  { key: 'siestas', label: 'siestas', get: (it: ItemsPaciente) => (it?.siestas ? 'X' : '') },
-  { key: 'colector', label: 'colector', get: (it: ItemsPaciente) => (it?.colector ? 'X' : '') },
-  { key: 'cama45', label: 'Cama 45º', get: (it: ItemsPaciente) => (it?.cama_45 ? 'X' : '') },
-  { key: 'sonda', label: 'Sonda vesical', get: (it: ItemsPaciente) => (it?.sonda_vesical ? 'X' : '') },
-  { key: 'cambios', label: 'Cambios posturales', get: (it: ItemsPaciente) => (it?.cambios_posturales ? 'X' : '') },
-  { key: 'botella', label: 'Botella noche', get: (it: ItemsPaciente) => (it?.botella_noche ? 'X' : '') },
+  {
+    titulo: 'Piel y postura',
+    filas: [
+      { key: 'antiescaras', label: 'C. antiescaras', get: (it: ItemsPaciente) => (it?.colchon_antiescaras ? 'X' : '') },
+      { key: 'patucos', label: 'Patucos coderas', get: (it: ItemsPaciente) => (it?.patucos_coderas ? 'X' : '') },
+      { key: 'cambios', label: 'Cambios posturales', get: (it: ItemsPaciente) => (it?.cambios_posturales ? 'X' : '') },
+    ],
+  },
+  {
+    titulo: 'Prótesis y sensorial',
+    filas: [
+      { key: 'dentadura', label: 'Dentadura', get: (it: ItemsPaciente) => it?.dentadura ?? '' },
+      { key: 'audifonos', label: 'Audífonos', get: (it: ItemsPaciente) => it?.audifonos ?? '' },
+      { key: 'gafas', label: 'Gafas', get: (it: ItemsPaciente) => (it?.gafas === 'si' ? 'Sí' : it?.gafas === 'solo_tv' ? 'TV' : '') },
+    ],
+  },
+  {
+    titulo: 'Otros',
+    filas: [
+      { key: 'oxigeno', label: 'Oxigenoterapia', get: (it: ItemsPaciente) => (it?.oxigenoterapia ? 'X' : '') },
+      { key: 'botella', label: 'Botella noche', get: (it: ItemsPaciente) => (it?.botella_noche ? 'X' : '') },
+      { key: 'timbre', label: 'Timbre habitación', get: (it: ItemsPaciente) => ((it as any)?.timbre_habitacion ? 'X' : '') },
+      { key: 'siestas', label: 'Siesta tarde', get: (it: ItemsPaciente) => (it?.siestas ? 'X' : '') },
+    ],
+  },
+  {
+    titulo: 'Observaciones',
+    filas: [
+      { key: 'observaciones', label: 'Observaciones', get: (it: ItemsPaciente) => (it as any)?.observaciones ?? '' },
+    ],
+  },
 ]
+
+// Lista plana derivada, para lo que solo necesita recorrer todas las
+// filas sin que le importen los grupos.
 
 const BOLD_ROWS = new Set(['nombre', 'medico'])
 const LABEL_BOLD_ROWS = new Set(['nombre', 'medico', 'dep'])
@@ -169,32 +216,38 @@ function buildPrintHTML(data: IngresoConItems[], today: string): string {
     }
     html += `</tr>`
 
-    // Data rows
-    for (const fila of FILAS) {
-      const isBoldLabel = LABEL_BOLD_ROWS.has(fila.key)
-      const isBoldVal = BOLD_ROWS.has(fila.key)
-      html += `<tr>`
-      html += `<td style="border:1px solid #555;background:#e8e8e8;padding:2px 4px;font-weight:${isBoldLabel ? 700 : 500};white-space:nowrap;overflow:hidden;font-size:7.5pt;">${fila.label}</td>`
-      for (const n of habNums) {
-        const ing = slots[n - offset - 1]
-        const it = ing?.items ?? null
-        const val = ing ? fila.get(it as any, ing as any) : ''
-        const bg = habBg(ing)
-        // Use a light tint for data cells
-        const cellBg = ing
-          ? bg === '#FF0000'
-            ? '#ffaaaa'
-            : bg === '#FF9900'
-              ? '#ffddaa'
-              : bg === '#FFFF00'
-                ? '#ffffaa'
-                : bg === '#92D050'
-                  ? '#d4edaa'
-                  : '#ffffff'
-          : '#ffffff'
-        html += `<td style="border:1px solid #aaa;background:${cellBg};text-align:center;padding:2px 1px;font-weight:${isBoldVal ? 600 : 400};overflow:hidden;font-size:7.5pt;">${val ? escapeHtml(String(val)) : '&nbsp;'}</td>`
+    // Filas, agrupadas en bloques con su propia cabecera de sección
+    for (const grupo of GRUPOS) {
+      html += `<tr><td colspan="${count + 1}" style="border:1px solid #555;background:#5b7a9d;color:#fff;padding:2px 4px;font-weight:700;font-size:7pt;letter-spacing:0.03em;">${grupo.titulo.toUpperCase()}</td></tr>`
+      for (const fila of grupo.filas) {
+        const isBoldLabel = LABEL_BOLD_ROWS.has(fila.key)
+        const isBoldVal = BOLD_ROWS.has(fila.key)
+        // El semáforo de caídas solo tiñe la fila del nombre (además
+        // de la propia habitación en la cabecera) — no toda la
+        // columna del paciente, para no "pintar" el resto de datos.
+        const tenirPorSemaforo = fila.key === 'nombre'
+        html += `<tr>`
+        html += `<td style="border:1px solid #555;background:#e8e8e8;padding:2px 4px;font-weight:${isBoldLabel ? 700 : 500};white-space:nowrap;overflow:hidden;font-size:7.5pt;">${fila.label}</td>`
+        for (const n of habNums) {
+          const ing = slots[n - offset - 1]
+          const it = ing?.items ?? null
+          const val = ing ? fila.get(it as any, ing as any) : ''
+          const bg = habBg(ing)
+          const cellBg = ing && tenirPorSemaforo
+            ? bg === '#FF0000'
+              ? '#ffaaaa'
+              : bg === '#FF9900'
+                ? '#ffddaa'
+                : bg === '#FFFF00'
+                  ? '#ffffaa'
+                  : bg === '#92D050'
+                    ? '#d4edaa'
+                    : '#ffffff'
+            : '#ffffff'
+          html += `<td style="border:1px solid #aaa;background:${cellBg};text-align:center;padding:2px 1px;font-weight:${isBoldVal ? 600 : 400};overflow:hidden;font-size:7.5pt;">${val ? escapeHtml(String(val)) : '&nbsp;'}</td>`
+        }
+        html += `</tr>`
       }
-      html += `</tr>`
     }
     html += `</table>`
     return html
@@ -354,14 +407,14 @@ function PanelEdicion({
       dentadura: null, audifonos: null, gafas: null,
       higiene: null, vestido: null, ducha: null, banio: false, siestas: false,
       deambulacion: null, ayudas_deambulacion: null,
-      bipedestador: false, grua: false, cambios_posturales: false, cama_45: false,
+      bipedestador: false, grua: false, cambios_posturales: false, cabecero_grados: null,
       ingestas: null, oxigenoterapia: false, botella_noche: false,
-      // sujecion_cama / sujecion_silla_ruedas / sujecion_sillon NO se
-      // tocan aquí: las mantiene sincronizadas la base de datos según
-      // las pautas de contención activas, "limpiar ítems" no debe
-      // desajustarlas de lo que de verdad está pautado.
-      colchon_antiescaras: false, patucos_coderas: false, sensor_cama: false,
-      motivo_sujecion: [], observaciones_sujeciones: null,
+      colchon_antiescaras: false, patucos_coderas: false,
+      timbre_habitacion: false, objetos_calma: null, alerta_conducta: [],
+      // La contención (día/noche) no se toca aquí: vive en su propia
+      // pauta, "limpiar ítems" no debe desajustarla de lo que de
+      // verdad está pautado.
+      observaciones: null,
       semaforo_caidas: null,
     }
     const { data: updated, error } = await supabase
@@ -484,37 +537,124 @@ function PanelEdicion({
           })}
         </div>
 
-        <p className="section-title mt-3">Dependencia y cuidados</p>
-        {sel('dependencia_avd', 'Dependencia AVD', [
+        <p className="section-title mt-3">Seguridad y conducta</p>
+        {estadoContencion === 'cargando' ? (
+          <p className="text-xs text-slate-400">Cargando…</p>
+        ) : (
+          <div className="flex items-center gap-2 mb-2">
+            {(['dia', 'noche'] as const).map((eje) => {
+              const sev = eje === 'dia' ? severidadDia(estadoContencion.dia as any) : severidadNoche(estadoContencion.noche as any)
+              const estilo = SEVERIDAD_ESTILO[sev]
+              return (
+                <span key={eje} className={`px-2 py-1 rounded text-[10px] font-medium border ${estilo.bg} ${estilo.text} ${estilo.border}`}>
+                  {eje === 'dia' ? 'Día' : 'Noche'}: {estilo.label}
+                </span>
+              )
+            })}
+          </div>
+        )}
+        <button onClick={() => setModalContencion(true)} className="text-xs text-primary-600 hover:underline font-medium mb-2">
+          Ver / editar contención
+        </button>
+        {modalContencion && (
+          <ModalContencion
+            ingresoId={ingreso.id}
+            onClose={() => setModalContencion(false)}
+            onGuardado={() => {
+              supabase.from('contenciones').select('dia, noche').eq('ingreso_id', ingreso.id).maybeSingle()
+                .then(({ data }) => setEstadoContencion(data ?? { dia: null, noche: null }))
+            }}
+          />
+        )}
+        <div className="py-1.5 border-b border-slate-100">
+          <span className="text-xs text-slate-600 block mb-1">Alerta de conducta</span>
+          <div className="flex flex-wrap gap-1.5">
+            {([
+              { v: 'riesgo_autolitico', l: 'Riesgo autolítico' },
+              { v: 'agresion_imprevisible', l: 'Agresión imprevisible' },
+              { v: 'riesgo_fuga', l: 'Riesgo de fuga' },
+            ] as const).map((opt) => {
+              const actual: string[] = ((data as any).alerta_conducta as string[]) ?? []
+              const activo = actual.includes(opt.v)
+              return (
+                <button
+                  key={opt.v}
+                  type="button"
+                  onClick={() => update('alerta_conducta' as any, activo ? actual.filter((x) => x !== opt.v) : [...actual, opt.v])}
+                  className={`px-2 py-1 rounded text-[10px] font-medium border transition-colors ${
+                    activo ? 'bg-red-50 text-red-700 border-red-200' : 'bg-white text-slate-500 border-slate-300'
+                  }`}
+                >
+                  {opt.l}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+        <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
+          <span className="text-xs text-slate-600 w-32 shrink-0">Objetos de calma</span>
+          <input
+            className="text-xs border border-slate-200 rounded px-1.5 py-1 flex-1 max-w-[160px]"
+            value={((data as any).objetos_calma as string) ?? ''}
+            onChange={(e) => update('objetos_calma' as any, e.target.value)}
+          />
+        </div>
+
+        <p className="section-title mt-3">Movilidad</p>
+        {sel('dependencia_avd', 'Dependencia', [
           { v: '1', l: '1 persona' },
           { v: '2', l: '2 personas' },
         ])}
-        {sel('higiene', 'Higiene', [
-          { v: 'lavabo', l: 'Lavabo' },
-          { v: 'cama', l: 'Cama' },
+        <div className="py-1.5 border-b border-slate-100">
+          <span className="text-xs text-slate-600 block mb-1">Deambulación</span>
+          <div className="flex gap-2">
+            {([
+              { v: 'autonomo', l: 'Autónomo' },
+              { v: '1_persona', l: '1P' },
+              { v: '2_personas', l: '2P' },
+            ] as const).map((opt) => {
+              const activo = (data as any).deambulacion === opt.v
+              return (
+                <button
+                  key={opt.v}
+                  type="button"
+                  onClick={() => update('deambulacion' as any, activo ? null : opt.v)}
+                  className={`px-3 py-1 rounded text-xs font-medium border transition-colors ${
+                    activo ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-slate-600 border-slate-300'
+                  }`}
+                >
+                  {opt.l}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+        {sel('ayudas_deambulacion', 'Ayudas', [
+          { v: 'ninguna', l: 'Ninguna' },
+          { v: 'baston', l: 'Bastón' },
+          { v: 'andador_2r', l: 'Andador 2r' },
+          { v: 'andador_4r', l: 'Andador 4r' },
+          { v: 'silla_ruedas', l: 'Silla ruedas' },
         ])}
-        {sel('ducha', 'Ducha', [
-          { v: 'pie', l: 'De pie' },
-          { v: 'sentado', l: 'Sentado' },
-        ])}
+        {bool('bipedestador', 'Bipedestador')}
+        {bool('grua', 'Grúa')}
+        <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
+          <span className="text-xs text-slate-600 w-32 shrink-0">Cabecero elevado (º)</span>
+          <input
+            className="text-xs border border-slate-200 rounded px-1.5 py-1 w-20"
+            placeholder="p. ej. 30"
+            value={((data as any).cabecero_grados as string) ?? ''}
+            onChange={(e) => update('cabecero_grados' as any, e.target.value)}
+          />
+        </div>
+
+        <p className="section-title mt-3">Alimentación</p>
         {sel('ingestas', 'Ingestas', [
           { v: 'autonomo', l: 'Autónomo' },
           { v: 'dependiente', l: 'Dependiente' },
         ])}
-        <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
-          <span className="text-xs text-slate-600 w-32 shrink-0">Vestido</span>
-          <input
-            className="text-xs border border-slate-200 rounded px-1.5 py-1 flex-1 max-w-[160px]"
-            value={(data.vestido as string) ?? ''}
-            onChange={(e) => update('vestido', e.target.value)}
-          />
-        </div>
-        <div className="flex gap-6 py-1.5 border-b border-slate-100">
-          {bool('banio', 'Baño')}
-          {bool('siestas', 'Siestas')}
-        </div>
 
-        <p className="section-title mt-3">Continencia</p>
+        <p className="section-title mt-3">Higiene y continencia</p>
         {sel('panial_dia', 'Pañal día', [
           { v: 'ninguno', l: 'Ninguno' },
           { v: 'BP', l: 'BP' },
@@ -528,8 +668,30 @@ function PanelEdicion({
         ])}
         {bool('colector', 'Colector')}
         {bool('sonda_vesical', 'Sonda vesical')}
+        {sel('higiene', 'Higiene', [
+          { v: 'lavabo', l: 'Lavabo' },
+          { v: 'cama', l: 'Cama' },
+        ])}
+        {sel('ducha', 'Ducha', [
+          { v: 'pie', l: 'De pie' },
+          { v: 'sentado', l: 'Sentado' },
+        ])}
+        <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
+          <span className="text-xs text-slate-600 w-32 shrink-0">Vestido</span>
+          <input
+            className="text-xs border border-slate-200 rounded px-1.5 py-1 flex-1 max-w-[160px]"
+            value={(data.vestido as string) ?? ''}
+            onChange={(e) => update('vestido', e.target.value)}
+          />
+        </div>
+        {bool('banio', 'Baño acompañado (no va solo)')}
 
-        <p className="section-title mt-3">Prótesis</p>
+        <p className="section-title mt-3">Piel y postura</p>
+        {bool('colchon_antiescaras', 'Colchón antiescaras')}
+        {bool('patucos_coderas', 'Patucos / coderas')}
+        {bool('cambios_posturales', 'Cambios posturales')}
+
+        <p className="section-title mt-3">Prótesis y sensorial</p>
         {sel('dentadura', 'Dentadura', [
           { v: 'ninguna', l: 'Ninguna' },
           { v: 'superior', l: 'Superior' },
@@ -550,63 +712,20 @@ function PanelEdicion({
           { v: 'solo_tv', l: 'Solo TV' },
         ])}
 
-        <p className="section-title mt-3">Movilidad</p>
-        <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
-          <span className="text-xs text-slate-600 w-32 shrink-0">Deambulación</span>
-          <input
-            className="text-xs border border-slate-200 rounded px-1.5 py-1 flex-1 max-w-[160px]"
-            value={(data.deambulacion as string) ?? ''}
-            onChange={(e) => update('deambulacion', e.target.value)}
-          />
-        </div>
-        {sel('ayudas_deambulacion', 'Ayudas', [
-          { v: 'ninguna', l: 'Ninguna' },
-          { v: 'baston', l: 'Bastón' },
-          { v: 'andador_2r', l: 'Andador 2r' },
-          { v: 'andador_4r', l: 'Andador 4r' },
-          { v: 'silla_ruedas', l: 'Silla ruedas' },
-        ])}
-        {bool('bipedestador', 'Bipedestador')}
-        {bool('grua', 'Grúa')}
-        {bool('cambios_posturales', 'Cambios posturales')}
-        {bool('cama_45', 'Cama 45°')}
-
         <p className="section-title mt-3">Otros</p>
         {bool('oxigenoterapia', 'Oxigenoterapia')}
         {bool('botella_noche', 'Botella noche')}
-        {bool('colchon_antiescaras', 'Colchón antiescaras')}
-        {bool('patucos_coderas', 'Patucos / coderas')}
-        {bool('sensor_cama', 'Sensor cama')}
+        {bool('timbre_habitacion' as any, 'Timbre en habitación')}
+        {bool('siestas', 'Siesta por la tarde')}
 
-        <p className="section-title mt-3">Contenciones</p>
-        {estadoContencion === 'cargando' ? (
-          <p className="text-xs text-slate-400">Cargando…</p>
-        ) : (
-          <div className="flex items-center gap-2 mb-2">
-            {(['dia', 'noche'] as const).map((eje) => {
-              const sev = eje === 'dia' ? severidadDia(estadoContencion.dia as any) : severidadNoche(estadoContencion.noche as any)
-              const estilo = SEVERIDAD_ESTILO[sev]
-              return (
-                <span key={eje} className={`px-2 py-1 rounded text-[10px] font-medium border ${estilo.bg} ${estilo.text} ${estilo.border}`}>
-                  {eje === 'dia' ? 'Día' : 'Noche'}: {estilo.label}
-                </span>
-              )
-            })}
-          </div>
-        )}
-        <button onClick={() => setModalContencion(true)} className="text-xs text-primary-600 hover:underline font-medium">
-          Ver / editar contención
-        </button>
-        {modalContencion && (
-          <ModalContencion
-            ingresoId={ingreso.id}
-            onClose={() => setModalContencion(false)}
-            onGuardado={() => {
-              supabase.from('contenciones').select('dia, noche').eq('ingreso_id', ingreso.id).maybeSingle()
-                .then(({ data }) => setEstadoContencion(data ?? { dia: null, noche: null }))
-            }}
-          />
-        )}
+        <p className="section-title mt-3">Observaciones</p>
+        <textarea
+          className="textarea text-xs w-full"
+          rows={3}
+          placeholder="Notas libres…"
+          value={((data as any).observaciones as string) ?? ''}
+          onChange={(e) => update('observaciones' as any, e.target.value)}
+        />
       </div>
 
       <div className="px-4 py-3 border-t space-y-2">
@@ -717,45 +836,59 @@ const Bloque = memo(function Bloque({
         </tr>
       </thead>
       <tbody>
-        {FILAS.map((fila) => (
-          <tr key={fila.key}>
-            <td className={labelCls} style={{ fontWeight: LABEL_BOLD_ROWS.has(fila.key) ? 700 : 500 }}>
-              {fila.label}
-            </td>
-            {habNums.map((n) => {
-              const idx = n - offset - 1
-              const ingreso = slots[idx]
-              const it = ingreso?.items ?? null
-              const val = ingreso ? fila.get(it as any, ingreso as any) : ''
-              const bg = habBg(ingreso)
-              const cellBg = ingreso
-                ? bg === '#FF0000'
-                  ? '#ffcccc'
-                  : bg === '#FF9900'
-                    ? '#ffe5cc'
-                    : bg === '#FFFF00'
-                      ? '#ffffcc'
-                      : bg === '#92D050'
-                        ? '#e2f5cc'
-                        : '#fff'
-                : '#fff'
-              const color = ingreso ? textColor(bg) : '#000'
-              const isSelected = ingreso?.id === selectedId
+        {GRUPOS.map((grupo) => (
+          <Fragment key={grupo.titulo}>
+            <tr key={`g-${grupo.titulo}`}>
+              <td colSpan={count + 1} className="border border-slate-400 bg-[#5b7a9d] text-white text-[7pt] font-bold px-1 py-0.5 tracking-wide">
+                {grupo.titulo.toUpperCase()}
+              </td>
+            </tr>
+            {grupo.filas.map((fila) => {
+              // El semáforo de caídas solo tiñe la fila del nombre, no
+              // todas las filas del paciente.
+              const tenirPorSemaforo = fila.key === 'nombre'
               return (
-                <td
-                  key={n}
-                  className={`${cellCls} ${ingreso && !readOnly ? 'cursor-pointer hover:brightness-95' : !ingreso && !readOnly ? 'cursor-pointer hover:bg-primary-50/40' : ''} ${isSelected ? 'ring-2 ring-inset ring-primary-500' : ''}`}
-                  style={{ backgroundColor: cellBg, color, fontWeight: BOLD_ROWS.has(fila.key) ? 600 : 400 }}
-                  onClick={() => {
-                    if (ingreso && !readOnly) onSelect(ingreso)
-                    else if (!ingreso && !readOnly && onSelectVacia && fila.key === 'nombre') onSelectVacia(n)
-                  }}
-                >
-                  {val || '\u00a0'}
-                </td>
+                <tr key={fila.key}>
+                  <td className={labelCls} style={{ fontWeight: LABEL_BOLD_ROWS.has(fila.key) ? 700 : 500 }}>
+                    {fila.label}
+                  </td>
+                  {habNums.map((n) => {
+                    const idx = n - offset - 1
+                    const ingreso = slots[idx]
+                    const it = ingreso?.items ?? null
+                    const val = ingreso ? fila.get(it as any, ingreso as any) : ''
+                    const bg = habBg(ingreso)
+                    const cellBg = ingreso && tenirPorSemaforo
+                      ? bg === '#FF0000'
+                        ? '#ffcccc'
+                        : bg === '#FF9900'
+                          ? '#ffe5cc'
+                          : bg === '#FFFF00'
+                            ? '#ffffcc'
+                            : bg === '#92D050'
+                              ? '#e2f5cc'
+                              : '#fff'
+                      : '#fff'
+                    const color = ingreso && tenirPorSemaforo ? textColor(bg) : '#000'
+                    const isSelected = ingreso?.id === selectedId
+                    return (
+                      <td
+                        key={n}
+                        className={`${cellCls} ${ingreso && !readOnly ? 'cursor-pointer hover:brightness-95' : !ingreso && !readOnly ? 'cursor-pointer hover:bg-primary-50/40' : ''} ${isSelected ? 'ring-2 ring-inset ring-primary-500' : ''}`}
+                        style={{ backgroundColor: cellBg, color, fontWeight: BOLD_ROWS.has(fila.key) ? 600 : 400 }}
+                        onClick={() => {
+                          if (ingreso && !readOnly) onSelect(ingreso)
+                          else if (!ingreso && !readOnly && onSelectVacia && fila.key === 'nombre') onSelectVacia(n)
+                        }}
+                      >
+                        {val || '\u00a0'}
+                      </td>
+                    )
+                  })}
+                </tr>
               )
             })}
-          </tr>
+          </Fragment>
         ))}
       </tbody>
     </table>
@@ -883,10 +1016,19 @@ export default function HojaItems() {
         )
         .eq('estado', 'activo')
         .order('habitacion', { ascending: true })
+
+      const ids = (ingresos ?? []).map((i: any) => i.id)
+      const { data: contencionesData } = ids.length
+        ? await supabase.from('contenciones').select('ingreso_id, dia, noche').in('ingreso_id', ids)
+        : { data: [] as any[] }
+      const contencionesMap: Record<string, { dia: any; noche: any }> = {}
+      ;(contencionesData ?? []).forEach((c: any) => { contencionesMap[c.ingreso_id] = { dia: c.dia, noche: c.noche } })
+
       setData(
-        (ingresos ?? []).map((i) => ({
+        (ingresos ?? []).map((i: any) => ({
           ...i,
           items: Array.isArray(i.items) ? (i.items[0] ?? null) : (i.items ?? null),
+          contencion: contencionesMap[i.id],
         })) as IngresoConItems[]
       )
     } finally {
