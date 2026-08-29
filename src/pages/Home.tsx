@@ -5,8 +5,9 @@ import { useAuth } from '../lib/AuthContext'
 import type { Ingreso } from '../types'
 import { SEMAFORO_CAIDAS_COLOR as SEMAFORO, nombreCompleto } from '../types'
 import { edad, diasEntre } from '../lib/fechas'
-import { Plus, ClipboardList, ChevronRight, AlertTriangle } from 'lucide-react'
+import { Plus, ClipboardList, ChevronRight, AlertTriangle, ShieldAlert } from 'lucide-react'
 import FormularioEvento from '../components/FormularioEvento'
+import { PanelContencion } from '../components/PanelContencion'
 import { TIPO_EVENTO_LABEL, TIPO_EVENTO_COLOR, type TipoEvento } from '../types/eventos'
 
 type IngresoConPaciente = Ingreso & {
@@ -27,6 +28,8 @@ export default function Home() {
     {}
   )
   const [eventosPorIngreso, setEventosPorIngreso] = useState<Record<string, string[]>>({})
+  const [contencionesPorIngreso, setContencionesPorIngreso] = useState<Record<string, number>>({})
+  const [modalContencion, setModalContencion] = useState<string | null>(null) // ingresoId
   const [loading, setLoading] = useState(true)
   const [modalEvento, setModalEvento] = useState<string | null>(null) // ingresoId
   const navigate = useNavigate()
@@ -55,10 +58,11 @@ export default function Home() {
     if (list.length > 0) {
       const ids = list.map((i) => i.id)
 
-      const [{ data: itemsData }, { data: informesData }, { data: eventosData }] = await Promise.all([
+      const [{ data: itemsData }, { data: informesData }, { data: eventosData }, { data: pautasData }] = await Promise.all([
         supabase.from('items_paciente').select('ingreso_id,semaforo_caidas').in('ingreso_id', ids),
         supabase.from('informe_ingreso').select('ingreso_id,impresion_diagnostica').in('ingreso_id', ids),
         supabase.from('eventos').select('ingreso_id,tipo').in('ingreso_id', ids),
+        supabase.from('pautas_contencion').select('ingreso_id').in('ingreso_id', ids).is('fecha_fin', null),
       ])
 
       const itemsMap: Record<string, { semaforo_caidas?: string }> = {}
@@ -80,6 +84,12 @@ export default function Home() {
         eventosMap[ev.ingreso_id].push(ev.tipo)
       })
       setEventosPorIngreso(eventosMap)
+
+      const contencionesMap: Record<string, number> = {}
+      ;(pautasData ?? []).forEach((p: any) => {
+        contencionesMap[p.ingreso_id] = (contencionesMap[p.ingreso_id] ?? 0) + 1
+      })
+      setContencionesPorIngreso(contencionesMap)
     }
     setLoading(false)
   }
@@ -163,7 +173,7 @@ export default function Home() {
           {/* Cabecera */}
           <div
             className="grid gap-px text-xs font-semibold text-slate-400 uppercase tracking-wide px-3 pb-1"
-            style={{ gridTemplateColumns: '2.5rem minmax(0,1.4fr) 3rem 3.5rem 5.5rem minmax(0,0.9fr) 3rem 7rem 2rem' }}
+            style={{ gridTemplateColumns: '2.5rem minmax(0,1.4fr) 3rem 3.5rem 5.5rem minmax(0,0.9fr) 3rem 4.5rem 7rem 2rem' }}
           >
             <div>Hab.</div>
             <div>Paciente</div>
@@ -172,6 +182,7 @@ export default function Home() {
             <div>Ingreso</div>
             <div>Médico</div>
             <div></div>
+            <div>Contención</div>
             <div>Incidencia</div>
             <div></div>
           </div>
@@ -189,12 +200,13 @@ export default function Home() {
                   className={`grid items-center border border-dashed border-slate-150 rounded-lg px-3 py-1.5 transition-colors ${
                     esMedico ? 'cursor-pointer hover:border-primary-300 hover:bg-primary-50/30' : ''
                   }`}
-                  style={{ gridTemplateColumns: '2.5rem minmax(0,1.4fr) 3rem 3.5rem 5.5rem minmax(0,0.9fr) 3rem 7rem 2rem' }}
+                  style={{ gridTemplateColumns: '2.5rem minmax(0,1.4fr) 3rem 3.5rem 5.5rem minmax(0,0.9fr) 3rem 4.5rem 7rem 2rem' }}
                   onClick={esMedico ? () => navigate(`/pacientes/nuevo?habitacion=${n}`) : undefined}
                   title={esMedico ? `Ingresar en habitación ${n}` : `Habitación ${n} libre`}
                 >
                   <span className="text-xs font-bold text-slate-200">{n}</span>
                   <span className="text-xs text-slate-200">— libre —</span>
+                  <span />
                   <span />
                   <span />
                   <span />
@@ -229,7 +241,7 @@ export default function Home() {
               <div key={n} className="group">
                 <div
                   className="grid items-center bg-white border border-slate-200 rounded-lg px-3 py-2 hover:shadow-sm hover:border-primary-200 transition-all cursor-pointer"
-                  style={{ gridTemplateColumns: '2.5rem minmax(0,1.4fr) 3rem 3.5rem 5.5rem minmax(0,0.9fr) 3rem 7rem 2rem' }}
+                  style={{ gridTemplateColumns: '2.5rem minmax(0,1.4fr) 3rem 3.5rem 5.5rem minmax(0,0.9fr) 3rem 4.5rem 7rem 2rem' }}
                   onClick={() => navigate(`/ingresos/${ingreso.id}`)}
                 >
                   {/* Hab con semáforo */}
@@ -310,6 +322,22 @@ export default function Home() {
                       </div>
                     )
                   })()}
+                  {/* Acceso rápido a contención física, sin salir de Inicio */}
+                  <div
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setModalContencion(ingreso.id)
+                    }}
+                    className={`flex items-center gap-1 px-2 py-1 rounded-lg border text-xs font-medium cursor-pointer transition-colors w-fit ${
+                      contencionesPorIngreso[ingreso.id]
+                        ? 'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100'
+                        : 'bg-white border-slate-200 text-slate-400 hover:bg-slate-50'
+                    }`}
+                    title="Pautar o ver contención física"
+                  >
+                    <ShieldAlert className="w-3 h-3 shrink-0" />
+                    {contencionesPorIngreso[ingreso.id] || ''}
+                  </div>
                   {/* Botón evento */}
                   <div
                     onClick={(e) => {
@@ -344,6 +372,28 @@ export default function Home() {
             fetchData()
           }}
         />
+      )}
+
+      {/* Modal contención física: pautar o ver, sin salir de Inicio */}
+      {modalContencion && (
+        <div
+          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+          onClick={() => setModalContencion(null)}
+        >
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-base font-bold text-slate-800 flex items-center gap-1.5">
+                <ShieldAlert className="w-4 h-4 text-blue-600" /> Contención física
+              </h2>
+              <button onClick={() => setModalContencion(null)} className="text-slate-400 hover:text-slate-600 text-sm">✕</button>
+            </div>
+            <PanelContencion
+              ingresoId={modalContencion}
+              esMedico={esMedico}
+              onCambio={() => fetchData()}
+            />
+          </div>
+        </div>
       )}
     </div>
   )
