@@ -6,8 +6,8 @@ import {
 } from 'recharts'
 import { supabase } from '../lib/supabase'
 import { nombreCompleto } from '../types'
-import { ShieldAlert, ChevronDown, ChevronRight as ChevronRightIcon } from 'lucide-react'
-import { TIPO_EVENTO_LABEL, TURNO_LABEL, type TipoEvento } from '../types/eventos'
+import { ChevronDown, ChevronRight as ChevronRightIcon, Download, Printer } from 'lucide-react'
+import { TIPO_EVENTO_LABEL, TURNO_LABEL, CAMPOS_POR_TIPO, type TipoEvento } from '../types/eventos'
 import { formatFechaLocal as fmt } from '../lib/fechas'
 
 // ─── CONSTANTES ────────────────────────────────────────────────
@@ -30,22 +30,22 @@ const TIPO_EVENTO_HEX: Record<TipoEvento, string> = {
   efecto_adverso_medicacion: '#B5637F',
 }
 
-const SUJECION_LABEL: Record<string, string> = { silla_ruedas: 'Silla de ruedas', sillon: 'Sillón', cama: 'Cama' }
-
 const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
 
-interface PacienteFila {
-  ingresoId: string
-  habitacion?: number
-  nombre: string
-  detalle: string // "continuo · Silla de ruedas" o "3× · última 20/08"
-}
-
-interface FilaEstado {
+interface EventoActivo {
+  id: string
   tipo: TipoEvento
-  pacientesAfectados: number
-  totalIncidencias: number
-  pacientes: PacienteFila[]
+  fecha: string
+  hora?: string
+  turno?: string
+  datos: Record<string, string>
+  notas?: string
+  registrado_por?: { nombre: string; apellidos: string }
+  ingreso: {
+    id: string
+    habitacion?: number
+    paciente: { nombre: string; primer_apellido: string; segundo_apellido?: string }
+  }
 }
 
 // Calcula [desde, hasta] para el periodo elegido en Tendencias.
@@ -66,6 +66,10 @@ function getRango(periodo: string, anioSel: number, mesSel: number | 'todos'): {
   return { desde: '2000-01-01', hasta: hoy }
 }
 
+function escaparCsv(v: string): string {
+  return `"${v.replace(/"/g, '""')}"`
+}
+
 // ─── PÁGINA PRINCIPAL ─────────────────────────────────────────
 
 export function Eventos() {
@@ -73,9 +77,8 @@ export function Eventos() {
 
   // ── Estado actual (todos los tipos, ingresos activos) ──────
   const [loadingEstado, setLoadingEstado] = useState(true)
-  const [filasEstado, setFilasEstado] = useState<FilaEstado[]>([])
-  const [filaContencion, setFilaContencion] = useState<FilaEstado | null>(null)
-  const [expandido, setExpandido] = useState<string | null>(null)
+  const [eventosActivos, setEventosActivos] = useState<EventoActivo[]>([])
+  const [expandido, setExpandido] = useState<TipoEvento | null>(null)
 
   // ── Tendencias (periodo elegido) ────────────────────────────
   const [periodo, setPeriodo] = useState('trimestre')
@@ -89,104 +92,43 @@ export function Eventos() {
   useEffect(() => { fetchTendencias() }, [periodo, anioSel, mesSel])
 
   // ── Carga: estado actual ────────────────────────────────────
+  // Igual para las ocho incidencias, incluida contención física: se
+  // muestra el registro real de incidencias, no un estado derivado de
+  // la Hoja de Ítems, porque cada incidencia tiene sus propias columnas
+  // (motivo, duración, autorización...) que sí sirven para una tabla
+  // exportable, y "sujeción puesta ahora mismo" no las tiene.
   async function fetchEstadoActual() {
     setLoadingEstado(true)
-
-    const [{ data: itemsData }, { data: eventosActivos }] = await Promise.all([
-      supabase.from('items_paciente')
+    try {
+      const { data } = await supabase
+        .from('eventos')
         .select(`
-          sujecion_cama, sujecion_silla_ruedas, sujecion_sillon,
+          id, tipo, fecha, hora, turno, datos, notas,
+          registrado_por:profesionales(nombre, apellidos),
           ingreso:ingresos!inner(id, habitacion, estado, paciente:pacientes(nombre, primer_apellido, segundo_apellido))
         `)
-        .eq('ingreso.estado', 'activo'),
-      supabase.from('eventos')
-        .select(`
-          tipo, fecha,
-          ingreso:ingresos!inner(id, habitacion, estado, paciente:pacientes(nombre, primer_apellido, segundo_apellido))
-        `)
-        .eq('ingreso.estado', 'activo'),
-    ])
-
-    // Contención física: es un ESTADO (¿sigue puesta ahora?), no un
-    // recuento de eventos — se lee de la Hoja de Ítems, no del registro
-    // de incidencias.
-    const pacientesContencion: PacienteFila[] = []
-    ;(itemsData ?? []).forEach((it: any) => {
-      const ing = it.ingreso
-      if (!ing?.paciente) return
-      const cont: string[] = []
-      if (it.sujecion_silla_ruedas === 'continuo') cont.push('silla_ruedas')
-      if (it.sujecion_sillon === 'continuo') cont.push('sillon')
-      if (Array.isArray(it.sujecion_cama) && it.sujecion_cama.length > 0) cont.push('cama')
-      if (cont.length > 0) {
-        pacientesContencion.push({
-          ingresoId: ing.id,
-          habitacion: ing.habitacion,
-          nombre: nombreCompleto(ing.paciente),
-          detalle: cont.map((c) => SUJECION_LABEL[c]).join(' · '),
-        })
-      }
-    })
-    setFilaContencion({
-      tipo: 'contencion_fisica',
-      pacientesAfectados: pacientesContencion.length,
-      totalIncidencias: pacientesContencion.length,
-      pacientes: pacientesContencion,
-    })
-
-    // El resto de tipos: recuento de incidencias YA registradas durante
-    // el ingreso activo (esto sí es del registro de incidencias).
-    const porTipo: Record<string, Map<string, PacienteFila & { n: number }>> = {}
-    ;(eventosActivos ?? []).forEach((ev: any) => {
-      if (ev.tipo === 'contencion_fisica') return // esa va aparte, como estado
-      const ing = ev.ingreso
-      if (!ing?.paciente) return
-      if (!porTipo[ev.tipo]) porTipo[ev.tipo] = new Map()
-      const mapa = porTipo[ev.tipo]
-      const existente = mapa.get(ing.id)
-      if (existente) {
-        existente.n += 1
-      } else {
-        mapa.set(ing.id, {
-          ingresoId: ing.id,
-          habitacion: ing.habitacion,
-          nombre: nombreCompleto(ing.paciente),
-          detalle: '',
-          n: 1,
-        })
-      }
-    })
-
-    const filas: FilaEstado[] = TIPOS_ORDEN
-      .filter((t) => t !== 'contencion_fisica')
-      .map((tipo) => {
-        const mapa = porTipo[tipo] ?? new Map()
-        const pacientes = Array.from(mapa.values())
-          .sort((a, b) => b.n - a.n)
-          .map((p) => ({ ...p, detalle: `${p.n}×` }))
-        return {
-          tipo,
-          pacientesAfectados: pacientes.length,
-          totalIncidencias: pacientes.reduce((s, p) => s + Number(p.detalle.replace('×', '')), 0),
-          pacientes,
-        }
-      })
-
-    setFilasEstado(filas)
-    setLoadingEstado(false)
+        .eq('ingreso.estado', 'activo')
+        .order('fecha', { ascending: false })
+      setEventosActivos((data ?? []) as unknown as EventoActivo[])
+    } finally {
+      setLoadingEstado(false)
+    }
   }
 
   // ── Carga: tendencias ───────────────────────────────────────
   async function fetchTendencias() {
     setLoadingTendencias(true)
-    const { desde, hasta } = getRango(periodo, anioSel, mesSel)
-    const { data } = await supabase
-      .from('eventos')
-      .select('tipo, fecha, turno')
-      .gte('fecha', desde)
-      .lte('fecha', hasta)
-    setEventosPeriodo(data ?? [])
-    setLoadingTendencias(false)
+    try {
+      const { desde, hasta } = getRango(periodo, anioSel, mesSel)
+      const { data } = await supabase
+        .from('eventos')
+        .select('tipo, fecha, turno')
+        .gte('fecha', desde)
+        .lte('fecha', hasta)
+      setEventosPeriodo(data ?? [])
+    } finally {
+      setLoadingTendencias(false)
+    }
   }
 
   function periodoLabel(): string {
@@ -194,11 +136,88 @@ export function Eventos() {
     return { mes: 'Este mes', trimestre: 'Este trimestre', anio: 'Este año', todo: 'Todo el historial' }[periodo] ?? periodo
   }
 
-  // ── Datos derivados para las gráficas ───────────────────────
+  // ── Resumen por tipo, para la fila compacta ─────────────────
+  const resumenPorTipo = TIPOS_ORDEN.map((tipo) => {
+    const delTipo = eventosActivos.filter((e) => e.tipo === tipo)
+    const pacientesAfectados = new Set(delTipo.map((e) => e.ingreso.id)).size
+    return { tipo, pacientesAfectados, totalIncidencias: delTipo.length }
+  })
+
+  // ── Exportar / imprimir una tabla de tipo concreto ──────────
+  function filasDelTipo(tipo: TipoEvento): EventoActivo[] {
+    return eventosActivos.filter((e) => e.tipo === tipo)
+  }
+
+  function exportarCSV(tipo: TipoEvento) {
+    const campos = CAMPOS_POR_TIPO[tipo]
+    const cabecera = ['Fecha', 'Turno', 'Paciente', 'Habitación', ...campos.map((c) => c.label), 'Notas', 'Registrado por']
+      .map(escaparCsv).join(',')
+    const filas = filasDelTipo(tipo).map((ev) => [
+      ev.fecha,
+      ev.turno ? TURNO_LABEL[ev.turno] : '',
+      nombreCompleto(ev.ingreso.paciente),
+      ev.ingreso.habitacion?.toString() ?? '',
+      ...campos.map((c) => ev.datos?.[c.key] ?? ''),
+      ev.notas ?? '',
+      ev.registrado_por ? `${ev.registrado_por.nombre} ${ev.registrado_por.apellidos}` : '',
+    ].map((v) => escaparCsv(String(v))).join(','))
+    const csv = '\uFEFF' + [cabecera, ...filas].join('\r\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${tipo}_${fmt(new Date())}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  function imprimirTabla(tipo: TipoEvento) {
+    const campos = CAMPOS_POR_TIPO[tipo]
+    const filas = filasDelTipo(tipo)
+    const win = window.open('', '_blank')
+    if (!win) return
+    const escHtml = (s: string) => s
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;')
+    let html = `<html><head><title>${TIPO_EVENTO_LABEL[tipo]}</title>
+      <style>
+        body { font-family: Arial, sans-serif; padding: 24px; }
+        h1 { font-size: 16pt; margin-bottom: 4px; }
+        p { color: #666; font-size: 9pt; margin-top: 0; margin-bottom: 16px; }
+        table { border-collapse: collapse; width: 100%; font-size: 8.5pt; }
+        th, td { border: 1px solid #ccc; padding: 4px 6px; text-align: left; }
+        th { background: #f1f5f9; }
+      </style></head><body>
+      <h1>${TIPO_EVENTO_LABEL[tipo]}</h1>
+      <p>Ingresos activos · generado ${new Date().toLocaleDateString('es-ES')}</p>
+      <table><thead><tr>
+        <th>Fecha</th><th>Turno</th><th>Paciente</th><th>Hab.</th>
+        ${campos.map((c) => `<th>${escHtml(c.label)}</th>`).join('')}
+        <th>Notas</th><th>Registrado por</th>
+      </tr></thead><tbody>`
+    filas.forEach((ev) => {
+      html += `<tr>
+        <td>${new Date(ev.fecha).toLocaleDateString('es-ES')}</td>
+        <td>${ev.turno ? escHtml(TURNO_LABEL[ev.turno]) : ''}</td>
+        <td>${escHtml(nombreCompleto(ev.ingreso.paciente))}</td>
+        <td>${ev.ingreso.habitacion ?? ''}</td>
+        ${campos.map((c) => `<td>${escHtml(String(ev.datos?.[c.key] ?? ''))}</td>`).join('')}
+        <td>${escHtml(ev.notas ?? '')}</td>
+        <td>${ev.registrado_por ? escHtml(`${ev.registrado_por.nombre} ${ev.registrado_por.apellidos}`) : ''}</td>
+      </tr>`
+    })
+    html += '</tbody></table></body></html>'
+    win.document.write(html)
+    win.document.close()
+    win.focus()
+    win.print()
+  }
+
+  // ── Datos derivados para las gráficas de Tendencias ─────────
   const porMes = (() => {
     const map: Record<string, number> = {}
     eventosPeriodo.forEach((ev) => {
-      const clave = ev.fecha.slice(0, 7) // AAAA-MM
+      const clave = ev.fecha.slice(0, 7)
       map[clave] = (map[clave] ?? 0) + 1
     })
     return Object.entries(map)
@@ -251,27 +270,18 @@ export function Eventos() {
               {loadingEstado ? (
                 <tr><td colSpan={4} className="px-4 py-8 text-center text-slate-400">Cargando…</td></tr>
               ) : (
-                <>
-                  {filaContencion && (
-                    <FilaEstadoActual
-                      fila={filaContencion}
-                      abierto={expandido === 'contencion_fisica'}
-                      onToggle={() => setExpandido(e => e === 'contencion_fisica' ? null : 'contencion_fisica')}
-                      onClickPaciente={(id) => navigate(`/ingresos/${id}`)}
-                      nota="ahora mismo, no eventos registrados"
-                      icono={<ShieldAlert className="w-3.5 h-3.5 text-red-500" />}
-                    />
-                  )}
-                  {filasEstado.map((fila) => (
-                    <FilaEstadoActual
-                      key={fila.tipo}
-                      fila={fila}
-                      abierto={expandido === fila.tipo}
-                      onToggle={() => setExpandido(e => e === fila.tipo ? null : fila.tipo)}
-                      onClickPaciente={(id) => navigate(`/ingresos/${id}`)}
-                    />
-                  ))}
-                </>
+                resumenPorTipo.map((r) => (
+                  <FilaTipo
+                    key={r.tipo}
+                    resumen={r}
+                    filas={filasDelTipo(r.tipo)}
+                    abierto={expandido === r.tipo}
+                    onToggle={() => setExpandido((e) => (e === r.tipo ? null : r.tipo))}
+                    onClickPaciente={(id) => navigate(`/ingresos/${id}`)}
+                    onExportar={() => exportarCSV(r.tipo)}
+                    onImprimir={() => imprimirTabla(r.tipo)}
+                  />
+                ))
               )}
             </tbody>
           </table>
@@ -387,50 +397,79 @@ export function Eventos() {
   )
 }
 
-// ─── Fila de la tabla de estado actual, expandible ────────────
+// ─── Fila de tipo: resumen + tabla de detalle desplegable ─────
 
-function FilaEstadoActual({ fila, abierto, onToggle, onClickPaciente, nota, icono }: {
-  fila: FilaEstado
+function FilaTipo({ resumen, filas, abierto, onToggle, onClickPaciente, onExportar, onImprimir }: {
+  resumen: { tipo: TipoEvento; pacientesAfectados: number; totalIncidencias: number }
+  filas: EventoActivo[]
   abierto: boolean
   onToggle: () => void
   onClickPaciente: (ingresoId: string) => void
-  nota?: string
-  icono?: React.ReactNode
+  onExportar: () => void
+  onImprimir: () => void
 }) {
+  const campos = CAMPOS_POR_TIPO[resumen.tipo]
   return (
     <>
       <tr className="hover:bg-slate-50 transition-colors cursor-pointer" onClick={onToggle}>
         <td className="px-4 py-2.5 text-slate-400">
-          {fila.pacientesAfectados > 0 && (abierto ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRightIcon className="w-3.5 h-3.5" />)}
+          {resumen.totalIncidencias > 0 && (abierto ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRightIcon className="w-3.5 h-3.5" />)}
         </td>
-        <td className="px-4 py-2.5 font-medium text-slate-700 flex items-center gap-1.5">
-          {icono}
-          {TIPO_EVENTO_LABEL[fila.tipo]}
-          {nota && <span className="text-[10px] text-slate-400 font-normal">({nota})</span>}
-        </td>
+        <td className="px-4 py-2.5 font-medium text-slate-700">{TIPO_EVENTO_LABEL[resumen.tipo]}</td>
         <td className="px-4 py-2.5 text-right tabular-nums">
-          {fila.pacientesAfectados === 0
+          {resumen.pacientesAfectados === 0
             ? <span className="text-slate-300">—</span>
-            : <span className="font-semibold text-slate-800">{fila.pacientesAfectados}</span>}
+            : <span className="font-semibold text-slate-800">{resumen.pacientesAfectados}</span>}
         </td>
         <td className="px-4 py-2.5 text-right tabular-nums text-slate-500">
-          {fila.tipo === 'contencion_fisica' ? '—' : (fila.totalIncidencias || <span className="text-slate-300">—</span>)}
+          {resumen.totalIncidencias || <span className="text-slate-300">—</span>}
         </td>
       </tr>
-      {abierto && fila.pacientes.length > 0 && (
+      {abierto && filas.length > 0 && (
         <tr>
-          <td colSpan={4} className="bg-slate-50 px-4 py-2">
-            <div className="space-y-1 py-1">
-              {fila.pacientes.map((p) => (
-                <div key={p.ingresoId}
-                  className="flex items-center justify-between text-xs py-1 px-2 rounded hover:bg-white cursor-pointer"
-                  onClick={(e) => { e.stopPropagation(); onClickPaciente(p.ingresoId) }}>
-                  <span className="text-slate-600">
-                    {p.nombre} {p.habitacion && <span className="text-slate-400">· Hab. {p.habitacion}</span>}
-                  </span>
-                  <span className="text-slate-500">{p.detalle}</span>
-                </div>
-              ))}
+          <td colSpan={4} className="bg-slate-50 px-4 py-3">
+            <div className="flex justify-end gap-2 mb-2" onClick={(e) => e.stopPropagation()}>
+              <button onClick={onExportar} className="btn-secondary text-xs py-1 gap-1">
+                <Download className="w-3.5 h-3.5" /> Exportar CSV
+              </button>
+              <button onClick={onImprimir} className="btn-secondary text-xs py-1 gap-1">
+                <Printer className="w-3.5 h-3.5" /> Imprimir
+              </button>
+            </div>
+            <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b bg-slate-100 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wide">
+                    <th className="px-3 py-2">Fecha</th>
+                    <th className="px-3 py-2">Turno</th>
+                    <th className="px-3 py-2">Paciente</th>
+                    <th className="px-3 py-2">Hab.</th>
+                    {campos.map((c) => <th key={c.key} className="px-3 py-2">{c.label}</th>)}
+                    <th className="px-3 py-2">Notas</th>
+                    <th className="px-3 py-2">Registrado por</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {filas.map((ev) => (
+                    <tr key={ev.id} className="hover:bg-slate-50">
+                      <td className="px-3 py-2 whitespace-nowrap">{new Date(ev.fecha).toLocaleDateString('es-ES')}</td>
+                      <td className="px-3 py-2 whitespace-nowrap">{ev.turno ? TURNO_LABEL[ev.turno] : '—'}</td>
+                      <td className="px-3 py-2 font-medium text-slate-700 cursor-pointer hover:underline"
+                        onClick={() => onClickPaciente(ev.ingreso.id)}>
+                        {nombreCompleto(ev.ingreso.paciente)}
+                      </td>
+                      <td className="px-3 py-2">{ev.ingreso.habitacion ?? '—'}</td>
+                      {campos.map((c) => (
+                        <td key={c.key} className="px-3 py-2">{ev.datos?.[c.key] ?? <span className="text-slate-300">—</span>}</td>
+                      ))}
+                      <td className="px-3 py-2 max-w-[200px] truncate" title={ev.notas}>{ev.notas || <span className="text-slate-300">—</span>}</td>
+                      <td className="px-3 py-2 whitespace-nowrap text-slate-500">
+                        {ev.registrado_por ? `${ev.registrado_por.nombre} ${ev.registrado_por.apellidos}` : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </td>
         </tr>
