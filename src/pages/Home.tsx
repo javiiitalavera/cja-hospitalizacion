@@ -5,9 +5,14 @@ import { useAuth } from '../lib/AuthContext'
 import type { Ingreso } from '../types'
 import { SEMAFORO_CAIDAS_COLOR as SEMAFORO, nombreCompleto } from '../types'
 import { edad, diasEntre } from '../lib/fechas'
-import { Plus, ClipboardList, ChevronRight, AlertTriangle, ShieldAlert } from 'lucide-react'
+import { Plus, ClipboardList, ChevronRight, AlertTriangle, AlertCircle, Sun, Moon } from 'lucide-react'
 import FormularioEvento from '../components/FormularioEvento'
-import { PanelContencion } from '../components/PanelContencion'
+import ModalContencion from '../components/ModalContencion'
+import {
+  severidadDia, severidadNoche, SEVERIDAD_ESTILO,
+  CONTENCION_DIA_LABEL, CONTENCION_NOCHE_LABEL,
+  type ContencionDia, type ContencionNoche,
+} from '../types/contenciones'
 import { TIPO_EVENTO_LABEL, TIPO_EVENTO_COLOR, type TipoEvento } from '../types/eventos'
 
 type IngresoConPaciente = Ingreso & {
@@ -28,7 +33,7 @@ export default function Home() {
     {}
   )
   const [eventosPorIngreso, setEventosPorIngreso] = useState<Record<string, string[]>>({})
-  const [contencionesPorIngreso, setContencionesPorIngreso] = useState<Record<string, number>>({})
+  const [contencionesPorIngreso, setContencionesPorIngreso] = useState<Record<string, { dia: ContencionDia | null; noche: ContencionNoche[] | null }>>({})
   const [modalContencion, setModalContencion] = useState<string | null>(null) // ingresoId
   const [loading, setLoading] = useState(true)
   const [modalEvento, setModalEvento] = useState<string | null>(null) // ingresoId
@@ -62,7 +67,7 @@ export default function Home() {
         supabase.from('items_paciente').select('ingreso_id,semaforo_caidas').in('ingreso_id', ids),
         supabase.from('informe_ingreso').select('ingreso_id,impresion_diagnostica').in('ingreso_id', ids),
         supabase.from('eventos').select('ingreso_id,tipo').in('ingreso_id', ids),
-        supabase.from('pautas_contencion').select('ingreso_id').in('ingreso_id', ids).is('fecha_fin', null),
+        supabase.from('contenciones').select('ingreso_id, dia, noche').in('ingreso_id', ids),
       ])
 
       const itemsMap: Record<string, { semaforo_caidas?: string }> = {}
@@ -85,9 +90,9 @@ export default function Home() {
       })
       setEventosPorIngreso(eventosMap)
 
-      const contencionesMap: Record<string, number> = {}
+      const contencionesMap: Record<string, { dia: ContencionDia | null; noche: ContencionNoche[] | null }> = {}
       ;(pautasData ?? []).forEach((p: any) => {
-        contencionesMap[p.ingreso_id] = (contencionesMap[p.ingreso_id] ?? 0) + 1
+        contencionesMap[p.ingreso_id] = { dia: p.dia, noche: p.noche }
       })
       setContencionesPorIngreso(contencionesMap)
     }
@@ -322,21 +327,44 @@ export default function Home() {
                       </div>
                     )
                   })()}
-                  {/* Acceso rápido a contención física, sin salir de Inicio */}
-                  <div
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setModalContencion(ingreso.id)
-                    }}
-                    className={`flex items-center gap-1 px-2 py-1 rounded-lg border text-xs font-medium cursor-pointer transition-colors w-fit ${
-                      contencionesPorIngreso[ingreso.id]
-                        ? 'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100'
-                        : 'bg-white border-slate-200 text-slate-400 hover:bg-slate-50'
-                    }`}
-                    title="Pautar o ver contención física"
-                  >
-                    <ShieldAlert className="w-3 h-3 shrink-0" />
-                    {contencionesPorIngreso[ingreso.id] || ''}
+                  {/* Contención física: día y noche, acceso rápido sin salir de Inicio */}
+                  <div className="flex items-center gap-1">
+                    {(['dia', 'noche'] as const).map((eje) => {
+                      const estado = contencionesPorIngreso[ingreso.id]
+                      const valor = eje === 'dia' ? estado?.dia : estado?.noche
+                      const sev = eje === 'dia' ? severidadDia(estado?.dia) : severidadNoche(estado?.noche)
+                      const estilo = SEVERIDAD_ESTILO[sev]
+                      const Icono = eje === 'dia' ? Sun : Moon
+                      const etiqueta =
+                        sev === 'sin_revisar' ? 'Sin revisar todavía'
+                        : eje === 'dia' ? CONTENCION_DIA_LABEL[(valor as ContencionDia) ?? 'ninguna']
+                        : (valor as ContencionNoche[] | undefined)?.length
+                          ? (valor as ContencionNoche[]).map((v) => CONTENCION_NOCHE_LABEL[v]).join(', ')
+                          : 'Ninguna'
+                      return (
+                        <div key={eje} className="relative group/cont">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setModalContencion(ingreso.id) }}
+                            className={`relative flex items-center justify-center w-6 h-6 rounded-md border transition-colors ${estilo.bg} ${estilo.border} ${estilo.text} hover:opacity-80`}
+                          >
+                            <Icono className="w-3.5 h-3.5" />
+                            {sev === 'sin_revisar' && (
+                              <AlertCircle className="w-2.5 h-2.5 text-slate-400 absolute -top-1 -right-1 bg-white rounded-full" />
+                            )}
+                          </button>
+                          {/* Tooltip a medida, mismo lenguaje visual que el de incidencias */}
+                          <div className="hidden group-hover/cont:block absolute z-20 left-1/2 -translate-x-1/2 bottom-full mb-1.5 w-max max-w-[200px]">
+                            <div className="bg-slate-800 text-white rounded-lg shadow-lg py-2 px-3">
+                              <p className="text-[10px] font-semibold text-slate-300 uppercase tracking-wide mb-0.5">
+                                {eje === 'dia' ? 'Día' : 'Noche'}
+                              </p>
+                              <p className="text-xs text-slate-100">{etiqueta}</p>
+                            </div>
+                            <div className="w-2 h-2 bg-slate-800 rotate-45 absolute left-1/2 -translate-x-1/2 -bottom-1" />
+                          </div>
+                        </div>
+                      )
+                    })}
                   </div>
                   {/* Botón evento */}
                   <div
@@ -376,24 +404,11 @@ export default function Home() {
 
       {/* Modal contención física: pautar o ver, sin salir de Inicio */}
       {modalContencion && (
-        <div
-          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
-          onClick={() => setModalContencion(null)}
-        >
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-base font-bold text-slate-800 flex items-center gap-1.5">
-                <ShieldAlert className="w-4 h-4 text-blue-600" /> Contención física
-              </h2>
-              <button onClick={() => setModalContencion(null)} className="text-slate-400 hover:text-slate-600 text-sm">✕</button>
-            </div>
-            <PanelContencion
-              ingresoId={modalContencion}
-              esMedico={esMedico}
-              onCambio={() => fetchData()}
-            />
-          </div>
-        </div>
+        <ModalContencion
+          ingresoId={modalContencion}
+          onClose={() => setModalContencion(null)}
+          onGuardado={() => fetchData()}
+        />
       )}
     </div>
   )

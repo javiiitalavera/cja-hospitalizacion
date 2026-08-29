@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import type { ItemsPaciente } from '../../types'
+import ModalContencion from '../../components/ModalContencion'
+import { severidadDia, severidadNoche, SEVERIDAD_ESTILO } from '../../types/contenciones'
 
 function TabItems({ ingresoId }: { ingresoId: string }) {
   const [data, setData] = useState<Partial<ItemsPaciente>>({})
@@ -8,6 +10,15 @@ function TabItems({ ingresoId }: { ingresoId: string }) {
   const [saved, setSaved] = useState(false)
   const [saveError, setSaveError] = useState(false)
   const [verHistorico, setVerHistorico] = useState(false)
+  const [modalContencion, setModalContencion] = useState(false)
+  const [estadoContencion, setEstadoContencion] = useState<{ dia: string | null; noche: string[] | null } | 'cargando'>('cargando')
+
+  function cargarContencion() {
+    supabase.from('contenciones').select('dia, noche').eq('ingreso_id', ingresoId).maybeSingle()
+      .then(({ data }) => setEstadoContencion(data ?? { dia: null, noche: null }))
+  }
+
+  useEffect(() => { cargarContencion() }, [ingresoId])
 
   useEffect(() => {
     supabase.from('items_paciente').select('*').eq('ingreso_id', ingresoId).single()
@@ -47,38 +58,6 @@ function TabItems({ ingresoId }: { ingresoId: string }) {
       {label}
     </label>
   )
-
-  const SUJECION_OPTS = ['normal', 'una_barra', 'dos_barras', 'sujecion_fisica', 'sensor_presion', 'cota_cero']
-  const SUJECION_LABELS: Record<string, string> = {
-    normal: 'Normal', una_barra: 'Una barra', dos_barras: 'Dos barras',
-    sujecion_fisica: 'Sujeción física', sensor_presion: 'Sensor de presión', cota_cero: 'Cota cero',
-  }
-
-  const multiSujecion = (key: 'sujecion_cama' | 'sujecion_silla_ruedas' | 'sujecion_sillon', label: string) => {
-    const current: string[] = (data[key] as string[]) ?? []
-    return (
-      <div>
-        <label className="label">{label}</label>
-        <div className="flex flex-wrap gap-2">
-          {SUJECION_OPTS.map(opt => {
-            const active = current.includes(opt)
-            return (
-              <button key={opt} type="button"
-                onClick={() => {
-                  const next = active ? current.filter(x => x !== opt) : [...current, opt]
-                  setData(d => ({ ...d, [key]: next }))
-                }}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-                  active ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400'
-                }`}>
-                {SUJECION_LABELS[opt]}
-              </button>
-            )
-          })}
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -166,43 +145,33 @@ function TabItems({ ingresoId }: { ingresoId: string }) {
         </div>
       </div>
 
-      <div className="card p-6 space-y-4">
+      <div className="card p-6 space-y-3">
         <p className="section-title">Contenciones</p>
-        {multiSujecion('sujecion_cama', 'Sujeción cama')}
-        <div>
-          <label className="label">Sujeción silla de ruedas</label>
-          <div className="flex gap-2">
-            {(['no','si_precisa','continuo'] as const).map(opt=>{
-              const labels={no:'No',si_precisa:'Sí precisa',continuo:'Continuo'}
-              const active=(data as any).sujecion_silla_ruedas===opt
-              return <button key={opt} type="button"
-                onClick={()=>setData(d=>({...d,sujecion_silla_ruedas:active?undefined:opt}))}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${active?'bg-primary-600 text-white border-primary-600':'bg-white text-slate-600 border-slate-300 hover:border-slate-400'}`}>
-                {labels[opt]}
-              </button>
+        {estadoContencion === 'cargando' ? (
+          <p className="text-sm text-slate-400">Cargando…</p>
+        ) : (
+          <div className="flex items-center gap-2">
+            {(['dia', 'noche'] as const).map((eje) => {
+              const sev = eje === 'dia' ? severidadDia(estadoContencion.dia as any) : severidadNoche(estadoContencion.noche as any)
+              const estilo = SEVERIDAD_ESTILO[sev]
+              return (
+                <span key={eje} className={`px-2.5 py-1.5 rounded-lg text-xs font-medium border ${estilo.bg} ${estilo.text} ${estilo.border}`}>
+                  {eje === 'dia' ? 'Día' : 'Noche'}: {estilo.label}
+                </span>
+              )
             })}
           </div>
-        </div>
-        <div>
-          <label className="label">Sujeción sillón</label>
-          <div className="flex gap-2">
-            {(['no','si_precisa','continuo'] as const).map(opt=>{
-              const labels={no:'No',si_precisa:'Sí precisa',continuo:'Continuo'}
-              const active=(data as any).sujecion_sillon===opt
-              return <button key={opt} type="button"
-                onClick={()=>setData(d=>({...d,sujecion_sillon:active?undefined:opt}))}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${active?'bg-primary-600 text-white border-primary-600':'bg-white text-slate-600 border-slate-300 hover:border-slate-400'}`}>
-                {labels[opt]}
-              </button>
-            })}
-          </div>
-        </div>
-        <div>
-          <label className="label">Observaciones</label>
-          <textarea className="textarea" rows={3}
-            value={(data.observaciones_sujeciones as string) ?? ''}
-            onChange={e => setData(d => ({ ...d, observaciones_sujeciones: e.target.value }))} />
-        </div>
+        )}
+        <button onClick={() => setModalContencion(true)} className="btn-secondary text-xs w-fit">
+          Ver / editar contención
+        </button>
+        {modalContencion && (
+          <ModalContencion
+            ingresoId={ingresoId}
+            onClose={() => setModalContencion(false)}
+            onGuardado={cargarContencion}
+          />
+        )}
       </div>
 
       <div className="flex justify-between items-center">

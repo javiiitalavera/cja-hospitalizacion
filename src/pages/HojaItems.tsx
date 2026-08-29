@@ -6,7 +6,8 @@ import { useAuth } from '../lib/AuthContext'
 import type { Ingreso, ItemsPaciente } from '../types'
 import { SEMAFORO_CAIDAS_COLOR as SEMAFORO_COLOR, nombreCompleto } from '../types'
 import { Printer, X, Save, History } from 'lucide-react'
-import { PanelContencion } from '../components/PanelContencion'
+import ModalContencion from '../components/ModalContencion'
+import { severidadDia, severidadNoche, SEVERIDAD_ESTILO } from '../types/contenciones'
 
 type IngresoConItems = Ingreso & { items: ItemsPaciente | null }
 
@@ -277,6 +278,13 @@ function PanelEdicion({
   dataRef.current = data
 
   const [confirmLimpiar, setConfirmLimpiar] = useState(false)
+  const [modalContencion, setModalContencion] = useState(false)
+  const [estadoContencion, setEstadoContencion] = useState<{ dia: string | null; noche: string[] | null } | 'cargando'>('cargando')
+
+  useEffect(() => {
+    supabase.from('contenciones').select('dia, noche').eq('ingreso_id', ingreso.id).maybeSingle()
+      .then(({ data }) => setEstadoContencion(data ?? { dia: null, noche: null }))
+  }, [ingreso.id])
   const [habEdit, setHabEdit] = useState(ingreso.habitacion?.toString() ?? '')
   const [habError, setHabError] = useState('')
   const [savingHab, setSavingHab] = useState(false)
@@ -571,7 +579,34 @@ function PanelEdicion({
         {bool('sensor_cama', 'Sensor cama')}
 
         <p className="section-title mt-3">Contenciones</p>
-        <PanelContencion ingresoId={ingreso.id} esMedico={esMedico} onCambio={(nuevos) => { setData(nuevos); onSaved(nuevos) }} />
+        {estadoContencion === 'cargando' ? (
+          <p className="text-xs text-slate-400">Cargando…</p>
+        ) : (
+          <div className="flex items-center gap-2 mb-2">
+            {(['dia', 'noche'] as const).map((eje) => {
+              const sev = eje === 'dia' ? severidadDia(estadoContencion.dia as any) : severidadNoche(estadoContencion.noche as any)
+              const estilo = SEVERIDAD_ESTILO[sev]
+              return (
+                <span key={eje} className={`px-2 py-1 rounded text-[10px] font-medium border ${estilo.bg} ${estilo.text} ${estilo.border}`}>
+                  {eje === 'dia' ? 'Día' : 'Noche'}: {estilo.label}
+                </span>
+              )
+            })}
+          </div>
+        )}
+        <button onClick={() => setModalContencion(true)} className="text-xs text-primary-600 hover:underline font-medium">
+          Ver / editar contención
+        </button>
+        {modalContencion && (
+          <ModalContencion
+            ingresoId={ingreso.id}
+            onClose={() => setModalContencion(false)}
+            onGuardado={() => {
+              supabase.from('contenciones').select('dia, noche').eq('ingreso_id', ingreso.id).maybeSingle()
+                .then(({ data }) => setEstadoContencion(data ?? { dia: null, noche: null }))
+            }}
+          />
+        )}
       </div>
 
       <div className="px-4 py-3 border-t space-y-2">

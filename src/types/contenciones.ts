@@ -1,0 +1,108 @@
+// ─── CONTENCIÓN FÍSICA: modelo día / noche ─────────────────────
+//
+// Dos ejes independientes por ingreso. "Nunca revisado" y "revisado,
+// nada pautado" son cosas distintas y se representan de forma
+// distinta a propósito (ver contenciones_v2.sql):
+//   día:   null = nunca revisado; 'ninguna' = revisado, nada pautado
+//   noche: null = nunca revisado; []        = revisado, nada pautado
+
+export type ContencionDia =
+  | 'ninguna'
+  | 'continua_seguridad'
+  | 'si_precisa_asistencial'
+  | 'si_precisa_paciente'
+
+export type ContencionNoche =
+  | '1_barra'
+  | '2_barras'
+  | 'cota_cero'
+  | 'sensor_presion'
+  | 'contencion_fija'
+  | 'contencion_si_precisa'
+
+export const DIA_OPCIONES: ContencionDia[] = [
+  'ninguna', 'continua_seguridad', 'si_precisa_asistencial', 'si_precisa_paciente',
+]
+
+export const NOCHE_OPCIONES: ContencionNoche[] = [
+  '1_barra', '2_barras', 'cota_cero', 'sensor_presion', 'contencion_fija', 'contencion_si_precisa',
+]
+
+export const CONTENCION_DIA_LABEL: Record<ContencionDia, string> = {
+  ninguna: 'Ninguna',
+  continua_seguridad: 'Continua por seguridad',
+  si_precisa_asistencial: 'Si precisa — necesidad asistencial',
+  si_precisa_paciente: 'Si precisa — situación del paciente',
+}
+
+export const CONTENCION_DIA_DESC: Record<ContencionDia, string> = {
+  ninguna: 'No se pauta contención durante el día.',
+  continua_seguridad: 'Puesta de forma continua por seguridad; se retira en cuanto deja de ser necesaria.',
+  si_precisa_asistencial: 'Solo cuando la carga del turno lo requiere (p. ej. falta de personal).',
+  si_precisa_paciente: 'Solo según el estado del paciente (mala deambulación, inquietud motora, agresividad…).',
+}
+
+export const CONTENCION_NOCHE_LABEL: Record<ContencionNoche, string> = {
+  '1_barra': '1 barra',
+  '2_barras': '2 barras',
+  cota_cero: 'Cama a cota cero',
+  sensor_presion: 'Sensor de presión',
+  contencion_fija: 'Contención fija',
+  contencion_si_precisa: 'Contención si precisa',
+}
+
+// De las seis medidas nocturnas, solo estas dos cuentan como
+// contención de verdad para recuentos/estadísticas — el resto son
+// medidas de seguridad (barras, cota cero, sensor), no contención.
+export const NOCHE_ES_CONTENCION: ContencionNoche[] = ['contencion_fija', 'contencion_si_precisa']
+
+export interface EstadoContencion {
+  ingreso_id: string
+  dia: ContencionDia | null
+  noche: ContencionNoche[] | null
+  actualizado_por_id?: string
+  actualizado_en?: string
+  actualizado_por?: { nombre: string; apellidos: string }
+}
+
+export interface HistorialContencion {
+  id: string
+  ingreso_id: string
+  dia: ContencionDia | null
+  noche: ContencionNoche[] | null
+  cambiado_por_id?: string
+  cambiado_en: string
+  cambiado_por?: { nombre: string; apellidos: string }
+}
+
+// ─── Gravedad y color, compartidos entre el modal y los iconos ──
+//
+// La misma función decide el color en Inicio, en la Hoja de Ítems y
+// en el propio modal — un único criterio, no uno por pantalla.
+
+export type SeveridadContencion = 'sin_revisar' | 'ninguna' | 'seguridad' | 'si_precisa' | 'activa'
+
+export function severidadDia(dia: ContencionDia | null | undefined): SeveridadContencion {
+  if (dia == null) return 'sin_revisar'
+  if (dia === 'ninguna') return 'ninguna'
+  if (dia === 'continua_seguridad') return 'activa'
+  return 'si_precisa'
+}
+
+export function severidadNoche(noche: ContencionNoche[] | null | undefined): SeveridadContencion {
+  if (noche == null) return 'sin_revisar'
+  if (noche.length === 0) return 'ninguna'
+  if (noche.includes('contencion_fija')) return 'activa'
+  if (noche.includes('contencion_si_precisa')) return 'si_precisa'
+  return 'seguridad'
+}
+
+export const SEVERIDAD_ESTILO: Record<SeveridadContencion, {
+  bg: string; text: string; border: string; label: string
+}> = {
+  sin_revisar: { bg: 'bg-slate-100', text: 'text-slate-400', border: 'border-slate-200', label: 'Sin revisar' },
+  ninguna: { bg: 'bg-slate-50', text: 'text-slate-400', border: 'border-slate-200', label: 'Ninguna' },
+  seguridad: { bg: 'bg-blue-50', text: 'text-blue-600', border: 'border-blue-200', label: 'Medida de seguridad' },
+  si_precisa: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', label: 'Si precisa' },
+  activa: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200', label: 'Activa' },
+}
