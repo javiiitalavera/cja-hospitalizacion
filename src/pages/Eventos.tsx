@@ -9,6 +9,12 @@ import { nombreCompleto } from '../types'
 import { ChevronDown, ChevronRight as ChevronRightIcon, Download, Printer } from 'lucide-react'
 import { TIPO_EVENTO_LABEL, TURNO_LABEL, CAMPOS_POR_TIPO, type TipoEvento } from '../types/eventos'
 import { formatFechaLocal as fmt } from '../lib/fechas'
+import {
+  severidadDia, severidadNoche, SEVERIDAD_ESTILO,
+  CONTENCION_DIA_LABEL, CONTENCION_NOCHE_LABEL,
+  type ContencionDia, type ContencionNoche,
+} from '../types/contenciones'
+import ModalContencion from '../components/ModalContencion'
 
 // ─── CONSTANTES ────────────────────────────────────────────────
 
@@ -73,6 +79,33 @@ function escaparCsv(v: string): string {
 
 export function Eventos() {
   const navigate = useNavigate()
+
+  // ── Contenciones activas (ingresos activos) ─────────────────
+  const [loadingContenciones, setLoadingContenciones] = useState(true)
+  const [contenciones, setContenciones] = useState<any[]>([])
+  const [modalContencion, setModalContencion] = useState<string | null>(null)
+
+  useEffect(() => { fetchContenciones() }, [])
+
+  async function fetchContenciones() {
+    setLoadingContenciones(true)
+    try {
+      const { data } = await supabase
+        .from('contenciones')
+        .select(`
+          ingreso_id, dia, noche, actualizado_en,
+          ingreso:ingresos!inner(id, habitacion, estado, paciente:pacientes(nombre, primer_apellido, segundo_apellido))
+        `)
+        .eq('ingreso.estado', 'activo')
+      // Solo interesa aquí quien tiene ALGO pautado (no "ninguna").
+      const activas = (data ?? []).filter((c: any) =>
+        (c.dia && c.dia !== 'ninguna') || (c.noche && c.noche.length > 0)
+      )
+      setContenciones(activas)
+    } finally {
+      setLoadingContenciones(false)
+    }
+  }
 
   // ── Estado actual (todos los tipos, ingresos activos) ──────
   const [loadingEstado, setLoadingEstado] = useState(true)
@@ -251,6 +284,67 @@ export function Eventos() {
         <h1 className="text-2xl font-bold text-slate-800">Incidencias</h1>
         <p className="text-sm text-slate-400 mt-0.5">Estado de seguridad de la planta y tendencias</p>
       </div>
+
+      {/* ══════════════ CONTENCIONES ACTIVAS ══════════════ */}
+      <section>
+        <p className="section-title">Contenciones activas · ingresos activos</p>
+        <div className="card overflow-hidden">
+          {loadingContenciones ? (
+            <p className="px-4 py-8 text-center text-slate-400 text-sm">Cargando…</p>
+          ) : contenciones.length === 0 ? (
+            <p className="px-4 py-8 text-center text-slate-400 text-sm">Ningún paciente ingresado tiene contención pautada ahora mismo.</p>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-slate-50 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                  <th className="px-4 py-2.5">Paciente</th>
+                  <th className="px-4 py-2.5">Hab.</th>
+                  <th className="px-4 py-2.5">Día</th>
+                  <th className="px-4 py-2.5">Noche</th>
+                  <th className="px-4 py-2.5">Última revisión</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {contenciones.map((c) => {
+                  const sevDia = severidadDia(c.dia)
+                  const sevNoche = severidadNoche(c.noche)
+                  return (
+                    <tr key={c.ingreso_id} className="hover:bg-slate-50 cursor-pointer" onClick={() => setModalContencion(c.ingreso_id)}>
+                      <td className="px-4 py-2.5 font-medium text-slate-700">{nombreCompleto(c.ingreso.paciente)}</td>
+                      <td className="px-4 py-2.5">{c.ingreso.habitacion ?? '—'}</td>
+                      <td className="px-4 py-2.5">
+                        {c.dia && c.dia !== 'ninguna' ? (
+                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${SEVERIDAD_ESTILO[sevDia].bg} ${SEVERIDAD_ESTILO[sevDia].text}`}>
+                            {CONTENCION_DIA_LABEL[c.dia as ContencionDia]}
+                          </span>
+                        ) : <span className="text-slate-300">—</span>}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        {c.noche && c.noche.length > 0 ? (
+                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${SEVERIDAD_ESTILO[sevNoche].bg} ${SEVERIDAD_ESTILO[sevNoche].text}`}>
+                            {(c.noche as ContencionNoche[]).map((n) => CONTENCION_NOCHE_LABEL[n]).join(', ')}
+                          </span>
+                        ) : <span className="text-slate-300">—</span>}
+                      </td>
+                      <td className="px-4 py-2.5 text-slate-400 text-xs">
+                        {c.actualizado_en ? new Date(c.actualizado_en).toLocaleDateString('es-ES') : '—'}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </section>
+
+      {modalContencion && (
+        <ModalContencion
+          ingresoId={modalContencion}
+          onClose={() => setModalContencion(null)}
+          onGuardado={fetchContenciones}
+        />
+      )}
 
       {/* ══════════════ ESTADO ACTUAL ══════════════ */}
       <section>
