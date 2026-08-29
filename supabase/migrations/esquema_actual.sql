@@ -577,19 +577,26 @@ create policy crear_evento on public.eventos for insert to authenticated
         and exists (select 1 from ingresos i where i.id = eventos.ingreso_id and i.estado = 'activo')
         and registrado_por_id = (select id from profesionales where user_id = auth.uid() limit 1)
     );
+-- Editar y borrar: solo quien la registró, o un administrador (por
+-- ejemplo, para corregir o borrar una incidencia dada de alta por
+-- error). El resto del equipo puede seguir viéndolas todas, pero no
+-- tocar las que no son suyas.
 create policy editar_evento on public.eventos for update to authenticated
     using (
         private.mi_rol() in ('medico', 'enfermeria', 'auxiliar', 'tecnico')
         and exists (select 1 from ingresos i where i.id = eventos.ingreso_id and i.estado = 'activo')
+        and (registrado_por_id = (select id from profesionales where user_id = auth.uid() limit 1) or private.soy_admin())
     )
     with check (
         private.mi_rol() in ('medico', 'enfermeria', 'auxiliar', 'tecnico')
         and exists (select 1 from ingresos i where i.id = eventos.ingreso_id and i.estado = 'activo')
+        and (registrado_por_id = (select id from profesionales where user_id = auth.uid() limit 1) or private.soy_admin())
     );
 create policy borrar_evento on public.eventos for delete to authenticated
     using (
         private.mi_rol() in ('medico', 'enfermeria', 'auxiliar', 'tecnico')
         and exists (select 1 from ingresos i where i.id = eventos.ingreso_id and i.estado = 'activo')
+        and (registrado_por_id = (select id from profesionales where user_id = auth.uid() limit 1) or private.soy_admin())
     );
 
 

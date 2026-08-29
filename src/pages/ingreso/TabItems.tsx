@@ -12,17 +12,41 @@ function TabItems({ ingresoId }: { ingresoId: string }) {
   const [verHistorico, setVerHistorico] = useState(false)
   const [modalContencion, setModalContencion] = useState(false)
   const [estadoContencion, setEstadoContencion] = useState<{ dia: string | null; noche: string[] | null } | 'cargando'>('cargando')
+  const [errorCarga, setErrorCarga] = useState('')
 
   function cargarContencion() {
     supabase.from('contenciones').select('dia, noche').eq('ingreso_id', ingresoId).maybeSingle()
-      .then(({ data }) => setEstadoContencion(data ?? { dia: null, noche: null }))
+      .then(({ data, error }) => {
+        if (error) {
+          // Un error real (red, permisos...) no es lo mismo que "sin
+          // revisar todavía" — si se confunden, guardar después
+          // podría sobrescribir una pauta real con "no hay nada".
+          setErrorCarga('No se pudo comprobar la contención: ' + error.message)
+          return
+        }
+        setEstadoContencion(data ?? { dia: null, noche: null })
+      })
   }
 
   useEffect(() => { cargarContencion() }, [ingresoId])
 
   useEffect(() => {
-    supabase.from('items_paciente').select('*').eq('ingreso_id', ingresoId).single()
-      .then(({ data: d }) => { if (d) setData(d) })
+    // .maybeSingle() en vez de .single(): un ingreso recién creado
+    // puede no tener fila de items_paciente todavía, y eso no es un
+    // error. setData(d ?? {}) SIEMPRE se ejecuta (antes solo se
+    // llamaba si había datos) — así, al cambiar de un paciente con
+    // items a uno sin ellos, el formulario se vacía de verdad en vez
+    // de seguir mostrando los datos del paciente anterior.
+    setData({})
+    setErrorCarga('')
+    supabase.from('items_paciente').select('*').eq('ingreso_id', ingresoId).maybeSingle()
+      .then(({ data: d, error }) => {
+        if (error) {
+          setErrorCarga('No se pudieron cargar los ítems: ' + error.message)
+          return
+        }
+        setData(d ?? {})
+      })
   }, [ingresoId])
 
   async function save() {
@@ -61,6 +85,11 @@ function TabItems({ ingresoId }: { ingresoId: string }) {
 
   return (
     <div className="max-w-3xl space-y-6">
+      {errorCarga && (
+        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+          {errorCarga} — no guardes cambios hasta recargar la página, para no sobrescribir datos reales con vacío.
+        </div>
+      )}
       <div className="card p-6 space-y-3">
         <p className="section-title">Seguridad y conducta</p>
         {estadoContencion === 'cargando' ? (

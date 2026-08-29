@@ -241,7 +241,7 @@ export default function DetalleIngreso() {
           {tab === 'datos' && <TabDatos ingreso={ingreso} onUpdate={setIngreso} />}
           {tab === 'ingreso' && id && <TabInformeIngreso ingresoId={id} ingreso={ingreso} />}
           {tab === 'alta' && id && <TabInformeAlta ingresoId={id} ingreso={ingreso} />}
-          {tab === 'items' && id && <TabItems ingresoId={id} />}
+          {tab === 'items' && id && <TabItems ingresoId={id} key={id} />}
           {tab === 'eventos' && id && <TabEventos ingresoId={id} />}
           {tab === 'cmbd' && id && <TabCMBD ingresoId={id} ingreso={ingreso} />}
         </fieldset>

@@ -49,54 +49,60 @@ export default function Home() {
   })
 
   async function fetchData() {
-    const { data } = await supabase
-      .from('ingresos')
-      .select(
-        '*, paciente:pacientes(nombre,primer_apellido,segundo_apellido,fecha_nacimiento,nhc), medico_responsable:profesionales(nombre,apellidos)'
-      )
-      .eq('estado', 'activo')
-      .order('habitacion', { ascending: true })
+    try {
+      const { data } = await supabase
+        .from('ingresos')
+        .select(
+          '*, paciente:pacientes(nombre,primer_apellido,segundo_apellido,fecha_nacimiento,nhc), medico_responsable:profesionales(nombre,apellidos)'
+        )
+        .eq('estado', 'activo')
+        .order('habitacion', { ascending: true })
 
-    const list = (data ?? []) as IngresoConPaciente[]
-    setIngresos(list)
+      const list = (data ?? []) as IngresoConPaciente[]
+      setIngresos(list)
 
-    if (list.length > 0) {
-      const ids = list.map((i) => i.id)
+      if (list.length > 0) {
+        const ids = list.map((i) => i.id)
 
-      const [{ data: itemsData }, { data: informesData }, { data: eventosData }, { data: pautasData }] = await Promise.all([
-        supabase.from('items_paciente').select('ingreso_id,semaforo_caidas').in('ingreso_id', ids),
-        supabase.from('informe_ingreso').select('ingreso_id,impresion_diagnostica').in('ingreso_id', ids),
-        supabase.from('eventos').select('ingreso_id,tipo').in('ingreso_id', ids),
-        supabase.from('contenciones').select('ingreso_id, dia, noche').in('ingreso_id', ids),
-      ])
+        const [{ data: itemsData }, { data: informesData }, { data: eventosData }, { data: pautasData }] = await Promise.all([
+          supabase.from('items_paciente').select('ingreso_id,semaforo_caidas').in('ingreso_id', ids),
+          supabase.from('informe_ingreso').select('ingreso_id,impresion_diagnostica').in('ingreso_id', ids),
+          supabase.from('eventos').select('ingreso_id,tipo').in('ingreso_id', ids),
+          supabase.from('contenciones').select('ingreso_id, dia, noche').in('ingreso_id', ids),
+        ])
 
-      const itemsMap: Record<string, { semaforo_caidas?: string }> = {}
-      ;(itemsData ?? []).forEach((it: any) => {
-        itemsMap[it.ingreso_id] = it
-      })
-      setItems(itemsMap)
+        const itemsMap: Record<string, { semaforo_caidas?: string }> = {}
+        ;(itemsData ?? []).forEach((it: any) => {
+          itemsMap[it.ingreso_id] = it
+        })
+        setItems(itemsMap)
 
-      const informesMap: Record<string, { impresion_diagnostica?: string }> = {}
-      ;(informesData ?? []).forEach((inf: any) => {
-        informesMap[inf.ingreso_id] = inf
-      })
-      setInformes(informesMap)
+        const informesMap: Record<string, { impresion_diagnostica?: string }> = {}
+        ;(informesData ?? []).forEach((inf: any) => {
+          informesMap[inf.ingreso_id] = inf
+        })
+        setInformes(informesMap)
 
-      // Tipos de incidencia por ingreso, para el aviso rápido en la tabla.
-      const eventosMap: Record<string, string[]> = {}
-      ;(eventosData ?? []).forEach((ev: any) => {
-        if (!eventosMap[ev.ingreso_id]) eventosMap[ev.ingreso_id] = []
-        eventosMap[ev.ingreso_id].push(ev.tipo)
-      })
-      setEventosPorIngreso(eventosMap)
+        // Tipos de incidencia por ingreso, para el aviso rápido en la tabla.
+        const eventosMap: Record<string, string[]> = {}
+        ;(eventosData ?? []).forEach((ev: any) => {
+          if (!eventosMap[ev.ingreso_id]) eventosMap[ev.ingreso_id] = []
+          eventosMap[ev.ingreso_id].push(ev.tipo)
+        })
+        setEventosPorIngreso(eventosMap)
 
-      const contencionesMap: Record<string, { dia: ContencionDia | null; noche: ContencionNoche[] | null }> = {}
-      ;(pautasData ?? []).forEach((p: any) => {
-        contencionesMap[p.ingreso_id] = { dia: p.dia, noche: p.noche }
-      })
-      setContencionesPorIngreso(contencionesMap)
+        const contencionesMap: Record<string, { dia: ContencionDia | null; noche: ContencionNoche[] | null }> = {}
+        ;(pautasData ?? []).forEach((p: any) => {
+          contencionesMap[p.ingreso_id] = { dia: p.dia, noche: p.noche }
+        })
+        setContencionesPorIngreso(contencionesMap)
+      }
+    } finally {
+      // Sin esto, un fallo en cualquiera de las consultas de arriba
+      // (por ejemplo, si la tabla contenciones no existiera) dejaba
+      // Inicio colgado en "Cargando…" para siempre.
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   useEffect(() => {

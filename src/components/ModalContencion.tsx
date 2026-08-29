@@ -31,11 +31,18 @@ export default function ModalContencion({ ingresoId, onClose, onGuardado }: Prop
   async function cargar() {
     setLoading(true)
     try {
-      const { data } = await supabase
+      const { data, error: err } = await supabase
         .from('contenciones')
         .select('*, actualizado_por:profesionales!actualizado_por_id(nombre, apellidos)')
         .eq('ingreso_id', ingresoId)
         .maybeSingle()
+      if (err) {
+        // Un error real (red, permisos...) es distinto de "todavía no
+        // hay pauta" — si se confunden, guardar después podría
+        // sobrescribir una orden real con "sin revisar".
+        setError('No se pudo cargar el estado actual: ' + err.message)
+        return
+      }
       if (data) {
         setDia((data.dia as ContencionDia) ?? 'ninguna')
         setNoche((data.noche as ContencionNoche[]) ?? [])
@@ -51,12 +58,16 @@ export default function ModalContencion({ ingresoId, onClose, onGuardado }: Prop
 
   async function cargarHistorial() {
     if (historial !== null) { setMostrarHistorial((v) => !v); return }
-    const { data } = await supabase
+    const { data, error: err } = await supabase
       .from('contenciones_historial')
       .select('*, cambiado_por:profesionales!cambiado_por_id(nombre, apellidos)')
       .eq('ingreso_id', ingresoId)
       .order('cambiado_en', { ascending: false })
       .limit(20)
+    if (err) {
+      setError('No se pudo cargar el historial: ' + err.message)
+      return
+    }
     setHistorial((data ?? []) as unknown as HistorialContencion[])
     setMostrarHistorial(true)
   }
@@ -77,7 +88,10 @@ export default function ModalContencion({ ingresoId, onClose, onGuardado }: Prop
       dia,
       noche,
       actualizado_por_id: profesional.id,
-      actualizado_en: new Date().toISOString(),
+      // Sin actualizado_en: lo pone la propia base de datos (default
+      // now()), no el reloj del ordenador de quien lo guarda — es la
+      // hora real la que importa aquí, no la que tenga puesta el
+      // portátil de turno.
     })
     setGuardando(false)
     if (err) {

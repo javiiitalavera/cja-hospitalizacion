@@ -2,7 +2,7 @@
 //
 // Dos ejes independientes por ingreso. "Nunca revisado" y "revisado,
 // nada pautado" son cosas distintas y se representan de forma
-// distinta a propósito (ver contenciones_v2.sql):
+// distinta a propósito (ver el esquema, tabla "contenciones"):
 //   día:   null = nunca revisado; 'ninguna' = revisado, nada pautado
 //   noche: null = nunca revisado; []        = revisado, nada pautado
 

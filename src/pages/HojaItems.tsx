@@ -280,7 +280,6 @@ function buildPrintHTML(data: IngresoConItems[], today: string): string {
 <meta charset="utf-8"/>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: Arial, sans-serif; background: white; }
   .page { width: 100%; padding: 4px 6px; }
   .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px; font-size: 8pt; }
@@ -353,10 +352,19 @@ function PanelEdicion({
   const [confirmLimpiar, setConfirmLimpiar] = useState(false)
   const [modalContencion, setModalContencion] = useState(false)
   const [estadoContencion, setEstadoContencion] = useState<{ dia: string | null; noche: string[] | null } | 'cargando'>('cargando')
+  const [errorContencion, setErrorContencion] = useState('')
 
   useEffect(() => {
     supabase.from('contenciones').select('dia, noche').eq('ingreso_id', ingreso.id).maybeSingle()
-      .then(({ data }) => setEstadoContencion(data ?? { dia: null, noche: null }))
+      .then(({ data, error }) => {
+        if (error) {
+          // Distinto de "sin revisar": un error real no debería
+          // dejar creer que no hay contención pautada.
+          setErrorContencion('No se pudo comprobar la contención: ' + error.message)
+          return
+        }
+        setEstadoContencion(data ?? { dia: null, noche: null })
+      })
   }, [ingreso.id])
   const [habEdit, setHabEdit] = useState(ingreso.habitacion?.toString() ?? '')
   const [habError, setHabError] = useState('')
@@ -558,6 +566,9 @@ function PanelEdicion({
         </div>
 
         <p className="section-title mt-3">Seguridad y conducta</p>
+        {errorContencion && (
+          <p className="text-[10px] text-red-600 bg-red-50 border border-red-100 rounded px-2 py-1 mb-1.5">{errorContencion}</p>
+        )}
         {estadoContencion === 'cargando' ? (
           <p className="text-xs text-slate-400">Cargando…</p>
         ) : (
@@ -582,7 +593,11 @@ function PanelEdicion({
             onClose={() => setModalContencion(false)}
             onGuardado={() => {
               supabase.from('contenciones').select('dia, noche').eq('ingreso_id', ingreso.id).maybeSingle()
-                .then(({ data }) => {
+                .then(({ data, error }) => {
+                  if (error) {
+                    setErrorContencion('No se pudo confirmar el guardado: ' + error.message)
+                    return
+                  }
                   const nueva = data ?? { dia: null, noche: null }
                   setEstadoContencion(nueva)
                   onContencionChanged(ingreso.id, nueva)
