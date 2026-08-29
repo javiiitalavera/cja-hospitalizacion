@@ -39,9 +39,9 @@ const SUJECION_SHORT: Record<string, string> = {
 // para mostrar fotos históricas de antes de este cambio).
 const DIA_SHORT: Record<string, string> = {
   ninguna: '—',
-  continua_seguridad: 'Cont.Seg',
-  si_precisa_asistencial: 'S/P-Asist',
-  si_precisa_paciente: 'S/P-Pac',
+  continua_seguridad: 'X',
+  si_precisa_asistencial: 'A',
+  si_precisa_paciente: 'S/P',
 }
 const NOCHE_SHORT: Record<string, string> = {
   '1_barra': '1B',
@@ -57,7 +57,10 @@ function diaStr(v: string | null | undefined): string {
 }
 function nocheStr(arr: string[] | null | undefined): string {
   if (!arr || arr.length === 0) return ''
-  return arr.map((x) => NOCHE_SHORT[x] ?? x).join('+')
+  // El sensor de presión no se repite aquí como texto — ya tiene su
+  // propia fila justo debajo, con una simple marca X.
+  const sinSensor = arr.filter((x) => x !== 'sensor_presion')
+  return sinSensor.map((x) => NOCHE_SHORT[x] ?? x).join('+')
 }
 
 // Agrupado en bloques con sentido clínico, en vez de una lista plana
