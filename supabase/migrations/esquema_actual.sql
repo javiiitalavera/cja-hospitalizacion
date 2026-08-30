@@ -687,6 +687,80 @@ end;
 $$;
 
 
+-- Alta de paciente nuevo: paciente + ingreso como una sola
+-- operación transaccional, para que no pueda quedar un paciente
+-- sin ingreso si algo falla a mitad (confirmado que pasaba de
+-- verdad antes de esta función, reproducido contra la base real).
+create or replace function public.crear_paciente_e_ingreso(
+  p_paciente jsonb,
+  p_habitacion int,
+  p_fecha_ingreso date,
+  p_medico_responsable_id uuid,
+  p_motivo_ingreso text,
+  p_forzar boolean default false
+) returns jsonb
+language plpgsql
+security invoker
+as $$
+declare
+  v_paciente_id uuid;
+  v_ingreso_id uuid;
+  v_existente record;
+begin
+  if p_habitacion is not null and exists (
+    select 1 from public.ingresos where habitacion = p_habitacion and estado = 'activo'
+  ) then
+    raise exception using errcode = 'P0001', message = 'habitacion_ocupada';
+  end if;
+
+  if not p_forzar then
+    select id, nombre, primer_apellido, segundo_apellido
+    into v_existente
+    from public.pacientes
+    where nombre_normalizado = public.inmutable_unaccent(lower(p_paciente->>'nombre'))
+      and primer_apellido_normalizado = public.inmutable_unaccent(lower(p_paciente->>'primer_apellido'))
+      and segundo_apellido_normalizado = public.inmutable_unaccent(lower(coalesce(p_paciente->>'segundo_apellido', '')))
+    limit 1;
+
+    if found then
+      raise exception using errcode = 'P0001', message =
+        'posible_duplicado:' || v_existente.id || ':' ||
+        v_existente.nombre || ' ' || v_existente.primer_apellido || ' ' || coalesce(v_existente.segundo_apellido, '');
+    end if;
+  end if;
+
+  insert into public.pacientes (
+    nombre, primer_apellido, segundo_apellido, cipna, nhc,
+    fecha_nacimiento, sexo, dni, municipio, medico_cabecera,
+    contacto_familiar_nombre, contacto_familiar_telefono
+  ) values (
+    p_paciente->>'nombre', p_paciente->>'primer_apellido', nullif(p_paciente->>'segundo_apellido', ''),
+    nullif(p_paciente->>'cipna', ''), nullif(p_paciente->>'nhc', ''),
+    nullif(p_paciente->>'fecha_nacimiento', '')::date, nullif(p_paciente->>'sexo', ''),
+    nullif(p_paciente->>'dni', ''), nullif(p_paciente->>'municipio', ''), nullif(p_paciente->>'medico_cabecera', ''),
+    nullif(p_paciente->>'contacto_familiar_nombre', ''), nullif(p_paciente->>'contacto_familiar_telefono', '')
+  )
+  returning id into v_paciente_id;
+
+  insert into public.ingresos (paciente_id, fecha_ingreso, habitacion, medico_responsable_id, motivo_ingreso, estado)
+  values (v_paciente_id, p_fecha_ingreso, p_habitacion, nullif(p_medico_responsable_id::text, '')::uuid, p_motivo_ingreso, 'activo')
+  returning id into v_ingreso_id;
+
+  return jsonb_build_object('paciente_id', v_paciente_id, 'ingreso_id', v_ingreso_id);
+end;
+$$;
+
+-- security invoker: se ejecuta con los permisos de quien la llama, así
+-- que sigue exigiendo las mismas políticas RLS de siempre para poder
+-- insertar en pacientes e ingresos — no es una puerta trasera. No fija
+-- search_path (a diferencia de las funciones security definer del
+-- resto del esquema): esa protección es contra suplantación de
+-- esquema bajo privilegios elevados, y aquí no hay privilegios
+-- elevados que suplantar; fijarlo rompía la llamada anidada a
+-- inmutable_unaccent(), que depende del search_path de quien la llama.
+grant execute on function public.crear_paciente_e_ingreso(jsonb, int, date, uuid, text, boolean) to authenticated;
+
+
 -- ────────────────────────────────────────────────────────────
 -- DISPARADORES
 -- ────────────────────────────────────────────────────────────

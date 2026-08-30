@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { hoyLocal } from '../lib/fechas'
 import { useAuth } from '../lib/AuthContext'
@@ -38,9 +38,21 @@ export default function FormularioEvento({ ingresoId, eventoExistente, onClose, 
       .then(({ data }) => setProfesionales(data ?? []))
   }, [])
 
-  // Reset datos específicos al cambiar tipo
+  // Sin esto, cambiar el tipo mientras se edita una incidencia
+  // existente (por ejemplo, de "caída" a "fuga") dejaba los campos
+  // del tipo anterior sueltos en "datos" — invisibles en el
+  // formulario, pero guardados igualmente al pulsar "Guardar", mezclados
+  // con los del tipo nuevo. tipoAnteriorRef distingue "el tipo acaba
+  // de cargarse al abrir el formulario" (no limpiar) de "el usuario
+  // ha elegido otro tipo de verdad" (sí limpiar) — antes solo se
+  // limpiaba al crear una incidencia nueva, nunca al editar una ya
+  // existente.
+  const tipoAnteriorRef = useRef(tipo)
   useEffect(() => {
-    if (!eventoExistente) setDatos({})
+    if (tipoAnteriorRef.current !== tipo) {
+      setDatos({})
+      tipoAnteriorRef.current = tipo
+    }
   }, [tipo])
 
   function setDato(key: string, val: string) {
