@@ -19,6 +19,7 @@ export default function NuevoIngreso() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [errorBusqueda, setErrorBusqueda] = useState('')
+  const [duplicadoDetectado, setDuplicadoDetectado] = useState<{ id: string; nombre: string } | null>(null)
 
   // Flujo: 'buscar' → 'nuevo_paciente' | 'reingreso'
   const [paso, setPaso] = useState<'buscar' | 'nuevo_paciente' | 'reingreso'>(pacienteIdParam ? 'reingreso' : 'buscar')
@@ -199,18 +200,13 @@ export default function NuevoIngreso() {
       }
     }
 
-    const [rInfIngreso, rInfAlta, rItems] = await Promise.all([
-      supabase.from('informe_ingreso').insert([{ ingreso_id: ingresoData.id, ...informeBase }]),
-      supabase.from('informe_alta').insert([{ ingreso_id: ingresoData.id }]),
-      supabase.from('items_paciente').insert([{ ingreso_id: ingresoData.id, ...itemsBase }]),
-    ])
-    const fallos = [rInfIngreso, rInfAlta, rItems].filter((r) => r.error)
+    const fallos = await crearRegistrosSatelite(ingresoData.id, informeBase, itemsBase)
     if (fallos.length > 0) {
       // El ingreso en sí ya se creó correctamente; avisamos igualmente,
       // porque alguna de sus piezas asociadas no se pudo inicializar.
       setError(
         'El ingreso se creó, pero algo no se inicializó bien (' +
-        fallos.map((f) => f.error?.message).join('; ') +
+        fallos.join('; ') +
         '). Revisa las pestañas del ingreso al entrar.'
       )
       return { id: ingresoData.id, conAviso: true }
@@ -218,32 +214,74 @@ export default function NuevoIngreso() {
     return { id: ingresoData.id, conAviso: false }
   }
 
-  async function handleNuevoPaciente() {
+  // Crea informe de ingreso, informe de alta e ítems para un ingreso
+  // que ya existe — compartido entre el alta de paciente nuevo y el
+  // reingreso, para no repetir la misma lógica dos veces.
+  async function crearRegistrosSatelite(
+    ingresoId: string,
+    informeBase: Record<string, any>,
+    itemsBase: Record<string, any>
+  ): Promise<string[]> {
+    const [rInfIngreso, rInfAlta, rItems] = await Promise.all([
+      supabase.from('informe_ingreso').insert([{ ingreso_id: ingresoId, ...informeBase }]),
+      supabase.from('informe_alta').insert([{ ingreso_id: ingresoId }]),
+      supabase.from('items_paciente').insert([{ ingreso_id: ingresoId, ...itemsBase }]),
+    ])
+    return [rInfIngreso, rInfAlta, rItems].filter((r) => r.error).map((r) => r.error!.message)
+  }
+
+  async function handleNuevoPaciente(forzarPeseADuplicado = false) {
     setError('')
     if (!paciente.nombre || !paciente.primer_apellido || !ingreso.fecha_ingreso) {
       setError('Nombre, primer apellido y fecha de ingreso son obligatorios.')
       return
     }
     setLoading(true)
-    // Campos opcionales en blanco ('') se convierten a null: una fecha
-    // vacía no es un valor "date" válido, y un sexo vacío incumple su
-    // restricción — dejarlos como cadena vacía hacía fallar el alta
-    // aunque el propio formulario los marca como opcionales.
-    const pacienteNormalizado = Object.fromEntries(
-      Object.entries(paciente).map(([k, v]) => [k, v === '' ? null : v])
-    )
-    const { data: pacienteData, error: errPaciente } = await supabase
-      .from('pacientes')
-      .insert([pacienteNormalizado])
-      .select()
-      .single()
-    if (errPaciente || !pacienteData) {
-      setError('Error al crear el paciente: ' + errPaciente?.message)
+    // Campos opcionales en blanco ('') se convierten a null dentro de
+    // la propia función de base de datos — una fecha vacía no es un
+    // valor "date" válido, y un sexo vacío incumple su restricción.
+    //
+    // Paciente + ingreso se crean como una sola operación en el
+    // servidor: si algo falla a mitad (habitación ocupada, un corte
+    // justo ahí), no puede quedar un paciente sin ingreso — antes sí
+    // podía, y se confirmó reproduciéndolo contra la base de datos.
+    const { data, error: err } = await supabase.rpc('crear_paciente_e_ingreso', {
+      p_paciente: paciente,
+      p_habitacion: ingreso.habitacion ? parseInt(ingreso.habitacion) : null,
+      p_fecha_ingreso: ingreso.fecha_ingreso,
+      p_medico_responsable_id: ingreso.medico_responsable_id || null,
+      p_motivo_ingreso: ingreso.motivo_ingreso,
+      p_forzar: forzarPeseADuplicado,
+    })
+
+    if (err) {
+      if (err.message.startsWith('posible_duplicado:')) {
+        const [, id, nombreCompleto] = err.message.split(':')
+        setDuplicadoDetectado({ id, nombre: nombreCompleto })
+        setLoading(false)
+        return
+      }
+      if (err.message === 'habitacion_ocupada') {
+        setError(`La habitación ${ingreso.habitacion} ya está ocupada.`)
+      } else {
+        setError('Error al crear el paciente: ' + err.message)
+      }
       setLoading(false)
       return
     }
-    const resultado = await crearIngreso(pacienteData.id)
-    if (resultado && !resultado.conAviso) navigate(`/ingresos/${resultado.id}`)
+
+    // La función también devuelve paciente_id, pero aquí solo hace
+    // falta el ingreso para navegar — no se destructura por no dejar
+    // una variable declarada sin usar.
+    const { ingreso_id } = data as { paciente_id: string; ingreso_id: string }
+    const fallos = await crearRegistrosSatelite(ingreso_id, {}, {})
+    setLoading(false)
+    if (fallos.length > 0) {
+      setError('El ingreso se creó, pero algo no se inicializó bien (' + fallos.join('; ') + '). Revisa las pestañas del ingreso al entrar.')
+      navigate(`/ingresos/${ingreso_id}`)
+      return
+    }
+    navigate(`/ingresos/${ingreso_id}`)
     setLoading(false)
   }
 
@@ -593,11 +631,44 @@ export default function NuevoIngreso() {
             <button onClick={() => setPaso('buscar')} className="btn-secondary">
               Cancelar
             </button>
-            <button onClick={handleNuevoPaciente} disabled={loading} className="btn-primary">
+            <button onClick={() => handleNuevoPaciente()} disabled={loading} className="btn-primary">
               <Save className="w-4 h-4" />
               {loading ? 'Creando…' : 'Crear ingreso'}
             </button>
           </div>
+
+          {duplicadoDetectado && (
+            <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5 space-y-4">
+                <h3 className="font-bold text-slate-800">Ya existe un paciente con este nombre</h3>
+                <p className="text-sm text-slate-600">
+                  Ya hay una ficha de <strong>{duplicadoDetectado.nombre}</strong> en el sistema.
+                  ¿Es la misma persona?
+                </p>
+                <div className="flex flex-col gap-2">
+                  <button
+                    onClick={() => {
+                      navigate(`/pacientes/nuevo?paciente_id=${duplicadoDetectado.id}`)
+                      setPaso('reingreso')
+                      setCargandoPacienteParam(true)
+                    }}
+                    className="btn-primary w-full justify-center"
+                  >
+                    Sí, es la misma — usar esa ficha
+                  </button>
+                  <button
+                    onClick={() => { setDuplicadoDetectado(null); handleNuevoPaciente(true) }}
+                    className="btn-secondary w-full justify-center"
+                  >
+                    No, es otra persona — crear de todas formas
+                  </button>
+                  <button onClick={() => setDuplicadoDetectado(null)} className="text-xs text-slate-400 hover:text-slate-600 mt-1">
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
