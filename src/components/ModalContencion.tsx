@@ -18,6 +18,7 @@ export default function ModalContencion({ ingresoId, onClose, onGuardado }: Prop
   const { profesional, rol } = useAuth()
   const esMedico = rol === 'medico'
   const [confirmando, setConfirmando] = useState(false)
+  const [conflicto, setConflicto] = useState(false)
   const [loading, setLoading] = useState(true)
   const [dia, setDia] = useState<ContencionDia>('ninguna')
   const [noche, setNoche] = useState<ContencionNoche[]>([])
@@ -34,6 +35,7 @@ export default function ModalContencion({ ingresoId, onClose, onGuardado }: Prop
   async function cargar() {
     setLoading(true)
     setLoadError('')
+    setConflicto(false)
     try {
       const { data, error: err } = await supabase
         .from('contenciones')
@@ -89,19 +91,57 @@ export default function ModalContencion({ ingresoId, onClose, onGuardado }: Prop
     }
     setGuardando(true)
     setError('')
-    const { error: err } = await supabase.from('contenciones').upsert({
-      ingreso_id: ingresoId,
-      dia,
-      noche,
-      actualizado_por_id: profesional.id,
-      // Sin actualizado_en: lo pone la propia base de datos (default
-      // now()), no el reloj del ordenador de quien lo guarda — es la
-      // hora real la que importa aquí, no la que tenga puesta el
-      // portátil de turno.
-    })
+
+    if (!ultimo) {
+      // Todavía no existe ninguna fila para este ingreso: es la
+      // primera vez que se pauta algo. Si dos personas lo hicieran a
+      // la vez, la propia clave primaria (ingreso_id) rechazaría la
+      // segunda inserción — se trata igual que cualquier otro
+      // conflicto, no como un error cualquiera.
+      const { error: err } = await supabase.from('contenciones').insert({
+        ingreso_id: ingresoId,
+        dia,
+        noche,
+        actualizado_por_id: profesional.id,
+      })
+      setGuardando(false)
+      if (err) {
+        if (err.code === '23505') {
+          setConflicto(true)
+          return
+        }
+        setError('No se pudo guardar: ' + err.message)
+        return
+      }
+      onGuardado?.()
+      onClose()
+      return
+    }
+
+    // Ya existe una fila: la actualización exige la versión que se
+    // leyó al abrir el modal. Si alguien más la cambió mientras
+    // tanto, la versión ya no coincide y esto no actualiza ninguna
+    // fila — en vez de pisar ese cambio en silencio, se avisa.
+    const { data: guardado, error: err } = await supabase
+      .from('contenciones')
+      .update({
+        dia,
+        noche,
+        actualizado_por_id: profesional.id,
+        // Sin actualizado_en: lo pone la propia base de datos, no el
+        // reloj del ordenador de quien guarda.
+      })
+      .eq('ingreso_id', ingresoId)
+      .eq('version', ultimo.version)
+      .select()
+      .maybeSingle()
     setGuardando(false)
     if (err) {
       setError('No se pudo guardar: ' + err.message)
+      return
+    }
+    if (!guardado) {
+      setConflicto(true)
       return
     }
     onGuardado?.()
@@ -109,16 +149,36 @@ export default function ModalContencion({ ingresoId, onClose, onGuardado }: Prop
   }
 
   async function confirmar() {
+    if (!profesional || !ultimo) return
+    setConfirmando(true)
+    setError('')
+    const { error: err } = await supabase.rpc('confirmar_contencion', {
+      p_ingreso_id: ingresoId,
+      p_version_esperada: ultimo.version,
+    })
+    setConfirmando(false)
+    if (err) {
+      if (err.message === 'version_desactualizada') {
+        setConflicto(true)
+        return
+      }
+      setError('No se pudo confirmar: ' + err.message)
+      return
+    }
+    await cargar()
+    onGuardado?.()
+  }
+
+  async function retirar() {
     if (!profesional) return
     setConfirmando(true)
     setError('')
-    const { error: err } = await supabase
-      .from('contenciones')
-      .update({ confirmado_por_id: profesional.id })
-      .eq('ingreso_id', ingresoId)
+    const { error: err } = await supabase.rpc('retirar_confirmacion_contencion', {
+      p_ingreso_id: ingresoId,
+    })
     setConfirmando(false)
     if (err) {
-      setError('No se pudo confirmar: ' + err.message)
+      setError('No se pudo retirar la confirmación: ' + err.message)
       return
     }
     await cargar()
@@ -145,6 +205,13 @@ export default function ModalContencion({ ingresoId, onClose, onGuardado }: Prop
               <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{loadError}</p>
               <button onClick={cargar} className="btn-secondary text-xs">Reintentar</button>
             </div>
+          ) : conflicto ? (
+            <div className="text-center py-8 space-y-3">
+              <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                Alguien más ha modificado esta pauta mientras la tenías abierta. Recarga para ver el cambio antes de guardar el tuyo.
+              </p>
+              <button onClick={cargar} className="btn-primary text-xs">Recargar</button>
+            </div>
           ) : (
             <>
               {nuncaRevisado && (
@@ -161,12 +228,19 @@ export default function ModalContencion({ ingresoId, onClose, onGuardado }: Prop
                   ni cuando no hay nada pautado. */}
               {necesitaConfirmacion(ultimo?.dia, ultimo?.noche) && (
                 ultimo?.confirmado_por_id ? (
-                  <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2.5">
-                    <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <p className="text-xs text-emerald-800">
-                      Confirmada por {ultimo.confirmado_por?.nombre} {ultimo.confirmado_por?.apellidos}
-                      {ultimo.confirmado_en && ` · ${new Date(ultimo.confirmado_en).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })}`}
-                    </p>
+                  <div className="flex items-center justify-between gap-2 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2.5">
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <p className="text-xs text-emerald-800">
+                        Confirmada por {ultimo.confirmado_por?.nombre} {ultimo.confirmado_por?.apellidos}
+                        {ultimo.confirmado_en && ` · ${new Date(ultimo.confirmado_en).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })}`}
+                      </p>
+                    </div>
+                    {esMedico && (
+                      <button onClick={retirar} disabled={confirmando} className="text-[11px] text-emerald-700 hover:underline shrink-0">
+                        Retirar
+                      </button>
+                    )}
                   </div>
                 ) : (
                   <div className="flex items-center justify-between gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5">
@@ -302,7 +376,7 @@ export default function ModalContencion({ ingresoId, onClose, onGuardado }: Prop
         {!loading && (
           <div className="flex justify-end gap-3 px-6 py-4 border-t">
             <button onClick={onClose} className="btn-secondary">Cancelar</button>
-            {!loadError && (
+            {!loadError && !conflicto && (
               <button onClick={guardar} disabled={guardando} className="btn-primary">
                 <Save className="w-4 h-4" />
                 {guardando ? 'Guardando…' : 'Guardar'}

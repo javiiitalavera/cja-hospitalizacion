@@ -66,6 +66,7 @@ export interface EstadoContencion {
   confirmado_por_id?: string | null
   confirmado_en?: string | null
   confirmado_por?: { nombre: string; apellidos: string } | null
+  version: number
 }
 
 export interface HistorialContencion {

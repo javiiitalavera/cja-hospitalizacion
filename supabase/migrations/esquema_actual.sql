@@ -319,13 +319,21 @@ create table public.auditoria (
 create table public.contenciones (
     ingreso_id uuid primary key references public.ingresos(id) on delete cascade,
     dia text check (dia in (
-        'ninguna', 'continua_seguridad', 'si_precisa_asistencial', 'si_precisa_paciente'
+        'ninguna', 'continua_seguridad', 'si_precisa_supervision', 'si_precisa_paciente'
     )),
     noche text[] check (
         noche <@ array['1_barra','2_barras','cota_cero','sensor_presion','contencion_fija','contencion_si_precisa']::text[]
     ),
     actualizado_por_id uuid references public.profesionales(id),
-    actualizado_en timestamptz not null default now()
+    actualizado_en timestamptz not null default now(),
+    -- Confirmación médica: quién y cuándo, puestos siempre por el
+    -- servidor. null = todavía sin confirmar.
+    confirmado_por_id uuid references public.profesionales(id),
+    confirmado_en timestamptz,
+    -- Concurrencia: sube solo cuando cambia el contenido real (día o
+    -- noche), no al confirmar. Guardar exige la versión que se leyó;
+    -- si no coincide, alguien se adelantó.
+    version integer not null default 1
 );
 
 -- Historial: una fila por cada cambio, para ver cómo ha evolucionado
@@ -337,7 +345,13 @@ create table public.contenciones_historial (
     dia text,
     noche text[],
     cambiado_por_id uuid references public.profesionales(id),
-    cambiado_en timestamptz not null default now()
+    cambiado_en timestamptz not null default now(),
+    -- Qué pasó exactamente ('pauta_creada', 'pauta_modificada',
+    -- 'confirmada', 'confirmacion_retirada') y quién lo hizo de
+    -- verdad — sin esto, una confirmación quedaba atribuida a quien
+    -- había registrado la pauta, no al médico que confirmó.
+    tipo_accion text,
+    actor_id uuid references public.profesionales(id)
 );
 
 
@@ -490,15 +504,38 @@ $$;
 
 -- Cada vez que se crea o cambia el estado actual de una contención,
 -- queda una foto en el historial. Es automático, así el historial no
--- depende de que nadie se acuerde de registrarlo aparte.
+-- depende de que nadie se acuerde de registrarlo aparte. Distingue
+-- qué pasó (pauta creada/modificada, confirmada, confirmación
+-- retirada) y quién lo hizo de verdad — sin esto, una confirmación
+-- quedaba atribuida a quien había registrado la pauta original.
 create function public.registrar_historial_contencion() returns trigger
 language plpgsql
 security definer
-set search_path to ''
+set search_path = ''
 as $$
+declare
+  v_tipo text;
+  v_actor uuid;
 begin
-  insert into public.contenciones_historial (ingreso_id, dia, noche, cambiado_por_id, cambiado_en)
-  values (NEW.ingreso_id, NEW.dia, NEW.noche, NEW.actualizado_por_id, NEW.actualizado_en);
+  if TG_OP = 'INSERT' then
+    v_tipo := 'pauta_creada';
+    v_actor := NEW.actualizado_por_id;
+  elsif NEW.dia is distinct from OLD.dia or NEW.noche is distinct from OLD.noche then
+    v_tipo := 'pauta_modificada';
+    v_actor := NEW.actualizado_por_id;
+  elsif OLD.confirmado_por_id is distinct from NEW.confirmado_por_id and NEW.confirmado_por_id is not null then
+    v_tipo := 'confirmada';
+    v_actor := NEW.confirmado_por_id;
+  elsif OLD.confirmado_por_id is distinct from NEW.confirmado_por_id and NEW.confirmado_por_id is null then
+    v_tipo := 'confirmacion_retirada';
+    v_actor := coalesce((select id from public.profesionales where user_id = auth.uid() limit 1), NEW.actualizado_por_id);
+  else
+    v_tipo := 'otro';
+    v_actor := NEW.actualizado_por_id;
+  end if;
+
+  insert into public.contenciones_historial (ingreso_id, dia, noche, cambiado_por_id, cambiado_en, tipo_accion, actor_id)
+  values (NEW.ingreso_id, NEW.dia, NEW.noche, NEW.actualizado_por_id, NEW.actualizado_en, v_tipo, v_actor);
   return NEW;
 end;
 $$;
@@ -511,6 +548,141 @@ as $$
 begin
   new.actualizado_en = now();
   return new;
+end;
+$$;
+
+-- Sube la versión solo cuando cambia el contenido real (día o
+-- noche), no al confirmar. Guardar exige la versión que se leyó; si
+-- no coincide, alguien se adelantó — evita que dos personas se pisen
+-- sin saberlo.
+create function public.incrementar_version_contencion() returns trigger
+language plpgsql
+as $$
+begin
+  if TG_OP = 'UPDATE' and (NEW.dia is distinct from OLD.dia or NEW.noche is distinct from OLD.noche) then
+    NEW.version := OLD.version + 1;
+  end if;
+  return NEW;
+end;
+$$;
+
+-- El ingreso de una contención no se puede cambiar una vez creada —
+-- nadie debería poder "mover" una pauta de un paciente a otro.
+create function public.evitar_cambio_ingreso_contencion() returns trigger
+language plpgsql
+as $$
+begin
+  if NEW.ingreso_id is distinct from OLD.ingreso_id then
+    raise exception 'No se puede cambiar el ingreso de una contención ya creada.';
+  end if;
+  return NEW;
+end;
+$$;
+
+-- Cambiar el contenido de la pauta invalida cualquier confirmación
+-- anterior (lo puede disparar cualquiera del equipo). Fijar o retirar
+-- una confirmación exige ser médico, y fijarla exige que sea uno
+-- mismo — nunca "en nombre de" otro médico.
+create function public.gestionar_confirmacion_contencion() returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_actor_actual uuid;
+begin
+  select id into v_actor_actual from public.profesionales where user_id = auth.uid() limit 1;
+
+  if TG_OP = 'UPDATE' and (NEW.dia is distinct from OLD.dia or NEW.noche is distinct from OLD.noche) then
+    NEW.confirmado_por_id := null;
+    NEW.confirmado_en := null;
+    return NEW;
+  end if;
+
+  if TG_OP = 'UPDATE' and NEW.confirmado_por_id is not distinct from OLD.confirmado_por_id then
+    return NEW;
+  end if;
+
+  if NEW.confirmado_por_id is not null then
+    if private.mi_rol() <> 'medico' then
+      raise exception 'Solo un médico puede confirmar una pauta de contención.';
+    end if;
+    if NEW.confirmado_por_id <> v_actor_actual then
+      raise exception 'Solo puedes confirmar una pauta como tú mismo.';
+    end if;
+    NEW.confirmado_en := now();
+  else
+    if private.mi_rol() <> 'medico' then
+      raise exception 'Solo un médico puede retirar una confirmación.';
+    end if;
+    NEW.confirmado_en := null;
+  end if;
+
+  return NEW;
+end;
+$$;
+
+-- Confirmar y retirar viven en sus propias funciones, no en un
+-- update() más de la tabla. Se ejecutan con privilegio propio
+-- (security definer) precisamente para no tener que cumplir la
+-- exigencia de "actualizado_por_id = quien edita" — correcta para
+-- editar contenido, sin sentido para confirmar la pauta de otro. Toda
+-- la autorización real vive dentro de la función: rol médico, uno
+-- mismo, y la versión que se vio al abrir el modal.
+create function public.confirmar_contencion(p_ingreso_id uuid, p_version_esperada integer)
+returns public.contenciones
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_actor uuid;
+  v_resultado public.contenciones;
+begin
+  if private.mi_rol() <> 'medico' then
+    raise exception 'Solo un médico puede confirmar una pauta de contención.';
+  end if;
+  select id into v_actor from public.profesionales where user_id = auth.uid() limit 1;
+  if v_actor is null then
+    raise exception 'No se ha podido identificar tu sesión.';
+  end if;
+
+  update public.contenciones
+  set confirmado_por_id = v_actor
+  where ingreso_id = p_ingreso_id and version = p_version_esperada
+  returning * into v_resultado;
+
+  if not found then
+    raise exception 'version_desactualizada';
+  end if;
+
+  return v_resultado;
+end;
+$$;
+
+create function public.retirar_confirmacion_contencion(p_ingreso_id uuid)
+returns public.contenciones
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_resultado public.contenciones;
+begin
+  if private.mi_rol() <> 'medico' then
+    raise exception 'Solo un médico puede retirar una confirmación.';
+  end if;
+
+  update public.contenciones
+  set confirmado_por_id = null
+  where ingreso_id = p_ingreso_id
+  returning * into v_resultado;
+
+  if not found then
+    raise exception 'No existe esa contención.';
+  end if;
+
+  return v_resultado;
 end;
 $$;
 
@@ -542,6 +714,18 @@ create trigger guardar_historial_tras_cambio
 create trigger fijar_actualizado_en
   before insert or update on public.contenciones
   for each row execute function public.set_actualizado_en();
+
+create trigger incrementar_version
+  before update on public.contenciones
+  for each row execute function public.incrementar_version_contencion();
+
+create trigger fijar_ingreso_inmutable
+  before update on public.contenciones
+  for each row execute function public.evitar_cambio_ingreso_contencion();
+
+create trigger gestionar_confirmacion
+  before insert or update on public.contenciones
+  for each row execute function public.gestionar_confirmacion_contencion();
 
 
 -- ────────────────────────────────────────────────────────────
@@ -687,6 +871,9 @@ create policy escribir_equipo on public.contenciones
         private.mi_rol() in ('medico', 'enfermeria', 'auxiliar', 'tecnico')
         and exists (select 1 from ingresos i where i.id = contenciones.ingreso_id and i.estado = 'activo')
         and actualizado_por_id = (select id from profesionales where user_id = auth.uid() limit 1)
+        -- Confirmar solo pasa por confirmar_contencion(), nunca al
+        -- crear la fila.
+        and confirmado_por_id is null
     );
 
 create policy modificar_equipo on public.contenciones
@@ -699,6 +886,13 @@ create policy modificar_equipo on public.contenciones
         private.mi_rol() in ('medico', 'enfermeria', 'auxiliar', 'tecnico')
         and actualizado_por_id = (select id from profesionales where user_id = auth.uid() limit 1)
     );
+
+-- confirmar_contencion() y retirar_confirmacion_contencion() son
+-- security definer: se saltan esta política a propósito para su
+-- propia escritura interna (ver su definición en FUNCIONES) — toda
+-- la autorización real vive dentro de esas funciones.
+grant execute on function public.confirmar_contencion(uuid, integer) to authenticated;
+grant execute on function public.retirar_confirmacion_contencion(uuid) to authenticated;
 
 
 -- ────────────────────────────────────────────────────────────
