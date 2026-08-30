@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import type { Profesional, Rol } from '../types'
-import { UserPlus, Shield, Loader2, X, Trash2, KeyRound, Pencil } from 'lucide-react'
+import { UserPlus, Shield, Loader2, X, Trash2, KeyRound, Pencil, Eye, EyeOff } from 'lucide-react'
 
 const ROLES: { valor: Rol; etiqueta: string }[] = [
   { valor: 'medico', etiqueta: 'Médico/a' },
@@ -391,13 +391,7 @@ function ModalPassword({ profesional, onCerrar }: { profesional: Profesional; on
             </p>
             <div>
               <label className="label">Nueva contraseña</label>
-              <input
-                className="input"
-                type="text"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && guardar()}
-              />
+              <CampoContrasena value={password} onChange={setPassword} onEnter={guardar} />
               <p className="text-[11px] text-slate-400 mt-1">Mínimo 8 caracteres.</p>
             </div>
 
@@ -487,7 +481,7 @@ function FormularioNuevo({ onCerrar, onCreado }: { onCerrar: () => void; onCread
           </div>
           <div>
             <label className="label">Contraseña inicial</label>
-            <input className="input" type="text" value={password} onChange={(e) => setPassword(e.target.value)} />
+            <CampoContrasena value={password} onChange={setPassword} />
             <p className="text-[11px] text-slate-400 mt-1">Mínimo 8 caracteres. Comunícasela a la persona de forma segura.</p>
           </div>
 
@@ -497,7 +491,7 @@ function FormularioNuevo({ onCerrar, onCreado }: { onCerrar: () => void; onCread
 
           <div className="flex justify-end gap-2 pt-1">
             <button onClick={onCerrar} className="text-sm text-slate-500 px-3 py-2">Cancelar</button>
-            <button onClick={crear} disabled={enviando} className="btn-primary">
+            <button onClick={crear} disabled={enviando || !nombre || !apellidos || !email || !password} className="btn-primary">
               {enviando ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
               {enviando ? 'Creando…' : 'Crear'}
             </button>
@@ -632,7 +626,7 @@ function ModalEditar({ profesional, onCerrar, onGuardado }: {
               </div>
               <div>
                 <label className="label">Contraseña inicial</label>
-                <input className="input" type="text" value={password} onChange={(e) => setPassword(e.target.value)} />
+                <CampoContrasena value={password} onChange={setPassword} />
                 <p className="text-[11px] text-slate-400 mt-1">Mínimo 8 caracteres. Comunícasela de forma segura.</p>
               </div>
 
@@ -650,6 +644,37 @@ function ModalEditar({ profesional, onCerrar, onGuardado }: {
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+// Campo de contraseña: oculto por defecto (no se ve por encima del
+// hombro ni en una captura de pantalla compartida sin querer), con
+// un botón para mostrarla un momento si hay que copiarla bien.
+function CampoContrasena({ value, onChange, onEnter }: {
+  value: string
+  onChange: (v: string) => void
+  onEnter?: () => void
+}) {
+  const [visible, setVisible] = useState(false)
+  return (
+    <div className="relative">
+      <input
+        className="input pr-9"
+        type={visible ? 'text' : 'password'}
+        autoComplete="new-password"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => e.key === 'Enter' && onEnter?.()}
+      />
+      <button
+        type="button"
+        onClick={() => setVisible((v) => !v)}
+        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+        tabIndex={-1}
+      >
+        {visible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+      </button>
     </div>
   )
 }

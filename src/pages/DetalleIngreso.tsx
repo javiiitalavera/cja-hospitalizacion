@@ -25,7 +25,7 @@ const TABS = [
 export default function DetalleIngreso() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { rol } = useAuth()
   const esMedico = rol === 'medico'
   const [tab, setTab] = useState(searchParams.get('tab') ?? 'datos')
@@ -147,7 +147,18 @@ export default function DetalleIngreso() {
           {TABS.map(({ id: tid, label, icon: Icon }) => (
             <button
               key={tid}
-              onClick={() => setTab(tid)}
+              onClick={() => {
+                setTab(tid)
+                // replace: true — cambiar de pestaña no debería llenar
+                // el historial del navegador con una entrada por cada
+                // clic, solo dejar que recargar o compartir el enlace
+                // abra la pestaña correcta.
+                setSearchParams((prev) => {
+                  const next = new URLSearchParams(prev)
+                  next.set('tab', tid)
+                  return next
+                }, { replace: true })
+              }}
               className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
                 tab === tid
                   ? 'border-primary-600 text-primary-700'
