@@ -10,7 +10,7 @@ import { ChevronDown, ChevronRight as ChevronRightIcon, Download, Printer } from
 import { TIPO_EVENTO_LABEL, TURNO_LABEL, CAMPOS_POR_TIPO, type TipoEvento } from '../types/eventos'
 import { formatFechaLocal as fmt } from '../lib/fechas'
 import {
-  severidadDia, severidadNoche, SEVERIDAD_ESTILO,
+  severidadDia, severidadNoche, SEVERIDAD_ESTILO, necesitaConfirmacion, NOCHE_ES_CONTENCION,
   CONTENCION_DIA_LABEL, CONTENCION_NOCHE_LABEL,
   type ContencionDia, type ContencionNoche,
 } from '../types/contenciones'
@@ -106,10 +106,11 @@ export function Eventos() {
         setErrorContenciones('No se pudieron cargar las contenciones: ' + error.message)
         return
       }
-      // Solo interesa aquí quien tiene ALGO pautado (no "ninguna").
-      const activas = (data ?? []).filter((c: any) =>
-        (c.dia && c.dia !== 'ninguna') || (c.noche && c.noche.length > 0)
-      )
+      // Solo interesa aquí lo que cuenta como contención de verdad
+      // (lo mismo que exige confirmación médica) — las medidas de
+      // seguridad puras (barras, cota cero, sensor) no son contención
+      // y no deben aparecer en este listado.
+      const activas = (data ?? []).filter((c: any) => necesitaConfirmacion(c.dia, c.noche))
       setContenciones(activas)
     } finally {
       setLoadingContenciones(false)
@@ -266,7 +267,44 @@ export function Eventos() {
     win.print()
   }
 
-  // ── Datos derivados para las gráficas de Tendencias ─────────
+  function imprimirContenciones() {
+    const win = window.open('', '_blank')
+    if (!win) return
+    const escHtml = (s: string) => s
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;')
+    let html = `<html><head><title>Contenciones activas</title>
+      <style>
+        body { font-family: Arial, sans-serif; padding: 24px; }
+        h1 { font-size: 16pt; margin-bottom: 4px; }
+        p { color: #666; font-size: 9pt; margin-top: 0; margin-bottom: 16px; }
+        table { border-collapse: collapse; width: 100%; font-size: 8.5pt; }
+        th, td { border: 1px solid #ccc; padding: 4px 6px; text-align: left; }
+        th { background: #f1f5f9; }
+      </style></head><body>
+      <h1>Contenciones activas</h1>
+      <p>Ingresos activos · generado ${new Date().toLocaleDateString('es-ES')}</p>
+      <table><thead><tr>
+        <th>Hab.</th><th>Paciente</th><th>Día</th><th>Noche</th><th>Última revisión</th>
+      </tr></thead><tbody>`
+    contenciones.forEach((c) => {
+      const nocheReal = ((c.noche as ContencionNoche[]) ?? []).filter((n) => NOCHE_ES_CONTENCION.includes(n))
+      html += `<tr>
+        <td>${c.ingreso.habitacion ?? ''}</td>
+        <td>${escHtml(nombreCompleto(c.ingreso.paciente))}</td>
+        <td>${c.dia && c.dia !== 'ninguna' ? escHtml(CONTENCION_DIA_LABEL[c.dia as ContencionDia]) : ''}</td>
+        <td>${nocheReal.map((n) => escHtml(CONTENCION_NOCHE_LABEL[n])).join(', ')}</td>
+        <td>${c.actualizado_en ? new Date(c.actualizado_en).toLocaleDateString('es-ES') : ''}</td>
+      </tr>`
+    })
+    html += '</tbody></table></body></html>'
+    win.document.write(html)
+    win.document.close()
+    win.focus()
+    win.print()
+  }
+
+
   const porMes = (() => {
     const map: Record<string, number> = {}
     eventosPeriodo.forEach((ev) => {
@@ -308,7 +346,14 @@ export function Eventos() {
 
       {/* ══════════════ CONTENCIONES ACTIVAS ══════════════ */}
       <section>
-        <p className="section-title">Contenciones activas · ingresos activos</p>
+        <div className="flex items-center justify-between">
+          <p className="section-title">Contenciones activas · ingresos activos</p>
+          {contenciones.length > 0 && (
+            <button onClick={imprimirContenciones} className="btn-secondary text-xs py-1 gap-1">
+              <Printer className="w-3.5 h-3.5" /> Imprimir
+            </button>
+          )}
+        </div>
         <div className="card overflow-hidden">
           {loadingContenciones ? (
             <p className="px-4 py-8 text-center text-slate-400 text-sm">Cargando…</p>
@@ -320,8 +365,8 @@ export function Eventos() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-slate-50 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                  <th className="px-4 py-2.5">Paciente</th>
                   <th className="px-4 py-2.5">Hab.</th>
+                  <th className="px-4 py-2.5">Paciente</th>
                   <th className="px-4 py-2.5">Día</th>
                   <th className="px-4 py-2.5">Noche</th>
                   <th className="px-4 py-2.5">Última revisión</th>
@@ -330,11 +375,16 @@ export function Eventos() {
               <tbody className="divide-y">
                 {contenciones.map((c) => {
                   const sevDia = severidadDia(c.dia)
-                  const sevNoche = severidadNoche(c.noche)
+                  // Solo se muestran aquí las medidas nocturnas que
+                  // cuentan como contención de verdad — si además
+                  // llevaba una barra puesta, esa parte no es
+                  // contención y no pinta nada en este listado.
+                  const nocheReal = ((c.noche as ContencionNoche[]) ?? []).filter((n) => NOCHE_ES_CONTENCION.includes(n))
+                  const sevNoche = severidadNoche(nocheReal)
                   return (
                     <tr key={c.ingreso_id} className="hover:bg-slate-50 cursor-pointer" onClick={() => setModalContencion(c.ingreso_id)}>
-                      <td className="px-4 py-2.5 font-medium text-slate-700">{nombreCompleto(c.ingreso.paciente)}</td>
                       <td className="px-4 py-2.5">{c.ingreso.habitacion ?? '—'}</td>
+                      <td className="px-4 py-2.5 font-medium text-slate-700">{nombreCompleto(c.ingreso.paciente)}</td>
                       <td className="px-4 py-2.5">
                         {c.dia && c.dia !== 'ninguna' ? (
                           <span className={`px-2 py-0.5 rounded text-xs font-medium ${SEVERIDAD_ESTILO[sevDia].bg} ${SEVERIDAD_ESTILO[sevDia].text}`}>
@@ -343,9 +393,9 @@ export function Eventos() {
                         ) : <span className="text-slate-300">—</span>}
                       </td>
                       <td className="px-4 py-2.5">
-                        {c.noche && c.noche.length > 0 ? (
+                        {nocheReal.length > 0 ? (
                           <span className={`px-2 py-0.5 rounded text-xs font-medium ${SEVERIDAD_ESTILO[sevNoche].bg} ${SEVERIDAD_ESTILO[sevNoche].text}`}>
-                            {(c.noche as ContencionNoche[]).map((n) => CONTENCION_NOCHE_LABEL[n]).join(', ')}
+                            {nocheReal.map((n) => CONTENCION_NOCHE_LABEL[n]).join(', ')}
                           </span>
                         ) : <span className="text-slate-300">—</span>}
                       </td>

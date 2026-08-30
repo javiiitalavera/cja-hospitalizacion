@@ -16,9 +16,9 @@ const ROL_LABEL: Record<string, string> = {
 const navItems = [
   { to: '/', icon: Home, label: 'Inicio', end: true },
   { to: '/pacientes', icon: Users, label: 'Pacientes' },
+  { to: '/informes', icon: FileText, label: 'Informes' },
   { to: '/items', icon: ClipboardList, label: 'Hoja de Ítems' },
   { to: '/eventos', icon: AlertTriangle, label: 'Incidencias' },
-  { to: '/informes', icon: FileText, label: 'Informes' },
   { to: '/dashboard', icon: BarChart2, label: 'Dashboard' },
   { to: '/personal', icon: UserCog, label: 'Personal', soloAdmin: true },
   { to: '/auditoria', icon: History, label: 'Auditoría', soloAdmin: true },
