@@ -559,8 +559,18 @@ create function public.incrementar_version_contencion() returns trigger
 language plpgsql
 as $$
 begin
-  if TG_OP = 'UPDATE' and (NEW.dia is distinct from OLD.dia or NEW.noche is distinct from OLD.noche) then
-    NEW.version := OLD.version + 1;
+  if TG_OP = 'INSERT' then
+    NEW.version := 1;
+  elsif TG_OP = 'UPDATE' then
+    if NEW.dia is distinct from OLD.dia or NEW.noche is distinct from OLD.noche then
+      NEW.version := OLD.version + 1;
+    else
+      -- Ignora cualquier valor que mandara el cliente para "version"
+      -- si el contenido no ha cambiado de verdad — sin esto, una
+      -- llamada directa a la API podía poner version a lo que
+      -- quisiera, confirmado por auditoría real contra Supabase.
+      NEW.version := OLD.version;
+    end if;
   end if;
   return NEW;
 end;
@@ -591,15 +601,30 @@ as $$
 declare
   v_actor_actual uuid;
 begin
+  -- En un INSERT no hay ningún OLD con el que comparar, y la propia
+  -- política de escritura ya exige confirmado_por_id = null al crear
+  -- — no hay ninguna regla de confirmación que aplicar todavía aquí.
+  -- Antes esto caía por defecto en la rama de "retirar confirmación",
+  -- bloqueando a cualquiera que no fuera médico de registrar la
+  -- primera pauta — confirmado por auditoría real contra Supabase.
+  if TG_OP = 'INSERT' then
+    NEW.confirmado_en := null;
+    return NEW;
+  end if;
+
   select id into v_actor_actual from public.profesionales where user_id = auth.uid() limit 1;
 
-  if TG_OP = 'UPDATE' and (NEW.dia is distinct from OLD.dia or NEW.noche is distinct from OLD.noche) then
+  if NEW.dia is distinct from OLD.dia or NEW.noche is distinct from OLD.noche then
     NEW.confirmado_por_id := null;
     NEW.confirmado_en := null;
     return NEW;
   end if;
 
-  if TG_OP = 'UPDATE' and NEW.confirmado_por_id is not distinct from OLD.confirmado_por_id then
+  if NEW.confirmado_por_id is not distinct from OLD.confirmado_por_id then
+    -- Nada de la confirmación cambia: se ignora cualquier valor que
+    -- mandara el cliente para "confirmado_en" — solo puede cambiar de
+    -- verdad cuando confirmado_por_id también cambia.
+    NEW.confirmado_en := OLD.confirmado_en;
     return NEW;
   end if;
 
