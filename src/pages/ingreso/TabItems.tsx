@@ -52,13 +52,18 @@ function TabItems({ ingresoId }: { ingresoId: string }) {
   async function save() {
     setSaving(true)
     setSaveError(false)
-    const { error } = await supabase.from('items_paciente').upsert({ ...data, ingreso_id: ingresoId })
+    const { data: guardado, error } = await supabase
+      .from('items_paciente')
+      .upsert({ ...data, ingreso_id: ingresoId }, { onConflict: 'ingreso_id' })
+      .select()
+      .single()
     setSaving(false)
     if (error) {
       setSaveError(true)
       setTimeout(() => setSaveError(false), 4000)
       return
     }
+    if (guardado) setData(guardado as Partial<ItemsPaciente>)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }

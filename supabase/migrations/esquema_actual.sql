@@ -1,19 +1,19 @@
 -- ============================================================
 -- CJA Hospital — esquema completo de la base de datos
 --
--- Este archivo sustituye a las 28 migraciones anteriores. No es un
--- resumen escrito a mano: se generó ejecutando las 28 migraciones
--- originales, en orden, contra un PostgreSQL real, y extrayendo el
--- esquema resultante directamente del motor — así se garantiza que
--- refleja el estado final exacto, sin conjeturas.
+-- Nació ejecutando las 28 migraciones originales, en orden, contra un
+-- PostgreSQL real, y extrayendo el esquema resultante directamente
+-- del motor. Desde entonces se mantiene a mano según evoluciona la
+-- aplicación — cada cambio se valida ejecutándolo de principio a fin
+-- contra un PostgreSQL limpio antes de darlo por bueno, pero ya no es
+-- una extracción literal del motor en cada edición.
 --
 -- OJO — NO ejecutar esto contra la base de datos de producción: ya
 -- tiene todo esto creado. Este archivo sirve como referencia de cómo
 -- es la base de datos hoy, y como punto de partida si algún día se
 -- necesita montar un entorno nuevo desde cero (por ejemplo, uno de
--- pruebas).
---
--- Generado: 23 de agosto de 2026.
+-- pruebas). Los cambios reales a producción viajan en scripts sueltos
+-- (ver la carpeta de scripts ya aplicados), no ejecutando este archivo.
 -- ============================================================
 
 begin;

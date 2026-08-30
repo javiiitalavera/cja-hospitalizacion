@@ -408,7 +408,7 @@ function PanelEdicion({
     setSaving(true)
     const { data: updated, error } = await supabase
       .from('items_paciente')
-      .upsert({ ...d, ingreso_id: ingreso.id })
+      .upsert({ ...d, ingreso_id: ingreso.id }, { onConflict: 'ingreso_id' })
       .select()
       .single()
     setSaving(false)
@@ -447,7 +447,7 @@ function PanelEdicion({
     }
     const { data: updated, error } = await supabase
       .from('items_paciente')
-      .upsert(vacio)
+      .upsert(vacio, { onConflict: 'ingreso_id' })
       .select()
       .single()
     setSaving(false)

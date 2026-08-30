@@ -1,14 +1,24 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { useAuth } from '../../lib/AuthContext'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
 import FormularioEvento from '../../components/FormularioEvento'
 import { TIPO_EVENTO_LABEL, TIPO_EVENTO_COLOR, TURNO_LABEL, type Evento } from '../../types/eventos'
 
 function TabEventos({ ingresoId }: { ingresoId: string }) {
+  const { profesional, esAdmin } = useAuth()
   const [eventos, setEventos] = useState<Evento[]>([])
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState(false)
   const [editando, setEditando] = useState<Evento | null>(null)
+  const [errorBorrar, setErrorBorrar] = useState('')
+
+  // Solo quien registró la incidencia, o un administrador, puede
+  // corregirla o borrarla — coincide con lo que ya exige la base de
+  // datos; esto solo evita mostrar un botón que fallaría en silencio.
+  function puedeEditar(ev: Evento): boolean {
+    return esAdmin || (!!profesional && ev.registrado_por_id === profesional.id)
+  }
 
   async function fetchEventos() {
     try {
@@ -31,7 +41,15 @@ function TabEventos({ ingresoId }: { ingresoId: string }) {
 
   async function eliminar(id: string) {
     if (!confirm('¿Eliminar esta incidencia?')) return
-    await supabase.from('eventos').delete().eq('id', id)
+    setErrorBorrar('')
+    const { error } = await supabase.from('eventos').delete().eq('id', id)
+    if (error) {
+      // Sin esto, si el permiso lo bloquea (no eres el autor ni
+      // admin), la incidencia sigue ahí y el usuario ve que
+      // aparentemente "no ha pasado nada", sin saber por qué.
+      setErrorBorrar('No se pudo eliminar: ' + error.message)
+      return
+    }
     fetchEventos()
   }
 
@@ -47,6 +65,9 @@ function TabEventos({ ingresoId }: { ingresoId: string }) {
 
   return (
     <div className="max-w-3xl space-y-4">
+      {errorBorrar && (
+        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-2.5">{errorBorrar}</div>
+      )}
       <div className="flex justify-between items-center">
         <p className="text-sm text-slate-500">{eventos.length} incidencia{eventos.length !== 1 ? 's' : ''} registrada{eventos.length !== 1 ? 's' : ''}</p>
         <button onClick={() => setModal(true)} className="btn-primary">
@@ -105,17 +126,20 @@ function TabEventos({ ingresoId }: { ingresoId: string }) {
                   )}
                 </div>
 
-                {/* Acciones */}
-                <div className="flex gap-1 shrink-0">
-                  <button onClick={() => abrirEditar(ev)}
-                    className="p-1.5 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors">
-                    <Pencil className="w-3.5 h-3.5" />
-                  </button>
-                  <button onClick={() => eliminar(ev.id)}
-                    className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
+                {/* Acciones: solo visibles para quien registró la
+                    incidencia o un administrador */}
+                {puedeEditar(ev) && (
+                  <div className="flex gap-1 shrink-0">
+                    <button onClick={() => abrirEditar(ev)}
+                      className="p-1.5 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors">
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                    <button onClick={() => eliminar(ev.id)}
+                      className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           ))}

@@ -23,6 +23,7 @@ export default function ModalContencion({ ingresoId, onClose, onGuardado }: Prop
   const [ultimo, setUltimo] = useState<EstadoContencion | null>(null)
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
+  const [loadError, setLoadError] = useState('')
   const [mostrarHistorial, setMostrarHistorial] = useState(false)
   const [historial, setHistorial] = useState<HistorialContencion[] | null>(null)
 
@@ -30,6 +31,7 @@ export default function ModalContencion({ ingresoId, onClose, onGuardado }: Prop
 
   async function cargar() {
     setLoading(true)
+    setLoadError('')
     try {
       const { data, error: err } = await supabase
         .from('contenciones')
@@ -37,10 +39,11 @@ export default function ModalContencion({ ingresoId, onClose, onGuardado }: Prop
         .eq('ingreso_id', ingresoId)
         .maybeSingle()
       if (err) {
-        // Un error real (red, permisos...) es distinto de "todavía no
-        // hay pauta" — si se confunden, guardar después podría
-        // sobrescribir una orden real con "sin revisar".
-        setError('No se pudo cargar el estado actual: ' + err.message)
+        // Distinto del error de guardado: mientras esto esté activo,
+        // no se debe poder guardar — el formulario estaría mostrando
+        // valores por defecto, no el estado real, y guardar
+        // sobrescribiría una orden real con "ninguna".
+        setLoadError('No se pudo cargar el estado actual: ' + err.message)
         return
       }
       if (data) {
@@ -77,6 +80,7 @@ export default function ModalContencion({ ingresoId, onClose, onGuardado }: Prop
   }
 
   async function guardar() {
+    if (loadError) return // por si acaso: nunca guardar sobre un estado que no se llegó a cargar de verdad
     if (!profesional) {
       setError('No se ha podido identificar tu sesión. Recarga la página e inténtalo de nuevo.')
       return
@@ -117,6 +121,11 @@ export default function ModalContencion({ ingresoId, onClose, onGuardado }: Prop
         <div className="overflow-y-auto flex-1 px-6 py-5 space-y-5">
           {loading ? (
             <p className="text-sm text-slate-400 text-center py-8">Cargando…</p>
+          ) : loadError ? (
+            <div className="text-center py-8 space-y-3">
+              <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{loadError}</p>
+              <button onClick={cargar} className="btn-secondary text-xs">Reintentar</button>
+            </div>
           ) : (
             <>
               {nuncaRevisado && (
@@ -248,10 +257,12 @@ export default function ModalContencion({ ingresoId, onClose, onGuardado }: Prop
         {!loading && (
           <div className="flex justify-end gap-3 px-6 py-4 border-t">
             <button onClick={onClose} className="btn-secondary">Cancelar</button>
-            <button onClick={guardar} disabled={guardando} className="btn-primary">
-              <Save className="w-4 h-4" />
-              {guardando ? 'Guardando…' : 'Guardar'}
-            </button>
+            {!loadError && (
+              <button onClick={guardar} disabled={guardando} className="btn-primary">
+                <Save className="w-4 h-4" />
+                {guardando ? 'Guardando…' : 'Guardar'}
+              </button>
+            )}
           </div>
         )}
       </div>

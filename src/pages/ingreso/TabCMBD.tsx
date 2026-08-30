@@ -365,9 +365,18 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
 
   async function save(d = dataRef.current): Promise<boolean> {
     setSaving(true); setSaveError(false)
-    const { error } = await supabase.from('cmbd').upsert({ ...d, ingreso_id: ingresoId })
+    // onConflict: 'ingreso_id' — sin esto, como "id" nunca viaja en el
+    // payload (nunca se recupera de vuelta), cada guardado intentaba
+    // insertar una fila nueva; el primero funcionaba, el segundo
+    // chocaba con la restricción UNIQUE de ingreso_id y fallaba.
+    const { data: guardado, error } = await supabase
+      .from('cmbd')
+      .upsert({ ...d, ingreso_id: ingresoId }, { onConflict: 'ingreso_id' })
+      .select()
+      .single()
     setSaving(false)
     if (error) { setSaveError(true); return false }
+    if (guardado) setData(guardado as CMBDData)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
     return true

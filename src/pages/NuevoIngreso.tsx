@@ -213,9 +213,16 @@ export default function NuevoIngreso() {
       return
     }
     setLoading(true)
+    // Campos opcionales en blanco ('') se convierten a null: una fecha
+    // vacía no es un valor "date" válido, y un sexo vacío incumple su
+    // restricción — dejarlos como cadena vacía hacía fallar el alta
+    // aunque el propio formulario los marca como opcionales.
+    const pacienteNormalizado = Object.fromEntries(
+      Object.entries(paciente).map(([k, v]) => [k, v === '' ? null : v])
+    )
     const { data: pacienteData, error: errPaciente } = await supabase
       .from('pacientes')
-      .insert([paciente])
+      .insert([pacienteNormalizado])
       .select()
       .single()
     if (errPaciente || !pacienteData) {
