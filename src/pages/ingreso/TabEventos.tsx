@@ -12,6 +12,7 @@ function TabEventos({ ingresoId }: { ingresoId: string }) {
   const [modal, setModal] = useState(false)
   const [editando, setEditando] = useState<Evento | null>(null)
   const [errorBorrar, setErrorBorrar] = useState('')
+  const [errorCarga, setErrorCarga] = useState('')
 
   // Solo quien registró la incidencia, o un administrador, puede
   // corregirla o borrarla — coincide con lo que ya exige la base de
@@ -22,12 +23,19 @@ function TabEventos({ ingresoId }: { ingresoId: string }) {
 
   async function fetchEventos() {
     try {
-      const { data } = await supabase
+      setErrorCarga('')
+      const { data, error: err } = await supabase
         .from('eventos')
         .select('*, registrado_por:profesionales(nombre, apellidos, rol)')
         .eq('ingreso_id', ingresoId)
         .order('fecha', { ascending: false })
         .order('created_at', { ascending: false })
+      if (err) {
+        // Sin esto, un fallo real se veía igual que "sin incidencias"
+        // — que en una hoja clínica es una diferencia importante.
+        setErrorCarga('No se pudieron cargar las incidencias: ' + err.message)
+        return
+      }
       setEventos((data ?? []) as Evento[])
     } finally {
       // "finally" en vez de dejarlo al final del try: así, si la
@@ -78,6 +86,11 @@ function TabEventos({ ingresoId }: { ingresoId: string }) {
 
       {loading ? (
         <div className="text-slate-400 text-sm py-8 text-center">Cargando…</div>
+      ) : errorCarga ? (
+        <div className="card p-10 text-center space-y-2">
+          <p className="text-red-600 text-sm">{errorCarga}</p>
+          <button onClick={fetchEventos} className="btn-secondary text-xs">Reintentar</button>
+        </div>
       ) : eventos.length === 0 ? (
         <div className="card p-10 text-center text-slate-400 text-sm">
           No hay incidencias registradas en este ingreso.

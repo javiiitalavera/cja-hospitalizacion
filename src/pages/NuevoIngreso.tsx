@@ -18,6 +18,7 @@ export default function NuevoIngreso() {
   const [medicos, setMedicos] = useState<Profesional[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [errorBusqueda, setErrorBusqueda] = useState('')
 
   // Flujo: 'buscar' → 'nuevo_paciente' | 'reingreso'
   const [paso, setPaso] = useState<'buscar' | 'nuevo_paciente' | 'reingreso'>(pacienteIdParam ? 'reingreso' : 'buscar')
@@ -73,8 +74,9 @@ export default function NuevoIngreso() {
   async function buscarPaciente() {
     if (!busqueda.trim()) return
     setBuscando(true)
+    setErrorBusqueda('')
     const q = escaparBusquedaIlike(quitarTildes(busqueda.trim()))
-    const { data } = await supabase
+    const { data, error: err } = await supabase
       .from('pacientes')
       .select('*')
       .or(
@@ -82,6 +84,16 @@ export default function NuevoIngreso() {
       )
       .order('primer_apellido')
       .limit(10)
+    if (err) {
+      // Sin esto, un fallo real de búsqueda se veía igual que "no
+      // existe este paciente" — y justo debajo se ofrece "crear
+      // paciente nuevo". Esa combinación podría acabar creando una
+      // identidad clínica duplicada sin que nadie se diera cuenta.
+      setErrorBusqueda('No se pudo comprobar si este paciente ya existe: ' + err.message)
+      setResultados([])
+      setBuscando(false)
+      return
+    }
     setResultados(data ?? [])
     setBuscando(false)
   }
@@ -388,8 +400,14 @@ export default function NuevoIngreso() {
               </div>
             )}
 
-            {resultados.length === 0 && busqueda && !buscando && (
+            {resultados.length === 0 && busqueda && !buscando && !errorBusqueda && (
               <p className="text-sm text-slate-400 mt-3">No se encontraron resultados para "{busqueda}".</p>
+            )}
+            {errorBusqueda && (
+              <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-3 py-2 mt-3 flex items-center justify-between gap-3">
+                <span>{errorBusqueda}</span>
+                <button onClick={buscarPaciente} className="btn-secondary text-xs shrink-0">Reintentar</button>
+              </div>
             )}
           </div>
 
@@ -399,10 +417,16 @@ export default function NuevoIngreso() {
             <div className="flex-1 border-t border-slate-200" />
           </div>
 
-          <button onClick={() => setPaso('nuevo_paciente')} className="btn-secondary w-full justify-center py-3">
-            <UserPlus className="w-4 h-4" />
-            Crear paciente nuevo
-          </button>
+          {errorBusqueda ? (
+            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-center">
+              No se puede crear un paciente nuevo hasta comprobar que no existe ya — reintenta la búsqueda de arriba.
+            </p>
+          ) : (
+            <button onClick={() => setPaso('nuevo_paciente')} className="btn-secondary w-full justify-center py-3">
+              <UserPlus className="w-4 h-4" />
+              Crear paciente nuevo
+            </button>
+          )}
         </div>
       )}
 

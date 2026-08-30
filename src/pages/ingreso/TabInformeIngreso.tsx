@@ -14,18 +14,32 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const dataRef = useRef(data)
   dataRef.current = data
+  // Con red lenta, dos guardados pueden estar en el aire a la vez; si
+  // el más viejo responde después del más nuevo, no debe pisar el
+  // estado más reciente con uno anterior. Este contador dice cuál es
+  // el guardado más reciente que se ha lanzado.
+  const saveSeqRef = useRef(0)
 
   useEffect(() => {
-    supabase.from('informe_ingreso').select('*').eq('ingreso_id', ingresoId).single()
-      .then(({ data: d }) => { if (d) setData(d) })
+    supabase.from('informe_ingreso').select('*').eq('ingreso_id', ingresoId).maybeSingle()
+      .then(({ data: d }) => setData(d ?? {}))
   }, [ingresoId])
 
   async function save(d = dataRef.current): Promise<boolean> {
+    const miSecuencia = ++saveSeqRef.current
     setSaving(true)
     setSaveError(false)
-    const { error } = await supabase.from('informe_ingreso').upsert({ ...d, ingreso_id: ingresoId })
+    const { data: guardado, error } = await supabase
+      .from('informe_ingreso')
+      .upsert({ ...d, ingreso_id: ingresoId }, { onConflict: 'ingreso_id' })
+      .select()
+      .single()
     setSaving(false)
     if (error) { setSaveError(true); return false }
+    // Si mientras esta petición estaba en el aire se ha lanzado ya un
+    // guardado más reciente, esta respuesta está obsoleta — aplicarla
+    // ahora borraría el cambio más nuevo con uno más viejo.
+    if (miSecuencia === saveSeqRef.current && guardado) setData(guardado)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
     return true

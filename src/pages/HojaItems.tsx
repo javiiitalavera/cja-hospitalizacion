@@ -347,6 +347,7 @@ function PanelEdicion({
   const [saveError, setSaveError] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const dataRef = useRef(data)
+  const saveSeqRef = useRef(0)
   dataRef.current = data
 
   const [confirmLimpiar, setConfirmLimpiar] = useState(false)
@@ -405,6 +406,7 @@ function PanelEdicion({
   }
 
   async function save(d = dataRef.current) {
+    const miSecuencia = ++saveSeqRef.current
     setSaving(true)
     const { data: updated, error } = await supabase
       .from('items_paciente')
@@ -419,7 +421,10 @@ function PanelEdicion({
       return
     }
     setSaved(true)
-    if (updated) onSaved(updated as ItemsPaciente)
+    // Si mientras esta petición estaba en el aire ya se lanzó un
+    // guardado más reciente, esta respuesta llega obsoleta — no debe
+    // propagarse hacia la rejilla principal y pisar un cambio nuevo.
+    if (miSecuencia === saveSeqRef.current && updated) onSaved(updated as ItemsPaciente)
     setTimeout(() => setSaved(false), 2000)
   }
 

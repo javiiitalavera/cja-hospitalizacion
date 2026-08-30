@@ -16,6 +16,7 @@ function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const dataRef = useRef(data)
   dataRef.current = data
+  const saveSeqRef = useRef(0)
 
   useEffect(() => {
     // Se cargan las dos fuentes en paralelo y se espera a que ambas
@@ -25,13 +26,13 @@ function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
     // había combinado — en concreto, borraría la medicación heredada
     // del ingreso si "informe_alta" resolviera después.)
     Promise.all([
-      supabase.from('informe_alta').select('*').eq('ingreso_id', ingresoId).single(),
-      supabase.from('informe_ingreso').select('*').eq('ingreso_id', ingresoId).single(),
+      supabase.from('informe_alta').select('*').eq('ingreso_id', ingresoId).maybeSingle(),
+      supabase.from('informe_ingreso').select('*').eq('ingreso_id', ingresoId).maybeSingle(),
     ]).then(([rAlta, rIngreso]) => {
       const dAlta = rAlta.data as Partial<InformeAlta> | null
       const dIngreso = rIngreso.data as InformeIngreso | null
 
-      if (dIngreso) setInformeIngreso(dIngreso)
+      setInformeIngreso(dIngreso ?? {})
 
       let base: Partial<InformeAlta> = dAlta ?? {}
       const yaRellenada = (base.medicacion_estructurada as FilaMedicacion[] | undefined)?.length ?? 0
@@ -43,10 +44,18 @@ function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
   }, [ingresoId])
 
   async function save(d = dataRef.current): Promise<boolean> {
+    const miSecuencia = ++saveSeqRef.current
     setSaving(true); setSaveError(false)
-    const { error } = await supabase.from('informe_alta').upsert({ ...d, ingreso_id: ingresoId })
+    const { data: guardado, error } = await supabase
+      .from('informe_alta')
+      .upsert({ ...d, ingreso_id: ingresoId }, { onConflict: 'ingreso_id' })
+      .select()
+      .single()
     setSaving(false)
     if (error) { setSaveError(true); return false }
+    // Ignorar esta respuesta si ya se lanzó un guardado más reciente
+    // mientras estaba en el aire — no pisar lo nuevo con lo viejo.
+    if (miSecuencia === saveSeqRef.current && guardado) setData(guardado)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
     return true

@@ -40,6 +40,7 @@ export default function Pacientes() {
   const [pacientes, setPacientes] = useState<PacienteRow[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [busqueda, setBusqueda] = useState('')
   const [busquedaActiva, setBusquedaActiva] = useState('')
   const [escribiendo, setEscribiendo] = useState(false)
@@ -54,6 +55,7 @@ export default function Pacientes() {
 
   async function fetchPacientes() {
     setLoading(true)
+    setError('')
     try {
       // Todo (filtro + orden + paginación) ocurre en la propia consulta,
       // sobre la vista que ya trae el último ingreso de cada paciente.
@@ -82,7 +84,16 @@ export default function Pacientes() {
       query = query.order(opcion.columna, { ascending: opcion.asc, nullsFirst: false })
       query = query.range(pagina * PAGE_SIZE, (pagina + 1) * PAGE_SIZE - 1)
 
-      const { data, count } = await query
+      const { data, count, error: err } = await query
+
+      if (err) {
+        // Sin esto, un fallo real (red, permisos...) se veía
+        // exactamente igual que "0 resultados" — que es justo lo
+        // contrario de lo que está pasando. No se toca "pacientes":
+        // si ya había una lista de antes, se queda visible.
+        setError('No se pudo buscar: ' + err.message)
+        return
+      }
 
       const rows: PacienteRow[] = (data ?? []).map((p: any) => ({
         id: p.id,
@@ -197,6 +208,11 @@ export default function Pacientes() {
           <tbody className="divide-y">
             {loading ? (
               <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-400">Cargando…</td></tr>
+            ) : error ? (
+              <tr><td colSpan={6} className="px-4 py-12 text-center">
+                <p className="text-red-600 text-sm mb-2">{error}</p>
+                <button onClick={fetchPacientes} className="btn-secondary text-xs">Reintentar</button>
+              </td></tr>
             ) : pacientes.length === 0 ? (
               <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-400">No hay resultados</td></tr>
             ) : pacientes.map(p => {

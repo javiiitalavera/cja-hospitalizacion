@@ -36,6 +36,8 @@ export default function Home() {
   const [contencionesPorIngreso, setContencionesPorIngreso] = useState<Record<string, { dia: ContencionDia | null; noche: ContencionNoche[] | null }>>({})
   const [modalContencion, setModalContencion] = useState<string | null>(null) // ingresoId
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [errorAuxiliar, setErrorAuxiliar] = useState('')
   const [modalEvento, setModalEvento] = useState<string | null>(null) // ingresoId
   const navigate = useNavigate()
   const { rol } = useAuth()
@@ -50,7 +52,9 @@ export default function Home() {
 
   async function fetchData() {
     try {
-      const { data } = await supabase
+      setError('')
+      setErrorAuxiliar('')
+      const { data, error: errPrincipal } = await supabase
         .from('ingresos')
         .select(
           '*, paciente:pacientes(nombre,primer_apellido,segundo_apellido,fecha_nacimiento,nhc), medico_responsable:profesionales(nombre,apellidos)'
@@ -58,18 +62,41 @@ export default function Home() {
         .eq('estado', 'activo')
         .order('habitacion', { ascending: true })
 
+      if (errPrincipal) {
+        // Sin esto, un fallo real de red o permisos se veía igual que
+        // "33 habitaciones libres" — que es justo lo contrario de lo
+        // que está pasando. No se toca "ingresos": si ya había una
+        // lista cargada de antes, se queda visible en vez de
+        // borrarse, hasta que una recarga funcione de verdad.
+        setError('No se pudo cargar la lista de pacientes ingresados: ' + errPrincipal.message)
+        return
+      }
+
       const list = (data ?? []) as IngresoConPaciente[]
       setIngresos(list)
 
       if (list.length > 0) {
         const ids = list.map((i) => i.id)
 
-        const [{ data: itemsData }, { data: informesData }, { data: eventosData }, { data: pautasData }] = await Promise.all([
+        const [
+          { data: itemsData, error: errItems },
+          { data: informesData, error: errInformes },
+          { data: eventosData, error: errEventos },
+          { data: pautasData, error: errPautas },
+        ] = await Promise.all([
           supabase.from('items_paciente').select('ingreso_id,semaforo_caidas').in('ingreso_id', ids),
           supabase.from('informe_ingreso').select('ingreso_id,impresion_diagnostica').in('ingreso_id', ids),
           supabase.from('eventos').select('ingreso_id,tipo').in('ingreso_id', ids),
           supabase.from('contenciones').select('ingreso_id, dia, noche').in('ingreso_id', ids),
         ])
+
+        // La lista de pacientes es lo esencial y ya se ha podido
+        // mostrar; si falla alguna de estas cuatro consultas
+        // auxiliares, se avisa sin ocultar la lista — más útil que
+        // "no hay incidencias" cuando en realidad no se sabe.
+        if (errItems || errInformes || errEventos || errPautas) {
+          setErrorAuxiliar('Algunos datos (diagnóstico, incidencias, contención) podrían no estar actualizados.')
+        }
 
         const itemsMap: Record<string, { semaforo_caidas?: string }> = {}
         ;(itemsData ?? []).forEach((it: any) => {
@@ -179,8 +206,18 @@ export default function Home() {
       {/* Tabla de habitaciones */}
       {loading ? (
         <div className="text-slate-400 py-12 text-center">Cargando…</div>
+      ) : error ? (
+        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-6 text-center space-y-2">
+          <p>{error}</p>
+          <button onClick={fetchData} className="btn-secondary text-xs">Reintentar</button>
+        </div>
       ) : (
         <div className="grid grid-cols-1 gap-1">
+          {errorAuxiliar && (
+            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 mb-1">
+              {errorAuxiliar}
+            </p>
+          )}
           {/* Cabecera */}
           <div
             className="grid gap-x-3 text-xs font-semibold text-slate-400 uppercase tracking-wide px-3 pb-1"

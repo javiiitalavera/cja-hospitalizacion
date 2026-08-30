@@ -118,6 +118,7 @@ export function Eventos() {
 
   // ── Estado actual (todos los tipos, ingresos activos) ──────
   const [loadingEstado, setLoadingEstado] = useState(true)
+  const [errorEstado, setErrorEstado] = useState('')
   const [eventosActivos, setEventosActivos] = useState<EventoActivo[]>([])
   const [expandido, setExpandido] = useState<TipoEvento | null>(null)
 
@@ -127,6 +128,7 @@ export function Eventos() {
   const [mesSel, setMesSel] = useState<number | 'todos'>('todos')
   const [showPeriodo, setShowPeriodo] = useState(false)
   const [loadingTendencias, setLoadingTendencias] = useState(true)
+  const [errorTendencias, setErrorTendencias] = useState('')
   const [eventosPeriodo, setEventosPeriodo] = useState<any[]>([])
 
   useEffect(() => { fetchEstadoActual() }, [])
@@ -140,8 +142,9 @@ export function Eventos() {
   // exportable, y "sujeción puesta ahora mismo" no las tiene.
   async function fetchEstadoActual() {
     setLoadingEstado(true)
+    setErrorEstado('')
     try {
-      const { data } = await supabase
+      const { data, error: err } = await supabase
         .from('eventos')
         .select(`
           id, tipo, fecha, hora, turno, datos, notas,
@@ -150,6 +153,10 @@ export function Eventos() {
         `)
         .eq('ingreso.estado', 'activo')
         .order('fecha', { ascending: false })
+      if (err) {
+        setErrorEstado('No se pudo cargar el estado actual: ' + err.message)
+        return
+      }
       setEventosActivos((data ?? []) as unknown as EventoActivo[])
     } finally {
       setLoadingEstado(false)
@@ -159,13 +166,18 @@ export function Eventos() {
   // ── Carga: tendencias ───────────────────────────────────────
   async function fetchTendencias() {
     setLoadingTendencias(true)
+    setErrorTendencias('')
     try {
       const { desde, hasta } = getRango(periodo, anioSel, mesSel)
-      const { data } = await supabase
+      const { data, error: err } = await supabase
         .from('eventos')
         .select('tipo, fecha, turno')
         .gte('fecha', desde)
         .lte('fecha', hasta)
+      if (err) {
+        setErrorTendencias('No se pudieron cargar las tendencias: ' + err.message)
+        return
+      }
       setEventosPeriodo(data ?? [])
     } finally {
       setLoadingTendencias(false)
@@ -373,6 +385,11 @@ export function Eventos() {
             <tbody className="divide-y">
               {loadingEstado ? (
                 <tr><td colSpan={4} className="px-4 py-8 text-center text-slate-400">Cargando…</td></tr>
+              ) : errorEstado ? (
+                <tr><td colSpan={4} className="px-4 py-8 text-center">
+                  <p className="text-red-600 text-sm mb-2">{errorEstado}</p>
+                  <button onClick={fetchEstadoActual} className="btn-secondary text-xs">Reintentar</button>
+                </td></tr>
               ) : (
                 resumenPorTipo.map((r) => (
                   <FilaTipo
@@ -444,6 +461,11 @@ export function Eventos() {
 
         {loadingTendencias ? (
           <div className="card p-10 text-center text-slate-400 text-sm">Cargando…</div>
+        ) : errorTendencias ? (
+          <div className="card p-10 text-center space-y-2">
+            <p className="text-red-600 text-sm">{errorTendencias}</p>
+            <button onClick={fetchTendencias} className="btn-secondary text-xs">Reintentar</button>
+          </div>
         ) : eventosPeriodo.length === 0 ? (
           <div className="card p-10 text-center text-slate-400 text-sm">No hay incidencias registradas en este periodo.</div>
         ) : (
