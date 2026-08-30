@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
-import { X, Save, History as HistoryIcon, ChevronDown, AlertCircle } from 'lucide-react'
+import { X, Save, History as HistoryIcon, ChevronDown, AlertCircle, ShieldCheck } from 'lucide-react'
 import {
   DIA_OPCIONES, NOCHE_OPCIONES, CONTENCION_DIA_LABEL, CONTENCION_DIA_DESC, CONTENCION_NOCHE_LABEL,
-  severidadDia, severidadNoche, SEVERIDAD_ESTILO,
+  severidadDia, severidadNoche, SEVERIDAD_ESTILO, necesitaConfirmacion,
   type ContencionDia, type ContencionNoche, type EstadoContencion, type HistorialContencion,
 } from '../types/contenciones'
 
@@ -15,7 +15,9 @@ interface Props {
 }
 
 export default function ModalContencion({ ingresoId, onClose, onGuardado }: Props) {
-  const { profesional } = useAuth()
+  const { profesional, rol } = useAuth()
+  const esMedico = rol === 'medico'
+  const [confirmando, setConfirmando] = useState(false)
   const [loading, setLoading] = useState(true)
   const [dia, setDia] = useState<ContencionDia>('ninguna')
   const [noche, setNoche] = useState<ContencionNoche[]>([])
@@ -35,7 +37,7 @@ export default function ModalContencion({ ingresoId, onClose, onGuardado }: Prop
     try {
       const { data, error: err } = await supabase
         .from('contenciones')
-        .select('*, actualizado_por:profesionales!actualizado_por_id(nombre, apellidos)')
+        .select('*, actualizado_por:profesionales!actualizado_por_id(nombre, apellidos), confirmado_por:profesionales!confirmado_por_id(nombre, apellidos)')
         .eq('ingreso_id', ingresoId)
         .maybeSingle()
       if (err) {
@@ -106,6 +108,23 @@ export default function ModalContencion({ ingresoId, onClose, onGuardado }: Prop
     onClose()
   }
 
+  async function confirmar() {
+    if (!profesional) return
+    setConfirmando(true)
+    setError('')
+    const { error: err } = await supabase
+      .from('contenciones')
+      .update({ confirmado_por_id: profesional.id })
+      .eq('ingreso_id', ingresoId)
+    setConfirmando(false)
+    if (err) {
+      setError('No se pudo confirmar: ' + err.message)
+      return
+    }
+    await cargar()
+    onGuardado?.()
+  }
+
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
@@ -135,6 +154,32 @@ export default function ModalContencion({ ingresoId, onClose, onGuardado }: Prop
                     Todavía no se ha revisado la contención de este paciente. Al guardar, quedará registrado.
                   </p>
                 </div>
+              )}
+
+              {/* Confirmación médica: solo hace falta cuando hay
+                  contención de verdad, no para medidas de seguridad
+                  ni cuando no hay nada pautado. */}
+              {necesitaConfirmacion(ultimo?.dia, ultimo?.noche) && (
+                ultimo?.confirmado_por_id ? (
+                  <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2.5">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <p className="text-xs text-emerald-800">
+                      Confirmada por {ultimo.confirmado_por?.nombre} {ultimo.confirmado_por?.apellidos}
+                      {ultimo.confirmado_en && ` · ${new Date(ultimo.confirmado_en).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })}`}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5">
+                    <p className="text-xs text-amber-800 font-medium">Pendiente de confirmación médica</p>
+                    {esMedico ? (
+                      <button onClick={confirmar} disabled={confirmando} className="btn-primary text-xs py-1 shrink-0">
+                        {confirmando ? 'Confirmando…' : 'Confirmar'}
+                      </button>
+                    ) : (
+                      <span className="text-[11px] text-amber-600">Solo un médico puede confirmarla</span>
+                    )}
+                  </div>
+                )
               )}
 
               {/* DÍA */}

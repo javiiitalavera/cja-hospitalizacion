@@ -9,7 +9,7 @@
 export type ContencionDia =
   | 'ninguna'
   | 'continua_seguridad'
-  | 'si_precisa_asistencial'
+  | 'si_precisa_supervision'
   | 'si_precisa_paciente'
 
 export type ContencionNoche =
@@ -21,7 +21,7 @@ export type ContencionNoche =
   | 'contencion_si_precisa'
 
 export const DIA_OPCIONES: ContencionDia[] = [
-  'ninguna', 'continua_seguridad', 'si_precisa_asistencial', 'si_precisa_paciente',
+  'ninguna', 'continua_seguridad', 'si_precisa_supervision', 'si_precisa_paciente',
 ]
 
 export const NOCHE_OPCIONES: ContencionNoche[] = [
@@ -31,14 +31,14 @@ export const NOCHE_OPCIONES: ContencionNoche[] = [
 export const CONTENCION_DIA_LABEL: Record<ContencionDia, string> = {
   ninguna: 'Ninguna',
   continua_seguridad: 'Continua por seguridad',
-  si_precisa_asistencial: 'Si precisa — necesidad asistencial',
+  si_precisa_supervision: 'Si precisa — supervisión insuficiente',
   si_precisa_paciente: 'Si precisa — situación del paciente',
 }
 
 export const CONTENCION_DIA_DESC: Record<ContencionDia, string> = {
   ninguna: '',
   continua_seguridad: 'Se retira si deja de ser necesaria.',
-  si_precisa_asistencial: 'Por falta de personal en el turno.',
+  si_precisa_supervision: 'No puede garantizarse la vigilancia directa que este paciente requiere ahora mismo.',
   si_precisa_paciente: 'Según el estado del paciente.',
 }
 
@@ -63,6 +63,9 @@ export interface EstadoContencion {
   actualizado_por_id?: string
   actualizado_en?: string
   actualizado_por?: { nombre: string; apellidos: string }
+  confirmado_por_id?: string | null
+  confirmado_en?: string | null
+  confirmado_por?: { nombre: string; apellidos: string } | null
 }
 
 export interface HistorialContencion {
@@ -105,4 +108,14 @@ export const SEVERIDAD_ESTILO: Record<SeveridadContencion, {
   seguridad: { bg: 'bg-blue-50', text: 'text-blue-600', border: 'border-blue-200', label: 'Medida de seguridad' },
   si_precisa: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', label: 'Si precisa' },
   activa: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200', label: 'Activa' },
+}
+
+// Solo una contención de verdad necesita el visto bueno de un
+// médico — las medidas de seguridad puras (barras, cota cero, sensor)
+// y "ninguna" no lo requieren, para no cargar al equipo con
+// confirmaciones de trámite sin ningún peso clínico real.
+export function necesitaConfirmacion(dia: ContencionDia | null | undefined, noche: ContencionNoche[] | null | undefined): boolean {
+  const sevDia = severidadDia(dia)
+  const sevNoche = severidadNoche(noche)
+  return sevDia === 'activa' || sevDia === 'si_precisa' || sevNoche === 'activa' || sevNoche === 'si_precisa'
 }
