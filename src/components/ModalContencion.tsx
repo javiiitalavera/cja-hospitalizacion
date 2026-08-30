@@ -196,15 +196,15 @@ export default function ModalContencion({ ingresoId, onClose, onGuardado }: Prop
                         key={opt}
                         type="button"
                         onClick={() => setDia(opt)}
-                        className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors ${
+                        className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors overflow-hidden ${
                           activo ? `${estilo.bg} ${estilo.border}` : 'bg-white border-slate-200 hover:bg-slate-50'
                         }`}
                       >
                         <span className={`w-2 h-2 rounded-full shrink-0 ${activo ? estilo.text.replace('text-', 'bg-') : 'bg-slate-200'}`} />
-                        <span className={`text-sm font-medium ${activo ? estilo.text : 'text-slate-700'}`}>
+                        <span className={`text-sm font-medium shrink-0 whitespace-nowrap ${activo ? estilo.text : 'text-slate-700'}`}>
                           {CONTENCION_DIA_LABEL[opt]}
                         </span>
-                        {desc && <span className="text-xs text-slate-400">— {desc}</span>}
+                        {desc && <span className="text-xs text-slate-400 truncate">— {desc}</span>}
                       </button>
                     )
                   })}

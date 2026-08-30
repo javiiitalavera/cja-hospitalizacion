@@ -31,14 +31,14 @@ export const NOCHE_OPCIONES: ContencionNoche[] = [
 export const CONTENCION_DIA_LABEL: Record<ContencionDia, string> = {
   ninguna: 'Ninguna',
   continua_seguridad: 'Continua por seguridad',
-  si_precisa_supervision: 'Si precisa — supervisión insuficiente',
+  si_precisa_supervision: 'Si precisa — supervisión',
   si_precisa_paciente: 'Si precisa — situación del paciente',
 }
 
 export const CONTENCION_DIA_DESC: Record<ContencionDia, string> = {
   ninguna: '',
   continua_seguridad: 'Se retira si deja de ser necesaria.',
-  si_precisa_supervision: 'No puede garantizarse la vigilancia directa que este paciente requiere ahora mismo.',
+  si_precisa_supervision: 'Vigilancia insuficiente ahora mismo.',
   si_precisa_paciente: 'Según el estado del paciente.',
 }
 
