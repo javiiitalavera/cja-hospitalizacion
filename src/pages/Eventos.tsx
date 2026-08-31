@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { escapeHtml } from '../lib/imprimir'
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Cell,
@@ -230,9 +231,6 @@ export function Eventos() {
     const filas = filasDelTipo(tipo)
     const win = window.open('', '_blank')
     if (!win) return
-    const escHtml = (s: string) => s
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;').replace(/'/g, '&#39;')
     let html = `<html><head><title>${TIPO_EVENTO_LABEL[tipo]}</title>
       <style>
         body { font-family: Arial, sans-serif; padding: 24px; }
@@ -246,18 +244,18 @@ export function Eventos() {
       <p>Ingresos activos · generado ${new Date().toLocaleDateString('es-ES')}</p>
       <table><thead><tr>
         <th>Fecha</th><th>Turno</th><th>Paciente</th><th>Hab.</th>
-        ${campos.map((c) => `<th>${escHtml(c.label)}</th>`).join('')}
+        ${campos.map((c) => `<th>${escapeHtml(c.label)}</th>`).join('')}
         <th>Notas</th><th>Registrado por</th>
       </tr></thead><tbody>`
     filas.forEach((ev) => {
       html += `<tr>
         <td>${new Date(ev.fecha).toLocaleDateString('es-ES')}</td>
-        <td>${ev.turno ? escHtml(TURNO_LABEL[ev.turno]) : ''}</td>
-        <td>${escHtml(nombreCompleto(ev.ingreso.paciente))}</td>
+        <td>${ev.turno ? escapeHtml(TURNO_LABEL[ev.turno]) : ''}</td>
+        <td>${escapeHtml(nombreCompleto(ev.ingreso.paciente))}</td>
         <td>${ev.ingreso.habitacion ?? ''}</td>
-        ${campos.map((c) => `<td>${escHtml(String(ev.datos?.[c.key] ?? ''))}</td>`).join('')}
-        <td>${escHtml(ev.notas ?? '')}</td>
-        <td>${ev.registrado_por ? escHtml(`${ev.registrado_por.nombre} ${ev.registrado_por.apellidos}`) : ''}</td>
+        ${campos.map((c) => `<td>${escapeHtml(String(ev.datos?.[c.key] ?? ''))}</td>`).join('')}
+        <td>${escapeHtml(ev.notas ?? '')}</td>
+        <td>${ev.registrado_por ? escapeHtml(`${ev.registrado_por.nombre} ${ev.registrado_por.apellidos}`) : ''}</td>
       </tr>`
     })
     html += '</tbody></table></body></html>'
@@ -270,9 +268,6 @@ export function Eventos() {
   function imprimirContenciones() {
     const win = window.open('', '_blank')
     if (!win) return
-    const escHtml = (s: string) => s
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;').replace(/'/g, '&#39;')
     let html = `<html><head><title>Contenciones activas</title>
       <style>
         body { font-family: Arial, sans-serif; padding: 24px; }
@@ -291,9 +286,9 @@ export function Eventos() {
       const nocheReal = ((c.noche as ContencionNoche[]) ?? []).filter((n) => NOCHE_ES_CONTENCION.includes(n))
       html += `<tr>
         <td>${c.ingreso.habitacion ?? ''}</td>
-        <td>${escHtml(nombreCompleto(c.ingreso.paciente))}</td>
-        <td>${c.dia && c.dia !== 'ninguna' ? escHtml(CONTENCION_DIA_LABEL[c.dia as ContencionDia]) : ''}</td>
-        <td>${nocheReal.map((n) => escHtml(CONTENCION_NOCHE_LABEL[n])).join(', ')}</td>
+        <td>${escapeHtml(nombreCompleto(c.ingreso.paciente))}</td>
+        <td>${c.dia && c.dia !== 'ninguna' ? escapeHtml(CONTENCION_DIA_LABEL[c.dia as ContencionDia]) : ''}</td>
+        <td>${nocheReal.map((n) => escapeHtml(CONTENCION_NOCHE_LABEL[n])).join(', ')}</td>
         <td>${c.actualizado_en ? new Date(c.actualizado_en).toLocaleDateString('es-ES') : ''}</td>
       </tr>`
     })
