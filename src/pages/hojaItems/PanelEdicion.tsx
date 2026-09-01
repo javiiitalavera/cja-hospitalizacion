@@ -112,7 +112,7 @@ export default function PanelEdicion({
     // guardado más reciente, esta respuesta llega obsoleta — no debe
     // propagarse hacia la rejilla principal y pisar un cambio nuevo.
     if (miSecuencia === saveSeqRef.current && updated) onSaved(updated as ItemsPaciente)
-    setTimeout(() => setSaved(false), 2000)
+    setTimeout(() => setSaved(false), 2800)
   }
 
   async function limpiarItems() {
@@ -224,11 +224,21 @@ export default function PanelEdicion({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-slate-400">
-            {saving && '● Guardando…'}
-            {!saving && saved && <span className="text-emerald-600">✓ Guardado</span>}
-            {!saving && saveError && <span className="text-red-600">✗ Error al guardar, inténtalo de nuevo</span>}
-          </span>
+          {saving && (
+            <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 text-xs font-medium">
+              ● Guardando…
+            </span>
+          )}
+          {!saving && saved && (
+            <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-semibold">
+              ✓ Guardado
+            </span>
+          )}
+          {!saving && saveError && (
+            <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-red-100 text-red-700 text-xs font-semibold">
+              ✗ Error al guardar, inténtalo de nuevo
+            </span>
+          )}
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 ml-1">
             <X className="w-4 h-4" />
           </button>

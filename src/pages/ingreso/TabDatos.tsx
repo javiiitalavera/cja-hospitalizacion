@@ -1,13 +1,20 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState, type RefObject } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import type { Ingreso, Profesional } from '../../types'
 import { ESTADO_INGRESO_LABEL as ESTADO_LABEL } from '../../types'
 import { ExternalLink } from 'lucide-react'
 
-function TabDatos({ ingreso, onUpdate }: { ingreso: Ingreso; onUpdate: (i: Ingreso) => void }) {
+function TabDatos({ ingreso, onUpdate, iniciarEditando = false }: { ingreso: Ingreso; onUpdate: (i: Ingreso) => void; iniciarEditando?: boolean }) {
   const p = ingreso.paciente!
-  const [editando, setEditando] = useState(false)
+  // Antes, "Asignar habitación" desde Inicio llevaba al episodio y
+  // había que buscar por separado el botón "Editar datos del
+  // ingreso" — con esto entra directo en modo edición.
+  const [editando, setEditando] = useState(iniciarEditando)
+  const habitacionInputRef = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    if (iniciarEditando) habitacionInputRef.current?.focus()
+  }, [iniciarEditando])
   const [ingresoEdit, setIngresoEdit] = useState({
     habitacion: ingreso.habitacion?.toString() ?? '',
     motivo_ingreso: ingreso.motivo_ingreso ?? '',
@@ -102,10 +109,10 @@ function TabDatos({ ingreso, onUpdate }: { ingreso: Ingreso; onUpdate: (i: Ingre
   )
 
   if (editando) {
-    const inp = (label: string, val: string, onChange: (v: string) => void, type = 'text') => (
+    const inp = (label: string, val: string, onChange: (v: string) => void, type = 'text', ref?: RefObject<HTMLInputElement | null>) => (
       <div key={label}>
         <label className="label">{label}</label>
-        <input type={type} className="input" value={val}
+        <input ref={ref} type={type} className="input" value={val}
           onChange={e => onChange(e.target.value)} />
       </div>
     )
@@ -125,7 +132,7 @@ function TabDatos({ ingreso, onUpdate }: { ingreso: Ingreso; onUpdate: (i: Ingre
                 Se pone desde "Dar de alta", no aquí (para que vaya siempre junto con el estado).
               </p>
             </div>
-            {inp('Habitación', ingresoEdit.habitacion, v => setIngresoEdit(i => ({ ...i, habitacion: v })), 'number')}
+            {inp('Habitación', ingresoEdit.habitacion, v => setIngresoEdit(i => ({ ...i, habitacion: v })), 'number', habitacionInputRef)}
             <div>
               <label className="label">Estado</label>
               <p className="input bg-slate-50 text-slate-500 cursor-not-allowed">

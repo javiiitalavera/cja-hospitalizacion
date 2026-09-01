@@ -16,6 +16,8 @@ import {
   type ContencionDia, type ContencionNoche,
 } from '../types/contenciones'
 import ModalContencion from '../components/ModalContencion'
+import FormularioEvento from '../components/FormularioEvento'
+import { Plus } from 'lucide-react'
 
 // ─── CONSTANTES ────────────────────────────────────────────────
 
@@ -80,6 +82,26 @@ function escaparCsv(v: string): string {
 
 export function Eventos() {
   const navigate = useNavigate()
+
+  // ── Registrar incidencia desde esta misma página — antes solo se
+  // podía hacer entrando primero en la ficha de un paciente concreto.
+  const [selectorPaciente, setSelectorPaciente] = useState(false)
+  const [busquedaPaciente, setBusquedaPaciente] = useState('')
+  const [pacientesActivos, setPacientesActivos] = useState<any[]>([])
+  const [ingresoParaIncidencia, setIngresoParaIncidencia] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!selectorPaciente) return
+    supabase
+      .from('ingresos')
+      .select('id, habitacion, paciente:pacientes(nombre, primer_apellido, segundo_apellido)')
+      .eq('estado', 'activo')
+      .then(({ data }) => setPacientesActivos(data ?? []))
+  }, [selectorPaciente])
+
+  const pacientesFiltrados = pacientesActivos.filter((i) =>
+    nombreCompleto(i.paciente).toLowerCase().includes(busquedaPaciente.toLowerCase())
+  )
 
   // ── Contenciones activas (ingresos activos) ─────────────────
   const [loadingContenciones, setLoadingContenciones] = useState(true)
@@ -334,10 +356,58 @@ export function Eventos() {
     <div className="p-6 md:p-8 space-y-8">
 
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-slate-800">Incidencias</h1>
-        <p className="text-sm text-slate-400 mt-0.5">Estado de seguridad de la planta y tendencias</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800">Incidencias</h1>
+          <p className="text-sm text-slate-400 mt-0.5">Estado de seguridad de la planta y tendencias</p>
+        </div>
+        <button onClick={() => setSelectorPaciente(true)} className="btn-primary">
+          <Plus className="w-4 h-4" />
+          Registrar incidencia
+        </button>
       </div>
+
+      {selectorPaciente && !ingresoParaIncidencia && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setSelectorPaciente(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5 space-y-3" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-bold text-slate-800">¿De qué paciente?</h3>
+            <input
+              autoFocus
+              className="input"
+              placeholder="Buscar por nombre…"
+              value={busquedaPaciente}
+              onChange={(e) => setBusquedaPaciente(e.target.value)}
+            />
+            <div className="max-h-64 overflow-y-auto -mx-1 px-1">
+              {pacientesFiltrados.length === 0 ? (
+                <p className="text-sm text-slate-400 text-center py-6">Sin resultados.</p>
+              ) : (
+                pacientesFiltrados.map((i) => (
+                  <button
+                    key={i.id}
+                    onClick={() => { setIngresoParaIncidencia(i.id); setSelectorPaciente(false) }}
+                    className="w-full flex items-center justify-between text-left px-3 py-2 rounded-lg hover:bg-slate-50 text-sm"
+                  >
+                    <span className="font-medium text-slate-700">{nombreCompleto(i.paciente)}</span>
+                    <span className="text-slate-400 text-xs">Hab. {i.habitacion ?? '—'}</span>
+                  </button>
+                ))
+              )}
+            </div>
+            <button onClick={() => setSelectorPaciente(false)} className="text-xs text-slate-400 hover:text-slate-600">
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {ingresoParaIncidencia && (
+        <FormularioEvento
+          ingresoId={ingresoParaIncidencia}
+          onClose={() => setIngresoParaIncidencia(null)}
+          onGuardado={() => { setIngresoParaIncidencia(null); fetchEstadoActual(); fetchTendencias() }}
+        />
+      )}
 
       {/* ══════════════ CONTENCIONES ACTIVAS ══════════════ */}
       <section>

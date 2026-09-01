@@ -191,7 +191,7 @@ export default function Home() {
               <div
                 key={ingreso.id}
                 className="flex items-center justify-between text-sm cursor-pointer hover:bg-amber-100/60 rounded px-2 py-1 -mx-2"
-                onClick={() => navigate(`/ingresos/${ingreso.id}`)}
+                onClick={() => navigate(`/ingresos/${ingreso.id}?editar=habitacion`)}
               >
                 <span className="text-amber-900 font-medium">
                   {ingreso.paciente ? nombreCompleto(ingreso.paciente) : '—'}
