@@ -275,7 +275,7 @@ export default function DetallePaciente() {
                   </button>
                 </div>
               ) : (
-                <button onClick={() => setEditando(true)} className="btn-secondary">
+                <button onClick={() => { setEditando(true); setEditData(paciente) }} className="btn-secondary">
                   <Pencil className="w-4 h-4" /> Editar
                 </button>
               )}
