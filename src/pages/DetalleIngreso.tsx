@@ -12,11 +12,6 @@ import { TabInformeAlta } from './ingreso/TabInformeAlta'
 import { TabItems } from './ingreso/TabItems'
 import { TabEventos } from './ingreso/TabEventos'
 import { TabCMBD } from './ingreso/TabCMBD'
-import ModalContencion from '../components/ModalContencion'
-import {
-  severidadDia, severidadNoche, SEVERIDAD_ESTILO,
-  type ContencionDia, type ContencionNoche,
-} from '../types/contenciones'
 
 const TABS = [
   { id: 'datos', label: 'Datos', icon: User },
@@ -48,15 +43,6 @@ export default function DetalleIngreso() {
   const [ingreso, setIngreso] = useState<Ingreso | null>(null)
   const [loading, setLoading] = useState(true)
   const [modalAlta, setModalAlta] = useState(false)
-  const [modalContencion, setModalContencion] = useState(false)
-  const [estadoContencion, setEstadoContencion] = useState<{ dia: ContencionDia | null; noche: ContencionNoche[] | null } | 'cargando'>('cargando')
-
-  function cargarContencion() {
-    if (!id) return
-    supabase.from('contenciones').select('dia, noche').eq('ingreso_id', id).maybeSingle()
-      .then(({ data }) => setEstadoContencion(data ?? { dia: null, noche: null }))
-  }
-  useEffect(() => { cargarContencion() }, [id])
   const [altaForm, setAltaForm] = useState({
     fecha_alta: hoyLocal(),
     estado: 'alta',
@@ -145,47 +131,16 @@ export default function DetalleIngreso() {
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            {/* Acceso con nombre visible a la contención, desde el
-                propio episodio — antes solo se podía abrir desde un
-                icono sin etiqueta en Inicio, o entrando en la pestaña
-                Ítems. */}
-            {estadoContencion !== 'cargando' && (
-              <button
-                onClick={() => setModalContencion(true)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-xs font-medium transition-colors"
-              >
-                <span className="text-slate-500">Contención:</span>
-                {(['dia', 'noche'] as const).map((eje) => {
-                  const sev = eje === 'dia' ? severidadDia(estadoContencion.dia) : severidadNoche(estadoContencion.noche)
-                  const estilo = SEVERIDAD_ESTILO[sev]
-                  return (
-                    <span key={eje} className={`px-1.5 py-0.5 rounded ${estilo.bg} ${estilo.text}`}>
-                      {eje === 'dia' ? 'D' : 'N'}: {estilo.label}
-                    </span>
-                  )
-                })}
-              </button>
-            )}
-            {ingreso.estado === 'activo' && esMedico && (
-              <button
-                onClick={() => setModalAlta(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-800 text-white text-xs font-medium transition-colors"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                Dar de alta
-              </button>
-            )}
-          </div>
+          {ingreso.estado === 'activo' && esMedico && (
+            <button
+              onClick={() => setModalAlta(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-800 text-white text-xs font-medium transition-colors shrink-0"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              Dar de alta
+            </button>
+          )}
         </div>
-
-        {modalContencion && (
-          <ModalContencion
-            ingresoId={id!}
-            onClose={() => setModalContencion(false)}
-            onGuardado={cargarContencion}
-          />
-        )}
 
         {/* Tabs */}
         <div className="flex gap-1 mt-4 -mb-4">
