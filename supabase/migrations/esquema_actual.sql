@@ -664,7 +664,12 @@ declare
   v_actor uuid;
   v_resultado public.contenciones;
 begin
-  if private.mi_rol() <> 'medico' then
+  -- coalesce(...,'') en vez de comparar directo: para quien no tiene
+  -- ninguna sesión, mi_rol() devuelve NULL, y "NULL <> 'medico'" no
+  -- es verdadero ni falso — es NULL, y un "if" lo trata como falso,
+  -- dejando pasar la comprobación sin querer. Confirmado que esto
+  -- pasaba de verdad contra Supabase antes de este arreglo.
+  if coalesce(private.mi_rol(), '') <> 'medico' then
     raise exception 'Solo un médico puede confirmar una pauta de contención.';
   end if;
   select id into v_actor from public.profesionales where user_id = auth.uid() limit 1;
@@ -694,7 +699,7 @@ as $$
 declare
   v_resultado public.contenciones;
 begin
-  if private.mi_rol() <> 'medico' then
+  if coalesce(private.mi_rol(), '') <> 'medico' then
     raise exception 'Solo un médico puede retirar una confirmación.';
   end if;
 
@@ -731,11 +736,26 @@ declare
   v_paciente_id uuid;
   v_ingreso_id uuid;
   v_existente record;
+  v_nhc text := nullif(p_paciente->>'nhc', '');
+  v_cipna text := nullif(p_paciente->>'cipna', '');
 begin
   if p_habitacion is not null and exists (
     select 1 from public.ingresos where habitacion = p_habitacion and estado = 'activo'
   ) then
     raise exception using errcode = 'P0001', message = 'habitacion_ocupada';
+  end if;
+
+  -- A diferencia del duplicado por nombre, aquí no hay opción de
+  -- forzar: dos historias clínicas con el mismo NHC o CIPNA es
+  -- siempre un error de datos, nunca dos personas distintas de
+  -- verdad. Encontrado por auditoría directa contra Supabase: dos
+  -- pacientes reales compartían el mismo NHC sin que nada lo impidiera.
+  if v_nhc is not null and exists (select 1 from public.pacientes where nhc = v_nhc) then
+    raise exception using errcode = 'P0001', message = 'nhc_duplicado:' || v_nhc;
+  end if;
+
+  if v_cipna is not null and exists (select 1 from public.pacientes where cipna = v_cipna) then
+    raise exception using errcode = 'P0001', message = 'cipna_duplicado:' || v_cipna;
   end if;
 
   if not p_forzar then
@@ -760,7 +780,7 @@ begin
     contacto_familiar_nombre, contacto_familiar_telefono
   ) values (
     p_paciente->>'nombre', p_paciente->>'primer_apellido', nullif(p_paciente->>'segundo_apellido', ''),
-    nullif(p_paciente->>'cipna', ''), nullif(p_paciente->>'nhc', ''),
+    v_cipna, v_nhc,
     nullif(p_paciente->>'fecha_nacimiento', '')::date, nullif(p_paciente->>'sexo', ''),
     nullif(p_paciente->>'dni', ''), nullif(p_paciente->>'municipio', ''), nullif(p_paciente->>'medico_cabecera', ''),
     nullif(p_paciente->>'contacto_familiar_nombre', ''), nullif(p_paciente->>'contacto_familiar_telefono', '')
@@ -990,6 +1010,15 @@ create policy modificar_equipo on public.contenciones
 -- security definer: se saltan esta política a propósito para su
 -- propia escritura interna (ver su definición en FUNCIONES) — toda
 -- la autorización real vive dentro de esas funciones.
+--
+-- El revoke explícito es imprescindible, no decorativo: Postgres
+-- concede permiso de ejecución a PUBLIC (que incluye a "anon", quien
+-- no tiene ninguna sesión) sobre cualquier función nueva, salvo que
+-- se revoque a propósito. Confirmado reproduciéndolo de verdad: sin
+-- este revoke, alguien sin sesión podía retirar la confirmación de
+-- una contención real solo conociendo el ingreso.
+revoke execute on function public.retirar_confirmacion_contencion(uuid) from public, anon;
+revoke execute on function public.confirmar_contencion(uuid, integer) from public, anon;
 grant execute on function public.confirmar_contencion(uuid, integer) to authenticated;
 grant execute on function public.retirar_confirmacion_contencion(uuid) to authenticated;
 
@@ -1020,6 +1049,20 @@ create index items_historico_fecha_idx on public.items_historico (fecha);
 create index auditoria_tabla_registro_idx on public.auditoria (tabla, registro_id);
 create index auditoria_fecha_idx on public.auditoria (fecha desc);
 create index pacientes_nombre_normalizado_idx on public.pacientes (nombre_normalizado);
+
+-- Únicos, pero solo cuando de verdad hay un valor que comparar —
+-- muchos pacientes no tienen NHC o CIPNA asignado, y un "unique"
+-- normal trataría dos campos en blanco como si fueran el mismo dato.
+-- Encontrado por auditoría directa: dos pacientes reales compartían
+-- el mismo NHC sin que nada lo impidiera.
+create unique index if not exists pacientes_nhc_unico
+  on public.pacientes (nhc)
+  where nhc is not null and nhc <> '';
+
+create unique index if not exists pacientes_cipna_unico
+  on public.pacientes (cipna)
+  where cipna is not null and cipna <> '';
+
 create index pacientes_primer_apellido_normalizado_idx on public.pacientes (primer_apellido_normalizado);
 create index contenciones_historial_ingreso_idx on public.contenciones_historial (ingreso_id, cambiado_en desc);
 -- Nota: no hace falta un índice aparte en profesionales(user_id) ni
