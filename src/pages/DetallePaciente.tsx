@@ -32,6 +32,26 @@ interface Paciente {
   contacto_familiar_telefono?: string
 }
 
+// Solo los campos que el propio formulario permite editar — el
+// paciente cargado desde la base de datos trae además tres columnas
+// calculadas automáticamente (nombre_normalizado y compañía), que
+// Postgres rechaza si se intentan guardar explícitamente ("column
+// ... can only be updated to DEFAULT"). Copiar el paciente entero
+// las arrastraba sin querer.
+const CAMPOS_EDITABLES = [
+  'primer_apellido', 'segundo_apellido', 'nombre', 'fecha_nacimiento', 'sexo',
+  'cipna', 'nhc', 'dni', 'municipio', 'medico_cabecera',
+  'contacto_familiar_nombre', 'contacto_familiar_telefono',
+] as const
+
+function datosEditables(p: Paciente): Partial<Paciente> {
+  const resultado: Partial<Paciente> = {}
+  for (const campo of CAMPOS_EDITABLES) {
+    ;(resultado as any)[campo] = (p as any)[campo]
+  }
+  return resultado
+}
+
 export default function DetallePaciente() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -266,7 +286,7 @@ export default function DetallePaciente() {
             <div className="flex justify-end mb-3">
               {!esMedico ? null : editando ? (
                 <div className="flex gap-2">
-                  <button onClick={() => { setEditando(false); setEditData(paciente); setEditError('') }}
+                  <button onClick={() => { setEditando(false); setEditData(datosEditables(paciente)); setEditError('') }}
                     className="btn-secondary">
                     <X className="w-4 h-4" /> Cancelar
                   </button>
@@ -275,7 +295,7 @@ export default function DetallePaciente() {
                   </button>
                 </div>
               ) : (
-                <button onClick={() => { setEditando(true); setEditData(paciente) }} className="btn-secondary">
+                <button onClick={() => { setEditando(true); setEditData(datosEditables(paciente)) }} className="btn-secondary">
                   <Pencil className="w-4 h-4" /> Editar
                 </button>
               )}
