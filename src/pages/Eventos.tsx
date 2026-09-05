@@ -8,7 +8,7 @@ import {
 import { supabase } from '../lib/supabase'
 import { nombreCompleto } from '../types'
 import { ChevronDown, ChevronRight as ChevronRightIcon, Download, Printer, RefreshCw } from 'lucide-react'
-import { TIPO_EVENTO_LABEL, TURNO_LABEL, CAMPOS_POR_TIPO, type TipoEvento } from '../types/eventos'
+import { TIPO_EVENTO_LABEL, TIPO_EVENTO_COLOR, TURNO_LABEL, CAMPOS_POR_TIPO, type TipoEvento } from '../types/eventos'
 import { formatFechaLocal as fmt } from '../lib/fechas'
 import {
   severidadDia, severidadNoche, SEVERIDAD_ESTILO, necesitaConfirmacion, NOCHE_ES_CONTENCION,
@@ -48,6 +48,7 @@ interface EventoActivo {
   turno?: string
   datos: Record<string, string>
   notas?: string
+  estado?: 'pendiente' | 'completa'
   registrado_por?: { nombre: string; apellidos: string }
   ingreso: {
     id: string
@@ -96,12 +97,17 @@ export function Eventos() {
       .from('ingresos')
       .select('id, habitacion, paciente:pacientes(nombre, primer_apellido, segundo_apellido)')
       .eq('estado', 'activo')
+      .order('habitacion', { ascending: true })
       .then(({ data }) => setPacientesActivos(data ?? []))
   }, [selectorPaciente])
 
-  const pacientesFiltrados = pacientesActivos.filter((i) =>
-    nombreCompleto(i.paciente).toLowerCase().includes(busquedaPaciente.toLowerCase())
-  )
+  const pacientesFiltrados = pacientesActivos.filter((i) => {
+    const q = busquedaPaciente.toLowerCase().trim()
+    if (!q) return true
+    // Por nombre, o directamente por el número de habitación — más
+    // rápido cuando lo que se conoce es dónde está, no cómo se llama.
+    return nombreCompleto(i.paciente).toLowerCase().includes(q) || String(i.habitacion ?? '').includes(q)
+  })
 
   // ── Contenciones activas (ingresos activos) ─────────────────
   const [loadingContenciones, setLoadingContenciones] = useState(true)
@@ -171,7 +177,7 @@ export function Eventos() {
       const { data, error: err } = await supabase
         .from('eventos')
         .select(`
-          id, tipo, fecha, hora, turno, datos, notas,
+          id, tipo, fecha, hora, turno, datos, notas, estado,
           registrado_por:profesionales(nombre, apellidos),
           ingreso:ingresos!inner(id, habitacion, estado, paciente:pacientes(nombre, primer_apellido, segundo_apellido))
         `)
@@ -206,6 +212,62 @@ export function Eventos() {
     } finally {
       setLoadingTendencias(false)
     }
+  }
+
+  // ── Detalle del periodo, bajo demanda ───────────────────────
+  // Las Tendencias ya cuentan todo el periodo (incluidos episodios
+  // cerrados), pero solo como números — antes no había forma de ver
+  // ni exportar esos registros concretos, solo el resumen.
+  const [verDetallePeriodo, setVerDetallePeriodo] = useState(false)
+  const [loadingDetallePeriodo, setLoadingDetallePeriodo] = useState(false)
+  const [detallePeriodo, setDetallePeriodo] = useState<any[]>([])
+
+  async function fetchDetallePeriodo() {
+    setLoadingDetallePeriodo(true)
+    try {
+      const { desde, hasta } = getRango(periodo, anioSel, mesSel)
+      const { data } = await supabase
+        .from('eventos')
+        .select(`
+          id, tipo, fecha, hora, turno, datos, notas, estado,
+          registrado_por:profesionales(nombre, apellidos),
+          ingreso:ingresos(id, habitacion, estado, paciente:pacientes(nombre, primer_apellido, segundo_apellido))
+        `)
+        .gte('fecha', desde)
+        .lte('fecha', hasta)
+        .order('fecha', { ascending: false })
+      setDetallePeriodo(data ?? [])
+    } finally {
+      setLoadingDetallePeriodo(false)
+    }
+  }
+
+  function exportarCSVPeriodo() {
+    const { desde, hasta } = getRango(periodo, anioSel, mesSel)
+    const cabecera = ['Fecha', 'Turno', 'Tipo', 'Estado', 'Paciente', 'Habitación', 'Estado del ingreso', 'Notas', 'Registrado por']
+      .map(escaparCsv).join(',')
+    const filas = detallePeriodo.map((ev) => [
+      ev.fecha,
+      ev.turno ? TURNO_LABEL[ev.turno] : 'Sin turno especificado',
+      TIPO_EVENTO_LABEL[ev.tipo as TipoEvento],
+      ev.estado === 'pendiente' ? 'Pendiente de completar' : 'Completa',
+      ev.ingreso?.paciente ? nombreCompleto(ev.ingreso.paciente) : '',
+      ev.ingreso?.habitacion ?? '',
+      ev.ingreso?.estado === 'activo' ? 'Ingreso activo' : 'Episodio cerrado',
+      ev.notas ?? '',
+      ev.registrado_por ? `${ev.registrado_por.nombre} ${ev.registrado_por.apellidos}` : '',
+    ].map((v) => escaparCsv(String(v))).join(','))
+    const csv = '\uFEFF' + [cabecera, ...filas].join('\r\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    // El propio nombre del archivo deja claro que es del periodo
+    // elegido, no de los ingresos activos — para no confundirlo con
+    // el CSV de "Estado actual", que es otra cosa.
+    a.download = `incidencias_periodo_${desde}_a_${hasta}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   function periodoLabel(): string {
@@ -257,11 +319,12 @@ export function Eventos() {
 
   function exportarCSV(tipo: TipoEvento) {
     const campos = CAMPOS_POR_TIPO[tipo]
-    const cabecera = ['Fecha', 'Turno', 'Paciente', 'Habitación', ...campos.map((c) => c.label), 'Notas', 'Registrado por']
+    const cabecera = ['Fecha', 'Turno', 'Estado', 'Paciente', 'Habitación', ...campos.map((c) => c.label), 'Notas', 'Registrado por']
       .map(escaparCsv).join(',')
     const filas = filasDelTipo(tipo).map((ev) => [
       ev.fecha,
-      ev.turno ? TURNO_LABEL[ev.turno] : '',
+      ev.turno ? TURNO_LABEL[ev.turno] : 'Sin turno especificado',
+      ev.estado === 'pendiente' ? 'Pendiente de completar' : 'Completa',
       nombreCompleto(ev.ingreso.paciente),
       ev.ingreso.habitacion?.toString() ?? '',
       ...campos.map((c) => ev.datos?.[c.key] ?? ''),
@@ -273,7 +336,9 @@ export function Eventos() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `${tipo}_${fmt(new Date())}.csv`
+    // El propio nombre deja claro que es de ingresos activos, no del
+    // periodo histórico — ese exporta con su propio nombre distinto.
+    a.download = `${tipo}_ingresos_activos_${fmt(new Date())}.csv`
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -282,13 +347,14 @@ export function Eventos() {
     const campos = CAMPOS_POR_TIPO[tipo]
     const filas = filasDelTipo(tipo)
     const thead = `<tr>
-        <th>Fecha</th><th>Turno</th><th>Paciente</th><th>Hab.</th>
+        <th>Fecha</th><th>Turno</th><th>Estado</th><th>Paciente</th><th>Hab.</th>
         ${campos.map((c) => `<th>${escapeHtml(c.label)}</th>`).join('')}
         <th>Notas</th><th>Registrado por</th>
       </tr>`
     const tbody = filas.map((ev) => `<tr>
         <td>${new Date(ev.fecha).toLocaleDateString('es-ES')}</td>
-        <td>${ev.turno ? escapeHtml(TURNO_LABEL[ev.turno]) : ''}</td>
+        <td>${ev.turno ? escapeHtml(TURNO_LABEL[ev.turno]) : 'Sin turno especificado'}</td>
+        <td>${ev.estado === 'pendiente' ? 'Pendiente de completar' : 'Completa'}</td>
         <td>${escapeHtml(nombreCompleto(ev.ingreso.paciente))}</td>
         <td>${ev.ingreso.habitacion ?? ''}</td>
         ${campos.map((c) => `<td>${escapeHtml(String(ev.datos?.[c.key] ?? ''))}</td>`).join('')}
@@ -345,10 +411,16 @@ export function Eventos() {
     .filter((t) => t.total > 0)
     .sort((a, b) => b.total - a.total)
 
-  const porTurno = (['manana', 'tarde', 'noche'] as const).map((t) => ({
-    turno: TURNO_LABEL[t],
-    total: eventosPeriodo.filter((ev) => ev.turno === t).length,
-  }))
+  const porTurno = [
+    ...(['manana', 'tarde', 'noche'] as const).map((t) => ({
+      turno: TURNO_LABEL[t],
+      total: eventosPeriodo.filter((ev) => ev.turno === t).length,
+    })),
+    // Sin esto, una incidencia registrada sin turno simplemente
+    // desaparecía del reparto — como si nunca hubiera pasado, en vez
+    // de contar como un dato real que falta por precisar.
+    { turno: 'Sin turno especificado', total: eventosPeriodo.filter((ev) => !ev.turno).length },
+  ]
 
   // ── Render ────────────────────────────────────────────────
 
@@ -384,7 +456,7 @@ export function Eventos() {
             <input
               autoFocus
               className="input"
-              placeholder="Buscar por nombre…"
+              placeholder="Buscar por nombre o nº de habitación…"
               value={busquedaPaciente}
               onChange={(e) => setBusquedaPaciente(e.target.value)}
             />
@@ -422,6 +494,43 @@ export function Eventos() {
           })()}
         />
       )}
+
+      {/* ══════════════ PENDIENTES DE COMPLETAR ══════════════ */}
+      {/* Una incidencia puede registrarse correctamente y descubrirse
+          sus consecuencias días después — este bloque las reúne en un
+          solo sitio, en vez de que queden escondidas dentro de cada
+          ficha hasta que alguien se acuerde de volver a mirarlas. */}
+      {(() => {
+        const pendientes = eventosActivos.filter((ev) => ev.estado === 'pendiente')
+        if (pendientes.length === 0) return null
+        return (
+          <section>
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+              <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-3">
+                {pendientes.length} {pendientes.length === 1 ? 'incidencia pendiente' : 'incidencias pendientes'} de completar
+              </p>
+              <div className="space-y-1.5">
+                {pendientes.map((ev) => (
+                  <button
+                    key={ev.id}
+                    onClick={() => navigate(`/ingresos/${ev.ingreso.id}?tab=eventos`)}
+                    className="w-full flex items-center justify-between gap-3 bg-white rounded-lg px-3 py-2 text-left hover:bg-amber-100/50 transition-colors border border-amber-100"
+                  >
+                    <span className="flex items-center gap-2 text-sm">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${TIPO_EVENTO_COLOR[ev.tipo]}`}>
+                        {TIPO_EVENTO_LABEL[ev.tipo]}
+                      </span>
+                      <span className="font-medium text-slate-700">{nombreCompleto(ev.ingreso.paciente)}</span>
+                      <span className="text-slate-400">Hab. {ev.ingreso.habitacion ?? '—'}</span>
+                    </span>
+                    <span className="text-xs text-slate-400">{new Date(ev.fecha).toLocaleDateString('es-ES')}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </section>
+        )
+      })()}
 
       {/* ══════════════ CONTENCIONES ACTIVAS ══════════════ */}
       <section>
@@ -533,7 +642,7 @@ export function Eventos() {
                     filas={filasDelTipo(r.tipo)}
                     abierto={expandido === r.tipo}
                     onToggle={() => setExpandido((e) => (e === r.tipo ? null : r.tipo))}
-                    onClickPaciente={(id) => navigate(`/ingresos/${id}`)}
+                    onClickPaciente={(id) => navigate(`/ingresos/${id}?tab=eventos`)}
                     onExportar={() => exportarCSV(r.tipo)}
                     onImprimir={() => imprimirTabla(r.tipo)}
                   />
@@ -650,6 +759,94 @@ export function Eventos() {
                   </BarChart>
                 </ResponsiveContainer>
               </div>
+            </div>
+
+            {/* Antes las Tendencias solo contaban — no había forma de
+                ver ni exportar los registros concretos del periodo,
+                solo el resumen. Bajo demanda, no siempre cargado,
+                porque puede ser un periodo largo con muchos registros. */}
+            <div className="pt-2">
+              <button
+                onClick={() => {
+                  setVerDetallePeriodo((v) => !v)
+                  if (!verDetallePeriodo && detallePeriodo.length === 0) fetchDetallePeriodo()
+                }}
+                className="btn-secondary text-xs"
+              >
+                {verDetallePeriodo ? 'Ocultar incidencias del periodo' : 'Ver incidencias del periodo'}
+              </button>
+
+              {verDetallePeriodo && (
+                <div className="mt-3 card overflow-hidden">
+                  <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50 border-b">
+                    {/* La propia cabecera deja claro que esto es el
+                        periodo elegido, no "ingresos activos" como
+                        las demás tablas de esta página — para no
+                        confundir una cosa con la otra. */}
+                    <p className="text-xs font-medium text-slate-500">
+                      Periodo histórico: {periodoLabel()} · incluye episodios cerrados
+                    </p>
+                    {detallePeriodo.length > 0 && (
+                      <button onClick={exportarCSVPeriodo} className="btn-secondary text-xs py-1 gap-1">
+                        <Download className="w-3.5 h-3.5" /> Exportar CSV
+                      </button>
+                    )}
+                  </div>
+                  {loadingDetallePeriodo ? (
+                    <p className="px-4 py-8 text-center text-slate-400 text-sm">Cargando…</p>
+                  ) : detallePeriodo.length === 0 ? (
+                    <p className="px-4 py-8 text-center text-slate-400 text-sm">Sin incidencias en este periodo.</p>
+                  ) : (
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b bg-slate-50 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                          <th className="px-4 py-2">Fecha</th>
+                          <th className="px-4 py-2">Tipo</th>
+                          <th className="px-4 py-2">Estado</th>
+                          <th className="px-4 py-2">Paciente</th>
+                          <th className="px-4 py-2">Episodio</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y">
+                        {detallePeriodo.map((ev) => (
+                          <tr
+                            key={ev.id}
+                            className="hover:bg-slate-50 cursor-pointer"
+                            onClick={() => ev.ingreso?.id && navigate(`/ingresos/${ev.ingreso.id}?tab=eventos`)}
+                          >
+                            <td className="px-4 py-2 text-slate-500 text-xs">
+                              {new Date(ev.fecha).toLocaleDateString('es-ES')}
+                              {ev.turno ? ` · ${TURNO_LABEL[ev.turno]}` : ' · Sin turno'}
+                            </td>
+                            <td className="px-4 py-2">
+                              <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${TIPO_EVENTO_COLOR[ev.tipo as TipoEvento]}`}>
+                                {TIPO_EVENTO_LABEL[ev.tipo as TipoEvento]}
+                              </span>
+                            </td>
+                            <td className="px-4 py-2">
+                              {ev.estado === 'pendiente' ? (
+                                <span className="text-amber-600 text-xs font-medium">Pendiente</span>
+                              ) : (
+                                <span className="text-slate-400 text-xs">Completa</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-2 font-medium text-slate-700">
+                              {ev.ingreso?.paciente ? nombreCompleto(ev.ingreso.paciente) : '—'}
+                            </td>
+                            <td className="px-4 py-2 text-xs">
+                              {ev.ingreso?.estado === 'activo' ? (
+                                <span className="text-emerald-600">Activo</span>
+                              ) : (
+                                <span className="text-slate-400">Cerrado</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         )}

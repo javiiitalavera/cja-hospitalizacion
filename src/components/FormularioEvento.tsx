@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import { hoyLocal } from '../lib/fechas'
 import { useAuth } from '../lib/AuthContext'
 import type { Profesional } from '../types'
-import { TIPO_EVENTO_LABEL, CAMPOS_POR_TIPO, TURNO_LABEL, type TipoEvento, type Evento } from '../types/eventos'
+import { TIPO_EVENTO_LABEL, CAMPOS_POR_TIPO, TURNO_LABEL, turnoSegunHora, type TipoEvento, type Evento } from '../types/eventos'
 import { X, Save } from 'lucide-react'
 
 interface Props {
@@ -20,6 +20,7 @@ export default function FormularioEvento({ ingresoId, eventoExistente, onClose, 
   const [fecha, setFecha] = useState(eventoExistente?.fecha ?? hoyLocal())
   const [hora, setHora] = useState(eventoExistente?.hora?.slice(0, 5) ?? '')
   const [turno, setTurno] = useState(eventoExistente?.turno ?? '')
+  const [estado, setEstado] = useState<'pendiente' | 'completa'>(eventoExistente?.estado ?? 'completa')
   const [datos, setDatos] = useState<Record<string, string>>(eventoExistente?.datos ?? {})
   const [notas, setNotas] = useState(eventoExistente?.notas ?? '')
   // "Registrado por" ya no es un desplegable libre: es quien registra, es
@@ -60,6 +61,16 @@ export default function FormularioEvento({ ingresoId, eventoExistente, onClose, 
     setDatos((d) => ({ ...d, [key]: val }))
   }
 
+  function cambiarHora(v: string) {
+    setHora(v)
+    // Se propone el turno solo si todavía no se ha elegido ninguno —
+    // si la persona ya lo puso a mano, no se le pisa la elección.
+    if (v && !turno) {
+      const sugerido = turnoSegunHora(v)
+      if (sugerido) setTurno(sugerido)
+    }
+  }
+
   async function guardar() {
     setError('')
     if (!tipo) {
@@ -75,12 +86,17 @@ export default function FormularioEvento({ ingresoId, eventoExistente, onClose, 
       return
     }
 
-    // Validar campos requeridos del tipo
-    const campos = CAMPOS_POR_TIPO[tipo]
-    for (const campo of campos) {
-      if (campo.requerido && !datos[campo.key]) {
-        setError(`El campo "${campo.label}" es obligatorio.`)
-        return
+    // Si la incidencia se marca como pendiente de completar, no tiene
+    // sentido exigir una respuesta a los campos que todavía no se
+    // conocen — obligaría a inventar un valor solo para poder
+    // guardar, que es justo lo que se quiere evitar.
+    if (estado === 'completa') {
+      const campos = CAMPOS_POR_TIPO[tipo]
+      for (const campo of campos) {
+        if (campo.requerido && !datos[campo.key]) {
+          setError(`El campo "${campo.label}" es obligatorio.`)
+          return
+        }
       }
     }
 
@@ -94,6 +110,7 @@ export default function FormularioEvento({ ingresoId, eventoExistente, onClose, 
       datos,
       notas: notas || null,
       registrado_por_id: profesionalId,
+      estado,
     }
 
     const { error: dbError } = eventoExistente
@@ -150,11 +167,11 @@ export default function FormularioEvento({ ingresoId, eventoExistente, onClose, 
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="label">Fecha *</label>
-              <input type="date" className="input" value={fecha} onChange={(e) => setFecha(e.target.value)} />
+              <input type="date" className="input" value={fecha} max={hoyLocal()} onChange={(e) => setFecha(e.target.value)} />
             </div>
             <div>
               <label className="label">Hora</label>
-              <input type="time" className="input" value={hora} onChange={(e) => setHora(e.target.value)} />
+              <input type="time" className="input" value={hora} onChange={(e) => cambiarHora(e.target.value)} />
             </div>
             <div>
               <label className="label">Turno</label>
@@ -166,6 +183,33 @@ export default function FormularioEvento({ ingresoId, eventoExistente, onClose, 
                   </option>
                 ))}
               </select>
+            </div>
+          </div>
+          {/* Aviso, no bloqueo: puede haber motivos legítimos para que
+              no coincidan (se registra más tarde de cuando pasó). Las
+              franjas son las reales de la clínica: 22-8 noche, 8-15
+              mañana, 15-22 tarde. */}
+          {hora && turno && turnoSegunHora(hora) && turnoSegunHora(hora) !== turno && (
+            <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 -mt-2">
+              A las {hora} correspondería el turno de {TURNO_LABEL[turnoSegunHora(hora)!]}, no el de {TURNO_LABEL[turno]}. Compruébalo antes de guardar.
+            </p>
+          )}
+
+          {/* Estado: para cuando el desenlace se sabrá más adelante
+              (una caída cuyas consecuencias se confirman días
+              después) — sin obligar a rellenar con algo inventado
+              solo para poder guardar. */}
+          <div className="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+            <span className="text-xs font-medium text-slate-500">Estado de la incidencia</span>
+            <div className="flex gap-1 ml-auto">
+              <button type="button" onClick={() => setEstado('completa')}
+                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${estado === 'completa' ? 'bg-emerald-100 text-emerald-700' : 'text-slate-400 hover:bg-slate-100'}`}>
+                Completa
+              </button>
+              <button type="button" onClick={() => setEstado('pendiente')}
+                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${estado === 'pendiente' ? 'bg-amber-100 text-amber-700' : 'text-slate-400 hover:bg-slate-100'}`}>
+                Pendiente de completar
+              </button>
             </div>
           </div>
 
@@ -202,6 +246,14 @@ export default function FormularioEvento({ ingresoId, eventoExistente, onClose, 
                   )}
                 </div>
               ))}
+              {/* Aviso, no bloqueo — puede haber matices clínicos que
+                  esto no capture, pero conviene que quien registra lo
+                  revise antes de dar por buena la combinación. */}
+              {tipo === 'caida' && datos.consecuencias === 'Sin lesión' && ['Leve', 'Moderada', 'Grave'].includes(datos.gravedad) && (
+                <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5">
+                  "Sin lesión" en consecuencias no encaja con una gravedad de "{datos.gravedad}". Revisa que sea correcto.
+                </p>
+              )}
             </div>
           )}
 

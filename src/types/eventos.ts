@@ -37,12 +37,31 @@ export interface Evento {
   datos: Record<string, string>
   notas?: string
   registrado_por_id?: string
+  actualizado_por_id?: string
+  actualizado_en?: string
+  // Para lo que se sabrá con certeza más adelante (por ejemplo, una
+  // caída cuyas consecuencias se confirman días después) — no exige
+  // rellenar con un valor inventado con tal de poder guardar.
+  estado?: 'pendiente' | 'completa'
   created_at: string
   registrado_por?: { nombre: string; apellidos: string; rol: string }
   ingreso?: {
     paciente: { nombre: string; primer_apellido: string; segundo_apellido?: string; habitacion?: number }
     habitacion?: number
   }
+}
+
+// Las franjas reales de turno de la clínica: 22-8 noche, 8-15 mañana,
+// 15-22 tarde. Se usa para proponer el turno según la hora, o avisar
+// si no coinciden — sin obligar, por si alguien registra la
+// incidencia más tarde de cuando pasó de verdad.
+export function turnoSegunHora(hora: string): 'manana' | 'tarde' | 'noche' | null {
+  if (!hora) return null
+  const [h] = hora.split(':').map(Number)
+  if (Number.isNaN(h)) return null
+  if (h >= 8 && h < 15) return 'manana'
+  if (h >= 15 && h < 22) return 'tarde'
+  return 'noche'
 }
 
 // ─── DEFINICIÓN DE CAMPOS POR TIPO ───────────────────────────
@@ -59,11 +78,11 @@ export interface CampoEvento {
 
 export const CAMPOS_POR_TIPO: Record<TipoEvento, CampoEvento[]> = {
   caida: [
-    { key: 'con_lesion', label: 'Con lesión', tipo: 'select', opciones: ['Sí', 'No'], requerido: true },
-    { key: 'gravedad', label: 'Gravedad', tipo: 'select', opciones: ['Sin lesión', 'Leve', 'Moderada', 'Grave'] },
+    { key: 'con_lesion', label: 'Con lesión', tipo: 'select', opciones: ['Sí', 'No', 'Pendiente de valoración'], requerido: true },
+    { key: 'gravedad', label: 'Gravedad', tipo: 'select', opciones: ['Sin lesión', 'Leve', 'Moderada', 'Grave', 'Pendiente de valoración'] },
     { key: 'lugar', label: 'Lugar', tipo: 'select', opciones: ['Habitación', 'Baño', 'Pasillo', 'Sala común', 'Comedor', 'Gimnasio', 'Sala de terapia', 'Exterior'], requerido: true },
     { key: 'circunstancias', label: 'Circunstancias', tipo: 'select', opciones: ['Solo', 'Supervisado', 'Con sujeción activa'] },
-    { key: 'consecuencias', label: 'Consecuencias', tipo: 'select', opciones: ['Sin lesión', 'Contusión', 'Herida', 'Fractura', 'TCE', 'Otro'] },
+    { key: 'consecuencias', label: 'Consecuencias', tipo: 'select', opciones: ['Sin lesión', 'Contusión', 'Herida', 'Fractura', 'TCE', 'Otro', 'Pendiente de valoración'] },
   ],
 
   ulcera: [

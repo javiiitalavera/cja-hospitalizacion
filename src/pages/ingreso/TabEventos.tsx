@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/AuthContext'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
 import FormularioEvento from '../../components/FormularioEvento'
-import { TIPO_EVENTO_LABEL, TIPO_EVENTO_COLOR, TURNO_LABEL, type Evento } from '../../types/eventos'
+import { TIPO_EVENTO_LABEL, TIPO_EVENTO_COLOR, TURNO_LABEL, CAMPOS_POR_TIPO, type Evento } from '../../types/eventos'
 
 function TabEventos({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo?: { nombre: string; habitacion?: number | null } }) {
   const { profesional, esAdmin } = useAuth()
@@ -14,10 +14,14 @@ function TabEventos({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteIn
   const [errorBorrar, setErrorBorrar] = useState('')
   const [errorCarga, setErrorCarga] = useState('')
 
-  // Solo quien registró la incidencia, o un administrador, puede
-  // corregirla o borrarla — coincide con lo que ya exige la base de
-  // datos; esto solo evita mostrar un botón que fallaría en silencio.
-  function puedeEditar(ev: Evento): boolean {
+  // Editar ya no exige ser el autor — cualquier profesional
+  // asistencial puede completar una incidencia en un turno
+  // posterior. Borrar sigue exigiendo ser quien la registró, o un
+  // administrador; separado a propósito, son permisos distintos.
+  function puedeEditar(): boolean {
+    return !!profesional
+  }
+  function puedeBorrar(ev: Evento): boolean {
     return esAdmin || (!!profesional && ev.registrado_por_id === profesional.id)
   }
 
@@ -106,6 +110,11 @@ function TabEventos({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteIn
                     <span className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${TIPO_EVENTO_COLOR[ev.tipo]}`}>
                       {TIPO_EVENTO_LABEL[ev.tipo]}
                     </span>
+                    {ev.estado === 'pendiente' && (
+                      <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200">
+                        Pendiente de completar
+                      </span>
+                    )}
                     <span className="text-xs text-slate-500">
                       {new Date(ev.fecha).toLocaleDateString('es-ES')}
                       {ev.hora && ` · ${ev.hora.slice(0, 5)}`}
@@ -113,17 +122,23 @@ function TabEventos({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteIn
                     </span>
                   </div>
 
-                  {/* Campos específicos */}
-                  {Object.entries(ev.datos).length > 0 && (
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 mb-2">
-                      {Object.entries(ev.datos).map(([k, v]) => (
-                        <div key={k} className="text-xs">
-                          <span className="text-slate-400 capitalize">{k.replace(/_/g, ' ')}: </span>
-                          <span className="text-slate-700 font-medium">{v}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                {/* Campos específicos */}
+                {Object.entries(ev.datos).length > 0 && (
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 mb-2">
+                    {Object.entries(ev.datos).map(([k, v]) => (
+                      <div key={k} className="text-xs">
+                        {/* Antes se generaba la etiqueta a partir de la
+                            clave técnica ("con lesion", sin tilde) — con
+                            las etiquetas reales de CAMPOS_POR_TIPO se ve
+                            igual de cuidado que el resto de la app. */}
+                        <span className="text-slate-400">
+                          {CAMPOS_POR_TIPO[ev.tipo]?.find((c) => c.key === k)?.label ?? k.replace(/_/g, ' ')}:{' '}
+                        </span>
+                        <span className="text-slate-700 font-medium">{v}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                   {/* Notas */}
                   {ev.notas && (
@@ -139,18 +154,24 @@ function TabEventos({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteIn
                   )}
                 </div>
 
-                {/* Acciones: solo visibles para quien registró la
-                    incidencia o un administrador */}
-                {puedeEditar(ev) && (
+                {/* Editar y borrar son permisos distintos ahora:
+                    cualquiera del equipo puede completar una
+                    incidencia; solo el autor o un administrador puede
+                    borrarla. */}
+                {(puedeEditar() || puedeBorrar(ev)) && (
                   <div className="flex gap-1 shrink-0">
-                    <button onClick={() => abrirEditar(ev)}
-                      className="p-1.5 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors">
-                      <Pencil className="w-3.5 h-3.5" />
-                    </button>
-                    <button onClick={() => eliminar(ev.id)}
-                      className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    {puedeEditar() && (
+                      <button onClick={() => abrirEditar(ev)}
+                        className="p-1.5 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors">
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    {puedeBorrar(ev) && (
+                      <button onClick={() => eliminar(ev.id)}
+                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
