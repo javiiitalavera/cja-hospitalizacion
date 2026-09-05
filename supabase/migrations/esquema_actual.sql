@@ -458,13 +458,23 @@ begin
   -- ítems), para que consultar un día antiguo muestre la habitación
   -- que tenía el paciente entonces, no la que tiene ahora si se ha
   -- cambiado de habitación después.
+  --
+  -- Y, desde ahora, también la contención de ese momento (día y
+  -- noche) — antes no se guardaba en absoluto, así que el histórico
+  -- siempre mostraba esas filas vacías, sin que "vacío" quisiera
+  -- decir "no había contención": simplemente nunca se llegó a copiar.
+  -- Confirmado por auditoría y reproducido de verdad antes de este
+  -- arreglo.
   insert into items_historico (ingreso_id, fecha, datos)
   select
     ip.ingreso_id,
     current_date,
-    row_to_json(ip)::jsonb || jsonb_build_object('_habitacion_snapshot', i.habitacion)
+    row_to_json(ip)::jsonb
+      || jsonb_build_object('_habitacion_snapshot', i.habitacion)
+      || jsonb_build_object('_contencion_dia', c.dia, '_contencion_noche', c.noche)
   from items_paciente ip
   inner join ingresos i on i.id = ip.ingreso_id
+  left join contenciones c on c.ingreso_id = ip.ingreso_id
   where i.estado = 'activo'
   on conflict (ingreso_id, fecha)
   do update set datos = excluded.datos;

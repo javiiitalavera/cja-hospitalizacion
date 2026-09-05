@@ -9,6 +9,7 @@ import { Plus, ClipboardList, ChevronRight, AlertTriangle, AlertCircle, Sun, Moo
 import FormularioEvento from '../components/FormularioEvento'
 import ModalContencion from '../components/ModalContencion'
 import Tooltip from '../components/Tooltip'
+import { fetchContencionesPorIngreso } from '../lib/contenciones'
 import {
   severidadDia, severidadNoche, SEVERIDAD_ESTILO,
   CONTENCION_DIA_LABEL, CONTENCION_NOCHE_LABEL,
@@ -90,12 +91,12 @@ export default function Home() {
           { data: itemsData, error: errItems },
           { data: informesData, error: errInformes },
           { data: eventosData, error: errEventos },
-          { data: pautasData, error: errPautas },
+          { mapa: contencionesPorIngresoMapa, error: errPautas },
         ] = await Promise.all([
           supabase.from('items_paciente').select('ingreso_id,semaforo_caidas').in('ingreso_id', ids),
           supabase.from('informe_ingreso').select('ingreso_id,impresion_diagnostica').in('ingreso_id', ids),
           supabase.from('eventos').select('ingreso_id,tipo').in('ingreso_id', ids),
-          supabase.from('contenciones').select('ingreso_id, dia, noche').in('ingreso_id', ids),
+          fetchContencionesPorIngreso(ids),
         ])
 
         // La lista de pacientes es lo esencial y ya se ha podido
@@ -126,11 +127,7 @@ export default function Home() {
         })
         setEventosPorIngreso(eventosMap)
 
-        const contencionesMap: Record<string, { dia: ContencionDia | null; noche: ContencionNoche[] | null }> = {}
-        ;(pautasData ?? []).forEach((p: any) => {
-          contencionesMap[p.ingreso_id] = { dia: p.dia, noche: p.noche }
-        })
-        setContencionesPorIngreso(contencionesMap)
+        setContencionesPorIngreso(contencionesPorIngresoMapa as Record<string, { dia: ContencionDia | null; noche: ContencionNoche[] | null }>)
       }
     } finally {
       // Sin esto, un fallo en cualquiera de las consultas de arriba

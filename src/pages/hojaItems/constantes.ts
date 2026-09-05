@@ -162,7 +162,11 @@ export const GRUPOS: { titulo: string; mostrarTitulo?: boolean; filas: { key: st
 ]
 
 // Lista plana derivada, para lo que solo necesita recorrer todas las
-// filas sin que le importen los grupos.
+// filas sin que le importen los grupos — como la tabla de histórico
+// por paciente, que compara campo a campo día a día. "Nombre" y
+// "Médico" se excluyen: no son datos de cuidado, son identificación,
+// y en una comparación día a día no aportan nada (no cambian).
+export const FILAS_PLANAS = GRUPOS.flatMap((g) => g.filas).filter((f) => f.key !== 'nombre' && f.key !== 'medico')
 
 export const BOLD_ROWS = new Set(['nombre', 'medico'])
 export const LABEL_BOLD_ROWS = new Set(['nombre', 'medico', 'dep'])

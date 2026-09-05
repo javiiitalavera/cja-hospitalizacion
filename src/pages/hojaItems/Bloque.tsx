@@ -30,8 +30,17 @@ const Bloque = memo(function Bloque({
   const labelCls =
     'border border-slate-400 text-left text-[7.5pt] leading-tight px-1 py-0 font-medium bg-slate-100 whitespace-nowrap'
 
+  // Con el panel de edición abierto, esta tabla pierde sitio de
+  // verdad (el contenido principal se estrecha con margen a la
+  // derecha) — sin un mínimo, "table-fixed" seguía comprimiendo las
+  // columnas sin límite, hasta que las etiquetas se montaban unas
+  // sobre otras. Con el ancho mínimo y el scroll horizontal, a partir
+  // de cierto punto se desplaza en vez de aplastarse.
+  const anchoMinimo = 80 + count * 46
+
   return (
-    <table className="w-full border-collapse table-fixed" style={{ fontSize: '7.5pt' }}>
+    <div className="overflow-x-auto">
+    <table className="w-full border-collapse table-fixed" style={{ fontSize: '7.5pt', minWidth: `${anchoMinimo}px` }}>
       <colgroup>
         <col style={{ width: '80px' }} />
         {habNums.map((n) => (
@@ -128,6 +137,7 @@ const Bloque = memo(function Bloque({
         ))}
       </tbody>
     </table>
+    </div>
   )
 })
 
