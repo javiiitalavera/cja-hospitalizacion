@@ -16,7 +16,6 @@ interface InformeRow {
   nhc: string | null
   medico: string
   estadoIngreso: string
-  preview: string
 }
 
 export function Informes() {
@@ -39,7 +38,7 @@ export function Informes() {
         supabase
           .from('informe_ingreso')
           .select(`
-            id, impresion_diagnostica, ingreso_id,
+            id, ingreso_id,
             ingreso:ingresos(id, fecha_ingreso, estado,
               medico_responsable:profesionales(nombre, apellidos),
               paciente:pacientes(nombre, primer_apellido, segundo_apellido, nhc))
@@ -48,7 +47,7 @@ export function Informes() {
         supabase
           .from('informe_alta')
           .select(`
-            id, juicios_clinicos, ingreso_id,
+            id, ingreso_id,
             ingreso:ingresos(id, fecha_alta, fecha_ingreso, estado,
               medico_responsable:profesionales(nombre, apellidos),
               paciente:pacientes(nombre, primer_apellido, segundo_apellido, nhc))
@@ -70,7 +69,6 @@ export function Informes() {
           nhc: i.paciente.nhc ?? null,
           medico: i.medico_responsable ? `${i.medico_responsable.nombre} ${i.medico_responsable.apellidos}` : '—',
           estadoIngreso: i.estado,
-          preview: r.impresion_diagnostica ?? '',
         })
       })
 
@@ -86,7 +84,6 @@ export function Informes() {
           nhc: i.paciente.nhc ?? null,
           medico: i.medico_responsable ? `${i.medico_responsable.nombre} ${i.medico_responsable.apellidos}` : '—',
           estadoIngreso: i.estado,
-          preview: r.juicios_clinicos ?? '',
         })
       })
 
@@ -180,14 +177,13 @@ export function Informes() {
               <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Fecha</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Médico</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Estado</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Resumen</th>
             </tr>
           </thead>
           <tbody className="divide-y">
             {loading ? (
-              <tr><td colSpan={7} className="px-4 py-12 text-center text-slate-400">Cargando…</td></tr>
+              <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-400">Cargando…</td></tr>
             ) : lista.length === 0 ? (
-              <tr><td colSpan={7} className="px-4 py-12 text-center text-slate-400">No hay informes con estos filtros.</td></tr>
+              <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-400">No hay informes con estos filtros.</td></tr>
             ) : lista.map(r => (
               <tr key={`${r.tipo}-${r.id}`}
                 className="hover:bg-slate-50 transition-colors cursor-pointer"
@@ -211,7 +207,6 @@ export function Informes() {
                     {ESTADO_LABEL[r.estadoIngreso] ?? r.estadoIngreso}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-slate-500 text-xs max-w-xs truncate">{r.preview || '—'}</td>
               </tr>
             ))}
           </tbody>
