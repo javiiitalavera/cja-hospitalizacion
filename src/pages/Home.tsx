@@ -4,9 +4,8 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import type { Ingreso } from '../types'
 import { SEMAFORO_CAIDAS_COLOR as SEMAFORO, nombreCompleto } from '../types'
-import { edad, diasEntre } from '../lib/fechas'
+import { edad, diasEntre, formatFechaLocal } from '../lib/fechas'
 import { Plus, ClipboardList, ChevronRight, AlertTriangle, AlertCircle, Sun, Moon, RefreshCw } from 'lucide-react'
-import FormularioEvento from '../components/FormularioEvento'
 import ModalContencion from '../components/ModalContencion'
 import Tooltip from '../components/Tooltip'
 import { fetchContencionesPorIngreso } from '../lib/contenciones'
@@ -16,6 +15,14 @@ import {
   type ContencionDia, type ContencionNoche,
 } from '../types/contenciones'
 import { TIPO_EVENTO_LABEL, TIPO_EVENTO_COLOR, type TipoEvento } from '../types/eventos'
+
+// Fecha de hace 7 días exactos, en el mismo formato que usa el resto
+// de la aplicación para comparar con columnas "fecha".
+function hace7dias(): string {
+  const d = new Date()
+  d.setDate(d.getDate() - 7)
+  return formatFechaLocal(d)
+}
 
 // Definida una sola vez: antes esta misma plantilla de columnas
 // estaba copiada a mano en tres sitios (cabecera, fila libre, fila
@@ -46,7 +53,6 @@ export default function Home() {
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState('')
   const [errorAuxiliar, setErrorAuxiliar] = useState('')
-  const [modalEvento, setModalEvento] = useState<string | null>(null) // ingresoId
   const navigate = useNavigate()
   const { rol } = useAuth()
   const esMedico = rol === 'medico'
@@ -95,7 +101,11 @@ export default function Home() {
         ] = await Promise.all([
           supabase.from('items_paciente').select('ingreso_id,semaforo_caidas').in('ingreso_id', ids),
           supabase.from('informe_ingreso').select('ingreso_id,impresion_diagnostica').in('ingreso_id', ids),
-          supabase.from('eventos').select('ingreso_id,tipo').in('ingreso_id', ids),
+          // Solo los últimos 7 días — antes contaba todo el historial
+          // del ingreso, así que con el tiempo el aviso dejaba de
+          // decir "algo nuevo" para convertirse en "esto tiene
+          // historial", que no es lo mismo de un vistazo.
+          supabase.from('eventos').select('ingreso_id,tipo').in('ingreso_id', ids).gte('fecha', hace7dias()),
           fetchContencionesPorIngreso(ids),
         ])
 
@@ -166,9 +176,6 @@ export default function Home() {
 
   const ocupadas = ingresos.length
   const libres = slots.filter((s) => s === null).length
-
-  // Find the ingreso for the evento modal
-  const ingresoParaEvento = ingresos.find((i) => i.id === modalEvento) ?? null
 
   return (
     <div className="p-6 md:p-8">
@@ -398,18 +405,24 @@ export default function Home() {
                     })}
                   </div>
                   {/* Botón evento */}
+                  {/* Antes abría directamente el formulario de
+                      registrar — con decenas de personas en la
+                      planta, era fácil que dos registraran el mismo
+                      suceso sin saberlo. Ahora lleva primero a ver lo
+                      que ya hay registrado; desde ahí, si hace falta,
+                      se registra uno nuevo con conocimiento de causa. */}
                   <div
                     onClick={(e) => {
                       e.stopPropagation()
-                      setModalEvento(ingreso.id)
+                      navigate(`/ingresos/${ingreso.id}?tab=eventos`)
                     }}
                     className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 transition-colors text-xs font-medium cursor-pointer"
-                    title="Registrar incidencia"
+                    title="Ver incidencias de este paciente"
                   >
                     <AlertTriangle className="w-3 h-3 shrink-0" />
                     Incidencia
                   </div>
-                  {/* Aviso de incidencias registradas, si las hay */}
+                  {/* Aviso de incidencias de los últimos 7 días, si las hay */}
                   {(() => {
                     const tipos = eventosPorIngreso[ingreso.id]
                     if (!tipos || tipos.length === 0) return <div />
@@ -423,7 +436,7 @@ export default function Home() {
                           <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
                           {tipos.length}
                         </div>
-                        <Tooltip titulo="Incidencias registradas">
+                        <Tooltip titulo="Incidencias · últimos 7 días">
                           {entradas.map(([tipo, n]) => (
                             <div key={tipo} className="flex items-center gap-1.5 text-xs">
                               <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
@@ -446,24 +459,6 @@ export default function Home() {
             )
           })}
         </div>
-      )}
-
-      {/* Modal registro de evento */}
-      {modalEvento && ingresoParaEvento && (
-        <FormularioEvento
-          ingresoId={modalEvento}
-          eventoExistente={null}
-          onClose={() => setModalEvento(null)}
-          onGuardado={() => {
-            setModalEvento(null)
-            fetchData()
-          }}
-          pacienteInfo={
-            ingresoParaEvento.paciente
-              ? { nombre: nombreCompleto(ingresoParaEvento.paciente), habitacion: ingresoParaEvento.habitacion }
-              : undefined
-          }
-        />
       )}
 
       {/* Modal contención física: pautar o ver, sin salir de Inicio */}
