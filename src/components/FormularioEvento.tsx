@@ -11,9 +11,10 @@ interface Props {
   eventoExistente?: Evento | null
   onClose: () => void
   onGuardado: () => void
+  pacienteInfo?: { nombre: string; habitacion?: number | null }
 }
 
-export default function FormularioEvento({ ingresoId, eventoExistente, onClose, onGuardado }: Props) {
+export default function FormularioEvento({ ingresoId, eventoExistente, onClose, onGuardado, pacienteInfo }: Props) {
   const { profesional: yo } = useAuth()
   const [tipo, setTipo] = useState<TipoEvento | ''>(eventoExistente?.tipo ?? '')
   const [fecha, setFecha] = useState(eventoExistente?.fecha ?? hoyLocal())
@@ -114,9 +115,17 @@ export default function FormularioEvento({ ingresoId, eventoExistente, onClose, 
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b">
-          <h2 className="text-base font-bold text-slate-800">
-            {eventoExistente ? 'Editar incidencia' : 'Registrar incidencia'}
-          </h2>
+          <div>
+            <h2 className="text-base font-bold text-slate-800">
+              {eventoExistente ? 'Editar incidencia' : 'Registrar incidencia'}
+            </h2>
+            {pacienteInfo && (
+              <p className="text-xs text-slate-400 mt-0.5">
+                {pacienteInfo.nombre}
+                {pacienteInfo.habitacion != null && ` · Hab. ${pacienteInfo.habitacion}`}
+              </p>
+            )}
+          </div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
             <X className="w-5 h-5" />
           </button>

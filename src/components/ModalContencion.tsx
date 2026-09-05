@@ -12,9 +12,13 @@ interface Props {
   ingresoId: string
   onClose: () => void
   onGuardado?: () => void
+  // Opcional: para que quien abre el modal desde una lista (Inicio,
+  // Hoja de Ítems) pueda mostrar de quién se trata sin tener que
+  // volver a cargar los datos del paciente aquí dentro.
+  pacienteInfo?: { nombre: string; habitacion?: number | null }
 }
 
-export default function ModalContencion({ ingresoId, onClose, onGuardado }: Props) {
+export default function ModalContencion({ ingresoId, onClose, onGuardado, pacienteInfo }: Props) {
   const { profesional, rol } = useAuth()
   const esMedico = rol === 'medico'
   const [confirmando, setConfirmando] = useState(false)
@@ -190,7 +194,15 @@ export default function ModalContencion({ ingresoId, onClose, onGuardado }: Prop
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b">
-          <h2 className="text-base font-bold text-slate-800">Contención física</h2>
+          <div>
+            <h2 className="text-base font-bold text-slate-800">Contención física</h2>
+            {pacienteInfo && (
+              <p className="text-xs text-slate-400 mt-0.5">
+                {pacienteInfo.nombre}
+                {pacienteInfo.habitacion != null && ` · Hab. ${pacienteInfo.habitacion}`}
+              </p>
+            )}
+          </div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
             <X className="w-5 h-5" />
           </button>

@@ -5,15 +5,21 @@ import { useAuth } from '../lib/AuthContext'
 import type { Ingreso } from '../types'
 import { SEMAFORO_CAIDAS_COLOR as SEMAFORO, nombreCompleto } from '../types'
 import { edad, diasEntre } from '../lib/fechas'
-import { Plus, ClipboardList, ChevronRight, AlertTriangle, AlertCircle, Sun, Moon } from 'lucide-react'
+import { Plus, ClipboardList, ChevronRight, AlertTriangle, AlertCircle, Sun, Moon, RefreshCw } from 'lucide-react'
 import FormularioEvento from '../components/FormularioEvento'
 import ModalContencion from '../components/ModalContencion'
+import Tooltip from '../components/Tooltip'
 import {
   severidadDia, severidadNoche, SEVERIDAD_ESTILO,
   CONTENCION_DIA_LABEL, CONTENCION_NOCHE_LABEL,
   type ContencionDia, type ContencionNoche,
 } from '../types/contenciones'
 import { TIPO_EVENTO_LABEL, TIPO_EVENTO_COLOR, type TipoEvento } from '../types/eventos'
+
+// Definida una sola vez: antes esta misma plantilla de columnas
+// estaba copiada a mano en tres sitios (cabecera, fila libre, fila
+// ocupada) — cualquier ajuste futuro solo hace falta tocarlo aquí.
+const COLUMNAS_TABLA = '2.5rem minmax(0,1.4fr) 3rem 3.5rem 5.5rem minmax(0,0.9fr) 6rem 7rem 3rem 2rem'
 
 type IngresoConPaciente = Ingreso & {
   paciente: {
@@ -36,6 +42,7 @@ export default function Home() {
   const [contencionesPorIngreso, setContencionesPorIngreso] = useState<Record<string, { dia: ContencionDia | null; noche: ContencionNoche[] | null }>>({})
   const [modalContencion, setModalContencion] = useState<string | null>(null) // ingresoId
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState('')
   const [errorAuxiliar, setErrorAuxiliar] = useState('')
   const [modalEvento, setModalEvento] = useState<string | null>(null) // ingresoId
@@ -51,6 +58,7 @@ export default function Home() {
   })
 
   async function fetchData() {
+    setRefreshing(true)
     try {
       setError('')
       setErrorAuxiliar('')
@@ -129,11 +137,28 @@ export default function Home() {
       // (por ejemplo, si la tabla contenciones no existiera) dejaba
       // Inicio colgado en "Cargando…" para siempre.
       setLoading(false)
+      setRefreshing(false)
     }
   }
 
   useEffect(() => {
     fetchData()
+  }, [])
+
+  // Sin esto, dejar Inicio abierto en una pestaña de fondo toda la
+  // mañana enseñaba datos de hace horas al volver — ni el número de
+  // habitaciones libres, ni las incidencias recién registradas por
+  // otra persona, se actualizaban solos.
+  useEffect(() => {
+    function alVolver() {
+      if (document.visibilityState === 'visible') fetchData()
+    }
+    window.addEventListener('focus', fetchData)
+    document.addEventListener('visibilitychange', alVolver)
+    return () => {
+      window.removeEventListener('focus', fetchData)
+      document.removeEventListener('visibilitychange', alVolver)
+    }
   }, [])
 
   const slots: (IngresoConPaciente | null)[] = Array(33).fill(null)
@@ -161,6 +186,15 @@ export default function Home() {
             {ocupadas} ingresados
           </span>
           <span className="px-3 py-1 bg-slate-100 text-slate-500 rounded-full font-medium">{libres} libres</span>
+          <button
+            onClick={fetchData}
+            disabled={refreshing}
+            className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-slate-200 text-slate-500 hover:bg-slate-50 font-medium disabled:opacity-60"
+            title="Actualizar"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+            Actualizar
+          </button>
         </div>
       </div>
 
@@ -221,7 +255,7 @@ export default function Home() {
           {/* Cabecera */}
           <div
             className="grid gap-x-3 text-xs font-semibold text-slate-400 uppercase tracking-wide px-3 pb-1"
-            style={{ gridTemplateColumns: '2.5rem minmax(0,1.4fr) 3rem 3.5rem 5.5rem minmax(0,0.9fr) 6rem 7rem 3rem 2rem' }}
+            style={{ gridTemplateColumns: COLUMNAS_TABLA }}
           >
             <div>Hab.</div>
             <div>Paciente</div>
@@ -248,7 +282,7 @@ export default function Home() {
                   className={`grid gap-x-3 items-center border border-dashed border-slate-150 rounded-lg px-3 py-1.5 transition-colors ${
                     esMedico ? 'cursor-pointer hover:border-primary-300 hover:bg-primary-50/30' : ''
                   }`}
-                  style={{ gridTemplateColumns: '2.5rem minmax(0,1.4fr) 3rem 3.5rem 5.5rem minmax(0,0.9fr) 6rem 7rem 3rem 2rem' }}
+                  style={{ gridTemplateColumns: COLUMNAS_TABLA }}
                   onClick={esMedico ? () => navigate(`/pacientes/nuevo?habitacion=${n}`) : undefined}
                   title={esMedico ? `Ingresar en habitación ${n}` : `Habitación ${n} libre`}
                 >
@@ -289,7 +323,7 @@ export default function Home() {
               <div key={n} className="group">
                 <div
                   className="grid gap-x-3 items-center bg-white border border-slate-200 rounded-lg px-3 py-2 hover:shadow-sm hover:border-primary-200 transition-all cursor-pointer"
-                  style={{ gridTemplateColumns: '2.5rem minmax(0,1.4fr) 3rem 3.5rem 5.5rem minmax(0,0.9fr) 6rem 7rem 3rem 2rem' }}
+                  style={{ gridTemplateColumns: COLUMNAS_TABLA }}
                   onClick={() => navigate(`/ingresos/${ingreso.id}`)}
                 >
                   {/* Hab con semáforo */}
@@ -349,7 +383,7 @@ export default function Home() {
                           ? (valor as ContencionNoche[]).map((v) => CONTENCION_NOCHE_LABEL[v]).join(', ')
                           : 'Ninguna'
                       return (
-                        <div key={eje} className="relative group/cont">
+                        <div key={eje} className="relative group/tt">
                           <button
                             onClick={(e) => { e.stopPropagation(); setModalContencion(ingreso.id) }}
                             className={`relative flex items-center justify-center w-6 h-6 rounded-md border transition-colors ${estilo.bg} ${estilo.border} ${estilo.text} hover:opacity-80`}
@@ -359,16 +393,9 @@ export default function Home() {
                               <AlertCircle className="w-2.5 h-2.5 text-slate-400 absolute -top-1 -right-1 bg-white rounded-full" />
                             )}
                           </button>
-                          {/* Tooltip a medida, mismo lenguaje visual que el de incidencias */}
-                          <div className="hidden group-hover/cont:block absolute z-20 left-1/2 -translate-x-1/2 bottom-full mb-1.5 w-max max-w-[200px]">
-                            <div className="bg-slate-800 text-white rounded-lg shadow-lg py-2 px-3">
-                              <p className="text-[10px] font-semibold text-slate-300 uppercase tracking-wide mb-0.5">
-                                {eje === 'dia' ? 'Día' : 'Noche'}
-                              </p>
-                              <p className="text-xs text-slate-100">{etiqueta}</p>
-                            </div>
-                            <div className="w-2 h-2 bg-slate-800 rotate-45 absolute left-1/2 -translate-x-1/2 -bottom-1" />
-                          </div>
+                          <Tooltip titulo={eje === 'dia' ? 'Día' : 'Noche'}>
+                            <p className="text-xs text-slate-100">{etiqueta}</p>
+                          </Tooltip>
                         </div>
                       )
                     })}
@@ -394,30 +421,22 @@ export default function Home() {
                     tipos.forEach((t) => { conteo[t] = (conteo[t] ?? 0) + 1 })
                     const entradas = Object.entries(conteo).sort((a, b) => b[1] - a[1])
                     return (
-                      <div className="relative group/badge">
+                      <div className="relative group/tt">
                         <div className="flex items-center gap-1 text-red-600 text-xs font-medium cursor-default w-fit">
                           <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
                           {tipos.length}
                         </div>
-                        {/* Tooltip a medida: oculto por defecto, aparece al pasar el ratón */}
-                        <div className="hidden group-hover/badge:block absolute z-20 left-1/2 -translate-x-1/2 bottom-full mb-1.5 w-max max-w-[220px]">
-                          <div className="bg-slate-800 text-white rounded-lg shadow-lg py-2 px-3 space-y-1">
-                            <p className="text-[10px] font-semibold text-slate-300 uppercase tracking-wide mb-1">
-                              Incidencias registradas
-                            </p>
-                            {entradas.map(([tipo, n]) => (
-                              <div key={tipo} className="flex items-center gap-1.5 text-xs">
-                                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                                  (TIPO_EVENTO_COLOR[tipo as TipoEvento] ?? '').split(' ').find(c => c.startsWith('bg-')) ?? 'bg-slate-400'
-                                }`} />
-                                <span className="text-slate-100">{TIPO_EVENTO_LABEL[tipo as TipoEvento] ?? tipo}</span>
-                                <span className="text-slate-400 ml-auto">×{n}</span>
-                              </div>
-                            ))}
-                          </div>
-                          {/* Flechita apuntando hacia el icono */}
-                          <div className="w-2 h-2 bg-slate-800 rotate-45 absolute left-1/2 -translate-x-1/2 -bottom-1" />
-                        </div>
+                        <Tooltip titulo="Incidencias registradas">
+                          {entradas.map(([tipo, n]) => (
+                            <div key={tipo} className="flex items-center gap-1.5 text-xs">
+                              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                                (TIPO_EVENTO_COLOR[tipo as TipoEvento] ?? '').split(' ').find(c => c.startsWith('bg-')) ?? 'bg-slate-400'
+                              }`} />
+                              <span className="text-slate-100">{TIPO_EVENTO_LABEL[tipo as TipoEvento] ?? tipo}</span>
+                              <span className="text-slate-400 ml-auto">×{n}</span>
+                            </div>
+                          ))}
+                        </Tooltip>
                       </div>
                     )
                   })()}
@@ -442,6 +461,11 @@ export default function Home() {
             setModalEvento(null)
             fetchData()
           }}
+          pacienteInfo={
+            ingresoParaEvento.paciente
+              ? { nombre: nombreCompleto(ingresoParaEvento.paciente), habitacion: ingresoParaEvento.habitacion }
+              : undefined
+          }
         />
       )}
 
@@ -451,6 +475,10 @@ export default function Home() {
           ingresoId={modalContencion}
           onClose={() => setModalContencion(null)}
           onGuardado={() => fetchData()}
+          pacienteInfo={(() => {
+            const ing = ingresos.find((i) => i.id === modalContencion)
+            return ing?.paciente ? { nombre: nombreCompleto(ing.paciente), habitacion: ing.habitacion } : undefined
+          })()}
         />
       )}
     </div>
