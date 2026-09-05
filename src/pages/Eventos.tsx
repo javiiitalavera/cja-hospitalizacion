@@ -406,6 +406,10 @@ export function Eventos() {
           ingresoId={ingresoParaIncidencia}
           onClose={() => setIngresoParaIncidencia(null)}
           onGuardado={() => { setIngresoParaIncidencia(null); fetchEstadoActual(); fetchTendencias() }}
+          pacienteInfo={(() => {
+            const ing = pacientesActivos.find((i) => i.id === ingresoParaIncidencia)
+            return ing?.paciente ? { nombre: nombreCompleto(ing.paciente), habitacion: ing.habitacion } : undefined
+          })()}
         />
       )}
 
@@ -481,6 +485,12 @@ export function Eventos() {
           ingresoId={modalContencion}
           onClose={() => setModalContencion(null)}
           onGuardado={fetchContenciones}
+          pacienteInfo={(() => {
+            const c = contenciones.find((x: any) => x.ingreso_id === modalContencion)
+            return c?.ingreso?.paciente
+              ? { nombre: nombreCompleto(c.ingreso.paciente), habitacion: c.ingreso.habitacion }
+              : undefined
+          })()}
         />
       )}
 

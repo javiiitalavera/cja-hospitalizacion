@@ -293,6 +293,7 @@ export default function PanelEdicion({
           <ModalContencion
             ingresoId={ingreso.id}
             onClose={() => setModalContencion(false)}
+            pacienteInfo={nombre ? { nombre, habitacion: ingreso.habitacion } : undefined}
             onGuardado={() => {
               supabase.from('contenciones').select('dia, noche').eq('ingreso_id', ingreso.id).maybeSingle()
                 .then(({ data, error }) => {

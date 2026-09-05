@@ -5,7 +5,7 @@ import { Plus, Pencil, Trash2 } from 'lucide-react'
 import FormularioEvento from '../../components/FormularioEvento'
 import { TIPO_EVENTO_LABEL, TIPO_EVENTO_COLOR, TURNO_LABEL, type Evento } from '../../types/eventos'
 
-function TabEventos({ ingresoId }: { ingresoId: string }) {
+function TabEventos({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo?: { nombre: string; habitacion?: number | null } }) {
   const { profesional, esAdmin } = useAuth()
   const [eventos, setEventos] = useState<Evento[]>([])
   const [loading, setLoading] = useState(true)
@@ -165,6 +165,7 @@ function TabEventos({ ingresoId }: { ingresoId: string }) {
           eventoExistente={editando}
           onClose={cerrarModal}
           onGuardado={() => { cerrarModal(); fetchEventos() }}
+          pacienteInfo={pacienteInfo}
         />
       )}
     </div>

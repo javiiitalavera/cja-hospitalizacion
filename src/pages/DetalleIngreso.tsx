@@ -258,8 +258,19 @@ export default function DetalleIngreso() {
           )}
           {tab === 'ingreso' && id && <TabInformeIngreso ingresoId={id} ingreso={ingreso} />}
           {tab === 'alta' && id && <TabInformeAlta ingresoId={id} ingreso={ingreso} />}
-          {tab === 'items' && id && <TabItems ingresoId={id} key={id} />}
-          {tab === 'eventos' && id && <TabEventos ingresoId={id} />}
+          {tab === 'items' && id && (
+            <TabItems
+              ingresoId={id}
+              key={id}
+              pacienteInfo={p ? { nombre: nombreDelPaciente, habitacion: ingreso.habitacion } : undefined}
+            />
+          )}
+          {tab === 'eventos' && id && (
+            <TabEventos
+              ingresoId={id}
+              pacienteInfo={p ? { nombre: nombreDelPaciente, habitacion: ingreso.habitacion } : undefined}
+            />
+          )}
           {tab === 'cmbd' && id && <TabCMBD ingresoId={id} ingreso={ingreso} />}
         </fieldset>
       </div>

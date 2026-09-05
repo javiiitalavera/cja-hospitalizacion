@@ -4,7 +4,7 @@ import type { ItemsPaciente } from '../../types'
 import ModalContencion from '../../components/ModalContencion'
 import { severidadDia, severidadNoche, SEVERIDAD_ESTILO } from '../../types/contenciones'
 
-function TabItems({ ingresoId }: { ingresoId: string }) {
+function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo?: { nombre: string; habitacion?: number | null } }) {
   const [data, setData] = useState<Partial<ItemsPaciente>>({})
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -120,6 +120,7 @@ function TabItems({ ingresoId }: { ingresoId: string }) {
             ingresoId={ingresoId}
             onClose={() => setModalContencion(false)}
             onGuardado={cargarContencion}
+            pacienteInfo={pacienteInfo}
           />
         )}
         <div>
