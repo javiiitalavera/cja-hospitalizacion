@@ -1,43 +1,86 @@
-// Escapar texto antes de insertarlo en HTML generado para imprimir —
-// sin esto, un campo de texto con "<" o similar podía romper la tabla
-// impresa o, en el peor caso, colarse como HTML/JS en esa ventana.
-//
-// Antes existían tres copias idénticas de esta misma función,
-// repartidas entre HojaItems.tsx y Eventos.tsx (dos de ellas dentro
-// del mismo archivo). Se unifican aquí para que solo haya un sitio
-// que mantener.
-export function escapeHtml(val: string): string {
-  return val
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
+import { escapeHtml } from '../../lib/imprimir'
+import { GRUPOS, BOLD_ROWS, LABEL_BOLD_ROWS, habBg, textColor } from './constantes'
+import type { IngresoConItems } from './tipos'
+
+// ─── TABLA HTML PURA PARA IMPRESIÓN ──────────────────────────
+
+function buildPrintHTML(data: IngresoConItems[], today: string): string {
+  const habs1_16 = data.filter((i) => i.habitacion && i.habitacion <= 16)
+  const habs17_max = data.filter((i) => i.habitacion && i.habitacion > 16)
+  const maxHab = Math.max(33, ...data.map((i) => i.habitacion ?? 0))
+
+  function tablaPagina(habs: IngresoConItems[], desde: number, hasta: number): string {
+    const porHabitacion: Record<number, IngresoConItems> = {}
+    habs.forEach((i) => { if (i.habitacion) porHabitacion[i.habitacion] = i })
+    const numeros = Array.from({ length: hasta - desde + 1 }, (_, k) => desde + k)
+
+    let html = '<table><thead><tr><th class="col-label"></th>'
+    numeros.forEach((n) => {
+      const ing = porHabitacion[n]
+      const bg = habBg(ing ?? null)
+      const color = textColor(bg)
+      html += `<th style="background:${bg};color:${color}">${n}</th>`
+    })
+    html += '</tr></thead><tbody>'
+
+    GRUPOS.forEach((grupo) => {
+      if (grupo.mostrarTitulo !== false) {
+        html += `<tr class="grupo"><td colspan="${numeros.length + 1}">${escapeHtml(grupo.titulo)}</td></tr>`
+      }
+      grupo.filas.forEach((fila) => {
+        const esNegritaFila = LABEL_BOLD_ROWS.has(fila.key)
+        html += `<tr><td class="col-label${esNegritaFila ? ' bold' : ''}">${escapeHtml(fila.label)}</td>`
+        numeros.forEach((n) => {
+          const ing = porHabitacion[n]
+          const valor = ing ? fila.get(ing.items, ing) : ''
+          const esNegritaCelda = BOLD_ROWS.has(fila.key)
+          const bg = fila.key === 'nombre' ? habBg(ing ?? null) : ''
+          const color = bg ? textColor(bg) : ''
+          const estilo = bg ? ` style="background:${bg};color:${color}"` : ''
+          html += `<td${estilo}${esNegritaCelda ? ' class="bold"' : ''}>${escapeHtml(String(valor ?? ''))}</td>`
+        })
+        html += '</tr>'
+      })
+    })
+
+    html += '</tbody></table>'
+    return html
+  }
+
+  return `<html><head><title>Hoja de ítems</title>
+    <style>
+      @page { size: A4 landscape; margin: 8mm; }
+      body { font-family: Arial, sans-serif; }
+      h1 { font-size: 13pt; margin: 0 0 2mm; }
+      p.fecha { font-size: 9pt; color: #666; margin: 0 0 4mm; }
+      table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+      th, td { border: 1px solid #999; padding: 1.5px 2px; font-size: 6.5pt; text-align: center; overflow: hidden; white-space: nowrap; }
+      td.col-label, th.col-label { text-align: left; width: 70px; font-weight: 600; white-space: normal; }
+      tr.grupo td { background: #5b7a9d; color: #fff; font-weight: 700; text-align: left; }
+      td.bold, th.bold { font-weight: 700; }
+      .salto { page-break-before: always; }
+    </style>
+  </head><body>
+    <h1>Hoja de ítems — Habitaciones 1 a 16</h1>
+    <p class="fecha">${escapeHtml(today)}</p>
+    ${tablaPagina(habs1_16, 1, 16)}
+    <div class="salto">
+      <h1>Hoja de ítems — Habitaciones 17 a ${maxHab}</h1>
+      <p class="fecha">${escapeHtml(today)}</p>
+      ${tablaPagina(habs17_max, 17, maxHab)}
+    </div>
+  </body></html>`
 }
 
-// Abre una ventana nueva, escribe una tabla con este mismo estilo, y
-// lanza la impresión — antes existían dos copias idénticas de este
-// envoltorio entero (cabecera, hoja de estilos, apertura y cierre de
-// la ventana) dentro de Eventos.tsx, una para cada tabla que se podía
-// imprimir. Cada llamador solo aporta ya su propio <thead>/<tbody>.
-export function imprimirTablaHTML(titulo: string, subtitulo: string, theadHTML: string, tbodyHTML: string) {
-  const win = window.open('', '_blank')
+export function printHoja(data: IngresoConItems[], today: string) {
+  const win = window.open('', '_blank', 'width=1200,height=800')
   if (!win) return
-  const html = `<html><head><title>${titulo}</title>
-    <style>
-      body { font-family: Arial, sans-serif; padding: 24px; }
-      h1 { font-size: 16pt; margin-bottom: 4px; }
-      p { color: #666; font-size: 9pt; margin-top: 0; margin-bottom: 16px; }
-      table { border-collapse: collapse; width: 100%; font-size: 8.5pt; }
-      th, td { border: 1px solid #ccc; padding: 4px 6px; text-align: left; }
-      th { background: #f1f5f9; }
-    </style></head><body>
-    <h1>${titulo}</h1>
-    <p>${subtitulo}</p>
-    <table><thead>${theadHTML}</thead><tbody>${tbodyHTML}</tbody></table>
-    </body></html>`
+  const html = buildPrintHTML(data, today)
   win.document.write(html)
   win.document.close()
   win.focus()
-  win.print()
+  setTimeout(() => {
+    win.print()
+    win.close()
+  }, 400)
 }
