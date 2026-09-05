@@ -13,9 +13,10 @@ export function filaVacia(): FilaMedicacion {
   return { farmaco: '', dosis: '', desayuno: '', comida: '', merienda: '', cena: '', acostar: '', observaciones: '' }
 }
 
-export function TablaMedicacion({ filas, onChange }: {
+export function TablaMedicacion({ filas, onChange, disabled }: {
   filas: FilaMedicacion[]
   onChange: (filas: FilaMedicacion[]) => void
+  disabled?: boolean
 }) {
   function update(i: number, key: keyof FilaMedicacion, v: string) {
     onChange(filas.map((f, idx) => idx === i ? { ...f, [key]: v } : f))
@@ -35,7 +36,7 @@ export function TablaMedicacion({ filas, onChange }: {
                 </th>
               ))}
               <th className="border border-slate-200 px-2 py-2 text-left font-semibold text-slate-600 min-w-[120px]">Observaciones</th>
-              <th className="border border-slate-200 w-8"></th>
+              {!disabled && <th className="border border-slate-200 w-8"></th>}
             </tr>
           </thead>
           <tbody>
@@ -48,44 +49,48 @@ export function TablaMedicacion({ filas, onChange }: {
             ) : filas.map((f, i) => (
               <tr key={i} className="hover:bg-slate-50">
                 <td className="border border-slate-200 p-1">
-                  <input className="w-full bg-transparent px-1 py-0.5 focus:outline-none focus:bg-white focus:ring-1 focus:ring-primary-300 rounded text-slate-800"
+                  <input disabled={disabled} className="w-full bg-transparent px-1 py-0.5 focus:outline-none focus:bg-white focus:ring-1 focus:ring-primary-300 rounded text-slate-800 disabled:text-slate-500"
                     value={f.farmaco} placeholder="Nombre del fármaco…"
                     onChange={e => update(i, 'farmaco', e.target.value)} />
                 </td>
                 <td className="border border-slate-200 p-1">
-                  <input className="w-full bg-transparent px-1 py-0.5 focus:outline-none focus:bg-white focus:ring-1 focus:ring-primary-300 rounded text-slate-600"
+                  <input disabled={disabled} className="w-full bg-transparent px-1 py-0.5 focus:outline-none focus:bg-white focus:ring-1 focus:ring-primary-300 rounded text-slate-600 disabled:text-slate-500"
                     value={f.dosis} placeholder="ej. 10 mg"
                     onChange={e => update(i, 'dosis', e.target.value)} />
                 </td>
                 {TOMAS.map(t => (
                   <td key={t.key} className="border border-slate-200 p-1 text-center">
-                    <input className="w-full bg-transparent px-1 py-0.5 focus:outline-none focus:bg-white focus:ring-1 focus:ring-primary-300 rounded text-center text-slate-700"
+                    <input disabled={disabled} className="w-full bg-transparent px-1 py-0.5 focus:outline-none focus:bg-white focus:ring-1 focus:ring-primary-300 rounded text-center text-slate-700 disabled:text-slate-500"
                       value={f[t.key]} placeholder="—"
                       onChange={e => update(i, t.key, e.target.value)} />
                   </td>
                 ))}
                 <td className="border border-slate-200 p-1">
-                  <input className="w-full bg-transparent px-1 py-0.5 focus:outline-none focus:bg-white focus:ring-1 focus:ring-primary-300 rounded text-slate-500"
+                  <input disabled={disabled} className="w-full bg-transparent px-1 py-0.5 focus:outline-none focus:bg-white focus:ring-1 focus:ring-primary-300 rounded text-slate-500"
                     value={f.observaciones} placeholder="Si precisa…"
                     onChange={e => update(i, 'observaciones', e.target.value)} />
                 </td>
-                <td className="border border-slate-200 p-1 text-center">
-                  <button type="button"
-                    onClick={() => onChange(filas.filter((_, idx) => idx !== i))}
-                    className="text-slate-300 hover:text-red-500 transition-colors">
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </td>
+                {!disabled && (
+                  <td className="border border-slate-200 p-1 text-center">
+                    <button type="button"
+                      onClick={() => onChange(filas.filter((_, idx) => idx !== i))}
+                      className="text-slate-300 hover:text-red-500 transition-colors">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      <button type="button"
-        onClick={() => onChange([...filas, filaVacia()])}
-        className="flex items-center gap-1.5 text-xs text-primary-600 hover:text-primary-800 font-medium transition-colors py-1">
-        <Plus className="w-3.5 h-3.5" /> Añadir fármaco
-      </button>
+      {!disabled && (
+        <button type="button"
+          onClick={() => onChange([...filas, filaVacia()])}
+          className="flex items-center gap-1.5 text-xs text-primary-600 hover:text-primary-800 font-medium transition-colors py-1">
+          <Plus className="w-3.5 h-3.5" /> Añadir fármaco
+        </button>
+      )}
     </div>
   )
 }

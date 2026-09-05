@@ -5,10 +5,8 @@ import ModalContencion from '../../components/ModalContencion'
 import { severidadDia, severidadNoche, SEVERIDAD_ESTILO } from '../../types/contenciones'
 
 function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo?: { nombre: string; habitacion?: number | null } }) {
-  const [data, setData] = useState<Partial<ItemsPaciente>>({})
-  const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
-  const [saveError, setSaveError] = useState(false)
+  const [data, setData] = useState<Partial<ItemsPaciente & { version: number }>>({})
+  const [estado, setEstado] = useState<'inactivo' | 'guardando' | 'guardado' | 'error' | 'conflicto'>('inactivo')
   const [verHistorico, setVerHistorico] = useState(false)
   const [modalContencion, setModalContencion] = useState(false)
   const [estadoContencion, setEstadoContencion] = useState<{ dia: string | null; noche: string[] | null } | 'cargando'>('cargando')
@@ -50,22 +48,32 @@ function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo
   }, [ingresoId])
 
   async function save() {
-    setSaving(true)
-    setSaveError(false)
+    setEstado('guardando')
+    // update() con la versión leída, no upsert() a ciegas: si alguien
+    // más ha guardado esta misma hoja mientras tanto, esto no
+    // encuentra ninguna fila y avisa, en vez de pisarlo en silencio.
     const { data: guardado, error } = await supabase
       .from('items_paciente')
-      .upsert({ ...data, ingreso_id: ingresoId }, { onConflict: 'ingreso_id' })
+      .update(data)
+      .eq('ingreso_id', ingresoId)
+      .eq('version', data.version ?? 1)
       .select()
-      .single()
-    setSaving(false)
+      .maybeSingle()
     if (error) {
-      setSaveError(true)
-      setTimeout(() => setSaveError(false), 4000)
+      setEstado('error')
+      setTimeout(() => setEstado((e) => (e === 'error' ? 'inactivo' : e)), 4000)
       return
     }
-    if (guardado) setData(guardado as Partial<ItemsPaciente>)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+    if (!guardado) { setEstado('conflicto'); return }
+    setData(guardado as Partial<ItemsPaciente>)
+    setEstado('guardado')
+    setTimeout(() => setEstado((e) => (e === 'guardado' ? 'inactivo' : e)), 2000)
+  }
+
+  async function recargarTrasConflicto() {
+    const { data: d } = await supabase.from('items_paciente').select('*').eq('ingreso_id', ingresoId).maybeSingle()
+    setData(d ?? {})
+    setEstado('inactivo')
   }
 
   const sel = (key: keyof ItemsPaciente, label: string, options: { v: string; l: string }[]) => (
@@ -243,12 +251,19 @@ function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo
           onChange={e => setData(d => ({ ...d, observaciones: e.target.value }))} />
       </div>
 
+      {estado === 'conflicto' && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-lg px-4 py-3 flex items-center justify-between gap-3">
+          <span>Alguien más ha guardado cambios en esta hoja mientras la editabas. Lo que has marcado sigue aquí, sin guardar todavía.</span>
+          <button onClick={recargarTrasConflicto} className="btn-secondary text-xs shrink-0">Ver la versión más reciente</button>
+        </div>
+      )}
+
       <div className="flex justify-between items-center">
         <button onClick={() => setVerHistorico(v => !v)} className="btn-secondary text-xs">
           {verHistorico ? 'Ocultar histórico' : 'Ver histórico de snapshots'}
         </button>
-        <button onClick={save} disabled={saving} className="btn-primary">
-          {saving ? 'Guardando…' : saveError ? '✗ Error al guardar' : saved ? '✓ Guardado' : 'Guardar cambios'}
+        <button onClick={save} disabled={estado === 'guardando' || estado === 'conflicto'} className="btn-primary">
+          {estado === 'guardando' ? 'Guardando…' : estado === 'error' ? '✗ Error al guardar' : estado === 'guardado' ? '✓ Guardado' : 'Guardar cambios'}
         </button>
       </div>
 

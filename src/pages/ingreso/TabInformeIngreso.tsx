@@ -1,24 +1,26 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import type { FilaMedicacion, Ingreso, InformeIngreso } from '../../types'
-import { Download } from 'lucide-react'
+import { Download, Lock } from 'lucide-react'
 import { AutoTextarea } from './AutoTextarea'
 import { TablaMedicacion } from './TablaMedicacion'
 import { exportarInformeIngreso } from '../../lib/exportWord'
 
+type EstadoGuardado = 'inactivo' | 'pendiente' | 'guardando' | 'guardado' | 'error' | 'conflicto'
+
 function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso: Ingreso | null }) {
-  const [data, setData] = useState<Partial<InformeIngreso>>({})
-  const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
-  const [saveError, setSaveError] = useState(false)
+  const [data, setData] = useState<Partial<InformeIngreso & { version: number }>>({})
+  const [estado, setEstado] = useState<EstadoGuardado>('inactivo')
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const dataRef = useRef(data)
   dataRef.current = data
-  // Con red lenta, dos guardados pueden estar en el aire a la vez; si
-  // el más viejo responde después del más nuevo, no debe pisar el
-  // estado más reciente con uno anterior. Este contador dice cuál es
-  // el guardado más reciente que se ha lanzado.
   const saveSeqRef = useRef(0)
+
+  // Una vez cerrado el episodio, este informe pasa a ser un documento
+  // histórico: se puede seguir exportando, pero no editando. El
+  // informe de alta es distinto a propósito — ese sí sigue editable
+  // después del alta, por decisión explícita.
+  const soloLectura = ingreso != null && ingreso.estado !== 'activo'
 
   useEffect(() => {
     supabase.from('informe_ingreso').select('*').eq('ingreso_id', ingresoId).maybeSingle()
@@ -27,27 +29,41 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
 
   async function save(d = dataRef.current): Promise<boolean> {
     const miSecuencia = ++saveSeqRef.current
-    setSaving(true)
-    setSaveError(false)
+    setEstado('guardando')
     const { data: guardado, error } = await supabase
       .from('informe_ingreso')
-      .upsert({ ...d, ingreso_id: ingresoId }, { onConflict: 'ingreso_id' })
+      .update(d)
+      .eq('ingreso_id', ingresoId)
+      .eq('version', d.version ?? 1)
       .select()
-      .single()
-    setSaving(false)
-    if (error) { setSaveError(true); return false }
-    // Si mientras esta petición estaba en el aire se ha lanzado ya un
-    // guardado más reciente, esta respuesta está obsoleta — aplicarla
-    // ahora borraría el cambio más nuevo con uno más viejo.
-    if (miSecuencia === saveSeqRef.current && guardado) setData(guardado)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+      .maybeSingle()
+    if (miSecuencia !== saveSeqRef.current) return true // ya hay un guardado más nuevo en curso; esta respuesta no pinta nada
+    if (error) { setEstado('error'); return false }
+    if (!guardado) {
+      // Nadie ha pisado nada: la actualización simplemente no
+      // encontró la versión que se leyó, porque alguien más guardó
+      // mientras tanto. El texto que la persona ha escrito se queda
+      // tal cual en pantalla — no se descarta ni se recarga sola.
+      setEstado('conflicto')
+      return false
+    }
+    setData(guardado)
+    setEstado('guardado')
+    setTimeout(() => setEstado((e) => (e === 'guardado' ? 'inactivo' : e)), 2500)
     return true
   }
 
+  async function recargarTrasConflicto() {
+    const { data: d } = await supabase.from('informe_ingreso').select('*').eq('ingreso_id', ingresoId).maybeSingle()
+    setData(d ?? {})
+    setEstado('inactivo')
+  }
+
   function update(key: keyof InformeIngreso, value: any) {
+    if (soloLectura || estado === 'conflicto') return
     const next = { ...dataRef.current, [key]: value }
     setData(next)
+    setEstado('pendiente')
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => save(next), 1500)
   }
@@ -55,7 +71,7 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
   const field = (key: keyof InformeIngreso, label: string) => (
     <div key={key}>
       <span className="label">{label}</span>
-      <AutoTextarea value={(data[key] as string) ?? ''} onChange={(v) => update(key, v)} />
+      <AutoTextarea value={(data[key] as string) ?? ''} onChange={(v) => update(key, v)} disabled={soloLectura} />
     </div>
   )
 
@@ -63,11 +79,26 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
 
   return (
     <div className="max-w-3xl space-y-6">
-      <div className="flex items-center justify-end gap-3 text-xs text-slate-400">
-        {saving && <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse inline-block" /> Guardando…</span>}
-        {!saving && saved && <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" /> Guardado</span>}
-        {saveError && <span className="flex items-center gap-1.5 text-red-600 font-semibold"><span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block" /> Error al guardar — comprueba la conexión</span>}
+      <div className="flex items-center justify-between gap-3">
+        {soloLectura ? (
+          <span className="flex items-center gap-1.5 text-xs text-slate-400">
+            <Lock className="w-3.5 h-3.5" /> Episodio cerrado — solo lectura
+          </span>
+        ) : <span />}
+        <div className="flex items-center gap-3 text-xs text-slate-400">
+          {estado === 'pendiente' && <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-slate-400 inline-block" /> Cambios pendientes</span>}
+          {estado === 'guardando' && <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse inline-block" /> Guardando…</span>}
+          {estado === 'guardado' && <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" /> Guardado</span>}
+          {estado === 'error' && <span className="flex items-center gap-1.5 text-red-600 font-semibold"><span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block" /> Error al guardar — comprueba la conexión</span>}
+        </div>
       </div>
+
+      {estado === 'conflicto' && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-lg px-4 py-3 flex items-center justify-between gap-3">
+          <span>Alguien más ha guardado cambios en este informe mientras lo editabas. Lo que has escrito sigue aquí, sin guardar todavía.</span>
+          <button onClick={recargarTrasConflicto} className="btn-secondary text-xs shrink-0">Ver la versión más reciente</button>
+        </div>
+      )}
 
       <div className="card p-6 space-y-4">
         <p className="section-title">Antecedentes patológicos</p>
@@ -78,7 +109,7 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
         <div>
           <span className="label">Tratamiento al ingreso</span>
           <TablaMedicacion filas={filasIngreso}
-            onChange={v => update('tratamiento_ingreso_estructurado', v)} />
+            onChange={v => update('tratamiento_ingreso_estructurado', v)} disabled={soloLectura} />
         </div>
       </div>
 
@@ -89,13 +120,13 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
         <div className="grid grid-cols-2 gap-4">
           <div>
             <span className="label">I. Barthel (/100)</span>
-            <input type="number" min={0} max={100} className="input"
+            <input type="number" min={0} max={100} className="input" disabled={soloLectura}
               value={data.barthel ?? ''}
               onChange={e => update('barthel', e.target.value === '' ? undefined : parseInt(e.target.value, 10))} />
           </div>
           <div>
             <span className="label">I. Lawton (/8)</span>
-            <input type="number" min={0} max={8} className="input"
+            <input type="number" min={0} max={8} className="input" disabled={soloLectura}
               value={data.lawton ?? ''}
               onChange={e => update('lawton', e.target.value === '' ? undefined : parseInt(e.target.value, 10))} />
           </div>
@@ -138,17 +169,21 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
         <button type="button"
           onClick={async () => {
             if (!ingreso) return
-            const ok = await save()
-            if (!ok) return
+            if (!soloLectura) {
+              const ok = await save()
+              if (!ok) return
+            }
             await exportarInformeIngreso(ingreso, data as InformeIngreso)
           }}
           className="btn-secondary">
           <Download className="w-4 h-4" />
           Exportar Word
         </button>
-        <button type="button" onClick={() => save()} className="btn-primary">
-          Guardar ahora
-        </button>
+        {!soloLectura && (
+          <button type="button" onClick={() => save()} className="btn-primary">
+            Guardar ahora
+          </button>
+        )}
       </div>
     </div>
   )

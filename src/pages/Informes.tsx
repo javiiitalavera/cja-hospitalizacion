@@ -6,6 +6,7 @@ import { ESTADO_INGRESO_LABEL as ESTADO_LABEL, ESTADO_INGRESO_COLOR as ESTADO_CO
 import { quitarTildes } from '../lib/busqueda'
 
 type TipoInforme = 'ingreso' | 'alta'
+type EstadoInforme = 'sin_iniciar' | 'borrador'
 
 interface InformeRow {
   id: string
@@ -16,6 +17,21 @@ interface InformeRow {
   nhc: string | null
   medico: string
   estadoIngreso: string
+  estadoInforme: EstadoInforme
+}
+
+// Los campos que no cuentan como "contenido" al decidir si un informe
+// está sin empezar o no — todo lo demás que devuelva la consulta sí.
+const CAMPOS_NO_CONTENIDO = new Set(['id', 'ingreso_id', 'version', 'created_at', 'updated_at', 'ingreso'])
+
+function estaVacio(fila: Record<string, any>): boolean {
+  return Object.entries(fila).every(([clave, valor]) => {
+    if (CAMPOS_NO_CONTENIDO.has(clave)) return true
+    if (valor == null) return true
+    if (typeof valor === 'string') return valor.trim() === ''
+    if (Array.isArray(valor)) return valor.length === 0
+    return false
+  })
 }
 
 export function Informes() {
@@ -38,7 +54,7 @@ export function Informes() {
         supabase
           .from('informe_ingreso')
           .select(`
-            id, ingreso_id,
+            *,
             ingreso:ingresos(id, fecha_ingreso, estado,
               medico_responsable:profesionales(nombre, apellidos),
               paciente:pacientes(nombre, primer_apellido, segundo_apellido, nhc))
@@ -47,7 +63,7 @@ export function Informes() {
         supabase
           .from('informe_alta')
           .select(`
-            id, ingreso_id,
+            *,
             ingreso:ingresos(id, fecha_alta, fecha_ingreso, estado,
               medico_responsable:profesionales(nombre, apellidos),
               paciente:pacientes(nombre, primer_apellido, segundo_apellido, nhc))
@@ -69,6 +85,7 @@ export function Informes() {
           nhc: i.paciente.nhc ?? null,
           medico: i.medico_responsable ? `${i.medico_responsable.nombre} ${i.medico_responsable.apellidos}` : '—',
           estadoIngreso: i.estado,
+          estadoInforme: estaVacio(r) ? 'sin_iniciar' : 'borrador',
         })
       })
 
@@ -79,11 +96,16 @@ export function Informes() {
           id: r.id,
           ingresoId: i.id,
           tipo: 'alta',
-          fecha: i.fecha_alta ?? i.fecha_ingreso,
+          // Sin ".. ?? i.fecha_ingreso": un informe de alta que todavía
+          // no se ha cerrado no tiene fecha de alta de verdad — antes
+          // se sustituía por la fecha de ingreso, que no es la fecha
+          // de este informe, es la del otro.
+          fecha: i.fecha_alta ?? null,
           paciente: nombreCompleto(i.paciente),
           nhc: i.paciente.nhc ?? null,
           medico: i.medico_responsable ? `${i.medico_responsable.nombre} ${i.medico_responsable.apellidos}` : '—',
           estadoIngreso: i.estado,
+          estadoInforme: estaVacio(r) ? 'sin_iniciar' : 'borrador',
         })
       })
 
@@ -172,6 +194,7 @@ export function Informes() {
           <thead>
             <tr className="border-b bg-slate-50">
               <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Tipo</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Informe</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Paciente</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">NHC</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Fecha</th>
@@ -181,9 +204,9 @@ export function Informes() {
           </thead>
           <tbody className="divide-y">
             {loading ? (
-              <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-400">Cargando…</td></tr>
+              <tr><td colSpan={7} className="px-4 py-12 text-center text-slate-400">Cargando…</td></tr>
             ) : lista.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-400">No hay informes con estos filtros.</td></tr>
+              <tr><td colSpan={7} className="px-4 py-12 text-center text-slate-400">No hay informes con estos filtros.</td></tr>
             ) : lista.map(r => (
               <tr key={`${r.tipo}-${r.id}`}
                 className="hover:bg-slate-50 transition-colors cursor-pointer"
@@ -194,6 +217,14 @@ export function Informes() {
                   }`}>
                     {r.tipo === 'ingreso' ? <FileText className="w-3 h-3" /> : <LogOut className="w-3 h-3" />}
                     {r.tipo === 'ingreso' ? 'Ingreso' : 'Alta'}
+                  </span>
+                </td>
+                <td className="px-4 py-3">
+                  {/* Antes, un informe recién creado y todavía sin
+                      escribir se veía exactamente igual que uno
+                      terminado — no había forma de distinguirlos. */}
+                  <span className={`text-xs font-medium ${r.estadoInforme === 'sin_iniciar' ? 'text-slate-400 italic' : 'text-amber-600'}`}>
+                    {r.estadoInforme === 'sin_iniciar' ? 'Sin iniciar' : 'Borrador'}
                   </span>
                 </td>
                 <td className="px-4 py-3 font-medium text-slate-800">{r.paciente}</td>

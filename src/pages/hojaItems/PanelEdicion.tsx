@@ -28,10 +28,8 @@ export default function PanelEdicion({
 }) {
   const { rol } = useAuth()
   const esMedico = rol === 'medico'
-  const [data, setData] = useState<Partial<ItemsPaciente>>(ingreso.items ?? {})
-  const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
-  const [saveError, setSaveError] = useState(false)
+  const [data, setData] = useState<Partial<ItemsPaciente & { version: number }>>(ingreso.items ?? {})
+  const [estado, setEstado] = useState<'inactivo' | 'pendiente' | 'guardando' | 'guardado' | 'error' | 'conflicto'>('inactivo')
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const dataRef = useRef(data)
   const saveSeqRef = useRef(0)
@@ -94,34 +92,45 @@ export default function PanelEdicion({
 
   async function save(d = dataRef.current) {
     const miSecuencia = ++saveSeqRef.current
-    setSaving(true)
+    setEstado('guardando')
     const { data: updated, error } = await supabase
       .from('items_paciente')
-      .upsert({ ...d, ingreso_id: ingreso.id }, { onConflict: 'ingreso_id' })
+      .update(d)
+      .eq('ingreso_id', ingreso.id)
+      .eq('version', d.version ?? 1)
       .select()
-      .single()
-    setSaving(false)
+      .maybeSingle()
+    if (miSecuencia !== saveSeqRef.current) return
     if (error) {
-      setSaved(false)
-      setSaveError(true)
-      setTimeout(() => setSaveError(false), 4000)
+      setEstado('error')
+      setTimeout(() => setEstado((e) => (e === 'error' ? 'inactivo' : e)), 4000)
       return
     }
-    setSaved(true)
-    // Si mientras esta petición estaba en el aire ya se lanzó un
-    // guardado más reciente, esta respuesta llega obsoleta — no debe
-    // propagarse hacia la rejilla principal y pisar un cambio nuevo.
-    if (miSecuencia === saveSeqRef.current && updated) onSaved(updated as ItemsPaciente)
-    setTimeout(() => setSaved(false), 2800)
+    if (!updated) {
+      // Alguien más ha guardado esta misma hoja mientras se editaba
+      // aquí — se avisa en vez de propagar un valor obsoleto hacia
+      // la rejilla principal.
+      setEstado('conflicto')
+      return
+    }
+    setData(updated as ItemsPaciente)
+    onSaved(updated as ItemsPaciente)
+    setEstado('guardado')
+    setTimeout(() => setEstado((e) => (e === 'guardado' ? 'inactivo' : e)), 2800)
+  }
+
+  async function recargarTrasConflicto() {
+    const { data: d } = await supabase.from('items_paciente').select('*').eq('ingreso_id', ingreso.id).maybeSingle()
+    if (d) { setData(d as ItemsPaciente); onSaved(d as ItemsPaciente) }
+    setEstado('inactivo')
   }
 
   async function limpiarItems() {
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    setSaving(true)
-    // Vacío explícito de cada campo: un upsert que solo mande ingreso_id
-    // NO borra el resto de columnas, solo las deja tal como estaban.
+    setEstado('guardando')
+    // Vacío explícito de cada campo: un update que solo mande estos
+    // campos no toca el resto de columnas si no se listan aquí.
     const vacio = {
-      ingreso_id: ingreso.id,
       dependencia_avd: null, panial_dia: null, panial_noche: null,
       colector: false, sonda_vesical: false,
       dentadura: null, audifonos: null, gafas: null,
@@ -139,23 +148,28 @@ export default function PanelEdicion({
     }
     const { data: updated, error } = await supabase
       .from('items_paciente')
-      .upsert(vacio, { onConflict: 'ingreso_id' })
+      .update(vacio)
+      .eq('ingreso_id', ingreso.id)
+      .eq('version', dataRef.current.version ?? 1)
       .select()
-      .single()
-    setSaving(false)
+      .maybeSingle()
     setConfirmLimpiar(false)
     if (error) {
-      setSaveError(true)
-      setTimeout(() => setSaveError(false), 4000)
+      setEstado('error')
+      setTimeout(() => setEstado((e) => (e === 'error' ? 'inactivo' : e)), 4000)
       return
     }
-    setData({})
-    if (updated) onSaved(updated as ItemsPaciente)
+    if (!updated) { setEstado('conflicto'); return }
+    setData(updated as ItemsPaciente)
+    setEstado('inactivo')
+    onSaved(updated as ItemsPaciente)
   }
 
   function update(key: keyof ItemsPaciente, val: any) {
+    if (estado === 'conflicto') return
     const next = { ...dataRef.current, [key]: val }
     setData(next)
+    setEstado('pendiente')
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => save(next), 1200)
   }
@@ -224,17 +238,22 @@ export default function PanelEdicion({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {saving && (
+          {estado === 'pendiente' && (
+            <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 text-xs font-medium">
+              ● Cambios pendientes
+            </span>
+          )}
+          {estado === 'guardando' && (
             <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 text-xs font-medium">
               ● Guardando…
             </span>
           )}
-          {!saving && saved && (
+          {estado === 'guardado' && (
             <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-semibold">
               ✓ Guardado
             </span>
           )}
-          {!saving && saveError && (
+          {estado === 'error' && (
             <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-red-100 text-red-700 text-xs font-semibold">
               ✗ Error al guardar, inténtalo de nuevo
             </span>
@@ -244,6 +263,13 @@ export default function PanelEdicion({
           </button>
         </div>
       </div>
+
+      {estado === 'conflicto' && (
+        <div className="mx-4 mt-3 bg-amber-50 border border-amber-200 text-amber-800 text-xs rounded-lg px-3 py-2 flex items-center justify-between gap-2">
+          <span>Alguien más ha guardado cambios en esta hoja mientras la editabas.</span>
+          <button onClick={recargarTrasConflicto} className="btn-secondary text-xs shrink-0 py-1">Ver lo más reciente</button>
+        </div>
+      )}
 
       <div className="flex-1 overflow-y-auto px-4 py-3">
         {/* Semáforo caídas */}

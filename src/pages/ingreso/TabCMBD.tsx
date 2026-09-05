@@ -239,6 +239,7 @@ function FilaProc({ label, codigo, desc, onCodigo, onDesc }: {
 // ─── TIPOS ───────────────────────────────────────────────────
 
 interface CMBDData {
+  version?: number
   diagnostico_principal?: string; diagnostico_principal_desc?: string; diagnostico_principal_poad?: boolean
   diagnostico_secundario_1?: string; diagnostico_secundario_1_desc?: string; diagnostico_secundario_1_poad?: boolean
   diagnostico_secundario_2?: string; diagnostico_secundario_2_desc?: string; diagnostico_secundario_2_poad?: boolean
@@ -343,13 +344,12 @@ async function exportarExcel(data: CMBDData, ingreso: Ingreso | null) {
 export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: Ingreso | null }) {
   const [data, setData] = useState<CMBDData>({ servicio: 'GRT' })
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
-  const [saveError, setSaveError] = useState(false)
+  const [estado, setEstado] = useState<'inactivo' | 'pendiente' | 'guardando' | 'guardado' | 'error' | 'conflicto'>('inactivo')
   const [exportando, setExportando] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const dataRef = useRef(data)
   dataRef.current = data
+  const saveSeqRef = useRef(0)
 
   useEffect(() => {
     async function cargar() {
@@ -364,27 +364,39 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
   }, [ingresoId])
 
   async function save(d = dataRef.current): Promise<boolean> {
-    setSaving(true); setSaveError(false)
-    // onConflict: 'ingreso_id' — sin esto, como "id" nunca viaja en el
-    // payload (nunca se recupera de vuelta), cada guardado intentaba
-    // insertar una fila nueva; el primero funcionaba, el segundo
-    // chocaba con la restricción UNIQUE de ingreso_id y fallaba.
+    const miSecuencia = ++saveSeqRef.current
+    setEstado('guardando')
+    // Antes usaba upsert(); ahora es un update() con la versión que
+    // se leyó — si alguien más ha guardado mientras tanto, esta
+    // actualización no encuentra ninguna fila y avisa, en vez de
+    // pisar el cambio de la otra persona en silencio.
     const { data: guardado, error } = await supabase
       .from('cmbd')
-      .upsert({ ...d, ingreso_id: ingresoId }, { onConflict: 'ingreso_id' })
+      .update(d)
+      .eq('ingreso_id', ingresoId)
+      .eq('version', (d as any).version ?? 1)
       .select()
-      .single()
-    setSaving(false)
-    if (error) { setSaveError(true); return false }
-    if (guardado) setData(guardado as CMBDData)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+      .maybeSingle()
+    if (miSecuencia !== saveSeqRef.current) return true
+    if (error) { setEstado('error'); return false }
+    if (!guardado) { setEstado('conflicto'); return false }
+    setData(guardado as CMBDData)
+    setEstado('guardado')
+    setTimeout(() => setEstado((e) => (e === 'guardado' ? 'inactivo' : e)), 2500)
     return true
   }
 
+  async function recargarTrasConflicto() {
+    const { data: d } = await supabase.from('cmbd').select('*').eq('ingreso_id', ingresoId).maybeSingle()
+    if (d) setData(d as CMBDData)
+    setEstado('inactivo')
+  }
+
   function update<K extends keyof CMBDData>(key: K, value: CMBDData[K]) {
+    if (estado === 'conflicto') return
     const next = { ...dataRef.current, [key]: value }
     setData(next)
+    setEstado('pendiente')
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => save(next), 1500)
   }
@@ -430,9 +442,10 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-slate-400">
-            {saving && '● Guardando…'}
-            {!saving && saved && <span className="text-emerald-600">✓ Guardado</span>}
-            {saveError && <span className="text-red-600 font-semibold">✗ Error al guardar</span>}
+            {estado === 'pendiente' && '● Cambios pendientes'}
+            {estado === 'guardando' && '● Guardando…'}
+            {estado === 'guardado' && <span className="text-emerald-600">✓ Guardado</span>}
+            {estado === 'error' && <span className="text-red-600 font-semibold">✗ Error al guardar</span>}
           </span>
           <button type="button" onClick={() => save()} className="btn-secondary text-xs py-1.5">
             <Save className="w-3.5 h-3.5" /> Guardar
@@ -444,6 +457,13 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
           </button>
         </div>
       </div>
+
+      {estado === 'conflicto' && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-lg px-4 py-3 flex items-center justify-between gap-3">
+          <span>Alguien más ha guardado cambios en el CMBD mientras lo editabas. Lo que has escrito sigue aquí, sin guardar todavía.</span>
+          <button onClick={recargarTrasConflicto} className="btn-secondary text-xs shrink-0">Ver la versión más reciente</button>
+        </div>
+      )}
 
       {/* Datos del episodio — pre-rellenados */}
       <div className="card p-5 space-y-2">

@@ -6,11 +6,11 @@ import { AutoTextarea } from './AutoTextarea'
 import { TablaMedicacion } from './TablaMedicacion'
 import { exportarInformeAlta } from '../../lib/exportWord'
 
+type EstadoGuardado = 'inactivo' | 'pendiente' | 'guardando' | 'guardado' | 'error' | 'conflicto'
+
 function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: Ingreso | null }) {
-  const [data, setData] = useState<Partial<InformeAlta>>({})
-  const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
-  const [saveError, setSaveError] = useState(false)
+  const [data, setData] = useState<Partial<InformeAlta & { version: number }>>({})
+  const [estado, setEstado] = useState<EstadoGuardado>('inactivo')
   const [informeIngreso, setInformeIngreso] = useState<Partial<InformeIngreso>>({})
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -45,25 +45,39 @@ function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
 
   async function save(d = dataRef.current): Promise<boolean> {
     const miSecuencia = ++saveSeqRef.current
-    setSaving(true); setSaveError(false)
+    setEstado('guardando')
     const { data: guardado, error } = await supabase
       .from('informe_alta')
-      .upsert({ ...d, ingreso_id: ingresoId }, { onConflict: 'ingreso_id' })
+      .update(d)
+      .eq('ingreso_id', ingresoId)
+      .eq('version', d.version ?? 1)
       .select()
-      .single()
-    setSaving(false)
-    if (error) { setSaveError(true); return false }
-    // Ignorar esta respuesta si ya se lanzó un guardado más reciente
-    // mientras estaba en el aire — no pisar lo nuevo con lo viejo.
-    if (miSecuencia === saveSeqRef.current && guardado) setData(guardado)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+      .maybeSingle()
+    if (miSecuencia !== saveSeqRef.current) return true
+    if (error) { setEstado('error'); return false }
+    if (!guardado) {
+      // Igual que en informe de ingreso: el texto escrito se queda
+      // en pantalla, no se pisa ni se recarga sin avisar.
+      setEstado('conflicto')
+      return false
+    }
+    setData(guardado)
+    setEstado('guardado')
+    setTimeout(() => setEstado((e) => (e === 'guardado' ? 'inactivo' : e)), 2500)
     return true
   }
 
+  async function recargarTrasConflicto() {
+    const { data: d } = await supabase.from('informe_alta').select('*').eq('ingreso_id', ingresoId).maybeSingle()
+    setData(d ?? {})
+    setEstado('inactivo')
+  }
+
   function update(key: keyof InformeAlta, value: any) {
+    if (estado === 'conflicto') return
     const next = { ...dataRef.current, [key]: value }
     setData(next)
+    setEstado('pendiente')
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => save(next), 1500)
   }
@@ -84,12 +98,20 @@ function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
         <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-xs text-blue-700">
           Los antecedentes e informe de ingreso se heredan al exportar. La medicación al alta se pre-rellena desde el tratamiento al ingreso.
         </div>
-        <div className="text-xs text-slate-400 shrink-0 ml-3">
-          {saving && <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse inline-block" /> Guardando…</span>}
-          {!saving && saved && <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" /> Guardado</span>}
-          {saveError && <span className="flex items-center gap-1.5 text-red-600 font-semibold"><span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block" /> Error al guardar — comprueba la conexión</span>}
+        <div className="text-xs text-slate-400 shrink-0 ml-3 flex items-center gap-1">
+          {estado === 'pendiente' && <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-slate-400 inline-block" /> Cambios pendientes</span>}
+          {estado === 'guardando' && <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse inline-block" /> Guardando…</span>}
+          {estado === 'guardado' && <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" /> Guardado</span>}
+          {estado === 'error' && <span className="flex items-center gap-1.5 text-red-600 font-semibold"><span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block" /> Error al guardar — comprueba la conexión</span>}
         </div>
       </div>
+
+      {estado === 'conflicto' && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-lg px-4 py-3 flex items-center justify-between gap-3">
+          <span>Alguien más ha guardado cambios en este informe mientras lo editabas. Lo que has escrito sigue aquí, sin guardar todavía.</span>
+          <button onClick={recargarTrasConflicto} className="btn-secondary text-xs shrink-0">Ver la versión más reciente</button>
+        </div>
+      )}
 
       <div className="card p-6 space-y-4">
         <p className="section-title">Durante el ingreso</p>
