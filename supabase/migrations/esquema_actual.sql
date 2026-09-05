@@ -502,40 +502,27 @@ begin
 end;
 $$;
 
--- Cada vez que se crea o cambia el estado actual de una contención,
--- queda una foto en el historial. Es automático, así el historial no
--- depende de que nadie se acuerde de registrarlo aparte. Distingue
--- qué pasó (pauta creada/modificada, confirmada, confirmación
--- retirada) y quién lo hizo de verdad — sin esto, una confirmación
--- quedaba atribuida a quien había registrado la pauta original.
+-- Cada vez que se crea la pauta o cambia de verdad (día o noche),
+-- queda una foto en el historial. El disparador que lo llama (ver
+-- DISPARADORES) solo se activa en esos dos casos — "update of dia,
+-- noche" en su propia definición, no una comprobación aquí dentro —
+-- así que esta función no necesita adivinar qué pasó comparando
+-- valores de antes y de después. Confirmar y retirar una
+-- confirmación escriben su propia línea de historial directamente
+-- (ver confirmar_contencion y retirar_confirmacion_contencion),
+-- porque ya saben perfectamente qué están haciendo.
 create function public.registrar_historial_contencion() returns trigger
 language plpgsql
 security definer
 set search_path = ''
 as $$
-declare
-  v_tipo text;
-  v_actor uuid;
 begin
-  if TG_OP = 'INSERT' then
-    v_tipo := 'pauta_creada';
-    v_actor := NEW.actualizado_por_id;
-  elsif NEW.dia is distinct from OLD.dia or NEW.noche is distinct from OLD.noche then
-    v_tipo := 'pauta_modificada';
-    v_actor := NEW.actualizado_por_id;
-  elsif OLD.confirmado_por_id is distinct from NEW.confirmado_por_id and NEW.confirmado_por_id is not null then
-    v_tipo := 'confirmada';
-    v_actor := NEW.confirmado_por_id;
-  elsif OLD.confirmado_por_id is distinct from NEW.confirmado_por_id and NEW.confirmado_por_id is null then
-    v_tipo := 'confirmacion_retirada';
-    v_actor := coalesce((select id from public.profesionales where user_id = auth.uid() limit 1), NEW.actualizado_por_id);
-  else
-    v_tipo := 'otro';
-    v_actor := NEW.actualizado_por_id;
-  end if;
-
   insert into public.contenciones_historial (ingreso_id, dia, noche, cambiado_por_id, cambiado_en, tipo_accion, actor_id)
-  values (NEW.ingreso_id, NEW.dia, NEW.noche, NEW.actualizado_por_id, NEW.actualizado_en, v_tipo, v_actor);
+  values (
+    NEW.ingreso_id, NEW.dia, NEW.noche, NEW.actualizado_por_id, NEW.actualizado_en,
+    case when TG_OP = 'INSERT' then 'pauta_creada' else 'pauta_modificada' end,
+    NEW.actualizado_por_id
+  );
   return NEW;
 end;
 $$;
@@ -571,19 +558,6 @@ begin
       -- quisiera, confirmado por auditoría real contra Supabase.
       NEW.version := OLD.version;
     end if;
-  end if;
-  return NEW;
-end;
-$$;
-
--- El ingreso de una contención no se puede cambiar una vez creada —
--- nadie debería poder "mover" una pauta de un paciente a otro.
-create function public.evitar_cambio_ingreso_contencion() returns trigger
-language plpgsql
-as $$
-begin
-  if NEW.ingreso_id is distinct from OLD.ingreso_id then
-    raise exception 'No se puede cambiar el ingreso de una contención ya creada.';
   end if;
   return NEW;
 end;
@@ -686,6 +660,9 @@ begin
     raise exception 'version_desactualizada';
   end if;
 
+  insert into public.contenciones_historial (ingreso_id, dia, noche, cambiado_por_id, cambiado_en, tipo_accion, actor_id)
+  values (v_resultado.ingreso_id, v_resultado.dia, v_resultado.noche, v_resultado.actualizado_por_id, v_resultado.actualizado_en, 'confirmada', v_actor);
+
   return v_resultado;
 end;
 $$;
@@ -697,11 +674,13 @@ security definer
 set search_path = ''
 as $$
 declare
+  v_actor uuid;
   v_resultado public.contenciones;
 begin
   if coalesce(private.mi_rol(), '') <> 'medico' then
     raise exception 'Solo un médico puede retirar una confirmación.';
   end if;
+  select id into v_actor from public.profesionales where user_id = auth.uid() limit 1;
 
   update public.contenciones
   set confirmado_por_id = null
@@ -711,6 +690,9 @@ begin
   if not found then
     raise exception 'No existe esa contención.';
   end if;
+
+  insert into public.contenciones_historial (ingreso_id, dia, noche, cambiado_por_id, cambiado_en, tipo_accion, actor_id)
+  values (v_resultado.ingreso_id, v_resultado.dia, v_resultado.noche, v_resultado.actualizado_por_id, v_resultado.actualizado_en, 'confirmacion_retirada', v_actor);
 
   return v_resultado;
 end;
@@ -827,7 +809,7 @@ create trigger trg_informe_alta_updated  before update on public.informe_alta   
 create trigger trg_cmbd_updated          before update on public.cmbd            for each row execute function public.update_updated_at();
 
 create trigger guardar_historial_tras_cambio
-  after insert or update on public.contenciones
+  after insert or update of dia, noche on public.contenciones
   for each row execute function public.registrar_historial_contencion();
 
 create trigger fijar_actualizado_en
@@ -837,10 +819,6 @@ create trigger fijar_actualizado_en
 create trigger incrementar_version
   before update on public.contenciones
   for each row execute function public.incrementar_version_contencion();
-
-create trigger fijar_ingreso_inmutable
-  before update on public.contenciones
-  for each row execute function public.evitar_cambio_ingreso_contencion();
 
 create trigger gestionar_confirmacion
   before insert or update on public.contenciones
