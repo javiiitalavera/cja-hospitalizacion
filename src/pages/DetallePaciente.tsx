@@ -92,7 +92,7 @@ export default function DetallePaciente() {
         const [{ data: evs }, { data: infIng }, { data: infAlta }] = await Promise.all([
           supabase
             .from('eventos')
-            .select('*, registrado_por:profesionales(nombre,apellidos)')
+            .select('*, registrado_por:profesionales!registrado_por_id(nombre,apellidos)')
             .in('ingreso_id', ingIds)
             .order('fecha', { ascending: false }),
           supabase.from('informe_ingreso').select('ingreso_id').in('ingreso_id', ingIds),

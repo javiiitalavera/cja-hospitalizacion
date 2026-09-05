@@ -114,7 +114,7 @@ export function Eventos() {
         .from('eventos')
         .select(`
           id, tipo, fecha, hora, turno, datos, notas, estado,
-          registrado_por:profesionales(nombre, apellidos),
+          registrado_por:profesionales!registrado_por_id(nombre, apellidos),
           ingreso:ingresos!inner(id, habitacion, estado, paciente:pacientes(nombre, primer_apellido, segundo_apellido))
         `)
         .eq('ingreso.estado', 'activo')
@@ -199,7 +199,7 @@ export function Eventos() {
         .from('eventos')
         .select(`
           id, tipo, fecha, hora, turno, datos, notas, estado, habitacion_evento,
-          registrado_por:profesionales(nombre, apellidos),
+          registrado_por:profesionales!registrado_por_id(nombre, apellidos),
           ingreso:ingresos!inner(id, habitacion, estado, paciente:pacientes(nombre, primer_apellido, segundo_apellido))
         `)
         .order('fecha', { ascending: false })

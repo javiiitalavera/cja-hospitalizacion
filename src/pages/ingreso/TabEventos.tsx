@@ -30,7 +30,7 @@ function TabEventos({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteIn
       setErrorCarga('')
       const { data, error: err } = await supabase
         .from('eventos')
-        .select('*, registrado_por:profesionales(nombre, apellidos, rol)')
+        .select('*, registrado_por:profesionales!registrado_por_id(nombre, apellidos, rol)')
         .eq('ingreso_id', ingresoId)
         .order('fecha', { ascending: false })
         .order('created_at', { ascending: false })
