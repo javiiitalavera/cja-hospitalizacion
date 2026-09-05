@@ -139,6 +139,9 @@ create table public.informe_ingreso (
     plan_objetivos text,
     plan_medicacion text,
     plan_otros_cuidados text,
+    -- Sube en cada guardado real; si al guardar no coincide con la
+    -- que se leyó, es que alguien más guardó mientras tanto.
+    version integer not null default 1,
     created_at timestamptz default now(),
     updated_at timestamptz default now()
 );
@@ -160,6 +163,7 @@ create table public.informe_alta (
     cuidados_enfermeria text,
     medicacion_alta text,
     otras_recomendaciones text,
+    version integer not null default 1,
     created_at timestamptz default now(),
     updated_at timestamptz default now()
 );
@@ -208,6 +212,7 @@ create table public.items_paciente (
     -- se reaprovecha el mismo hueco con un propósito más amplio).
     observaciones text,
     semaforo_caidas text check (semaforo_caidas in ('verde', 'amarillo', 'naranja', 'rojo')),
+    version integer not null default 1,
     created_at timestamptz default now(),
     updated_at timestamptz default now()
 );
@@ -293,6 +298,7 @@ create table public.cmbd (
     servicio text default 'GRT',
     notas text,
     completado boolean default false,
+    version integer not null default 1,
     created_at timestamptz default now(),
     updated_at timestamptz default now()
 );
@@ -787,6 +793,24 @@ $$;
 -- inmutable_unaccent(), que depende del search_path de quien la llama.
 grant execute on function public.crear_paciente_e_ingreso(jsonb, int, date, uuid, text, boolean) to authenticated;
 
+-- Compartida entre informe_ingreso, informe_alta, items_paciente y
+-- cmbd: sube la versión en cada guardado real, ignorando cualquier
+-- valor que mandara el cliente — si dos personas guardan casi a la
+-- vez, la segunda ve que su versión ya no coincide y se avisa, en vez
+-- de pisar el cambio de la primera en silencio.
+create function public.incrementar_version_generico() returns trigger
+language plpgsql
+as $$
+begin
+  if TG_OP = 'INSERT' then
+    NEW.version := 1;
+  else
+    NEW.version := OLD.version + 1;
+  end if;
+  return NEW;
+end;
+$$;
+
 
 -- ────────────────────────────────────────────────────────────
 -- DISPARADORES
@@ -807,6 +831,11 @@ create trigger trg_items_updated         before update on public.items_paciente 
 create trigger trg_informe_ingreso_updated before update on public.informe_ingreso for each row execute function public.update_updated_at();
 create trigger trg_informe_alta_updated  before update on public.informe_alta    for each row execute function public.update_updated_at();
 create trigger trg_cmbd_updated          before update on public.cmbd            for each row execute function public.update_updated_at();
+
+create trigger incrementar_version before insert or update on public.informe_ingreso for each row execute function public.incrementar_version_generico();
+create trigger incrementar_version before insert or update on public.informe_alta    for each row execute function public.incrementar_version_generico();
+create trigger incrementar_version before insert or update on public.items_paciente  for each row execute function public.incrementar_version_generico();
+create trigger incrementar_version before insert or update on public.cmbd            for each row execute function public.incrementar_version_generico();
 
 create trigger guardar_historial_tras_cambio
   after insert or update of dia, noche on public.contenciones
