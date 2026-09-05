@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { hoyLocal } from '../lib/fechas'
 import { useAuth } from '../lib/AuthContext'
@@ -15,6 +16,7 @@ interface Props {
 }
 
 export default function FormularioEvento({ ingresoId, eventoExistente, onClose, onGuardado, pacienteInfo }: Props) {
+  const navigate = useNavigate()
   const { profesional: yo } = useAuth()
   const [tipo, setTipo] = useState<TipoEvento | ''>(eventoExistente?.tipo ?? '')
   const [fecha, setFecha] = useState(eventoExistente?.fecha ?? hoyLocal())
@@ -39,6 +41,47 @@ export default function FormularioEvento({ ingresoId, eventoExistente, onClose, 
       .order('apellidos')
       .then(({ data }) => setProfesionales(data ?? []))
   }, [])
+
+  // Se cargan las incidencias recientes de este mismo ingreso (unos
+  // días hacia atrás, de sobra para la ventana de 24h que importa) —
+  // solo al registrar una nueva, nunca al editar una ya existente,
+  // donde no pintaría nada compararla consigo misma.
+  const [recientes, setRecientes] = useState<Evento[]>([])
+  useEffect(() => {
+    if (eventoExistente) return
+    const hace3dias = new Date()
+    hace3dias.setDate(hace3dias.getDate() - 3)
+    supabase
+      .from('eventos')
+      .select('id, tipo, fecha, hora, notas, registrado_por:profesionales!registrado_por_id(nombre, apellidos, rol)')
+      .eq('ingreso_id', ingresoId)
+      .gte('fecha', hace3dias.toISOString().slice(0, 10))
+      .order('fecha', { ascending: false })
+      .then(({ data }) => setRecientes((data ?? []) as unknown as Evento[]))
+  }, [ingresoId, eventoExistente])
+
+  // Combina fecha+hora en un instante comparable — si falta la hora,
+  // se usa el mediodía como aproximación central del día, ni "recién
+  // pasó" ni "hace casi 24h" por defecto.
+  function instante(fecha: string, hora?: string | null): number {
+    return new Date(`${fecha}T${hora || '12:00'}`).getTime()
+  }
+
+  // La misma incidencia (mismo tipo, dentro de 24h) que ya exista —
+  // es habitual que algo pase de madrugada y se registre al día
+  // siguiente, así que la ventana no es "mismo día natural", son 24h
+  // reales desde el instante que se está guardando.
+  function posibleDuplicado(): Evento | null {
+    if (!tipo) return null
+    const miInstante = instante(fecha, hora)
+    return (
+      recientes.find(
+        (ev) => ev.tipo === tipo && Math.abs(instante(ev.fecha, ev.hora) - miInstante) <= 24 * 60 * 60 * 1000
+      ) ?? null
+    )
+  }
+
+  const [confirmarDuplicado, setConfirmarDuplicado] = useState<Evento | null>(null)
 
   // Sin esto, cambiar el tipo mientras se edita una incidencia
   // existente (por ejemplo, de "caída" a "fuga") dejaba los campos
@@ -71,7 +114,7 @@ export default function FormularioEvento({ ingresoId, eventoExistente, onClose, 
     }
   }
 
-  async function guardar() {
+  async function guardar(forzar = false) {
     setError('')
     if (!tipo) {
       setError('Selecciona el tipo de incidencia.')
@@ -97,6 +140,18 @@ export default function FormularioEvento({ ingresoId, eventoExistente, onClose, 
           setError(`El campo "${campo.label}" es obligatorio.`)
           return
         }
+      }
+    }
+
+    // No es un bloqueo — puede haber dos caídas reales el mismo día —
+    // es un aviso, para que cuatro personas distintas no acaben
+    // registrando la misma caída cuatro veces sin saberlo unas de
+    // otras. Se puede pasar por alto a propósito ("Registrar otra").
+    if (!forzar) {
+      const duplicado = posibleDuplicado()
+      if (duplicado) {
+        setConfirmarDuplicado(duplicado)
+        return
       }
     }
 
@@ -162,6 +217,31 @@ export default function FormularioEvento({ ingresoId, eventoExistente, onClose, 
               ))}
             </select>
           </div>
+
+          {/* Si ya hay una del mismo tipo en las últimas 24h, se
+              enseña aquí mismo, antes de rellenar nada más — para que
+              quien está registrando lo vea con calma, no solo en el
+              aviso al pulsar Guardar. */}
+          {(() => {
+            const reciente = posibleDuplicado()
+            if (!reciente) return null
+            return (
+              <div className="text-xs bg-amber-50 border border-amber-200 text-amber-800 rounded-lg px-3 py-2">
+                <span className="font-medium">Incidencia reciente:</span> {TIPO_EVENTO_LABEL[reciente.tipo]}{' '}
+                {new Date(`${reciente.fecha}T${reciente.hora || '00:00'}`).toLocaleDateString('es-ES')}
+                {reciente.hora && ` a las ${reciente.hora.slice(0, 5)}`}
+                {reciente.registrado_por && `, registrada por ${reciente.registrado_por.nombre} ${reciente.registrado_por.apellidos}`}.
+                {' '}
+                <button
+                  type="button"
+                  onClick={() => { navigate(`/ingresos/${ingresoId}?tab=eventos`); onClose() }}
+                  className="underline font-medium hover:text-amber-900"
+                >
+                  Ver incidencia
+                </button>
+              </div>
+            )
+          })()}
 
           {/* Fecha, hora, turno */}
           <div className="grid grid-cols-3 gap-3">
@@ -294,12 +374,43 @@ export default function FormularioEvento({ ingresoId, eventoExistente, onClose, 
           <button onClick={onClose} className="btn-secondary">
             Cancelar
           </button>
-          <button onClick={guardar} disabled={saving} className="btn-primary">
+          <button onClick={() => guardar()} disabled={saving} className="btn-primary">
             <Save className="w-4 h-4" />
             {saving ? 'Guardando…' : 'Guardar incidencia'}
           </button>
         </div>
       </div>
+
+      {/* Aviso al guardar, no bloqueo: puede haber dos incidencias
+          reales del mismo tipo en 24h — se pregunta, no se impide. */}
+      {confirmarDuplicado && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5 space-y-4">
+            <h3 className="font-bold text-slate-800">Posible incidencia duplicada</h3>
+            <p className="text-sm text-slate-600">
+              Ya existe una {TIPO_EVENTO_LABEL[confirmarDuplicado.tipo].toLowerCase()} registrada el{' '}
+              {new Date(`${confirmarDuplicado.fecha}T${confirmarDuplicado.hora || '00:00'}`).toLocaleDateString('es-ES')}
+              {confirmarDuplicado.hora && ` a las ${confirmarDuplicado.hora.slice(0, 5)}`}
+              {confirmarDuplicado.registrado_por && `, por ${confirmarDuplicado.registrado_por.nombre} ${confirmarDuplicado.registrado_por.apellidos}`}.
+              ¿Quieres abrirla, o registrar esta como una incidencia distinta?
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => { navigate(`/ingresos/${ingresoId}?tab=eventos`); onClose() }}
+                className="btn-secondary text-sm"
+              >
+                Ver la existente
+              </button>
+              <button
+                onClick={() => { setConfirmarDuplicado(null); guardar(true) }}
+                className="btn-primary text-sm"
+              >
+                Registrar otra
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
