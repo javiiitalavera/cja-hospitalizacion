@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 import type { Ingreso, Profesional } from '../../types'
 import { ESTADO_INGRESO_LABEL as ESTADO_LABEL } from '../../types'
 import { ExternalLink } from 'lucide-react'
+import SelectorHabitacion from '../../components/SelectorHabitacion'
 
 function TabDatos({ ingreso, onUpdate, iniciarEditando = false }: { ingreso: Ingreso; onUpdate: (i: Ingreso) => void; iniciarEditando?: boolean }) {
   const p = ingreso.paciente!
@@ -11,7 +12,7 @@ function TabDatos({ ingreso, onUpdate, iniciarEditando = false }: { ingreso: Ing
   // había que buscar por separado el botón "Editar datos del
   // ingreso" — con esto entra directo en modo edición.
   const [editando, setEditando] = useState(iniciarEditando)
-  const habitacionInputRef = useRef<HTMLInputElement>(null)
+  const habitacionInputRef = useRef<HTMLSelectElement>(null)
   useEffect(() => {
     if (iniciarEditando) habitacionInputRef.current?.focus()
   }, [iniciarEditando])
@@ -132,7 +133,15 @@ function TabDatos({ ingreso, onUpdate, iniciarEditando = false }: { ingreso: Ing
                 Se pone desde "Dar de alta", no aquí (para que vaya siempre junto con el estado).
               </p>
             </div>
-            {inp('Habitación', ingresoEdit.habitacion, v => setIngresoEdit(i => ({ ...i, habitacion: v })), 'number', habitacionInputRef)}
+            <div>
+              <label className="label">Habitación</label>
+              <SelectorHabitacion
+                ref={habitacionInputRef}
+                value={ingresoEdit.habitacion}
+                onChange={(v) => setIngresoEdit(i => ({ ...i, habitacion: v }))}
+                habitacionActual={ingreso.habitacion}
+              />
+            </div>
             <div>
               <label className="label">Estado</label>
               <p className="input bg-slate-50 text-slate-500 cursor-not-allowed">

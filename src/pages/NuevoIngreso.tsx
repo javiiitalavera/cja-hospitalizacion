@@ -7,6 +7,7 @@ import { useAuth } from '../lib/AuthContext'
 import type { Profesional, Paciente } from '../types'
 import { nombreCompleto } from '../types'
 import { ChevronLeft, Save, Search, UserPlus, RefreshCw, Lock } from 'lucide-react'
+import SelectorHabitacion from '../components/SelectorHabitacion'
 
 export default function NuevoIngreso() {
   const navigate = useNavigate()
@@ -24,7 +25,7 @@ export default function NuevoIngreso() {
   // Flujo: 'buscar' → 'nuevo_paciente' | 'reingreso'
   const [paso, setPaso] = useState<'buscar' | 'nuevo_paciente' | 'reingreso'>(pacienteIdParam ? 'reingreso' : 'buscar')
   const [busqueda, setBusqueda] = useState('')
-  const [resultados, setResultados] = useState<Paciente[]>([])
+  const [resultados, setResultados] = useState<(Paciente & { ingresos?: { id: string; habitacion: number | null; estado: string }[] })[]>([])
   const [buscando, setBuscando] = useState(false)
   const [pacienteSeleccionado, setPacienteSeleccionado] = useState<Paciente | null>(null)
   const [cargandoPacienteParam, setCargandoPacienteParam] = useState(!!pacienteIdParam)
@@ -63,11 +64,21 @@ export default function NuevoIngreso() {
     if (!pacienteIdParam) return
     supabase
       .from('pacientes')
-      .select('*')
+      .select('*, ingresos(id, estado)')
       .eq('id', pacienteIdParam)
       .single()
       .then(({ data }) => {
-        if (data) setPacienteSeleccionado(data as Paciente)
+        if (data) {
+          // Igual que en los resultados de búsqueda: si ya está
+          // ingresado, no tiene sentido mostrar el formulario de
+          // reingreso — se le lleva directo a su ingreso activo.
+          const activo = (data as any).ingresos?.find((i: any) => i.estado === 'activo')
+          if (activo) {
+            navigate(`/ingresos/${activo.id}`, { replace: true })
+            return
+          }
+          setPacienteSeleccionado(data as Paciente)
+        }
         setCargandoPacienteParam(false)
       })
   }, [pacienteIdParam])
@@ -79,7 +90,7 @@ export default function NuevoIngreso() {
     const q = escaparBusquedaIlike(quitarTildes(busqueda.trim()))
     const { data, error: err } = await supabase
       .from('pacientes')
-      .select('*')
+      .select('*, ingresos(id, habitacion, estado)')
       .or(
         `primer_apellido_normalizado.ilike.${q},segundo_apellido_normalizado.ilike.${q},nombre_normalizado.ilike.${q},nhc.ilike.${q},cipna.ilike.${q}`
       )
@@ -137,10 +148,17 @@ export default function NuevoIngreso() {
       .single()
 
     if (errIngreso || !ingresoData) {
-      // Un error típico aquí, con los nuevos índices únicos, es que el
-      // paciente ya tenga otro ingreso activo o la habitación ya esté
-      // ocupada (si dos personas actuaron casi a la vez).
-      setError('Error al crear el ingreso: ' + errIngreso?.message)
+      // Con red lenta, dos personas podrían pasar la comprobación de
+      // "¿está libre?" de arriba casi a la vez — la propia base de
+      // datos lo impide de verdad (hay un índice único que no deja
+      // dos ingresos activos en la misma habitación), pero sin este
+      // aviso, quien pierde la carrera vería el texto crudo de
+      // Postgres en vez de un motivo comprensible.
+      if (errIngreso?.code === '23505' && errIngreso.message.includes('habitacion')) {
+        setError(`La habitación ${ingreso.habitacion} se acaba de ocupar. Elige otra y vuelve a intentarlo.`)
+      } else {
+        setError('Error al crear el ingreso: ' + errIngreso?.message)
+      }
       return null
     }
 
@@ -311,14 +329,10 @@ export default function NuevoIngreso() {
           />
         </div>
         <div>
-          <label className="label">Habitación (1-33)</label>
-          <input
-            type="number"
-            min={1}
-            max={33}
-            className="input"
+          <label className="label">Habitación</label>
+          <SelectorHabitacion
             value={ingreso.habitacion}
-            onChange={(e) => setIngreso((i) => ({ ...i, habitacion: e.target.value }))}
+            onChange={(v) => setIngreso((i) => ({ ...i, habitacion: v }))}
           />
         </div>
         <div>
@@ -415,10 +429,11 @@ export default function NuevoIngreso() {
               <div className="mt-4 divide-y border rounded-lg overflow-hidden">
                 {resultados.map((p) => {
                   const fnac = p.fecha_nacimiento ? new Date(p.fecha_nacimiento).toLocaleDateString('es-ES') : null
+                  const ingresoActivo = p.ingresos?.find((i) => i.estado === 'activo')
                   return (
                     <button
                       key={p.id}
-                      onClick={() => seleccionarPaciente(p)}
+                      onClick={() => (ingresoActivo ? navigate(`/ingresos/${ingresoActivo.id}`) : seleccionarPaciente(p))}
                       className="w-full flex items-center justify-between px-4 py-3 hover:bg-primary-50 text-left transition-colors"
                     >
                       <div>
@@ -431,7 +446,17 @@ export default function NuevoIngreso() {
                           {p.cipna && ` · CIPNA: ${p.cipna}`}
                         </p>
                       </div>
-                      <span className="text-xs text-primary-600 font-medium shrink-0 ml-4">Seleccionar →</span>
+                      {ingresoActivo ? (
+                        // Ya está ingresado: no tiene sentido ofrecer un
+                        // reingreso — llevaría a rellenar el formulario
+                        // entero para que la base de datos lo rechazara
+                        // al guardar. Se lleva directo a su ingreso.
+                        <span className="text-xs font-medium shrink-0 ml-4 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
+                          Ingresado · Hab. {ingresoActivo.habitacion ?? '—'}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-primary-600 font-medium shrink-0 ml-4">Seleccionar →</span>
+                      )}
                     </button>
                   )
                 })}
@@ -519,7 +544,9 @@ export default function NuevoIngreso() {
         <div>
           <div className="card p-6 mb-5">
             <p className="section-title">Datos del paciente</p>
-            <div className="grid grid-cols-2 gap-4">
+
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Identidad</p>
+            <div className="grid grid-cols-2 gap-4 mb-5">
               <div>
                 <label className="label">Nombre *</label>
                 <input
@@ -566,6 +593,10 @@ export default function NuevoIngreso() {
                   <option value="otro">Otro</option>
                 </select>
               </div>
+            </div>
+
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2 pt-4 border-t">Identificación</p>
+            <div className="grid grid-cols-2 gap-4 mb-5">
               <div>
                 <label className="label">CIPNA</label>
                 <input
@@ -598,6 +629,10 @@ export default function NuevoIngreso() {
                   onChange={(e) => setPaciente((p) => ({ ...p, municipio: e.target.value }))}
                 />
               </div>
+            </div>
+
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2 pt-4 border-t">Contacto</p>
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="label">Médico de cabecera</label>
                 <input
@@ -606,6 +641,7 @@ export default function NuevoIngreso() {
                   onChange={(e) => setPaciente((p) => ({ ...p, medico_cabecera: e.target.value }))}
                 />
               </div>
+              <div />
               <div>
                 <label className="label">Contacto familiar (nombre)</label>
                 <input

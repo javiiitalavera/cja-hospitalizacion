@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import { edad, diasEntre } from '../lib/fechas'
-import { ChevronLeft, Plus, FileText, AlertTriangle, History, Pencil, Save, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, FileText, AlertTriangle, History, Pencil, Save, X } from 'lucide-react'
 import { ESTADO_INGRESO_LABEL as ESTADO_LABEL, ESTADO_INGRESO_COLOR as ESTADO_COLOR, nombreCompleto } from '../types'
 
 interface Ingreso {
@@ -168,11 +168,20 @@ export default function DetallePaciente() {
             </div>
           </div>
           {/* El enlace lleva el paciente ya elegido, así el formulario
-              de reingreso se abre directamente sobre él, sin buscarlo. */}
+              de reingreso se abre directamente sobre él, sin buscarlo.
+              Si ya está ingresado, no tiene sentido ofrecer "nuevo
+              ingreso" — llevaría a rellenar un formulario entero para
+              que la base de datos lo rechazara al guardar. */}
           {esMedico && (
-            <Link to={`/pacientes/nuevo?paciente_id=${paciente.id}`} className="btn-primary text-xs">
-              <Plus className="w-3.5 h-3.5" /> Nuevo ingreso
-            </Link>
+            ingresoActivo ? (
+              <Link to={`/ingresos/${ingresoActivo.id}`} className="btn-primary text-xs">
+                <ChevronRight className="w-3.5 h-3.5" /> Abrir ingreso actual
+              </Link>
+            ) : (
+              <Link to={`/pacientes/nuevo?paciente_id=${paciente.id}`} className="btn-primary text-xs">
+                <Plus className="w-3.5 h-3.5" /> Nuevo ingreso
+              </Link>
+            )
           )}
         </div>
 

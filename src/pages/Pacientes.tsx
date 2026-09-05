@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { escaparBusquedaIlike, quitarTildes } from '../lib/busqueda'
 import { edad } from '../lib/fechas'
@@ -37,17 +37,32 @@ const PAGE_SIZE = 50
 export default function Pacientes() {
   const { rol } = useAuth()
   const esMedico = rol === 'medico'
+  const [searchParams, setSearchParams] = useSearchParams()
   const [pacientes, setPacientes] = useState<PacienteRow[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [busqueda, setBusqueda] = useState('')
-  const [busquedaActiva, setBusquedaActiva] = useState('')
+  // Antes se perdían al volver de la ficha de un paciente — con esto
+  // viven en la propia URL, así que "atrás" devuelve exactamente a la
+  // búsqueda, el filtro, el orden y la página en los que se estaba.
+  const [busqueda, setBusqueda] = useState(searchParams.get('q') ?? '')
+  const [busquedaActiva, setBusquedaActiva] = useState(searchParams.get('q') ?? '')
   const [escribiendo, setEscribiendo] = useState(false)
-  const [filtroEstado, setFiltroEstado] = useState<'activo' | 'alta' | 'todos'>('activo')
-  const [orden, setOrden] = useState<OrdenValor>('apellido')
-  const [pagina, setPagina] = useState(0)
+  const [filtroEstado, setFiltroEstado] = useState<'activo' | 'alta' | 'todos'>(
+    (searchParams.get('estado') as 'activo' | 'alta' | 'todos') ?? 'activo'
+  )
+  const [orden, setOrden] = useState<OrdenValor>((searchParams.get('orden') as OrdenValor) ?? 'apellido')
+  const [pagina, setPagina] = useState(Number(searchParams.get('pagina') ?? 0))
   const navigate = useNavigate()
+
+  // Refleja el estado actual en la URL, sin llenar el historial del
+  // navegador con una entrada por cada tecla o clic de filtro.
+  useEffect(() => {
+    const params: Record<string, string> = { estado: filtroEstado, orden, pagina: String(pagina) }
+    if (busquedaActiva.trim()) params.q = busquedaActiva
+    setSearchParams(params, { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [busquedaActiva, filtroEstado, orden, pagina])
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => { fetchPacientes() }, [filtroEstado, busquedaActiva, orden, pagina])
@@ -255,7 +270,18 @@ export default function Pacientes() {
                       </span>
                     ) : <span className="text-slate-300 text-xs">Sin ingresos</span>}
                   </td>
-                  <td className="px-4 py-3 text-primary-600 text-xs font-medium">Ver →</td>
+                  <td className="px-4 py-3 text-right">
+                    {esMedico && (estado === 'alta' || estado === 'alta_traslado') ? (
+                      <button
+                        onClick={(ev) => { ev.stopPropagation(); navigate(`/pacientes/nuevo?paciente_id=${p.id}`) }}
+                        className="text-primary-600 text-xs font-medium hover:underline"
+                      >
+                        Reingreso →
+                      </button>
+                    ) : (
+                      <span className="text-primary-600 text-xs font-medium">Ver →</span>
+                    )}
+                  </td>
                 </tr>
               )
             })}
