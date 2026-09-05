@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { escapeHtml } from '../lib/imprimir'
+import { escapeHtml, imprimirTablaHTML } from '../lib/imprimir'
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Cell,
 } from 'recharts'
 import { supabase } from '../lib/supabase'
 import { nombreCompleto } from '../types'
-import { ChevronDown, ChevronRight as ChevronRightIcon, Download, Printer } from 'lucide-react'
+import { ChevronDown, ChevronRight as ChevronRightIcon, Download, Printer, RefreshCw } from 'lucide-react'
 import { TIPO_EVENTO_LABEL, TURNO_LABEL, CAMPOS_POR_TIPO, type TipoEvento } from '../types/eventos'
 import { formatFechaLocal as fmt } from '../lib/fechas'
 import {
@@ -213,6 +213,36 @@ export function Eventos() {
     return { mes: 'Este mes', trimestre: 'Este trimestre', anio: 'Este año', todo: 'Todo el historial' }[periodo] ?? periodo
   }
 
+  const [refreshing, setRefreshing] = useState(false)
+  async function actualizarTodo() {
+    setRefreshing(true)
+    await Promise.all([fetchContenciones(), fetchEstadoActual(), fetchTendencias()])
+    setRefreshing(false)
+  }
+
+  // Igual que en Inicio y Hoja de Ítems: si esta pantalla se deja
+  // abierta un buen rato, otra persona puede haber pautado una
+  // contención o registrado una incidencia sin que se note hasta
+  // recargar a mano. Se omite mientras hay algo abierto para editar
+  // (el selector de paciente, el formulario o el modal de
+  // contención) — no por riesgo de perder nada, sino para no mover
+  // la pantalla mientras alguien está a mitad de rellenar algo.
+  useEffect(() => {
+    const hayAlgoAbierto = () => selectorPaciente || !!ingresoParaIncidencia || !!modalContencion
+    function alVolver() {
+      if (document.visibilityState === 'visible' && !hayAlgoAbierto()) actualizarTodo()
+    }
+    function alEnfocar() {
+      if (!hayAlgoAbierto()) actualizarTodo()
+    }
+    window.addEventListener('focus', alEnfocar)
+    document.addEventListener('visibilitychange', alVolver)
+    return () => {
+      window.removeEventListener('focus', alEnfocar)
+      document.removeEventListener('visibilitychange', alVolver)
+    }
+  }, [selectorPaciente, ingresoParaIncidencia, modalContencion])
+
   // ── Resumen por tipo, para la fila compacta ─────────────────
   const resumenPorTipo = TIPOS_ORDEN.map((tipo) => {
     const delTipo = eventosActivos.filter((e) => e.tipo === tipo)
@@ -251,26 +281,12 @@ export function Eventos() {
   function imprimirTabla(tipo: TipoEvento) {
     const campos = CAMPOS_POR_TIPO[tipo]
     const filas = filasDelTipo(tipo)
-    const win = window.open('', '_blank')
-    if (!win) return
-    let html = `<html><head><title>${TIPO_EVENTO_LABEL[tipo]}</title>
-      <style>
-        body { font-family: Arial, sans-serif; padding: 24px; }
-        h1 { font-size: 16pt; margin-bottom: 4px; }
-        p { color: #666; font-size: 9pt; margin-top: 0; margin-bottom: 16px; }
-        table { border-collapse: collapse; width: 100%; font-size: 8.5pt; }
-        th, td { border: 1px solid #ccc; padding: 4px 6px; text-align: left; }
-        th { background: #f1f5f9; }
-      </style></head><body>
-      <h1>${TIPO_EVENTO_LABEL[tipo]}</h1>
-      <p>Ingresos activos · generado ${new Date().toLocaleDateString('es-ES')}</p>
-      <table><thead><tr>
+    const thead = `<tr>
         <th>Fecha</th><th>Turno</th><th>Paciente</th><th>Hab.</th>
         ${campos.map((c) => `<th>${escapeHtml(c.label)}</th>`).join('')}
         <th>Notas</th><th>Registrado por</th>
-      </tr></thead><tbody>`
-    filas.forEach((ev) => {
-      html += `<tr>
+      </tr>`
+    const tbody = filas.map((ev) => `<tr>
         <td>${new Date(ev.fecha).toLocaleDateString('es-ES')}</td>
         <td>${ev.turno ? escapeHtml(TURNO_LABEL[ev.turno]) : ''}</td>
         <td>${escapeHtml(nombreCompleto(ev.ingreso.paciente))}</td>
@@ -278,47 +294,31 @@ export function Eventos() {
         ${campos.map((c) => `<td>${escapeHtml(String(ev.datos?.[c.key] ?? ''))}</td>`).join('')}
         <td>${escapeHtml(ev.notas ?? '')}</td>
         <td>${ev.registrado_por ? escapeHtml(`${ev.registrado_por.nombre} ${ev.registrado_por.apellidos}`) : ''}</td>
-      </tr>`
-    })
-    html += '</tbody></table></body></html>'
-    win.document.write(html)
-    win.document.close()
-    win.focus()
-    win.print()
+      </tr>`).join('')
+    imprimirTablaHTML(
+      TIPO_EVENTO_LABEL[tipo],
+      `Ingresos activos · generado ${new Date().toLocaleDateString('es-ES')}`,
+      thead, tbody
+    )
   }
 
   function imprimirContenciones() {
-    const win = window.open('', '_blank')
-    if (!win) return
-    let html = `<html><head><title>Contenciones activas</title>
-      <style>
-        body { font-family: Arial, sans-serif; padding: 24px; }
-        h1 { font-size: 16pt; margin-bottom: 4px; }
-        p { color: #666; font-size: 9pt; margin-top: 0; margin-bottom: 16px; }
-        table { border-collapse: collapse; width: 100%; font-size: 8.5pt; }
-        th, td { border: 1px solid #ccc; padding: 4px 6px; text-align: left; }
-        th { background: #f1f5f9; }
-      </style></head><body>
-      <h1>Contenciones activas</h1>
-      <p>Ingresos activos · generado ${new Date().toLocaleDateString('es-ES')}</p>
-      <table><thead><tr>
-        <th>Hab.</th><th>Paciente</th><th>Día</th><th>Noche</th><th>Última revisión</th>
-      </tr></thead><tbody>`
-    contenciones.forEach((c) => {
+    const thead = `<tr><th>Hab.</th><th>Paciente</th><th>Día</th><th>Noche</th><th>Última revisión</th></tr>`
+    const tbody = contenciones.map((c) => {
       const nocheReal = ((c.noche as ContencionNoche[]) ?? []).filter((n) => NOCHE_ES_CONTENCION.includes(n))
-      html += `<tr>
+      return `<tr>
         <td>${c.ingreso.habitacion ?? ''}</td>
         <td>${escapeHtml(nombreCompleto(c.ingreso.paciente))}</td>
         <td>${c.dia && c.dia !== 'ninguna' ? escapeHtml(CONTENCION_DIA_LABEL[c.dia as ContencionDia]) : ''}</td>
         <td>${nocheReal.map((n) => escapeHtml(CONTENCION_NOCHE_LABEL[n])).join(', ')}</td>
         <td>${c.actualizado_en ? new Date(c.actualizado_en).toLocaleDateString('es-ES') : ''}</td>
       </tr>`
-    })
-    html += '</tbody></table></body></html>'
-    win.document.write(html)
-    win.document.close()
-    win.focus()
-    win.print()
+    }).join('')
+    imprimirTablaHTML(
+      'Contenciones activas',
+      `Ingresos activos · generado ${new Date().toLocaleDateString('es-ES')}`,
+      thead, tbody
+    )
   }
 
 
@@ -361,10 +361,20 @@ export function Eventos() {
           <h1 className="text-2xl font-bold text-slate-800">Incidencias</h1>
           <p className="text-sm text-slate-400 mt-0.5">Estado de seguridad de la planta y tendencias</p>
         </div>
-        <button onClick={() => setSelectorPaciente(true)} className="btn-primary">
-          <Plus className="w-4 h-4" />
-          Registrar incidencia
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={actualizarTodo}
+            disabled={refreshing}
+            title="Actualizar"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 text-sm font-medium disabled:opacity-60"
+          >
+            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+          </button>
+          <button onClick={() => setSelectorPaciente(true)} className="btn-primary">
+            <Plus className="w-4 h-4" />
+            Registrar incidencia
+          </button>
+        </div>
       </div>
 
       {selectorPaciente && !ingresoParaIncidencia && (
