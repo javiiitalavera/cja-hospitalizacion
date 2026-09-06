@@ -346,6 +346,7 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
   const [loading, setLoading] = useState(true)
   const [estado, setEstado] = useState<'inactivo' | 'pendiente' | 'guardando' | 'guardado' | 'error' | 'conflicto'>('inactivo')
   const [exportando, setExportando] = useState(false)
+  const [errorFaltantes, setErrorFaltantes] = useState<string[]>([])
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const dataRef = useRef(data)
   dataRef.current = data
@@ -418,7 +419,24 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
     else update(`procedimiento_${n}_desc` as keyof CMBDData, value)
   }
 
+  function camposFaltantes(fuente: Partial<CMBDData> = data): string[] {
+    const faltan: string[] = []
+    if (!ingreso?.fecha_alta) faltan.push('Fecha de alta')
+    if (!fuente.procedencia) faltan.push('Procedencia')
+    if (!fuente.circunstancia_alta) faltan.push('Motivo del alta')
+    if (!fuente.diagnostico_principal) faltan.push('Diagnóstico principal')
+    return faltan
+  }
+
   async function handleExportar() {
+    const faltan = camposFaltantes(dataRef.current)
+    if (faltan.length > 0) {
+      // Antes se podía generar un Excel incompleto sin avisar — con
+      // esto, ni siquiera se intenta si faltan los campos mínimos.
+      setErrorFaltantes(faltan)
+      return
+    }
+    setErrorFaltantes([])
     setExportando(true)
     const ok = await save()
     if (ok) await exportarExcel(dataRef.current, ingreso)
@@ -572,28 +590,40 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
         />
       </div>
 
-      {/* Completado */}
-      <div className="card p-4">
-        <button type="button"
-          onClick={() => update('completado', !data.completado)}
-          className="flex items-center gap-3 w-full text-left">
-          {data.completado
-            ? <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
-            : <Circle className="w-5 h-5 text-slate-300 shrink-0" />
-          }
-          <div>
-            <p className={`text-sm font-medium ${data.completado ? 'text-emerald-700' : 'text-slate-600'}`}>
-              {data.completado ? 'CMBD completado' : 'Marcar como completado'}
-            </p>
-            <p className="text-xs text-slate-400">
-              {data.completado
-                ? 'Listo para exportar y enviar a administración'
-                : 'Marca cuando hayas revisado todos los campos'
+      {/* Completitud — ya no es una casilla que se marca a mano: se
+          calcula sola a partir de los campos mínimos que de verdad
+          hacen falta, así que nunca puede decir "completado" con
+          algo obligatorio todavía vacío. */}
+      {(() => {
+        const faltan = camposFaltantes()
+        return (
+          <div className="card p-4">
+            <div className="flex items-center gap-3">
+              {faltan.length === 0
+                ? <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
+                : <Circle className="w-5 h-5 text-slate-300 shrink-0" />
               }
-            </p>
+              <div>
+                <p className={`text-sm font-medium ${faltan.length === 0 ? 'text-emerald-700' : 'text-slate-600'}`}>
+                  {faltan.length === 0 ? 'CMBD completo' : 'CMBD incompleto'}
+                </p>
+                <p className="text-xs text-slate-400">
+                  {faltan.length === 0
+                    ? 'Tiene los campos mínimos para exportar.'
+                    : `Falta: ${faltan.join(', ')}.`
+                  }
+                </p>
+              </div>
+            </div>
           </div>
-        </button>
-      </div>
+        )
+      })()}
+
+      {errorFaltantes.length > 0 && (
+        <div className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+          No se puede exportar todavía. Falta: {errorFaltantes.join(', ')}.
+        </div>
+      )}
 
     </div>
   )

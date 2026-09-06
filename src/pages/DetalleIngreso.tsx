@@ -12,6 +12,7 @@ import { TabInformeAlta } from './ingreso/TabInformeAlta'
 import { TabItems } from './ingreso/TabItems'
 import { TabEventos } from './ingreso/TabEventos'
 import { TabCMBD } from './ingreso/TabCMBD'
+import { TIPALT_LABEL } from '../lib/alta'
 
 const TABS = [
   { id: 'datos', label: 'Datos', icon: User },
@@ -42,30 +43,37 @@ export default function DetalleIngreso() {
   }, [id])
   const [ingreso, setIngreso] = useState<Ingreso | null>(null)
   const [loading, setLoading] = useState(true)
+  const [errorCarga, setErrorCarga] = useState('')
   const [modalAlta, setModalAlta] = useState(false)
   const [altaForm, setAltaForm] = useState({
     fecha_alta: hoyLocal(),
-    estado: 'alta',
+    circunstancia_alta: '1',
   })
   const [procesandoAlta, setProcesandoAlta] = useState(false)
   const [errorAlta, setErrorAlta] = useState('')
 
-  useEffect(() => {
+  async function cargar() {
     if (!id) return
-    async function cargar() {
-      try {
-        const { data } = await supabase
-          .from('ingresos')
-          .select('*, paciente:pacientes(*), medico_responsable:profesionales(*)')
-          .eq('id', id)
-          .single()
-        setIngreso(data as Ingreso)
-      } finally {
-        setLoading(false)
-      }
+    setLoading(true)
+    setErrorCarga('')
+    const { data, error } = await supabase
+      .from('ingresos')
+      .select('*, paciente:pacientes(*), medico_responsable:profesionales(*), cmbd(circunstancia_alta)')
+      .eq('id', id)
+      .maybeSingle()
+    if (error) {
+      // Antes, un fallo real de carga (red, permisos...) se veía
+      // exactamente igual que "este ingreso no existe" — algo muy
+      // distinto y bastante más alarmante de lo que había pasado.
+      setErrorCarga('No se pudo cargar el ingreso: ' + error.message)
+      setLoading(false)
+      return
     }
-    cargar()
-  }, [id])
+    setIngreso(data as Ingreso)
+    setLoading(false)
+  }
+
+  useEffect(() => { cargar() }, [id])
 
   async function darAlta() {
     if (!id) return
@@ -75,23 +83,36 @@ export default function DetalleIngreso() {
     }
     setProcesandoAlta(true)
     setErrorAlta('')
-    const { error } = await supabase
-      .from('ingresos')
-      .update({
-        estado: altaForm.estado,
-        fecha_alta: altaForm.fecha_alta,
-      })
-      .eq('id', id)
+    // Una sola función transaccional: actualiza el estado del ingreso
+    // y el motivo del CMBD a la vez — antes eran dos preguntas
+    // separadas por el mismo dato, y el CMBD podía quedar con un
+    // motivo vacío o incompatible con el estado real del ingreso.
+    const { data, error } = await supabase.rpc('dar_de_alta', {
+      p_ingreso_id: id,
+      p_fecha_alta: altaForm.fecha_alta,
+      p_circunstancia_alta: altaForm.circunstancia_alta,
+    })
     setProcesandoAlta(false)
     if (error) {
-      setErrorAlta('No se pudo registrar el alta. Inténtalo de nuevo.')
+      setErrorAlta('No se pudo registrar el alta: ' + error.message)
       return
     }
-    setIngreso((prev) => (prev ? { ...prev, estado: altaForm.estado as any, fecha_alta: altaForm.fecha_alta } : prev))
+    setIngreso((prev) => (prev ? { ...prev, estado: data.estado, fecha_alta: data.fecha_alta } : prev))
     setModalAlta(false)
   }
 
   if (loading) return <div className="p-8 text-slate-400">Cargando…</div>
+  if (errorCarga) {
+    return (
+      <div className="p-8">
+        <div className="card p-6 max-w-md">
+          <p className="font-semibold text-red-600">No se pudo cargar</p>
+          <p className="text-sm text-slate-500 mt-1 mb-3">{errorCarga}</p>
+          <button onClick={cargar} className="btn-secondary text-sm">Reintentar</button>
+        </div>
+      </div>
+    )
+  }
   if (!ingreso) return <div className="p-8 text-slate-400">Ingreso no encontrado</div>
 
   // Un episodio ya cerrado (alta, traslado o éxitus) pasa a ser solo lectura
@@ -122,7 +143,18 @@ export default function DetalleIngreso() {
                     · {ingreso.medico_responsable.nombre} {ingreso.medico_responsable.apellidos}
                   </span>
                 )}
-                <span>· {new Date(ingreso.fecha_ingreso).toLocaleDateString('es-ES')}</span>
+                {episodioCerrado ? (
+                  <span>
+                    Ingreso: {new Date(ingreso.fecha_ingreso).toLocaleDateString('es-ES')}
+                    {ingreso.fecha_alta && ` · Alta: ${new Date(ingreso.fecha_alta).toLocaleDateString('es-ES')}`}
+                    {(() => {
+                      const circunstancia = (ingreso as any).cmbd?.[0]?.circunstancia_alta
+                      return circunstancia ? ` · ${TIPALT_LABEL[circunstancia] ?? circunstancia}` : ''
+                    })()}
+                  </span>
+                ) : (
+                  <span>· {new Date(ingreso.fecha_ingreso).toLocaleDateString('es-ES')}</span>
+                )}
                 <span
                   className={`px-2 py-0.5 rounded-full font-medium ${ESTADO_COLOR[ingreso.estado] ?? 'bg-slate-100'}`}
                 >
@@ -195,12 +227,12 @@ export default function DetalleIngreso() {
                 <label className="label">Motivo del alta *</label>
                 <select
                   className="input"
-                  value={altaForm.estado}
-                  onChange={(e) => setAltaForm((f) => ({ ...f, estado: e.target.value }))}
+                  value={altaForm.circunstancia_alta}
+                  onChange={(e) => setAltaForm((f) => ({ ...f, circunstancia_alta: e.target.value }))}
                 >
-                  <option value="alta">Alta domiciliaria</option>
-                  <option value="alta_traslado">Traslado a otro centro</option>
-                  <option value="exitus">Éxitus</option>
+                  {Object.entries(TIPALT_LABEL).map(([codigo, etiqueta]) => (
+                    <option key={codigo} value={codigo}>{etiqueta}</option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -224,10 +256,15 @@ export default function DetalleIngreso() {
 
       {/* Tab content */}
       <div className="flex-1 overflow-y-auto p-8">
-        {/* Episodio cerrado: solo lectura para TODOS, salvo Informe de alta
-            y CMBD, que se siguen escribiendo en torno al propio momento
-            del alta y deben poder terminarse después de confirmarla. */}
-        {episodioCerrado && ['datos', 'ingreso', 'items', 'eventos'].includes(tab) && (
+        {/* Episodio cerrado: Datos e Ítems pasan a solo lectura para
+            todos — corregir algo ahí requiere un mecanismo explícito,
+            no editar en caliente. Informe de ingreso (solo médicos,
+            porque el informe de alta se apoya en sus antecedentes y
+            puede necesitar corregirse), Informe de alta, CMBD (solo
+            médicos) e Incidencias (cualquier asistencial) se quedan
+            editables tras el cierre — cada uno gestiona su propio
+            aviso de solo lectura si corresponde por rol. */}
+        {episodioCerrado && ['datos', 'items'].includes(tab) && (
           <div className="mb-4 flex items-center gap-2 text-sm text-slate-600 bg-slate-100 border border-slate-200 rounded-lg px-3 py-2">
             <Lock className="w-4 h-4 shrink-0" />
             Episodio cerrado ({ESTADO_LABEL[ingreso.estado] ?? ingreso.estado}): solo lectura, ya no se puede editar.
@@ -244,7 +281,7 @@ export default function DetalleIngreso() {
         {/* fieldset disabled desactiva de golpe todos los campos de dentro */}
         <fieldset
           disabled={
-            (episodioCerrado && ['datos', 'ingreso', 'items', 'eventos'].includes(tab)) ||
+            (episodioCerrado && ['datos', 'items'].includes(tab)) ||
             (!esMedico && ['datos', 'ingreso', 'alta', 'cmbd'].includes(tab))
           }
           className="min-w-0 border-0 p-0 m-0"

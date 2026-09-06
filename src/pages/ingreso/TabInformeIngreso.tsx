@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { useAuth } from '../../lib/AuthContext'
 import type { FilaMedicacion, Ingreso, InformeIngreso } from '../../types'
 import { Download, Lock } from 'lucide-react'
 import { AutoTextarea } from './AutoTextarea'
@@ -9,6 +10,8 @@ import { exportarInformeIngreso } from '../../lib/exportWord'
 type EstadoGuardado = 'inactivo' | 'pendiente' | 'guardando' | 'guardado' | 'error' | 'conflicto'
 
 function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso: Ingreso | null }) {
+  const { rol } = useAuth()
+  const esMedico = rol === 'medico'
   const [data, setData] = useState<Partial<InformeIngreso & { version: number }>>({})
   const [estado, setEstado] = useState<EstadoGuardado>('inactivo')
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -16,11 +19,14 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
   dataRef.current = data
   const saveSeqRef = useRef(0)
 
-  // Una vez cerrado el episodio, este informe pasa a ser un documento
-  // histórico: se puede seguir exportando, pero no editando. El
-  // informe de alta es distinto a propósito — ese sí sigue editable
-  // después del alta, por decisión explícita.
-  const soloLectura = ingreso != null && ingreso.estado !== 'activo'
+  // El informe de alta se apoya en los antecedentes, alergias,
+  // exploraciones y tratamiento de este informe — si se detecta un
+  // error después del alta, tiene que poder corregirse. Por eso ya
+  // no se bloquea por el estado del episodio, solo por el rol: un
+  // médico puede seguir editándolo, el resto de roles nunca ha
+  // podido y sigue sin poder.
+  const soloLectura = !esMedico
+  const episodioCerrado = ingreso != null && ingreso.estado !== 'activo'
 
   useEffect(() => {
     supabase.from('informe_ingreso').select('*').eq('ingreso_id', ingresoId).maybeSingle()
@@ -82,7 +88,11 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
       <div className="flex items-center justify-between gap-3">
         {soloLectura ? (
           <span className="flex items-center gap-1.5 text-xs text-slate-400">
-            <Lock className="w-3.5 h-3.5" /> Episodio cerrado — solo lectura
+            <Lock className="w-3.5 h-3.5" /> Solo lectura: solo un médico puede editar este informe.
+          </span>
+        ) : episodioCerrado ? (
+          <span className="flex items-center gap-1.5 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-full px-2.5 py-1">
+            <Lock className="w-3.5 h-3.5" /> Episodio cerrado. Las modificaciones realizadas quedarán registradas en Auditoría.
           </span>
         ) : <span />}
         <div className="flex items-center gap-3 text-xs text-slate-400">
