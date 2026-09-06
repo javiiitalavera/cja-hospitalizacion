@@ -1,5 +1,6 @@
 import JSZip from 'jszip'
 import type { FilaMedicacion, Ingreso, InformeIngreso, InformeAlta } from '../types'
+import type { EscalaClinica } from '../types/escalas'
 import { nombreCompleto } from '../types'
 import { TOMAS } from '../pages/ingreso/TablaMedicacion'
 import { edad, hoyLocal } from './fechas'
@@ -26,6 +27,24 @@ function parrafoBoldXml(label: string, valor: string | null | undefined, font = 
 
 function seccionXml(titulo: string, font = 'Calibri'): string {
   return `<w:p><w:pPr><w:spacing w:line="276" w:lineRule="auto"/><w:jc w:val="both"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="${font}" w:hAnsi="${font}"/><w:b/><w:u w:val="single"/></w:rPr><w:t>${esc(titulo)}</w:t></w:r></w:p>`
+}
+
+// Resumen de las cuatro escalas, con "Incompleta" cuando falta algo
+// — nunca un total inventado a partir de una escala a medio
+// contestar.
+function bloqueEscalasXml(e: EscalaClinica | null | undefined, font = 'Calibri'): string {
+  const barthel = e?.barthel_total != null ? `${e.barthel_total}/100` : 'Incompleta'
+  const lawton = e?.lawton_total != null ? `${e.lawton_total}/8` : 'Incompleta'
+  const npi = e?.npi_gravedad_total != null ? `${e.npi_gravedad_total}/36` : 'Incompleta'
+  const gdsFast = e?.gds_estadio || e?.fast_estadio
+    ? `GDS ${e?.gds_estadio ?? '—'} · FAST ${e?.fast_estadio ?? '—'}`
+    : 'Incompleta'
+  return [
+    parrafoBoldXml('Índice de Barthel: ', barthel, font),
+    parrafoBoldXml('Índice de Lawton: ', lawton, font),
+    parrafoBoldXml('NPI-Q (gravedad): ', npi, font),
+    parrafoBoldXml('GDS / FAST: ', gdsFast, font),
+  ].join('')
 }
 
 function lineasXml(texto: string | null | undefined, font = 'Calibri'): string {
@@ -123,7 +142,7 @@ function inyectarHeader(
 
 // ─── INFORME DE INGRESO ───────────────────────────────────────────────────────
 
-export async function exportarInformeIngreso(ingreso: Ingreso, inf: InformeIngreso): Promise<void> {
+export async function exportarInformeIngreso(ingreso: Ingreso, inf: InformeIngreso, escala?: EscalaClinica | null): Promise<void> {
   const zip = await cargarPlantilla('plantilla_ingreso.docx')
   const p = ingreso.paciente!
   const font = 'Calibri'
@@ -158,8 +177,6 @@ export async function exportarInformeIngreso(ingreso: Ingreso, inf: InformeIngre
     seccionXml('VALORACIÓN GERIÁTRICA INTEGRAL:', font),
     parrafoBoldXml('Social: ', inf.vgi_social, font),
     parrafoBoldXml('Funcional: ', '', font),
-    parrafoBoldXml('- I. Barthel: ', inf.barthel != null ? `${inf.barthel}/100` : '', font),
-    parrafoBoldXml('- I. Lawton: ', inf.lawton != null ? `${inf.lawton}/8` : '', font),
     lineasXml(inf.vgi_funcional, font),
     parrafoBoldXml('Cognitivo: ', '', font),
     lineasXml(inf.vgi_cognitivo, font),
@@ -191,6 +208,9 @@ export async function exportarInformeIngreso(ingreso: Ingreso, inf: InformeIngre
     seccionXml('EXPLORACIONES COMPLEMENTARIAS:', font),
     lineasXml(inf.exploraciones_complementarias, font),
     parrafoXml('', font),
+    seccionXml('ESCALAS CLÍNICAS AL INGRESO:', font),
+    bloqueEscalasXml(escala, font),
+    parrafoXml('', font),
     seccionXml('IMPRESIÓN DIAGNÓSTICA:', font),
     lineasXml(inf.impresion_diagnostica, font),
     parrafoXml('', font),
@@ -220,7 +240,7 @@ export async function exportarInformeIngreso(ingreso: Ingreso, inf: InformeIngre
 
 // ─── INFORME DE ALTA ──────────────────────────────────────────────────────────
 
-export async function exportarInformeAlta(ingreso: Ingreso, ii: InformeIngreso, ia: InformeAlta): Promise<void> {
+export async function exportarInformeAlta(ingreso: Ingreso, ii: InformeIngreso, ia: InformeAlta, escalaIngreso?: EscalaClinica | null, escalaAlta?: EscalaClinica | null): Promise<void> {
   const zip = await cargarPlantilla('plantilla_alta.docx')
   const p = ingreso.paciente!
   const font = 'Calibri'
@@ -255,8 +275,6 @@ export async function exportarInformeAlta(ingreso: Ingreso, ii: InformeIngreso, 
     seccionXml('VALORACIÓN GERIÁTRICA INTEGRAL:', font),
     parrafoBoldXml('Social: ', ii.vgi_social, font),
     parrafoBoldXml('Funcional: ', '', font),
-    parrafoBoldXml('- I. Barthel: ', ii.barthel != null ? `${ii.barthel}/100` : '', font),
-    parrafoBoldXml('- I. Lawton: ', ii.lawton != null ? `${ii.lawton}/8` : '', font),
     parrafoBoldXml('Cognitivo: ', ii.vgi_cognitivo, font),
     parrafoBoldXml('Sensorial: ', ii.vgi_sensorial, font),
     parrafoBoldXml('Nutricional: ', ii.vgi_nutricional, font),
@@ -299,6 +317,12 @@ export async function exportarInformeAlta(ingreso: Ingreso, ii: InformeIngreso, 
     parrafoXml('', font),
     seccionXml('EVOLUCIÓN CLÍNICA Y COMENTARIOS:', font),
     lineasXml(ia.evolucion_clinica, font),
+    parrafoXml('', font),
+    seccionXml('ESCALAS CLÍNICAS AL INGRESO:', font),
+    bloqueEscalasXml(escalaIngreso, font),
+    parrafoXml('', font),
+    seccionXml('ESCALAS CLÍNICAS AL ALTA:', font),
+    bloqueEscalasXml(escalaAlta, font),
     parrafoXml('', font),
     seccionXml('JUICIOS CLÍNICOS:', font),
     lineasXml(ia.juicios_clinicos, font),

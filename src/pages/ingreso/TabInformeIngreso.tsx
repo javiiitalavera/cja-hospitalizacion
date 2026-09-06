@@ -6,6 +6,9 @@ import { Download, Lock } from 'lucide-react'
 import { AutoTextarea } from './AutoTextarea'
 import { TablaMedicacion } from './TablaMedicacion'
 import { exportarInformeIngreso } from '../../lib/exportWord'
+import { EscalaBarthel, EscalaLawton, EscalaNPIQ, EscalaGDSFAST } from '../../components/EscalasClinicas'
+import { totalBarthel, totalLawton, totalNPI } from '../../types/escalas'
+import type { EscalaClinica } from '../../types/escalas'
 
 type EstadoGuardado = 'inactivo' | 'pendiente' | 'guardando' | 'guardado' | 'error' | 'conflicto'
 
@@ -19,6 +22,17 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
   dataRef.current = data
   const saveSeqRef = useRef(0)
 
+  // Escalas clínicas: tabla y ciclo de guardado propios, separados
+  // del informe — cada una tiene su propia versión, y a diferencia
+  // del informe (que siempre existe ya creado), la fila de escalas
+  // no existe hasta el primer guardado.
+  const [escalas, setEscalas] = useState<EscalaClinica>({})
+  const [estadoEscalas, setEstadoEscalas] = useState<EstadoGuardado>('inactivo')
+  const debounceEscalasRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const escalasRef = useRef(escalas)
+  escalasRef.current = escalas
+  const saveEscalasSeqRef = useRef(0)
+
   // El informe de alta se apoya en los antecedentes, alergias,
   // exploraciones y tratamiento de este informe — si se detecta un
   // error después del alta, tiene que poder corregirse. Por eso ya
@@ -31,7 +45,69 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
   useEffect(() => {
     supabase.from('informe_ingreso').select('*').eq('ingreso_id', ingresoId).maybeSingle()
       .then(({ data: d }) => setData(d ?? {}))
+    // Se busca por ingreso_id (el de ESTE episodio, siempre nuevo en
+    // un reingreso) — nunca puede traer, ni por accidente, las
+    // escalas de un ingreso anterior del mismo paciente.
+    supabase.from('escalas_clinicas').select('*').eq('ingreso_id', ingresoId).eq('momento', 'ingreso').maybeSingle()
+      .then(({ data: d }) => setEscalas(d ?? {}))
   }, [ingresoId])
+
+  function updateEscala(cambios: Partial<EscalaClinica>) {
+    if (soloLectura || estadoEscalas === 'conflicto') return
+    const next = { ...escalasRef.current, ...cambios }
+    setEscalas(next)
+    setEstadoEscalas('pendiente')
+    if (debounceEscalasRef.current) clearTimeout(debounceEscalasRef.current)
+    debounceEscalasRef.current = setTimeout(() => saveEscalas(next), 1500)
+  }
+
+  async function saveEscalas(next = escalasRef.current): Promise<void> {
+    const miSecuencia = ++saveEscalasSeqRef.current
+    setEstadoEscalas('guardando')
+    const campos = {
+      barthel_respuestas: next.barthel_respuestas ?? null,
+      barthel_total: next.barthel_total ?? null,
+      lawton_respuestas: next.lawton_respuestas ?? null,
+      lawton_total: next.lawton_total ?? null,
+      npi_respuestas: next.npi_respuestas ?? null,
+      npi_gravedad_total: next.npi_gravedad_total ?? null,
+      gds_estadio: next.gds_estadio ?? null,
+      fast_estadio: next.fast_estadio ?? null,
+    }
+
+    if (next.id) {
+      // Ya existe la fila: actualizar con la versión que se leyó.
+      const { data: guardado, error } = await supabase
+        .from('escalas_clinicas')
+        .update(campos)
+        .eq('id', next.id)
+        .eq('version', next.version ?? 1)
+        .select()
+        .maybeSingle()
+      if (miSecuencia !== saveEscalasSeqRef.current) return
+      if (error) { setEstadoEscalas('error'); return }
+      if (!guardado) { setEstadoEscalas('conflicto'); return }
+      setEscalas(guardado)
+    } else {
+      // Primer guardado: todavía no existe la fila.
+      const { data: creado, error } = await supabase
+        .from('escalas_clinicas')
+        .insert({ ingreso_id: ingresoId, momento: 'ingreso', ...campos })
+        .select()
+        .maybeSingle()
+      if (miSecuencia !== saveEscalasSeqRef.current) return
+      if (error) { setEstadoEscalas('error'); return }
+      setEscalas(creado ?? next)
+    }
+    setEstadoEscalas('guardado')
+    setTimeout(() => setEstadoEscalas((e) => (e === 'guardado' ? 'inactivo' : e)), 2500)
+  }
+
+  async function recargarEscalasTrasConflicto() {
+    const { data: d } = await supabase.from('escalas_clinicas').select('*').eq('ingreso_id', ingresoId).eq('momento', 'ingreso').maybeSingle()
+    setEscalas(d ?? {})
+    setEstadoEscalas('inactivo')
+  }
 
   async function save(d = dataRef.current): Promise<boolean> {
     const miSecuencia = ++saveSeqRef.current
@@ -127,20 +203,6 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
         <p className="section-title">Valoración Geriátrica Integral</p>
         {field('vgi_social', 'Social')}
         {field('vgi_funcional', 'Funcional')}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <span className="label">I. Barthel (/100)</span>
-            <input type="number" min={0} max={100} className="input" disabled={soloLectura}
-              value={data.barthel ?? ''}
-              onChange={e => update('barthel', e.target.value === '' ? undefined : parseInt(e.target.value, 10))} />
-          </div>
-          <div>
-            <span className="label">I. Lawton (/8)</span>
-            <input type="number" min={0} max={8} className="input" disabled={soloLectura}
-              value={data.lawton ?? ''}
-              onChange={e => update('lawton', e.target.value === '' ? undefined : parseInt(e.target.value, 10))} />
-          </div>
-        </div>
         {field('vgi_cognitivo', 'Cognitivo')}
         {field('vgi_sensorial', 'Sensorial')}
         {field('vgi_nutricional', 'Nutricional')}
@@ -167,6 +229,33 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
         {field('exploraciones_complementarias', 'Exploraciones complementarias')}
       </div>
 
+      <div className="card p-6 space-y-6">
+        <div className="flex items-center justify-between">
+          <p className="section-title mb-0">Escalas clínicas al ingreso</p>
+          <span className="text-xs text-slate-400">
+            {estadoEscalas === 'pendiente' && '● Cambios pendientes'}
+            {estadoEscalas === 'guardando' && '● Guardando…'}
+            {estadoEscalas === 'guardado' && <span className="text-emerald-600">✓ Guardado</span>}
+            {estadoEscalas === 'error' && <span className="text-red-600 font-semibold">✗ Error al guardar</span>}
+          </span>
+        </div>
+        {estadoEscalas === 'conflicto' && (
+          <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-lg px-4 py-3 flex items-center justify-between gap-3">
+            <span>Alguien más ha guardado cambios en las escalas mientras las editabas. Lo marcado sigue aquí, sin guardar todavía.</span>
+            <button onClick={recargarEscalasTrasConflicto} className="btn-secondary text-xs shrink-0">Ver la versión más reciente</button>
+          </div>
+        )}
+        <EscalaBarthel value={escalas.barthel_respuestas} disabled={soloLectura}
+          onChange={(v) => updateEscala({ barthel_respuestas: v, barthel_total: totalBarthel(v) })} />
+        <EscalaLawton value={escalas.lawton_respuestas} disabled={soloLectura}
+          onChange={(v) => updateEscala({ lawton_respuestas: v, lawton_total: totalLawton(v) })} />
+        <EscalaNPIQ value={escalas.npi_respuestas} disabled={soloLectura}
+          onChange={(v) => updateEscala({ npi_respuestas: v, npi_gravedad_total: totalNPI(v) })} />
+        <EscalaGDSFAST gds={escalas.gds_estadio} fast={escalas.fast_estadio} disabled={soloLectura}
+          onChangeGds={(v) => updateEscala({ gds_estadio: v })}
+          onChangeFast={(v) => updateEscala({ fast_estadio: v })} />
+      </div>
+
       <div className="card p-6 space-y-4">
         <p className="section-title">Diagnóstico y plan</p>
         {field('impresion_diagnostica', 'Impresión diagnóstica')}
@@ -183,7 +272,7 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
               const ok = await save()
               if (!ok) return
             }
-            await exportarInformeIngreso(ingreso, data as InformeIngreso)
+            await exportarInformeIngreso(ingreso, data as InformeIngreso, escalas)
           }}
           className="btn-secondary">
           <Download className="w-4 h-4" />

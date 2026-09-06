@@ -123,8 +123,8 @@ create table public.informe_ingreso (
     tratamiento_ingreso_estructurado jsonb,
     vgi_social text,
     vgi_funcional text,
-    barthel integer check (barthel >= 0 and barthel <= 100),
-    lawton integer check (lawton >= 0 and lawton <= 8),
+    -- barthel y lawton se han trasladado a escalas_clinicas, con
+    -- ítems y cálculo automático en vez de un número suelto.
     vgi_cognitivo text,
     vgi_sensorial text,
     vgi_nutricional text,
@@ -322,6 +322,38 @@ create table public.cmbd (
     version integer not null default 1,
     created_at timestamptz default now(),
     updated_at timestamptz default now()
+);
+
+-- Escalas clínicas: Barthel, Lawton, NPI-Q (solo gravedad) y
+-- GDS-FAST, una fila por ingreso y momento (ingreso/alta). Se
+-- guardan las respuestas y el total calculado, no un número suelto
+-- — así se puede ver de dónde sale cada puntuación.
+create table public.escalas_clinicas (
+    id uuid primary key default gen_random_uuid(),
+    ingreso_id uuid not null references public.ingresos(id) on delete cascade,
+    momento text not null check (momento in ('ingreso', 'alta')),
+
+    barthel_respuestas jsonb,
+    barthel_total integer check (barthel_total between 0 and 100),
+
+    lawton_respuestas jsonb,
+    lawton_total integer check (lawton_total between 0 and 8),
+
+    -- Solo la gravedad (0-36), sin malestar del cuidador.
+    npi_respuestas jsonb,
+    npi_gravedad_total integer check (npi_gravedad_total between 0 and 36),
+
+    -- GDS y FAST por separado a propósito — no son la misma escala
+    -- ni se suman entre sí.
+    gds_estadio integer check (gds_estadio between 1 and 7),
+    fast_estadio text,
+
+    version integer not null default 1,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+
+    -- Una sola fila por ingreso y momento.
+    unique (ingreso_id, momento)
 );
 
 -- Auditoría: quién cambió qué y cuándo, en las tablas clínicas
@@ -951,17 +983,20 @@ create trigger aud_ingresos     after insert or update or delete on public.ingre
 create trigger aud_informe_ingreso after insert or update or delete on public.informe_ingreso for each row execute function public.registrar_auditoria();
 create trigger aud_informe_alta after insert or update or delete on public.informe_alta for each row execute function public.registrar_auditoria();
 create trigger aud_cmbd         after insert or update or delete on public.cmbd         for each row execute function public.registrar_auditoria();
+create trigger aud_escalas_clinicas after insert or update or delete on public.escalas_clinicas for each row execute function public.registrar_auditoria();
 
 create trigger trg_items_updated         before update on public.items_paciente  for each row execute function public.update_updated_at();
 create trigger trg_informe_ingreso_updated before update on public.informe_ingreso for each row execute function public.update_updated_at();
 create trigger trg_informe_alta_updated  before update on public.informe_alta    for each row execute function public.update_updated_at();
 create trigger trg_cmbd_updated          before update on public.cmbd            for each row execute function public.update_updated_at();
+create trigger trg_escalas_clinicas_updated before update on public.escalas_clinicas for each row execute function public.update_updated_at();
 
 create trigger incrementar_version before insert or update on public.informe_ingreso for each row execute function public.incrementar_version_generico();
 create trigger incrementar_version before insert or update on public.informe_alta    for each row execute function public.incrementar_version_generico();
 create trigger incrementar_version before insert or update on public.items_paciente  for each row execute function public.incrementar_version_generico();
 create trigger incrementar_version before insert or update on public.cmbd            for each row execute function public.incrementar_version_generico();
 create trigger incrementar_version before insert or update on public.pacientes       for each row execute function public.incrementar_version_generico();
+create trigger incrementar_version before insert or update on public.escalas_clinicas for each row execute function public.incrementar_version_generico();
 
 create trigger guardar_historial_tras_cambio
   after insert or update of dia, noche on public.contenciones
@@ -993,6 +1028,7 @@ alter table public.items_paciente enable row level security;
 alter table public.items_historico enable row level security;
 alter table public.eventos enable row level security;
 alter table public.cmbd enable row level security;
+alter table public.escalas_clinicas enable row level security;
 alter table public.auditoria enable row level security;
 
 -- Lectura: cualquier cuenta con ficha de profesional activa (mi_rol()
@@ -1035,17 +1071,13 @@ create policy editar_ingreso on public.ingresos for update to authenticated
 create policy borrar_ingreso on public.ingresos for delete to authenticated
     using (private.mi_rol() = 'medico' and estado = 'activo');
 
--- informe_ingreso: solo médico, y solo mientras el episodio siga
--- activo (es el registro de lo que pasó durante el ingreso).
+-- informe_ingreso: solo médico, SIN exigir episodio activo — el
+-- informe de alta se apoya en sus antecedentes, alergias,
+-- exploraciones y tratamiento; si se detecta un error después del
+-- alta, tiene que poder corregirse.
 create policy escribir_medico on public.informe_ingreso to authenticated
-    using (
-        private.mi_rol() = 'medico'
-        and exists (select 1 from ingresos i where i.id = informe_ingreso.ingreso_id and i.estado = 'activo')
-    )
-    with check (
-        private.mi_rol() = 'medico'
-        and exists (select 1 from ingresos i where i.id = informe_ingreso.ingreso_id and i.estado = 'activo')
-    );
+    using (private.mi_rol() = 'medico')
+    with check (private.mi_rol() = 'medico');
 
 -- informe_alta y cmbd: solo médico, SIN exigir que el episodio siga
 -- activo. A diferencia del informe de ingreso, estos se redactan en
@@ -1055,6 +1087,15 @@ create policy escribir_medico on public.informe_alta to authenticated
     using (private.mi_rol() = 'medico') with check (private.mi_rol() = 'medico');
 create policy escribir_medico on public.cmbd to authenticated
     using (private.mi_rol() = 'medico') with check (private.mi_rol() = 'medico');
+
+-- escalas_clinicas: mismo criterio que informe_ingreso e
+-- informe_alta — solo médicos, sin restricción por estado del
+-- episodio.
+create policy leer_autenticado on public.escalas_clinicas
+    for select to authenticated using (private.mi_rol() is not null);
+create policy escribir_medico on public.escalas_clinicas to authenticated
+    using (private.mi_rol() = 'medico')
+    with check (private.mi_rol() = 'medico');
 
 -- items_paciente: todo el equipo asistencial, mientras el episodio
 -- siga activo.
@@ -1068,33 +1109,28 @@ create policy escribir_equipo on public.items_paciente to authenticated
         and exists (select 1 from ingresos i where i.id = items_paciente.ingreso_id and i.estado = 'activo')
     );
 
--- eventos (incidencias): todo el equipo asistencial, mientras el
--- episodio siga activo. Crear exige que el autor sea la propia sesión
--- (no se puede registrar una incidencia en nombre de otro), y editar
--- no puede cambiar quién la registró (ver el disparador de arriba).
+-- eventos (incidencias): todo el equipo asistencial, sin exigir
+-- episodio activo — deben poder registrarse y editarse después del
+-- cierre. Crear exige que el autor sea la propia sesión (no se puede
+-- registrar una incidencia en nombre de otro), y editar no puede
+-- cambiar quién la registró (ver el disparador de arriba).
 create policy crear_evento on public.eventos for insert to authenticated
     with check (
         private.mi_rol() in ('medico', 'enfermeria', 'auxiliar', 'tecnico')
-        and exists (select 1 from ingresos i where i.id = eventos.ingreso_id and i.estado = 'activo')
         and registrado_por_id = (select id from profesionales where user_id = auth.uid() limit 1)
     );
 -- Editar y borrar: solo quien la registró, o un administrador (por
 -- ejemplo, para corregir o borrar una incidencia dada de alta por
 -- error). El resto del equipo puede seguir viéndolas todas, pero no
 -- tocar las que no son suyas.
--- Editar ya no exige ser el autor ni admin — cualquier profesional
--- asistencial puede completar una incidencia en un turno posterior,
--- es un registro compartido. Borrar sí sigue exigiéndolo (ver la
--- política de borrar más abajo, sin cambios).
+-- Editar ya no exige ser el autor ni admin, ni episodio activo —
+-- cualquier profesional asistencial puede completar una incidencia
+-- en un turno posterior o tras el cierre, es un registro compartido.
+-- Borrar sí sigue exigiendo episodio activo, autor o admin (sin
+-- cambios ahí).
 create policy editar_evento on public.eventos for update to authenticated
-    using (
-        private.mi_rol() in ('medico', 'enfermeria', 'auxiliar', 'tecnico')
-        and exists (select 1 from ingresos i where i.id = eventos.ingreso_id and i.estado = 'activo')
-    )
-    with check (
-        private.mi_rol() in ('medico', 'enfermeria', 'auxiliar', 'tecnico')
-        and exists (select 1 from ingresos i where i.id = eventos.ingreso_id and i.estado = 'activo')
-    );
+    using (private.mi_rol() in ('medico', 'enfermeria', 'auxiliar', 'tecnico'))
+    with check (private.mi_rol() in ('medico', 'enfermeria', 'auxiliar', 'tecnico'));
 create policy borrar_evento on public.eventos for delete to authenticated
     using (
         private.mi_rol() in ('medico', 'enfermeria', 'auxiliar', 'tecnico')
@@ -1156,6 +1192,61 @@ revoke execute on function public.retirar_confirmacion_contencion(uuid) from pub
 revoke execute on function public.confirmar_contencion(uuid, integer) from public, anon;
 grant execute on function public.confirmar_contencion(uuid, integer) to authenticated;
 grant execute on function public.retirar_confirmacion_contencion(uuid) to authenticated;
+
+-- Una única función transaccional para dar de alta: actualiza el
+-- estado del ingreso y el motivo del CMBD a la vez, con los mismos
+-- seis códigos que ya usa el propio CMBD (TIPALT) — una sola
+-- elección del motivo, no dos preguntas separadas por lo mismo. Así
+-- nunca queda un ingreso cerrado con el CMBD vacío o incompatible.
+create or replace function public.dar_de_alta(
+  p_ingreso_id uuid,
+  p_fecha_alta date,
+  p_circunstancia_alta text
+) returns jsonb
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+declare
+  v_estado text;
+  v_actualizado public.ingresos;
+begin
+  if coalesce(private.mi_rol(), '') <> 'medico' then
+    raise exception 'Solo un médico puede dar de alta.';
+  end if;
+
+  v_estado := case p_circunstancia_alta
+    when '1' then 'alta'            -- Domicilio
+    when '3' then 'alta'            -- Alta voluntaria
+    when '9' then 'alta'            -- Otras circunstancias / fuga / desconocido
+    when '2' then 'alta_traslado'   -- Traslado a otro hospital
+    when '5' then 'alta_traslado'   -- Traslado a centro sociosanitario
+    when '4' then 'exitus'          -- Éxitus
+    else null
+  end;
+
+  if v_estado is null then
+    raise exception 'Circunstancia de alta no reconocida.';
+  end if;
+
+  update public.ingresos
+  set estado = v_estado, fecha_alta = p_fecha_alta
+  where id = p_ingreso_id and estado = 'activo'
+  returning * into v_actualizado;
+
+  if not found then
+    raise exception 'Este episodio ya no está activo, o no existe.';
+  end if;
+
+  update public.cmbd
+  set circunstancia_alta = p_circunstancia_alta
+  where ingreso_id = p_ingreso_id;
+
+  return jsonb_build_object('estado', v_estado, 'fecha_alta', v_actualizado.fecha_alta);
+end;
+$$;
+
+grant execute on function public.dar_de_alta(uuid, date, text) to authenticated;
 
 -- Lo mismo para las funciones que solo deben dispararse solas, nunca
 -- llamarse a mano — señaladas por el Security Advisor de Supabase.

@@ -91,8 +91,6 @@ export interface InformeIngreso {
   tratamiento_ingreso_estructurado?: FilaMedicacion[]
   vgi_social?: string
   vgi_funcional?: string
-  barthel?: number
-  lawton?: number
   vgi_cognitivo?: string
   vgi_sensorial?: string
   vgi_nutricional?: string
