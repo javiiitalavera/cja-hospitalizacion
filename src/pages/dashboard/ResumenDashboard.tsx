@@ -5,11 +5,12 @@ import type { Filtros, SituacionActual, ResumenPeriodo, SerieDashboard, EstadoCa
 import { calcularRangoComparacion, variacion } from './metricas'
 import { TarjetaMetrica, EstadoCargando, EstadoError } from './ComponentesDashboard'
 
-export function ResumenDashboard({ filtros, desde, hasta, onExplorar }: {
+export function ResumenDashboard({ filtros, desde, hasta, onExplorar, onExplorarEpisodios }: {
   filtros: Filtros
   desde: string
   hasta: string
   onExplorar: (filtroExtra?: Record<string, string>) => void
+  onExplorarEpisodios: (filtroExtra?: Record<string, string>) => void
 }) {
   // Cuatro apartados, cuatro estados independientes — que falle uno
   // no debe apagar los demás, ni disfrazarse de un cero.
@@ -137,16 +138,16 @@ export function ResumenDashboard({ filtros, desde, hasta, onExplorar }: {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <TarjetaMetrica etiqueta="Ingresos nuevos" valor={resumen.ingresos_nuevos}
               comparacion={comparacionTexto(resumen.ingresos_nuevos, 'ingresos_nuevos')}
-              onClick={() => onExplorar({ tipo: 'ingresos', desde, hasta })} />
+              onClick={() => onExplorarEpisodios({ desde_ingreso: desde, hasta_ingreso: hasta })} />
             <TarjetaMetrica etiqueta="Altas" valor={resumen.altas}
               comparacion={comparacionTexto(resumen.altas, 'altas')}
-              onClick={() => onExplorar({ tipo: 'altas', desde, hasta })} />
+              onClick={() => onExplorarEpisodios({ desde_alta: desde, hasta_alta: hasta, estado: 'alta' })} />
             <TarjetaMetrica etiqueta="Traslados" valor={resumen.traslados}
               comparacion={comparacionTexto(resumen.traslados, 'traslados')}
-              onClick={() => onExplorar({ tipo: 'traslados', desde, hasta })} />
+              onClick={() => onExplorarEpisodios({ desde_alta: desde, hasta_alta: hasta, estado: 'alta_traslado' })} />
             <TarjetaMetrica etiqueta="Éxitus" valor={resumen.exitus}
               comparacion={comparacionTexto(resumen.exitus, 'exitus')}
-              onClick={() => onExplorar({ tipo: 'exitus', desde, hasta })} />
+              onClick={() => onExplorarEpisodios({ desde_alta: desde, hasta_alta: hasta, estado: 'exitus' })} />
             <TarjetaMetrica etiqueta="Días-estancia" valor={resumen.dias_estancia}
               comparacion={comparacionTexto(resumen.dias_estancia, 'dias_estancia')} />
             <TarjetaMetrica etiqueta="Ocupación media" valor={`${resumen.ocupacion_media_pct}%`}

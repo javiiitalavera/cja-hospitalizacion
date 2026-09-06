@@ -22,10 +22,11 @@ const BANDAS_ESTANCIA = [
   { clave: 'mas_90', etiqueta: 'Más de 90 días' },
 ]
 
-export function ActividadDashboard({ filtros, desde, hasta }: {
+export function ActividadDashboard({ filtros, desde, hasta, onExplorar }: {
   filtros: Filtros
   desde: string
   hasta: string
+  onExplorar: (filtroExtra?: Record<string, string>) => void
 }) {
   const [resumen, setResumen] = useState<ResumenPeriodo | null>(null)
   const [estadoResumen, setEstadoResumen] = useState<EstadoCarga>('cargando')
@@ -109,10 +110,10 @@ export function ActividadDashboard({ filtros, desde, hasta }: {
         <p className="section-title">Ingresos y salidas</p>
         {estadoResumen === 'listo' && resumen && (
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
-            <TarjetaMetrica etiqueta="Ingresos nuevos" valor={resumen.ingresos_nuevos} />
-            <TarjetaMetrica etiqueta="Altas" valor={resumen.altas} />
-            <TarjetaMetrica etiqueta="Traslados" valor={resumen.traslados} />
-            <TarjetaMetrica etiqueta="Éxitus" valor={resumen.exitus} />
+            <TarjetaMetrica etiqueta="Ingresos nuevos" valor={resumen.ingresos_nuevos} onClick={() => onExplorar({ desde_ingreso: desde, hasta_ingreso: hasta })} />
+            <TarjetaMetrica etiqueta="Altas" valor={resumen.altas} onClick={() => onExplorar({ desde_alta: desde, hasta_alta: hasta, estado: 'alta' })} />
+            <TarjetaMetrica etiqueta="Traslados" valor={resumen.traslados} onClick={() => onExplorar({ desde_alta: desde, hasta_alta: hasta, estado: 'alta_traslado' })} />
+            <TarjetaMetrica etiqueta="Éxitus" valor={resumen.exitus} onClick={() => onExplorar({ desde_alta: desde, hasta_alta: hasta, estado: 'exitus' })} />
             <TarjetaMetrica etiqueta="Balance" valor={balance != null ? (balance > 0 ? `+${balance}` : balance) : '—'}
               subvalor="Ingresos − salidas, sin signo de bueno o malo" />
           </div>
@@ -171,9 +172,9 @@ export function ActividadDashboard({ filtros, desde, hasta }: {
         <p className="section-title">Episodios activos de larga duración</p>
         {estadoDetalle === 'listo' && detalle && (
           <div className="grid grid-cols-3 gap-3">
-            <TarjetaMetrica etiqueta="Más de 30 días" valor={detalle.activos_mas_30} />
-            <TarjetaMetrica etiqueta="Más de 60 días" valor={detalle.activos_mas_60} />
-            <TarjetaMetrica etiqueta="Más de 90 días" valor={detalle.activos_mas_90} />
+            <TarjetaMetrica etiqueta="Más de 30 días" valor={detalle.activos_mas_30} onClick={() => onExplorar({ estancia_min: '30', estado: 'activo' })} />
+            <TarjetaMetrica etiqueta="Más de 60 días" valor={detalle.activos_mas_60} onClick={() => onExplorar({ estancia_min: '60', estado: 'activo' })} />
+            <TarjetaMetrica etiqueta="Más de 90 días" valor={detalle.activos_mas_90} onClick={() => onExplorar({ estancia_min: '90', estado: 'activo' })} />
           </div>
         )}
       </section>

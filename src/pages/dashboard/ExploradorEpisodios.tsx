@@ -38,17 +38,22 @@ const FILTROS_VACIOS: FiltrosExplorador = {
   conIncidencias: '', tipoIncidencia: '',
 }
 
-export function ExploradorEpisodios() {
+export function ExploradorEpisodios({ filtrosIniciales }: { filtrosIniciales?: Record<string, string> }) {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
 
-  const [filtros, setFiltros] = useState<FiltrosExplorador>(() => ({
-    ...FILTROS_VACIOS,
-    desdeIngreso: searchParams.get('desde') || '',
-    hastaIngreso: searchParams.get('hasta') || '',
-    estado: searchParams.get('estado') || '',
-    estanciaMin: searchParams.get('estancia_min') || '',
-  }))
+  const [filtros, setFiltros] = useState<FiltrosExplorador>(() => {
+    const f = filtrosIniciales ?? Object.fromEntries(searchParams.entries())
+    return {
+      ...FILTROS_VACIOS,
+      desdeIngreso: f.desde_ingreso || '',
+      hastaIngreso: f.hasta_ingreso || '',
+      desdeAlta: f.desde_alta || '',
+      hastaAlta: f.hasta_alta || '',
+      estado: f.estado || '',
+      estanciaMin: f.estancia_min || '',
+    }
+  })
   const [medicos, setMedicos] = useState<{ id: string; nombre: string; apellidos: string }[]>([])
   const [orden, setOrden] = useState<'paciente' | 'ingreso' | 'alta' | 'estancia' | 'medico'>('ingreso')
   const [ordenDir, setOrdenDir] = useState<'asc' | 'desc'>('desc')

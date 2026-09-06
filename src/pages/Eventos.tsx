@@ -195,15 +195,17 @@ export function Eventos() {
     const desde = searchParams.get('desde') ?? undefined
     const hasta = searchParams.get('hasta') ?? undefined
     const incidenciasParam = searchParams.get('incidencias') // 'pendiente' | 'todas'
-    if (!desde && !hasta && !incidenciasParam) return
+    const tipoParam = searchParams.get('tipo_incidencia') as TipoEvento | null
+    if (!desde && !hasta && !incidenciasParam && !tipoParam) return
 
     const estado = incidenciasParam === 'pendiente' ? 'pendiente' : undefined
     if (desde) setFDesde(desde)
     if (hasta) setFHasta(hasta)
     if (estado) setFEstado(estado)
+    if (tipoParam) setFTipo(tipoParam)
     // Valores explícitos, no el estado del componente — así no
     // importa si React ya ha aplicado o no los setF... de arriba.
-    buscarIncidencias({ desde, hasta, estado })
+    buscarIncidencias({ desde, hasta, estado, tipo: tipoParam ?? undefined })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -212,7 +214,7 @@ export function Eventos() {
   const [resultados, setResultados] = useState<any[]>([])
   const [buscado, setBuscado] = useState(false)
 
-  async function buscarIncidencias(overrides?: { desde?: string; hasta?: string; estado?: string }) {
+  async function buscarIncidencias(overrides?: { desde?: string; hasta?: string; estado?: string; tipo?: TipoEvento }) {
     setBuscando(true)
     setErrorBusqueda('')
     try {
@@ -223,6 +225,7 @@ export function Eventos() {
       const desde = overrides?.desde ?? fDesde
       const hasta = overrides?.hasta ?? fHasta
       const estado = overrides?.estado ?? fEstado
+      const tipo = overrides?.tipo ?? fTipo
 
       let q = supabase
         .from('eventos')
@@ -235,7 +238,7 @@ export function Eventos() {
 
       if (desde) q = q.gte('fecha', desde)
       if (hasta) q = q.lte('fecha', hasta)
-      if (fTipo) q = q.eq('tipo', fTipo)
+      if (tipo) q = q.eq('tipo', tipo)
       if (fTurno) q = q.eq('turno', fTurno)
       if (estado) q = q.eq('estado', estado)
       if (fProfesional) q = q.eq('registrado_por_id', fProfesional)

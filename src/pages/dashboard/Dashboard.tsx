@@ -7,6 +7,7 @@ import { DashboardFiltros } from './DashboardFiltros'
 import { ResumenDashboard } from './ResumenDashboard'
 import { ActividadDashboard } from './ActividadDashboard'
 import { ExploradorEpisodios } from './ExploradorEpisodios'
+import { SeguridadDashboard } from './SeguridadDashboard'
 
 type Vista = 'resumen' | 'actividad' | 'seguridad' | 'explorador'
 
@@ -53,10 +54,20 @@ export function Dashboard() {
     navigate(`/eventos?${params.toString()}`)
   }
 
+  // Distinto de irAIncidencias: esto se queda dentro del propio
+  // Dashboard, cambiando a la pestaña del Explorador con los filtros
+  // ya puestos — para las cifras de episodios (ingresos, altas,
+  // estancias largas...), no de incidencias.
+  const [presetExplorador, setPresetExplorador] = useState<Record<string, string> | null>(null)
+  function irAExplorador(filtroExtra?: Record<string, string>) {
+    setPresetExplorador({ desde, hasta, ...filtroExtra })
+    setVista('explorador')
+  }
+
   const vistas: { valor: Vista; etiqueta: string; disponible: boolean }[] = [
     { valor: 'resumen', etiqueta: 'Resumen', disponible: true },
     { valor: 'actividad', etiqueta: 'Actividad y ocupación', disponible: true },
-    { valor: 'seguridad', etiqueta: 'Seguridad', disponible: false },
+    { valor: 'seguridad', etiqueta: 'Seguridad', disponible: true },
     { valor: 'explorador', etiqueta: 'Explorador de episodios', disponible: true },
   ]
 
@@ -88,13 +99,16 @@ export function Dashboard() {
       <DashboardFiltros filtros={filtros} onCambiar={setFiltros} />
 
       {vista === 'resumen' && (
-        <ResumenDashboard filtros={filtros} desde={desde} hasta={hasta} onExplorar={irAIncidencias} />
+        <ResumenDashboard filtros={filtros} desde={desde} hasta={hasta} onExplorar={irAIncidencias} onExplorarEpisodios={irAExplorador} />
       )}
       {vista === 'actividad' && (
-        <ActividadDashboard filtros={filtros} desde={desde} hasta={hasta} />
+        <ActividadDashboard filtros={filtros} desde={desde} hasta={hasta} onExplorar={irAExplorador} />
       )}
-      {vista === 'explorador' && <ExploradorEpisodios />}
-      {vista !== 'resumen' && vista !== 'actividad' && vista !== 'explorador' && (
+      {vista === 'seguridad' && (
+        <SeguridadDashboard filtros={filtros} desde={desde} hasta={hasta} onExplorar={irAIncidencias} />
+      )}
+      {vista === 'explorador' && <ExploradorEpisodios filtrosIniciales={presetExplorador ?? undefined} />}
+      {vista !== 'resumen' && vista !== 'actividad' && vista !== 'explorador' && vista !== 'seguridad' && (
         <div className="card p-10 text-center text-slate-400 text-sm">
           Esta vista se construye en una ronda posterior.
         </div>
