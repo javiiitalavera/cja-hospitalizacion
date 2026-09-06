@@ -1307,6 +1307,10 @@ end;
 $$;
 
 grant execute on function public.reabrir_episodio(uuid) to authenticated;
+-- security definer (escribe directamente en auditoria) — se revoca
+-- el permiso por defecto que Postgres concede a PUBLIC, igual que ya
+-- se hizo para el resto de funciones con privilegios elevados.
+revoke execute on function public.reabrir_episodio(uuid) from public, anon;
 
 -- Lo mismo para las funciones que solo deben dispararse solas, nunca
 -- llamarse a mano — señaladas por el Security Advisor de Supabase.
@@ -1393,5 +1397,680 @@ insert into public.profesionales (nombre, apellidos, rol) values
 update public.profesionales
 set es_admin = true
 where nombre = 'Javier' and apellidos ilike 'González%';
+
+commit;
+
+-- ============================================================
+-- Dashboard, primera fase — Resumen, Actividad, Seguridad y el
+-- Explorador de episodios. Seis funciones independientes, cada una
+-- con su propia responsabilidad, en vez de una única función
+-- gigantesca. security invoker en todas salvo donde se indica.
+-- ============================================================
+
+begin;
+
+create or replace function public.dashboard_situacion_actual()
+returns jsonb
+language plpgsql
+security invoker
+stable
+set search_path = ''
+as $$
+declare
+  v_activos integer;
+  v_estancia_larga integer;
+  v_semaforo_riesgo integer;
+  v_contencion_activa integer;
+  v_contencion_pendiente integer;
+  v_incidencias_pendientes integer;
+begin
+  if private.mi_rol() is null then
+    raise exception 'No autorizado.';
+  end if;
+
+  select count(*) into v_activos from public.ingresos where estado = 'activo';
+
+  select count(*) into v_estancia_larga
+  from public.ingresos
+  where estado = 'activo' and fecha_ingreso <= current_date - 60;
+
+  select count(*) into v_semaforo_riesgo
+  from public.ingresos i
+  inner join public.items_paciente ip on ip.ingreso_id = i.id
+  where i.estado = 'activo' and ip.semaforo_caidas in ('rojo', 'naranja');
+
+  select count(*) into v_contencion_activa
+  from public.ingresos i
+  inner join public.contenciones c on c.ingreso_id = i.id
+  where i.estado = 'activo'
+    and (
+      (c.dia is not null and c.dia <> 'ninguna')
+      or (c.noche is not null and array_length(c.noche, 1) > 0)
+    );
+
+  select count(*) into v_contencion_pendiente
+  from public.ingresos i
+  inner join public.contenciones c on c.ingreso_id = i.id
+  where i.estado = 'activo'
+    and c.confirmado_por_id is null
+    and (
+      c.dia = 'continua_seguridad' or c.dia in ('si_precisa_supervision', 'si_precisa_paciente')
+      or 'contencion_fija' = any(c.noche) or 'contencion_si_precisa' = any(c.noche)
+    );
+
+  select count(*) into v_incidencias_pendientes
+  from public.eventos e
+  inner join public.ingresos i on i.id = e.ingreso_id
+  where e.estado = 'pendiente' and i.estado = 'activo';
+
+  return jsonb_build_object(
+    'pacientes_ingresados', v_activos,
+    'ocupacion_actual_pct', round(v_activos::numeric / 33 * 100, 1),
+    'estancia_larga_60', v_estancia_larga,
+    'semaforo_riesgo', v_semaforo_riesgo,
+    'contencion_activa', v_contencion_activa,
+    'contencion_pendiente_confirmacion', v_contencion_pendiente,
+    'incidencias_pendientes', v_incidencias_pendientes
+  );
+end;
+$$;
+
+grant execute on function public.dashboard_situacion_actual() to authenticated;
+
+create or replace function public.dashboard_resumen(
+  p_desde date,
+  p_hasta date,
+  p_medico_id uuid default null,
+  p_estado_filtro text default null
+) returns jsonb
+language plpgsql
+security invoker
+stable
+set search_path = ''
+as $$
+declare
+  v_ingresos_nuevos integer;
+  v_altas integer;
+  v_traslados integer;
+  v_exitus integer;
+  v_dias_estancia bigint;
+  v_ocupacion_media numeric;
+  v_ocupacion_min numeric;
+  v_ocupacion_max numeric;
+  v_estancia_media numeric;
+  v_estancia_mediana numeric;
+  v_reingresos integer;
+  v_incidencias integer;
+begin
+  if private.mi_rol() is null then
+    raise exception 'No autorizado.';
+  end if;
+  if p_desde > p_hasta then
+    raise exception 'La fecha "desde" no puede ser posterior a "hasta".';
+  end if;
+  if p_estado_filtro is not null and p_estado_filtro not in ('activo', 'alta', 'alta_traslado', 'exitus') then
+    raise exception 'Estado de filtro no reconocido: %', p_estado_filtro;
+  end if;
+
+  select count(*) into v_ingresos_nuevos
+  from public.ingresos i
+  where i.fecha_ingreso between p_desde and p_hasta
+    and (p_medico_id is null or i.medico_responsable_id = p_medico_id)
+    and (p_estado_filtro is null or i.estado = p_estado_filtro);
+
+  select
+    count(*) filter (where i.estado = 'alta'),
+    count(*) filter (where i.estado = 'alta_traslado'),
+    count(*) filter (where i.estado = 'exitus')
+  into v_altas, v_traslados, v_exitus
+  from public.ingresos i
+  where i.fecha_alta between p_desde and p_hasta
+    and (p_medico_id is null or i.medico_responsable_id = p_medico_id);
+
+  select coalesce(sum(
+    greatest(0, (least(coalesce(i.fecha_alta, p_hasta + 1), p_hasta + 1) - greatest(i.fecha_ingreso, p_desde)))
+  ), 0) into v_dias_estancia
+  from public.ingresos i
+  where i.fecha_ingreso <= p_hasta
+    and (i.fecha_alta is null or i.fecha_alta >= p_desde)
+    and (p_medico_id is null or i.medico_responsable_id = p_medico_id)
+    and (p_estado_filtro is null or i.estado = p_estado_filtro);
+
+  with dias as (
+    select generate_series(p_desde, p_hasta, interval '1 day')::date as f
+  ), ocupacion as (
+    select d.f, count(i.id) as camas
+    from dias d
+    left join public.ingresos i
+      on i.fecha_ingreso <= d.f
+      and (i.fecha_alta > d.f or i.fecha_alta is null)
+      and (p_medico_id is null or i.medico_responsable_id = p_medico_id)
+      and (p_estado_filtro is null or i.estado = p_estado_filtro)
+    group by d.f
+  )
+  select avg(camas) / 33 * 100, min(camas) / 33.0 * 100, max(camas) / 33.0 * 100
+  into v_ocupacion_media, v_ocupacion_min, v_ocupacion_max
+  from ocupacion;
+
+  select
+    avg(i.fecha_alta - i.fecha_ingreso),
+    percentile_cont(0.5) within group (order by (i.fecha_alta - i.fecha_ingreso))
+  into v_estancia_media, v_estancia_mediana
+  from public.ingresos i
+  where i.fecha_alta between p_desde and p_hasta
+    and (p_medico_id is null or i.medico_responsable_id = p_medico_id);
+
+  select count(*) into v_reingresos
+  from public.ingresos i
+  where i.fecha_ingreso between p_desde and p_hasta
+    and (p_medico_id is null or i.medico_responsable_id = p_medico_id)
+    and (p_estado_filtro is null or i.estado = p_estado_filtro)
+    and exists (
+      select 1 from public.ingresos previo
+      where previo.paciente_id = i.paciente_id
+        and previo.id <> i.id
+        and previo.estado in ('alta', 'alta_traslado')
+        and previo.fecha_alta < i.fecha_ingreso
+        and previo.fecha_alta >= i.fecha_ingreso - 30
+    );
+
+  select count(*) into v_incidencias
+  from public.eventos e
+  inner join public.ingresos i on i.id = e.ingreso_id
+  where e.fecha between p_desde and p_hasta
+    and (p_medico_id is null or i.medico_responsable_id = p_medico_id)
+    and (p_estado_filtro is null or i.estado = p_estado_filtro);
+
+  return jsonb_build_object(
+    'ingresos_nuevos', v_ingresos_nuevos,
+    'altas', v_altas,
+    'traslados', v_traslados,
+    'exitus', v_exitus,
+    'salidas_totales', v_altas + v_traslados + v_exitus,
+    'dias_estancia', v_dias_estancia,
+    'ocupacion_media_pct', round(coalesce(v_ocupacion_media, 0), 1),
+    'ocupacion_min_pct', round(coalesce(v_ocupacion_min, 0), 1),
+    'ocupacion_max_pct', round(coalesce(v_ocupacion_max, 0), 1),
+    'estancia_media_dias', round(coalesce(v_estancia_media, 0), 1),
+    'estancia_mediana_dias', round(coalesce(v_estancia_mediana, 0), 1),
+    'reingresos_30d', v_reingresos,
+    'incidencias_total', v_incidencias,
+    'incidencias_tasa_1000', case when v_dias_estancia > 0 then round(v_incidencias::numeric / v_dias_estancia * 1000, 1) else null end
+  );
+end;
+$$;
+
+grant execute on function public.dashboard_resumen(date, date, uuid, text) to authenticated;
+
+create or replace function public.dashboard_series(
+  p_desde date,
+  p_hasta date,
+  p_medico_id uuid default null,
+  p_estado_filtro text default null
+) returns jsonb
+language plpgsql
+security invoker
+stable
+set search_path = ''
+as $$
+declare
+  v_dias_periodo integer;
+  v_bucket text;
+  v_ocupacion jsonb;
+  v_movimientos jsonb;
+begin
+  if private.mi_rol() is null then
+    raise exception 'No autorizado.';
+  end if;
+  if p_desde > p_hasta then
+    raise exception 'La fecha "desde" no puede ser posterior a "hasta".';
+  end if;
+
+  v_dias_periodo := (p_hasta - p_desde) + 1;
+  v_bucket := case
+    when v_dias_periodo <= 31 then 'day'
+    when v_dias_periodo <= 180 then 'week'
+    else 'month'
+  end;
+
+  with dias as (
+    select generate_series(p_desde, p_hasta, interval '1 day')::date as f
+  )
+  select jsonb_agg(jsonb_build_object('fecha', d.f, 'camas', (
+    select count(*) from public.ingresos i
+    where i.fecha_ingreso <= d.f
+      and (i.fecha_alta > d.f or i.fecha_alta is null)
+      and (p_medico_id is null or i.medico_responsable_id = p_medico_id)
+      and (p_estado_filtro is null or i.estado = p_estado_filtro)
+  )) order by d.f)
+  into v_ocupacion
+  from dias d;
+
+  with periodos as (
+    select generate_series(p_desde, p_hasta, ('1 ' || v_bucket)::interval) as inicio
+  ), rangos as (
+    select
+      inicio::date as inicio,
+      least(
+        (case v_bucket
+          when 'day' then inicio + interval '1 day'
+          when 'week' then inicio + interval '1 week'
+          else inicio + interval '1 month'
+        end)::date - 1,
+        p_hasta
+      ) as fin
+    from periodos
+  )
+  select jsonb_agg(jsonb_build_object(
+    'inicio', r.inicio,
+    'fin', r.fin,
+    'ingresos', (
+      select count(*) from public.ingresos i
+      where i.fecha_ingreso between r.inicio and r.fin
+        and (p_medico_id is null or i.medico_responsable_id = p_medico_id)
+        and (p_estado_filtro is null or i.estado = p_estado_filtro)
+    ),
+    'salidas', (
+      select count(*) from public.ingresos i
+      where i.fecha_alta between r.inicio and r.fin
+        and (p_medico_id is null or i.medico_responsable_id = p_medico_id)
+    )
+  ) order by r.inicio)
+  into v_movimientos
+  from rangos r;
+
+  return jsonb_build_object(
+    'agrupacion', v_bucket,
+    'ocupacion_diaria', coalesce(v_ocupacion, '[]'::jsonb),
+    'movimientos', coalesce(v_movimientos, '[]'::jsonb)
+  );
+end;
+$$;
+
+grant execute on function public.dashboard_series(date, date, uuid, text) to authenticated;
+
+create or replace function public.dashboard_actividad_detalle(
+  p_desde date,
+  p_hasta date,
+  p_medico_id uuid default null,
+  p_estado_filtro text default null
+) returns jsonb
+language plpgsql
+security invoker
+stable
+set search_path = ''
+as $$
+declare
+  v_distribucion_estancia jsonb;
+  v_activos_30 integer;
+  v_activos_60 integer;
+  v_activos_90 integer;
+  v_por_medico jsonb;
+  v_por_sexo jsonb;
+  v_edad_media numeric;
+begin
+  if private.mi_rol() is null then
+    raise exception 'No autorizado.';
+  end if;
+
+  select jsonb_build_object(
+    '0-15', count(*) filter (where (i.fecha_alta - i.fecha_ingreso) between 0 and 15),
+    '16-30', count(*) filter (where (i.fecha_alta - i.fecha_ingreso) between 16 and 30),
+    '31-60', count(*) filter (where (i.fecha_alta - i.fecha_ingreso) between 31 and 60),
+    '61-90', count(*) filter (where (i.fecha_alta - i.fecha_ingreso) between 61 and 90),
+    'mas_90', count(*) filter (where (i.fecha_alta - i.fecha_ingreso) > 90)
+  ) into v_distribucion_estancia
+  from public.ingresos i
+  where i.fecha_alta between p_desde and p_hasta
+    and (p_medico_id is null or i.medico_responsable_id = p_medico_id);
+
+  select
+    count(*) filter (where fecha_ingreso <= current_date - 30),
+    count(*) filter (where fecha_ingreso <= current_date - 60),
+    count(*) filter (where fecha_ingreso <= current_date - 90)
+  into v_activos_30, v_activos_60, v_activos_90
+  from public.ingresos
+  where estado = 'activo'
+    and (p_medico_id is null or medico_responsable_id = p_medico_id);
+
+  select coalesce(jsonb_agg(jsonb_build_object(
+    'medico_id', pr.id,
+    'nombre', pr.nombre || ' ' || pr.apellidos,
+    'ingresos', c.total
+  ) order by c.total desc), '[]'::jsonb)
+  into v_por_medico
+  from (
+    select medico_responsable_id, count(*) as total
+    from public.ingresos
+    where fecha_ingreso between p_desde and p_hasta
+      and medico_responsable_id is not null
+      and (p_estado_filtro is null or estado = p_estado_filtro)
+    group by medico_responsable_id
+  ) c
+  inner join public.profesionales pr on pr.id = c.medico_responsable_id;
+
+  select
+    jsonb_build_object(
+      'hombre', count(*) filter (where p.sexo = 'hombre'),
+      'mujer', count(*) filter (where p.sexo = 'mujer'),
+      'otro', count(*) filter (where p.sexo = 'otro'),
+      'sin_dato', count(*) filter (where p.sexo is null)
+    ),
+    avg(extract(year from age(i.fecha_ingreso, p.fecha_nacimiento)))
+  into v_por_sexo, v_edad_media
+  from public.ingresos i
+  inner join public.pacientes p on p.id = i.paciente_id
+  where i.fecha_ingreso between p_desde and p_hasta
+    and (p_medico_id is null or i.medico_responsable_id = p_medico_id)
+    and (p_estado_filtro is null or i.estado = p_estado_filtro);
+
+  return jsonb_build_object(
+    'distribucion_estancia', v_distribucion_estancia,
+    'activos_mas_30', v_activos_30,
+    'activos_mas_60', v_activos_60,
+    'activos_mas_90', v_activos_90,
+    'por_medico', v_por_medico,
+    'por_sexo', v_por_sexo,
+    'edad_media', round(coalesce(v_edad_media, 0), 1)
+  );
+end;
+$$;
+
+grant execute on function public.dashboard_actividad_detalle(date, date, uuid, text) to authenticated;
+
+create or replace function public.dashboard_seguridad(
+  p_desde date,
+  p_hasta date,
+  p_medico_id uuid default null,
+  p_estado_filtro text default null
+) returns jsonb
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+declare
+  v_dias_estancia bigint;
+  v_por_tipo jsonb;
+  v_caidas jsonb;
+  v_ulceras jsonb;
+  v_otras jsonb;
+  v_contenciones jsonb;
+begin
+  if private.mi_rol() is null then
+    raise exception 'No autorizado.';
+  end if;
+  if p_desde > p_hasta then
+    raise exception 'La fecha "desde" no puede ser posterior a "hasta".';
+  end if;
+
+  select coalesce(sum(
+    greatest(0, (least(coalesce(i.fecha_alta, p_hasta + 1), p_hasta + 1) - greatest(i.fecha_ingreso, p_desde)))
+  ), 0) into v_dias_estancia
+  from public.ingresos i
+  where i.fecha_ingreso <= p_hasta
+    and (i.fecha_alta is null or i.fecha_alta >= p_desde)
+    and (p_medico_id is null or i.medico_responsable_id = p_medico_id)
+    and (p_estado_filtro is null or i.estado = p_estado_filtro);
+
+  select coalesce(jsonb_agg(jsonb_build_object(
+    'tipo', t.tipo,
+    'total', t.total,
+    'pacientes_afectados', t.pacientes,
+    'pendientes', t.pendientes,
+    'tasa_1000', case when v_dias_estancia > 0 then round(t.total::numeric / v_dias_estancia * 1000, 2) else null end
+  ) order by t.total desc), '[]'::jsonb)
+  into v_por_tipo
+  from (
+    select e.tipo, count(*) as total, count(distinct e.ingreso_id) as pacientes,
+           count(*) filter (where e.estado = 'pendiente') as pendientes
+    from public.eventos e
+    inner join public.ingresos i on i.id = e.ingreso_id
+    where e.fecha between p_desde and p_hasta
+      and (p_medico_id is null or i.medico_responsable_id = p_medico_id)
+      and (p_estado_filtro is null or i.estado = p_estado_filtro)
+    group by e.tipo
+  ) t;
+
+  select jsonb_build_object(
+    'total', count(*),
+    'con_lesion', count(*) filter (where e.datos->>'con_lesion' = 'Sí'),
+    'pendientes_valoracion', count(*) filter (where e.datos->>'con_lesion' = 'Pendiente de valoración'),
+    'graves', count(*) filter (where e.datos->>'gravedad' = 'Grave' or e.datos->>'consecuencias' in ('Fractura', 'TCE')),
+    'tasa_total_1000', case when v_dias_estancia > 0 then round(count(*)::numeric / v_dias_estancia * 1000, 2) else null end,
+    'tasa_con_lesion_1000', case when v_dias_estancia > 0 then round(count(*) filter (where e.datos->>'con_lesion' = 'Sí')::numeric / v_dias_estancia * 1000, 2) else null end
+  ) into v_caidas
+  from public.eventos e
+  inner join public.ingresos i on i.id = e.ingreso_id
+  where e.tipo = 'caida' and e.fecha between p_desde and p_hasta
+    and (p_medico_id is null or i.medico_responsable_id = p_medico_id)
+    and (p_estado_filtro is null or i.estado = p_estado_filtro);
+
+  select jsonb_build_object(
+    'presentes_al_ingreso', count(*) filter (where e.datos->>'momento' = 'Al ingreso'),
+    'aparecidas_durante', count(*) filter (where e.datos->>'momento' = 'Durante el ingreso'),
+    'grado_iii_iv', count(*) filter (where e.datos->>'grado' in ('Grado III', 'Grado IV')),
+    'tasa_aparecidas_1000', case when v_dias_estancia > 0 then round(
+      count(*) filter (where e.datos->>'momento' = 'Durante el ingreso')::numeric / v_dias_estancia * 1000, 2
+    ) else null end
+  ) into v_ulceras
+  from public.eventos e
+  inner join public.ingresos i on i.id = e.ingreso_id
+  where e.tipo = 'ulcera' and e.fecha between p_desde and p_hasta
+    and (p_medico_id is null or i.medico_responsable_id = p_medico_id)
+    and (p_estado_filtro is null or i.estado = p_estado_filtro);
+
+  select jsonb_build_object(
+    'errores_medicacion', count(*) filter (where e.tipo = 'error_medicacion'),
+    'efectos_adversos', count(*) filter (where e.tipo = 'efecto_adverso_medicacion'),
+    'infecciones_nosocomiales', count(*) filter (where e.tipo = 'infeccion_nosocomial'),
+    'agresiones', count(*) filter (where e.tipo = 'agresividad_fisica'),
+    'fugas', count(*) filter (where e.tipo = 'fuga'),
+    'pendientes_completar', count(*) filter (where e.estado = 'pendiente')
+  ) into v_otras
+  from public.eventos e
+  inner join public.ingresos i on i.id = e.ingreso_id
+  where e.tipo in ('error_medicacion', 'efecto_adverso_medicacion', 'infeccion_nosocomial', 'agresividad_fisica', 'fuga')
+    and e.fecha between p_desde and p_hasta
+    and (p_medico_id is null or i.medico_responsable_id = p_medico_id)
+    and (p_estado_filtro is null or i.estado = p_estado_filtro);
+
+  select jsonb_build_object(
+    'pacientes_con_contencion_activa', (
+      select count(*) from public.ingresos i2
+      inner join public.contenciones c on c.ingreso_id = i2.id
+      where i2.estado = 'activo'
+        and (p_medico_id is null or i2.medico_responsable_id = p_medico_id)
+        and (
+          (c.dia is not null and c.dia <> 'ninguna')
+          or (c.noche is not null and array_length(c.noche, 1) > 0)
+        )
+    ),
+    'pendientes_confirmacion', (
+      select count(*) from public.ingresos i2
+      inner join public.contenciones c on c.ingreso_id = i2.id
+      where i2.estado = 'activo'
+        and (p_medico_id is null or i2.medico_responsable_id = p_medico_id)
+        and c.confirmado_por_id is null
+        and (
+          c.dia = 'continua_seguridad' or c.dia in ('si_precisa_supervision', 'si_precisa_paciente')
+          or 'contencion_fija' = any(c.noche) or 'contencion_si_precisa' = any(c.noche)
+        )
+    ),
+    'cambios_pauta_periodo', (
+      select count(*) from public.contenciones_historial ch
+      inner join public.ingresos i2 on i2.id = ch.ingreso_id
+      where ch.tipo_accion in ('pauta_creada', 'pauta_modificada')
+        and ch.cambiado_en::date between p_desde and p_hasta
+        and (p_medico_id is null or i2.medico_responsable_id = p_medico_id)
+    )
+  ) into v_contenciones;
+
+  return jsonb_build_object(
+    'por_tipo', v_por_tipo,
+    'caidas', v_caidas,
+    'ulceras', v_ulceras,
+    'otras', v_otras,
+    'contenciones', v_contenciones,
+    'dias_estancia', v_dias_estancia
+  );
+end;
+$$;
+
+grant execute on function public.dashboard_seguridad(date, date, uuid, text) to authenticated;
+
+create or replace function public.buscar_episodios_dashboard(
+  p_busqueda text default null,
+  p_desde_ingreso date default null,
+  p_hasta_ingreso date default null,
+  p_desde_alta date default null,
+  p_hasta_alta date default null,
+  p_solapa_desde date default null,
+  p_solapa_hasta date default null,
+  p_estado text default null,
+  p_medico_id uuid default null,
+  p_estancia_min integer default null,
+  p_estancia_max integer default null,
+  p_con_incidencias boolean default null,
+  p_tipo_incidencia text default null,
+  p_orden text default 'fecha_ingreso',
+  p_orden_dir text default 'desc',
+  p_pagina integer default 1,
+  p_por_pagina integer default 50,
+  p_paginar boolean default true
+) returns jsonb
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+declare
+  v_total integer;
+  v_filas jsonb;
+  v_offset integer;
+  v_limite integer;
+  v_orden_col text;
+  v_orden_dir text;
+begin
+  if private.mi_rol() is null then
+    raise exception 'No autorizado.';
+  end if;
+  if p_estado is not null and p_estado not in ('activo', 'alta', 'alta_traslado', 'exitus') then
+    raise exception 'Estado no reconocido: %', p_estado;
+  end if;
+  if p_tipo_incidencia is not null and p_con_incidencias is distinct from true then
+    raise exception 'Para filtrar por tipo de incidencia, indica también "con incidencias".';
+  end if;
+
+  v_orden_col := case p_orden
+    when 'paciente' then 'nombre_orden'
+    when 'ingreso' then 'fecha_ingreso'
+    when 'alta' then 'fecha_alta'
+    when 'estancia' then 'dias_estancia'
+    when 'medico' then 'medico_nombre'
+    else 'fecha_ingreso'
+  end;
+  v_orden_dir := case when lower(coalesce(p_orden_dir, 'desc')) = 'asc' then 'asc' else 'desc' end;
+  v_offset := greatest(0, (p_pagina - 1) * p_por_pagina);
+  v_limite := case when p_paginar then p_por_pagina else null end;
+
+  with base as (
+    select
+      i.id, i.fecha_ingreso, i.fecha_alta, i.estado, i.habitacion,
+      p.nombre, p.primer_apellido, p.segundo_apellido, p.nhc,
+      (p.primer_apellido || ' ' || coalesce(p.segundo_apellido, '') || ' ' || p.nombre) as nombre_orden,
+      nullif(coalesce(m.nombre || ' ' || m.apellidos, ''), '') as medico_nombre,
+      (case when i.fecha_alta is not null then i.fecha_alta - i.fecha_ingreso else current_date - i.fecha_ingreso end) as dias_estancia,
+      (select count(*) from public.eventos e where e.ingreso_id = i.id) as num_incidencias
+    from public.ingresos i
+    inner join public.pacientes p on p.id = i.paciente_id
+    left join public.profesionales m on m.id = i.medico_responsable_id
+    where
+      (p_busqueda is null or (
+        p.nombre || ' ' || p.primer_apellido || ' ' || coalesce(p.segundo_apellido, '') ilike '%' || p_busqueda || '%'
+        or p.nhc ilike '%' || p_busqueda || '%'
+      ))
+      and (p_desde_ingreso is null or i.fecha_ingreso >= p_desde_ingreso)
+      and (p_hasta_ingreso is null or i.fecha_ingreso <= p_hasta_ingreso)
+      and (p_desde_alta is null or i.fecha_alta >= p_desde_alta)
+      and (p_hasta_alta is null or i.fecha_alta <= p_hasta_alta)
+      and (
+        (p_solapa_desde is null and p_solapa_hasta is null) or (
+          i.fecha_ingreso <= coalesce(p_solapa_hasta, 'infinity'::date)
+          and (i.fecha_alta is null or i.fecha_alta >= coalesce(p_solapa_desde, '-infinity'::date))
+        )
+      )
+      and (p_estado is null or i.estado = p_estado)
+      and (p_medico_id is null or i.medico_responsable_id = p_medico_id)
+      and (
+        p_con_incidencias is null or (
+          (select count(*) from public.eventos e where e.ingreso_id = i.id
+            and (p_tipo_incidencia is null or e.tipo = p_tipo_incidencia)) > 0
+        ) = p_con_incidencias
+      )
+  )
+  select count(*) into v_total from base
+  where (p_estancia_min is null or dias_estancia >= p_estancia_min)
+    and (p_estancia_max is null or dias_estancia <= p_estancia_max);
+
+  execute format(
+    'with base as (
+      select
+        i.id, i.fecha_ingreso, i.fecha_alta, i.estado, i.habitacion,
+        p.nombre, p.primer_apellido, p.segundo_apellido, p.nhc,
+        (p.primer_apellido || '' '' || coalesce(p.segundo_apellido, '''') || '' '' || p.nombre) as nombre_orden,
+        nullif(coalesce(m.nombre || '' '' || m.apellidos, ''''), '''') as medico_nombre,
+        (case when i.fecha_alta is not null then i.fecha_alta - i.fecha_ingreso else current_date - i.fecha_ingreso end) as dias_estancia,
+        (select count(*) from public.eventos e where e.ingreso_id = i.id) as num_incidencias
+      from public.ingresos i
+      inner join public.pacientes p on p.id = i.paciente_id
+      left join public.profesionales m on m.id = i.medico_responsable_id
+      where
+        ($1::text is null or (
+          p.nombre || '' '' || p.primer_apellido || '' '' || coalesce(p.segundo_apellido, '''') ilike ''%%'' || $1::text || ''%%''
+          or p.nhc ilike ''%%'' || $1::text || ''%%''
+        ))
+        and ($2::date is null or i.fecha_ingreso >= $2::date)
+        and ($3::date is null or i.fecha_ingreso <= $3::date)
+        and ($4::date is null or i.fecha_alta >= $4::date)
+        and ($5::date is null or i.fecha_alta <= $5::date)
+        and (
+          ($6::date is null and $7::date is null) or (
+            i.fecha_ingreso <= coalesce($7::date, ''infinity''::date)
+            and (i.fecha_alta is null or i.fecha_alta >= coalesce($6::date, ''-infinity''::date))
+          )
+        )
+        and ($8::text is null or i.estado = $8::text)
+        and ($9::uuid is null or i.medico_responsable_id = $9::uuid)
+        and (
+          $10::boolean is null or (
+            (select count(*) from public.eventos e where e.ingreso_id = i.id
+              and ($11::text is null or e.tipo = $11::text)) > 0
+          ) = $10::boolean
+        )
+    )
+    select coalesce(jsonb_agg(t), ''[]''::jsonb) from (
+      select id, fecha_ingreso, fecha_alta, estado, habitacion, nhc,
+             (primer_apellido || case when segundo_apellido is not null and segundo_apellido <> '''' then '' '' || segundo_apellido else '''' end || '', '' || nombre) as paciente,
+             medico_nombre as medico, dias_estancia, num_incidencias
+      from base
+      where ($12::integer is null or dias_estancia >= $12::integer)
+        and ($13::integer is null or dias_estancia <= $13::integer)
+      order by %I %s nulls last
+      limit $14 offset $15
+    ) t',
+    v_orden_col, v_orden_dir
+  )
+  using p_busqueda, p_desde_ingreso, p_hasta_ingreso, p_desde_alta, p_hasta_alta,
+        p_solapa_desde, p_solapa_hasta, p_estado, p_medico_id,
+        p_con_incidencias, p_tipo_incidencia, p_estancia_min, p_estancia_max,
+        v_limite, v_offset
+  into v_filas;
+
+  return jsonb_build_object('total', v_total, 'filas', v_filas, 'pagina', p_pagina, 'por_pagina', p_por_pagina);
+end;
+$$;
+
+grant execute on function public.buscar_episodios_dashboard(
+  text, date, date, date, date, date, date, text, uuid, integer, integer, boolean, text, text, text, integer, integer, boolean
+) to authenticated;
 
 commit;
