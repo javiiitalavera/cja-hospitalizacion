@@ -1746,6 +1746,7 @@ begin
     from public.ingresos
     where fecha_ingreso between p_desde and p_hasta
       and medico_responsable_id is not null
+      and (p_medico_id is null or medico_responsable_id = p_medico_id)
       and (p_estado_filtro is null or estado = p_estado_filtro)
     group by medico_responsable_id
   ) c

@@ -27,8 +27,8 @@ function filtrosDesdeURL(params: URLSearchParams): Filtros {
 export function Dashboard() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const [vista, setVista] = useState<Vista>((searchParams.get('vista') as Vista) || 'resumen')
-  const [filtros, setFiltros] = useState<Filtros>(() => filtrosDesdeURL(searchParams))
+  const vista = (searchParams.get('vista') as Vista) || 'resumen'
+  const filtros = filtrosDesdeURL(searchParams)
 
   // "Todo el historial" tiene que empezar en el primer ingreso real,
   // no en una fecha inventada — 2000-01-01 generaba miles de días
@@ -39,20 +39,33 @@ export function Dashboard() {
       .then(({ data }) => setPrimeraFecha(data?.[0]?.fecha_ingreso ?? null))
   }, [])
 
-  useEffect(() => {
-    const params = new URLSearchParams()
-    params.set('vista', vista)
-    params.set('periodo', filtros.periodo)
-    if (filtros.periodo === 'personalizado') {
-      if (filtros.desde) params.set('desde', filtros.desde)
-      if (filtros.hasta) params.set('hasta', filtros.hasta)
-    }
-    if (filtros.medicoId) params.set('medico', filtros.medicoId)
-    if (filtros.comparar) params.set('comparar', '1')
-    setSearchParams(params, { replace: true })
-  }, [vista, filtros])
-
   const { desde, hasta } = calcularRango(filtros.periodo, filtros.desde, filtros.hasta, primeraFecha)
+
+  // Todo cambio de filtro o de vista se fusiona con lo que ya hay en
+  // la URL — nunca se reconstruye desde cero. Antes, cambiar de
+  // pestaña reescribía toda la URL solo con las claves que este
+  // propio componente conocía, borrando por el camino los filtros
+  // del Explorador (que vive en sus propias claves de la misma URL).
+  function actualizarFiltros(nuevos: Filtros) {
+    const params = new URLSearchParams(searchParams)
+    params.set('periodo', nuevos.periodo)
+    if (nuevos.periodo === 'personalizado') {
+      if (nuevos.desde) params.set('desde', nuevos.desde); else params.delete('desde')
+      if (nuevos.hasta) params.set('hasta', nuevos.hasta); else params.delete('hasta')
+    } else {
+      params.delete('desde')
+      params.delete('hasta')
+    }
+    if (nuevos.medicoId) params.set('medico', nuevos.medicoId); else params.delete('medico')
+    if (nuevos.comparar) params.set('comparar', '1'); else params.delete('comparar')
+    setSearchParams(params, { replace: true })
+  }
+
+  function cambiarVista(v: Vista) {
+    const params = new URLSearchParams(searchParams)
+    params.set('vista', v)
+    setSearchParams(params, { replace: true })
+  }
 
   // Los indicadores que llevan a "ver los episodios/incidencias que
   // componen la cifra" navegan fuera del Dashboard — no se duplica
@@ -68,14 +81,22 @@ export function Dashboard() {
 
   // Distinto de irAIncidencias: esto se queda dentro del propio
   // Dashboard, cambiando a la pestaña del Explorador con los filtros
-  // ya puestos — para las cifras de episodios (ingresos, altas,
-  // estancias largas...), no de incidencias.
-  const [presetExplorador, setPresetExplorador] = useState<Record<string, string> | null>(null)
+  // ya puestos directamente en la URL — sin estado de React aparte,
+  // que es precisamente lo que antes se perdía o reaparecía viejo al
+  // cambiar de pestaña o recargar. La URL es la única fuente de
+  // verdad, también para llegar aquí desde otra vista.
   function irAExplorador(filtroExtra?: Record<string, string>) {
-    const preset: Record<string, string> = { desde, hasta, ...filtroExtra }
-    if (filtros.medicoId) preset.medico = filtros.medicoId
-    setPresetExplorador(preset)
-    setVista('explorador')
+    const params = new URLSearchParams(searchParams)
+    params.set('vista', 'explorador')
+    const claves = ['desde_ingreso', 'hasta_ingreso', 'desde_alta', 'hasta_alta', 'estado', 'estancia_min', 'estancia_max'] as const
+    for (const clave of claves) {
+      const valor = filtroExtra?.[clave]
+      if (valor) params.set(clave, valor)
+      else params.delete(clave)
+    }
+    if (filtros.medicoId) params.set('medico', filtros.medicoId)
+    params.delete('pagina')
+    setSearchParams(params, { replace: true })
   }
 
   const vistas: { valor: Vista; etiqueta: string; disponible: boolean }[] = [
@@ -96,7 +117,7 @@ export function Dashboard() {
         {vistas.map((v) => (
           <button
             key={v.valor}
-            onClick={() => v.disponible && setVista(v.valor)}
+            onClick={() => v.disponible && cambiarVista(v.valor)}
             disabled={!v.disponible}
             title={!v.disponible ? 'Todavía no construida — próxima ronda' : undefined}
             className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
@@ -110,7 +131,7 @@ export function Dashboard() {
         ))}
       </div>
 
-      <DashboardFiltros filtros={filtros} onCambiar={setFiltros} mostrarComparar={vista === 'resumen'} />
+      <DashboardFiltros filtros={filtros} onCambiar={actualizarFiltros} mostrarComparar={vista === 'resumen'} />
 
       {vista === 'resumen' && (
         <ResumenDashboard filtros={filtros} desde={desde} hasta={hasta} onExplorar={irAIncidencias} onExplorarEpisodios={irAExplorador} />
@@ -121,7 +142,7 @@ export function Dashboard() {
       {vista === 'seguridad' && (
         <SeguridadDashboard filtros={filtros} desde={desde} hasta={hasta} onExplorar={irAIncidencias} />
       )}
-      {vista === 'explorador' && <ExploradorEpisodios filtrosIniciales={presetExplorador ?? undefined} />}
+      {vista === 'explorador' && <ExploradorEpisodios />}
       {vista !== 'resumen' && vista !== 'actividad' && vista !== 'explorador' && vista !== 'seguridad' && (
         <div className="card p-10 text-center text-slate-400 text-sm">
           Esta vista se construye en una ronda posterior.
