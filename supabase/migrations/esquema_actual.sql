@@ -492,16 +492,18 @@ language plpgsql
 security definer
 set search_path = ''
 as $$
-declare
-  v_usuario uuid;
 begin
-  select id into v_usuario from public.profesionales where user_id = auth.uid() limit 1;
+  -- auth.uid() directamente, igual que registrar_auditoria() y las
+  -- Edge Functions — antes guardaba profesionales.id, mientras que
+  -- toda la pantalla de Auditoría busca por profesionales.user_id.
+  -- Con ese desajuste, cualquier cambio de incidencia se veía sin
+  -- autor identificable, aunque sí se había guardado uno.
   insert into public.auditoria (tabla, registro_id, accion, usuario_id, valores_antes, valores_despues)
   values (
     'eventos',
     coalesce(NEW.id, OLD.id),
     lower(TG_OP),
-    v_usuario,
+    auth.uid(),
     case when TG_OP = 'INSERT' then null else to_jsonb(OLD) end,
     case when TG_OP = 'DELETE' then null else to_jsonb(NEW) end
   );
