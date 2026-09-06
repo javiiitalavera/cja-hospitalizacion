@@ -29,7 +29,13 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
 
   try {
-    // Cliente con la llave maestra: se salta los candados. Solo aquí dentro.
+    // Cliente con la llave maestra: se salta los candados. Solo para
+    // lo que de verdad necesita privilegios de servidor (crear/borrar
+    // cuentas de Auth). Para escribir en "profesionales" se usa un
+    // cliente aparte, con el JWT de quien llama — así la auditoría
+    // atribuye el cambio al administrador real, no a "Sistema" (que
+    // es lo que pasaba usando la llave maestra también para esto:
+    // auth.uid() no resuelve a nadie con esa clave).
     const admin = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
@@ -42,6 +48,15 @@ Deno.serve(async (req) => {
 
     const { data: userData, error: userErr } = await admin.auth.getUser(jwt)
     if (userErr || !userData.user) return respuesta(401, { error: 'Sesión no válida' })
+
+    // Este cliente sí lleva la identidad de quien llama — se usa para
+    // cualquier escritura en "profesionales", para que quede bien
+    // atribuida en la auditoría.
+    const actor = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: `Bearer ${jwt}` } } },
+    )
 
     // ── 2. ¿Es administrador? Si no, se corta aquí ──────────
     const { data: perfil } = await admin
@@ -78,7 +93,7 @@ Deno.serve(async (req) => {
     }
 
     // ── 5. Crear la ficha de profesional, enlazada a la cuenta ──
-    const { error: fichaErr } = await admin.from('profesionales').insert({
+    const { error: fichaErr } = await actor.from('profesionales').insert({
       nombre,
       apellidos,
       rol,

@@ -45,6 +45,14 @@ Deno.serve(async (req) => {
     const { data: userData, error: userErr } = await admin.auth.getUser(jwt)
     if (userErr || !userData.user) return respuesta(401, { error: 'Sesión no válida' })
 
+    // Con la identidad de quien llama, para que el borrado quede
+    // atribuido al administrador real en la auditoría.
+    const actor = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: `Bearer ${jwt}` } } },
+    )
+
     // ── 2. ¿Es administrador? ───────────────────────────────
     const { data: perfilAdmin } = await admin
       .from('profesionales')
@@ -96,7 +104,7 @@ Deno.serve(async (req) => {
     // Ya sabemos que no tiene datos asociados, así que esto debería
     // funcionar; el candado de la BD (FK) queda como red de seguridad
     // por si algo cambió justo en este instante.
-    const { error: delErr } = await admin
+    const { error: delErr } = await actor
       .from('profesionales')
       .delete()
       .eq('id', profesionalId)

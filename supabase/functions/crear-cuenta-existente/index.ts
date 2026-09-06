@@ -39,6 +39,14 @@ Deno.serve(async (req) => {
     const { data: userData, error: userErr } = await admin.auth.getUser(jwt)
     if (userErr || !userData.user) return respuesta(401, { error: 'Sesión no válida' })
 
+    // Con la identidad de quien llama, para que enlazar la cuenta
+    // quede atribuido al administrador real en la auditoría.
+    const actor = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: `Bearer ${jwt}` } } },
+    )
+
     // ── 2. ¿Es administrador? ───────────────────────────────
     const { data: perfilAdmin } = await admin
       .from('profesionales')
@@ -87,7 +95,7 @@ Deno.serve(async (req) => {
     // si dos peticiones casi simultáneas llegan aquí para la misma
     // ficha, solo la primera consigue enlazar (afecta a una fila); la
     // segunda no actualiza nada y lo detectamos por el "select" vacío.
-    const { data: linked, error: linkErr } = await admin
+    const { data: linked, error: linkErr } = await actor
       .from('profesionales')
       .update({ user_id: creada.user.id })
       .eq('id', profesionalId)

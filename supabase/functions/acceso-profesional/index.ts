@@ -49,6 +49,16 @@ Deno.serve(async (req) => {
     const { data: userData, error: userErr } = await admin.auth.getUser(jwt)
     if (userErr || !userData.user) return respuesta(401, { error: 'Sesión no válida' })
 
+    // Con la identidad de quien llama — para que la baja/reactivación
+    // quede atribuida al administrador real en la auditoría, no a
+    // "Sistema" (lo que pasaba usando la llave maestra también para
+    // este cambio).
+    const actor = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: `Bearer ${jwt}` } } },
+    )
+
     // ── 2. ¿Es administrador? ───────────────────────────────
     const { data: perfilAdmin } = await admin
       .from('profesionales')
@@ -94,7 +104,7 @@ Deno.serve(async (req) => {
     }
 
     // ── 6. Actualizar la ficha (activo / inactivo) ──────────
-    const { error: updErr } = await admin
+    const { error: updErr } = await actor
       .from('profesionales')
       .update({ activo })
       .eq('id', profesionalId)

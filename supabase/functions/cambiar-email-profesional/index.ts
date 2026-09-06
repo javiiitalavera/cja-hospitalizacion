@@ -1,9 +1,10 @@
 // ============================================================
-// Edge Function: restablecer-password
+// Edge Function: cambiar-email-profesional
 //
-// Permite a un administrador poner una nueva contraseña a un
-// profesional (que luego se la comunica a la persona). Útil cuando
-// alguien olvida la suya.
+// Permite a un administrador cambiar el correo de acceso de un
+// profesional que YA tiene cuenta (una errata al crearla, un cambio
+// de correo institucional...). Antes no había forma de hacerlo desde
+// la aplicación — había que entrar directamente en Supabase.
 //
 // Seguridad: solo un administrador autenticado puede invocarla.
 // ============================================================
@@ -48,16 +49,13 @@ Deno.serve(async (req) => {
       .maybeSingle()
 
     if (!perfilAdmin?.es_admin) {
-      return respuesta(403, { error: 'Solo un administrador puede restablecer contraseñas.' })
+      return respuesta(403, { error: 'Solo un administrador puede cambiar el correo de acceso.' })
     }
 
     // ── 3. Datos de la petición ─────────────────────────────
-    const { profesionalId, nuevaPassword } = (await req.json()) ?? {}
-    if (!profesionalId || !nuevaPassword) {
-      return respuesta(400, { error: 'Faltan datos (profesional y nueva contraseña).' })
-    }
-    if (String(nuevaPassword).length < 8) {
-      return respuesta(400, { error: 'La contraseña debe tener al menos 8 caracteres.' })
+    const { profesionalId, nuevoEmail } = (await req.json()) ?? {}
+    if (!profesionalId || !nuevoEmail) {
+      return respuesta(400, { error: 'Faltan datos (profesional y nuevo correo).' })
     }
 
     // ── 4. Buscar la cuenta enlazada ────────────────────────
@@ -69,24 +67,25 @@ Deno.serve(async (req) => {
 
     if (objErr || !objetivo) return respuesta(404, { error: 'Profesional no encontrado.' })
     if (!objetivo.user_id) {
-      return respuesta(400, { error: 'Este profesional no tiene cuenta de acceso.' })
+      return respuesta(400, { error: 'Este profesional no tiene todavía cuenta de acceso.' })
     }
 
-    // ── 5. Cambiar la contraseña ────────────────────────────
+    // ── 5. Cambiar el correo ────────────────────────────────
+    // email_confirm: true — igual que al crear la cuenta, para que
+    // pueda entrar de inmediato con el correo nuevo sin verificarlo.
     const { error: updErr } = await admin.auth.admin.updateUserById(objetivo.user_id, {
-      password: String(nuevaPassword),
+      email: String(nuevoEmail).trim(),
+      email_confirm: true,
     })
-    if (updErr) return respuesta(400, { error: 'No se pudo cambiar la contraseña: ' + updErr.message })
+    if (updErr) return respuesta(400, { error: 'No se pudo cambiar el correo: ' + updErr.message })
 
-    // Restablecer una contraseña no toca ninguna tabla con disparador
-    // de auditoría propio (la contraseña vive solo en Auth, no en
-    // "profesionales") — así que, sin esto, no quedaba ningún rastro
-    // de que había pasado. Se registra a mano, con quién lo hizo y a
-    // quién afectó, sin guardar la contraseña en ningún sitio.
+    // El correo vive solo en Auth, no en "profesionales" — sin este
+    // registro explícito, el cambio no dejaría ningún rastro en la
+    // auditoría.
     await admin.from('auditoria').insert({
       tabla: 'profesionales',
       registro_id: profesionalId,
-      accion: 'password_reset',
+      accion: 'cambio_email',
       usuario_id: userData.user.id,
     })
 

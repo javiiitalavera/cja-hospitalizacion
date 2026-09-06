@@ -15,6 +15,9 @@ export function Personal() {
   const { esAdmin, profesional: yo } = useAuth()
   const [lista, setLista] = useState<Profesional[]>([])
   const [cargando, setCargando] = useState(true)
+  const [busqueda, setBusqueda] = useState('')
+  const [filtroRol, setFiltroRol] = useState<Rol | 'todos'>('todos')
+  const [filtroEstado, setFiltroEstado] = useState<'todos' | 'activos' | 'inactivos'>('activos')
   const [mostrarForm, setMostrarForm] = useState(false)
   const [resetTarget, setResetTarget] = useState<Profesional | null>(null)
   const [editTarget, setEditTarget] = useState<Profesional | null>(null)
@@ -30,13 +33,34 @@ export function Personal() {
     timerRef.current = window.setTimeout(() => setFeedback(null), 4000)
   }
 
+  const [errorCarga, setErrorCarga] = useState('')
+  const [accesos, setAccesos] = useState<Record<string, { email: string | null; ultimo_acceso: string | null }>>({})
+
   async function cargar() {
-    const { data } = await supabase
+    setErrorCarga('')
+    const { data, error } = await supabase
       .from('profesionales')
       .select('*')
       .order('apellidos', { ascending: true })
+    if (error) {
+      // Sin esto, un fallo real de carga (red, permisos...) se veía
+      // exactamente igual que "no hay ningún profesional dado de
+      // alta" — algo que además nunca pasa de verdad en una clínica
+      // en marcha, así que era una señal clara de que algo iba mal
+      // sin que nadie se enterase.
+      setErrorCarga('No se pudo cargar el personal: ' + error.message)
+      setCargando(false)
+      return
+    }
     setLista((data as Profesional[]) ?? [])
     setCargando(false)
+
+    // El correo y el último acceso viven en Auth, no en esta tabla —
+    // se piden aparte, y si fallan no se bloquea el resto de la
+    // pantalla por ello (se ve el personal igual, solo sin esos dos
+    // datos concretos).
+    const resp = await supabase.functions.invoke('listar-accesos')
+    if (!resp.error && resp.data?.accesos) setAccesos(resp.data.accesos)
   }
 
   useEffect(() => { cargar() }, [])
@@ -55,13 +79,28 @@ export function Personal() {
     )
   }
 
-  async function cambiarRol(p: Profesional, nuevoRol: Rol) {
-    setBusyId(p.id)
-    const { error } = await supabase.from('profesionales').update({ rol: nuevoRol }).eq('id', p.id)
-    setBusyId(null)
-    if (error) { notificar('error', 'No se pudo cambiar el rol.'); return }
-    notificar('ok', `Rol de ${p.nombre} actualizado.`)
-    cargar()
+  function pedirCambiarRol(p: Profesional, nuevoRol: Rol) {
+    if (nuevoRol === p.rol) return
+    const etiquetaAntes = ROLES.find((r) => r.valor === p.rol)?.etiqueta ?? p.rol
+    const etiquetaDespues = ROLES.find((r) => r.valor === nuevoRol)?.etiqueta ?? nuevoRol
+    // Un clic de más en el desplegable cambiaba el rol al instante —
+    // y el rol determina permisos clínicos reales (quién puede
+    // confirmar una contención, por ejemplo), así que un despiste no
+    // debería bastar para cambiarlo.
+    setConfirmar({
+      titulo: 'Cambiar rol',
+      mensaje: `Cambiar a ${p.nombre} de ${etiquetaAntes} a ${etiquetaDespues}. Esto cambia sus permisos clínicos de inmediato.`,
+      textoBoton: 'Cambiar rol',
+      peligro: false,
+      accion: async () => {
+        setBusyId(p.id)
+        const { error } = await supabase.from('profesionales').update({ rol: nuevoRol }).eq('id', p.id)
+        setBusyId(null)
+        if (error) { notificar('error', 'No se pudo cambiar el rol.'); return }
+        notificar('ok', `Rol de ${p.nombre} actualizado.`)
+        cargar()
+      },
+    })
   }
 
   function pedirAlternarAdmin(p: Profesional) {
@@ -131,8 +170,18 @@ export function Personal() {
     })
   }
 
+  const listaFiltrada = lista.filter((p) => {
+    if (filtroRol !== 'todos' && p.rol !== filtroRol) return false
+    if (filtroEstado === 'activos' && !p.activo) return false
+    if (filtroEstado === 'inactivos' && p.activo) return false
+    const q = busqueda.toLowerCase().trim()
+    if (!q) return true
+    const correo = accesos[p.user_id ?? '']?.email ?? ''
+    return `${p.nombre} ${p.apellidos}`.toLowerCase().includes(q) || correo.toLowerCase().includes(q)
+  })
+
   return (
-    <div className="p-6 md:p-8 max-w-4xl">
+    <div className="p-6 md:p-8 max-w-6xl">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Personal</h1>
@@ -142,6 +191,13 @@ export function Personal() {
           <UserPlus className="w-4 h-4" /> Nuevo profesional
         </button>
       </div>
+
+      {errorCarga && (
+        <div className="mb-4 text-sm rounded-lg px-3 py-2 border bg-red-50 text-red-600 border-red-100 flex items-center justify-between gap-3">
+          <span>{errorCarga}</span>
+          <button onClick={() => { setCargando(true); cargar() }} className="btn-secondary text-xs shrink-0">Reintentar</button>
+        </div>
+      )}
 
       {feedback && (
         <div className={`mb-4 text-sm rounded-lg px-3 py-2 border ${
@@ -153,6 +209,24 @@ export function Personal() {
         </div>
       )}
 
+      <div className="flex items-center gap-3 mb-4">
+        <input
+          className="input max-w-xs"
+          placeholder="Buscar por nombre o correo…"
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+        />
+        <select className="input py-1.5 max-w-[160px]" value={filtroRol} onChange={(e) => setFiltroRol(e.target.value as Rol | 'todos')}>
+          <option value="todos">Todos los roles</option>
+          {ROLES.map((r) => <option key={r.valor} value={r.valor}>{r.etiqueta}</option>)}
+        </select>
+        <select className="input py-1.5 max-w-[160px]" value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value as typeof filtroEstado)}>
+          <option value="activos">Activos</option>
+          <option value="inactivos">De baja</option>
+          <option value="todos">Todos</option>
+        </select>
+      </div>
+
       {cargando ? (
         <p className="text-slate-400">Cargando…</p>
       ) : (
@@ -162,14 +236,17 @@ export function Personal() {
               <tr>
                 <th className="px-4 py-2 font-medium">Nombre</th>
                 <th className="px-4 py-2 font-medium">Rol</th>
-                <th className="px-4 py-2 font-medium">Cuenta</th>
+                <th className="px-4 py-2 font-medium">Correo</th>
+                <th className="px-4 py-2 font-medium">Último acceso</th>
                 <th className="px-4 py-2 font-medium text-center">Admin</th>
                 <th className="px-4 py-2 font-medium text-center" title="Desmarcar = baja completa: bloquea el acceso sin borrar datos">Activo</th>
                 <th className="px-4 py-2"></th>
               </tr>
             </thead>
             <tbody>
-              {lista.map((p) => {
+              {listaFiltrada.length === 0 ? (
+                <tr><td colSpan={7} className="px-4 py-8 text-center text-slate-400">Nadie coincide con este filtro.</td></tr>
+              ) : listaFiltrada.map((p) => {
                 const ocupada = busyId === p.id
                 const esYo = p.id === yo?.id
                 return (
@@ -183,7 +260,7 @@ export function Personal() {
                       className="input py-1 text-sm"
                       value={p.rol}
                       disabled={ocupada}
-                      onChange={(e) => cambiarRol(p, e.target.value as Rol)}
+                      onChange={(e) => pedirCambiarRol(p, e.target.value as Rol)}
                     >
                       {ROLES.map((r) => (
                         <option key={r.valor} value={r.valor}>{r.etiqueta}</option>
@@ -192,7 +269,7 @@ export function Personal() {
                   </td>
                   <td className="px-4 py-2">
                     {p.user_id ? (
-                      <span className="text-slate-500">Con cuenta</span>
+                      <span className="text-slate-600">{accesos[p.user_id]?.email ?? 'Con cuenta'}</span>
                     ) : (
                       <button
                         onClick={() => setEditTarget(p)}
@@ -201,6 +278,13 @@ export function Personal() {
                         Dar acceso →
                       </button>
                     )}
+                  </td>
+                  <td className="px-4 py-2 text-slate-400 text-xs">
+                    {p.user_id
+                      ? accesos[p.user_id]?.ultimo_acceso
+                        ? new Date(accesos[p.user_id]!.ultimo_acceso!).toLocaleDateString('es-ES')
+                        : 'Nunca ha entrado'
+                      : '—'}
                   </td>
                   <td className="px-4 py-2 text-center">
                     <input
@@ -285,6 +369,7 @@ export function Personal() {
       {editTarget && (
         <ModalEditar
           profesional={editTarget}
+          emailActual={editTarget.user_id ? accesos[editTarget.user_id]?.email : null}
           onCerrar={() => setEditTarget(null)}
           onGuardado={(msg) => { setEditTarget(null); notificar('ok', msg); cargar() }}
         />
@@ -419,6 +504,8 @@ function FormularioNuevo({ onCerrar, onCreado }: { onCerrar: () => void; onCread
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [rol, setRol] = useState<Rol>('enfermeria')
+  const [colegiado, setColegiado] = useState('')
+  const [especialidad, setEspecialidad] = useState('')
   const [error, setError] = useState('')
   const [enviando, setEnviando] = useState(false)
 
@@ -433,9 +520,12 @@ function FormularioNuevo({ onCerrar, onCreado }: { onCerrar: () => void; onCread
       return
     }
     setEnviando(true)
-    // Llamada a la Edge Function segura (crea cuenta + ficha).
+    // Llamada a la Edge Function segura (crea cuenta + ficha). El
+    // servidor ya admitía colegiado/especialidad desde el principio —
+    // solo faltaba pedirlos aquí, para no tener que crear primero y
+    // editar después solo para rellenar estos dos campos.
     const { data, error: fnError } = await supabase.functions.invoke('crear-profesional', {
-      body: { nombre, apellidos, email, password, rol },
+      body: { nombre, apellidos, email, password, rol, colegiado: colegiado.trim() || null, especialidad: especialidad.trim() || null },
     })
     setEnviando(false)
 
@@ -475,6 +565,18 @@ function FormularioNuevo({ onCerrar, onCreado }: { onCerrar: () => void; onCread
               ))}
             </select>
           </div>
+          {/* Opcionales — el servidor ya los admitía, antes solo se
+              podían rellenar editando después de crear. */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="label">Nº Colegiado (opcional)</label>
+              <input className="input" value={colegiado} onChange={(e) => setColegiado(e.target.value)} />
+            </div>
+            <div>
+              <label className="label">Especialidad (opcional)</label>
+              <input className="input" value={especialidad} onChange={(e) => setEspecialidad(e.target.value)} />
+            </div>
+          </div>
           <div>
             <label className="label">Correo (usuario de acceso)</label>
             <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
@@ -502,8 +604,9 @@ function FormularioNuevo({ onCerrar, onCreado }: { onCerrar: () => void; onCread
   )
 }
 
-function ModalEditar({ profesional, onCerrar, onGuardado }: {
+function ModalEditar({ profesional, emailActual, onCerrar, onGuardado }: {
   profesional: Profesional
+  emailActual?: string | null
   onCerrar: () => void
   onGuardado: (mensaje: string) => void
 }) {
@@ -520,6 +623,35 @@ function ModalEditar({ profesional, onCerrar, onGuardado }: {
   const [password, setPassword] = useState('')
   const [errorCuenta, setErrorCuenta] = useState('')
   const [creandoCuenta, setCreandoCuenta] = useState(false)
+
+  // Cambiar el correo de una cuenta que ya existe — antes no había
+  // forma de corregir una errata o un cambio de correo institucional
+  // sin entrar directamente en Supabase.
+  const [nuevoEmail, setNuevoEmail] = useState(emailActual ?? '')
+  const [errorEmail, setErrorEmail] = useState('')
+  const [cambiandoEmail, setCambiandoEmail] = useState(false)
+
+  async function cambiarEmail() {
+    setErrorEmail('')
+    if (!nuevoEmail.trim()) {
+      setErrorEmail('Escribe un correo.')
+      return
+    }
+    if (nuevoEmail.trim() === emailActual) {
+      setErrorEmail('Ese ya es su correo actual.')
+      return
+    }
+    setCambiandoEmail(true)
+    const { data, error: fnError } = await supabase.functions.invoke('cambiar-email-profesional', {
+      body: { profesionalId: profesional.id, nuevoEmail: nuevoEmail.trim() },
+    })
+    setCambiandoEmail(false)
+    if (fnError || (data && (data as any).error)) {
+      setErrorEmail((data as any)?.error ?? 'No se pudo cambiar el correo.')
+      return
+    }
+    onGuardado('Correo de acceso actualizado.')
+  }
 
   async function guardarDatos() {
     setError('')
@@ -638,6 +770,31 @@ function ModalEditar({ profesional, onCerrar, onGuardado }: {
                 <button onClick={crearCuenta} disabled={creandoCuenta} className="btn-primary">
                   {creandoCuenta ? <Loader2 className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}
                   {creandoCuenta ? 'Creando…' : 'Crear cuenta'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Si ya tiene cuenta, se puede corregir su correo — antes
+            había que entrar directamente en Supabase para esto. */}
+        {!sinCuenta && (
+          <div className="mt-5 pt-4 border-t">
+            <p className="text-sm font-semibold text-slate-700 mb-1">Correo de acceso</p>
+            <p className="text-xs text-slate-400 mb-3">
+              Con qué correo entra esta persona. Cámbialo si hay una errata o ha cambiado de correo institucional.
+            </p>
+            <div className="space-y-3">
+              <input className="input" type="email" value={nuevoEmail} onChange={(e) => setNuevoEmail(e.target.value)} />
+
+              {errorEmail && (
+                <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{errorEmail}</p>
+              )}
+
+              <div className="flex justify-end">
+                <button onClick={cambiarEmail} disabled={cambiandoEmail} className="btn-secondary">
+                  {cambiandoEmail ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                  {cambiandoEmail ? 'Cambiando…' : 'Cambiar correo'}
                 </button>
               </div>
             </div>
