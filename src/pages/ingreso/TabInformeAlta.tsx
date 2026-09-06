@@ -5,7 +5,7 @@ import { Download } from 'lucide-react'
 import { AutoTextarea } from './AutoTextarea'
 import { TablaMedicacion } from './TablaMedicacion'
 import { exportarInformeAlta } from '../../lib/exportWord'
-import { EscalaBarthel, EscalaLawton, EscalaNPIQ, EscalaGDSFAST, TarjetaEscala, ModalEscala } from '../../components/EscalasClinicas'
+import { EscalaBarthel, EscalaLawton, EscalaNPIQ, EscalaGDSFAST, ModalEscala } from '../../components/EscalasClinicas'
 import { totalBarthel, totalLawton, totalNPI } from '../../types/escalas'
 import type { EscalaClinica } from '../../types/escalas'
 
@@ -223,8 +223,13 @@ function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
           </div>
         )}
 
-        {/* Comparación — solo se enseñan los números de los dos
-            momentos, sin etiquetar ninguna diferencia como mejoría o
+        {/* Comparación — y también el punto donde se completa cada
+            escala: pinchar en "Alta" abre esa escala para rellenarla,
+            pinchar en "Ingreso" la abre en lectura. Sin esto, las
+            mismas ocho escalas se repetían dos veces: aquí como
+            números, y otra vez debajo como tarjetas para abrir el
+            modal — la tabla ya es toda la información que hace
+            falta. Sin etiquetar ninguna diferencia como mejoría o
             empeoramiento: la dirección no se interpreta igual en
             todas las escalas. */}
         <div className="overflow-x-auto">
@@ -239,68 +244,60 @@ function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
             <tbody className="divide-y">
               <tr>
                 <td className="px-3 py-2 text-slate-600">Barthel</td>
-                <td className="px-3 py-2 text-right tabular-nums">{escalaIngreso.barthel_total != null ? `${escalaIngreso.barthel_total}/100` : '—'}</td>
-                <td className="px-3 py-2 text-right tabular-nums font-medium text-slate-800">{escalaAlta.barthel_total != null ? `${escalaAlta.barthel_total}/100` : 'Incompleta'}</td>
+                <td className="px-3 py-2 text-right tabular-nums">
+                  <button type="button" onClick={() => setModalEscala('ing-barthel')} className="hover:underline hover:text-primary-700">
+                    {escalaIngreso.barthel_total != null ? `${escalaIngreso.barthel_total}/100` : '—'}
+                  </button>
+                </td>
+                <td className="px-3 py-2 text-right tabular-nums font-medium text-slate-800">
+                  <button type="button" onClick={() => setModalEscala('alta-barthel')} className="hover:underline hover:text-primary-700">
+                    {escalaAlta.barthel_total != null ? `${escalaAlta.barthel_total}/100` : 'Incompleta'}
+                  </button>
+                </td>
               </tr>
               <tr>
                 <td className="px-3 py-2 text-slate-600">Lawton</td>
-                <td className="px-3 py-2 text-right tabular-nums">{escalaIngreso.lawton_total != null ? `${escalaIngreso.lawton_total}/8` : '—'}</td>
-                <td className="px-3 py-2 text-right tabular-nums font-medium text-slate-800">{escalaAlta.lawton_total != null ? `${escalaAlta.lawton_total}/8` : 'Incompleta'}</td>
+                <td className="px-3 py-2 text-right tabular-nums">
+                  <button type="button" onClick={() => setModalEscala('ing-lawton')} className="hover:underline hover:text-primary-700">
+                    {escalaIngreso.lawton_total != null ? `${escalaIngreso.lawton_total}/8` : '—'}
+                  </button>
+                </td>
+                <td className="px-3 py-2 text-right tabular-nums font-medium text-slate-800">
+                  <button type="button" onClick={() => setModalEscala('alta-lawton')} className="hover:underline hover:text-primary-700">
+                    {escalaAlta.lawton_total != null ? `${escalaAlta.lawton_total}/8` : 'Incompleta'}
+                  </button>
+                </td>
               </tr>
               <tr>
                 <td className="px-3 py-2 text-slate-600">NPI-Q gravedad</td>
-                <td className="px-3 py-2 text-right tabular-nums">{escalaIngreso.npi_gravedad_total != null ? `${escalaIngreso.npi_gravedad_total}/36` : '—'}</td>
-                <td className="px-3 py-2 text-right tabular-nums font-medium text-slate-800">{escalaAlta.npi_gravedad_total != null ? `${escalaAlta.npi_gravedad_total}/36` : 'Incompleta'}</td>
+                <td className="px-3 py-2 text-right tabular-nums">
+                  <button type="button" onClick={() => setModalEscala('ing-npi')} className="hover:underline hover:text-primary-700">
+                    {escalaIngreso.npi_gravedad_total != null ? `${escalaIngreso.npi_gravedad_total}/36` : '—'}
+                  </button>
+                </td>
+                <td className="px-3 py-2 text-right tabular-nums font-medium text-slate-800">
+                  <button type="button" onClick={() => setModalEscala('alta-npi')} className="hover:underline hover:text-primary-700">
+                    {escalaAlta.npi_gravedad_total != null ? `${escalaAlta.npi_gravedad_total}/36` : 'Incompleta'}
+                  </button>
+                </td>
               </tr>
               <tr>
                 <td className="px-3 py-2 text-slate-600">GDS / FAST</td>
                 <td className="px-3 py-2 text-right tabular-nums">
-                  {escalaIngreso.gds_estadio ? `GDS ${escalaIngreso.gds_estadio}` : '—'}
-                  {escalaIngreso.fast_estadio ? ` · FAST ${escalaIngreso.fast_estadio}` : ''}
+                  <button type="button" onClick={() => setModalEscala('ing-gdsfast')} className="hover:underline hover:text-primary-700">
+                    {escalaIngreso.gds_estadio ? `GDS ${escalaIngreso.gds_estadio}` : '—'}
+                    {escalaIngreso.fast_estadio ? ` · FAST ${escalaIngreso.fast_estadio}` : ''}
+                  </button>
                 </td>
                 <td className="px-3 py-2 text-right tabular-nums font-medium text-slate-800">
-                  {escalaAlta.gds_estadio ? `GDS ${escalaAlta.gds_estadio}` : '—'}
-                  {escalaAlta.fast_estadio ? ` · FAST ${escalaAlta.fast_estadio}` : ''}
+                  <button type="button" onClick={() => setModalEscala('alta-gdsfast')} className="hover:underline hover:text-primary-700">
+                    {escalaAlta.gds_estadio ? `GDS ${escalaAlta.gds_estadio}` : 'Incompleta'}
+                    {escalaAlta.fast_estadio ? ` · FAST ${escalaAlta.fast_estadio}` : ''}
+                  </button>
                 </td>
               </tr>
             </tbody>
           </table>
-        </div>
-
-        <div>
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Resultado del ingreso (lectura)</p>
-          <div className="space-y-2">
-            <TarjetaEscala titulo="Índice de Barthel" soloLectura onAbrir={() => setModalEscala('ing-barthel')}
-              resultado={escalaIngreso.barthel_total != null ? `${escalaIngreso.barthel_total}/100` : '—'}
-              incompleta={escalaIngreso.barthel_total == null} />
-            <TarjetaEscala titulo="Índice de Lawton" soloLectura onAbrir={() => setModalEscala('ing-lawton')}
-              resultado={escalaIngreso.lawton_total != null ? `${escalaIngreso.lawton_total}/8` : '—'}
-              incompleta={escalaIngreso.lawton_total == null} />
-            <TarjetaEscala titulo="NPI-Q (gravedad)" soloLectura onAbrir={() => setModalEscala('ing-npi')}
-              resultado={escalaIngreso.npi_gravedad_total != null ? `${escalaIngreso.npi_gravedad_total}/36` : '—'}
-              incompleta={escalaIngreso.npi_gravedad_total == null} />
-            <TarjetaEscala titulo="GDS / FAST" soloLectura onAbrir={() => setModalEscala('ing-gdsfast')}
-              resultado={escalaIngreso.gds_estadio || escalaIngreso.fast_estadio ? `GDS ${escalaIngreso.gds_estadio ?? '—'} · FAST ${escalaIngreso.fast_estadio ?? '—'}` : '—'}
-              incompleta={!escalaIngreso.gds_estadio && !escalaIngreso.fast_estadio} />
-          </div>
-        </div>
-
-        <div>
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Escala al alta</p>
-          <div className="space-y-2">
-            <TarjetaEscala titulo="Índice de Barthel" onAbrir={() => setModalEscala('alta-barthel')}
-              resultado={escalaAlta.barthel_total != null ? `${escalaAlta.barthel_total}/100` : 'Incompleta'}
-              incompleta={escalaAlta.barthel_total == null} />
-            <TarjetaEscala titulo="Índice de Lawton" onAbrir={() => setModalEscala('alta-lawton')}
-              resultado={escalaAlta.lawton_total != null ? `${escalaAlta.lawton_total}/8` : 'Incompleta'}
-              incompleta={escalaAlta.lawton_total == null} />
-            <TarjetaEscala titulo="NPI-Q (gravedad)" onAbrir={() => setModalEscala('alta-npi')}
-              resultado={escalaAlta.npi_gravedad_total != null ? `${escalaAlta.npi_gravedad_total}/36` : 'Incompleta'}
-              incompleta={escalaAlta.npi_gravedad_total == null} />
-            <TarjetaEscala titulo="GDS / FAST" onAbrir={() => setModalEscala('alta-gdsfast')}
-              resultado={escalaAlta.gds_estadio || escalaAlta.fast_estadio ? `GDS ${escalaAlta.gds_estadio ?? '—'} · FAST ${escalaAlta.fast_estadio ?? '—'}` : 'Incompleta'}
-              incompleta={!escalaAlta.gds_estadio && !escalaAlta.fast_estadio} />
-          </div>
         </div>
 
         {modalEscala === 'ing-barthel' && (
