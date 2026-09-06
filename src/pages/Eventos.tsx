@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { escapeHtml, imprimirTablaHTML } from '../lib/imprimir'
 import { supabase } from '../lib/supabase'
 import { nombreCompleto } from '../types'
@@ -45,6 +45,7 @@ function escaparCsv(v: string): string {
 
 export function Eventos() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
 
   // ── Registrar incidencia desde esta misma página ────────────
   const [selectorPaciente, setSelectorPaciente] = useState(false)
@@ -186,15 +187,43 @@ export function Eventos() {
   const [fProfesional, setFProfesional] = useState('')
   const [fAlcance, setFAlcance] = useState<'activos' | 'cerrados' | 'todos'>('todos')
 
+  // El Dashboard (y en el futuro otras pantallas) puede llegar aquí
+  // con filtros ya decididos en la URL — se leen una sola vez al
+  // entrar, se rellenan los campos, y se lanza la búsqueda sola, sin
+  // que la persona tenga que repetir a mano lo que ya había elegido.
+  useEffect(() => {
+    const desde = searchParams.get('desde') ?? undefined
+    const hasta = searchParams.get('hasta') ?? undefined
+    const incidenciasParam = searchParams.get('incidencias') // 'pendiente' | 'todas'
+    if (!desde && !hasta && !incidenciasParam) return
+
+    const estado = incidenciasParam === 'pendiente' ? 'pendiente' : undefined
+    if (desde) setFDesde(desde)
+    if (hasta) setFHasta(hasta)
+    if (estado) setFEstado(estado)
+    // Valores explícitos, no el estado del componente — así no
+    // importa si React ya ha aplicado o no los setF... de arriba.
+    buscarIncidencias({ desde, hasta, estado })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const [buscando, setBuscando] = useState(false)
   const [errorBusqueda, setErrorBusqueda] = useState('')
   const [resultados, setResultados] = useState<any[]>([])
   const [buscado, setBuscado] = useState(false)
 
-  async function buscarIncidencias() {
+  async function buscarIncidencias(overrides?: { desde?: string; hasta?: string; estado?: string }) {
     setBuscando(true)
     setErrorBusqueda('')
     try {
+      // Si viene de la URL (al entrar desde el Dashboard), se usan
+      // estos valores directamente — esperar a que fDesde/fEstado se
+      // hayan actualizado en el estado antes de buscar sería frágil,
+      // React no garantiza que ya estén aplicados en este instante.
+      const desde = overrides?.desde ?? fDesde
+      const hasta = overrides?.hasta ?? fHasta
+      const estado = overrides?.estado ?? fEstado
+
       let q = supabase
         .from('eventos')
         .select(`
@@ -204,11 +233,11 @@ export function Eventos() {
         `)
         .order('fecha', { ascending: false })
 
-      if (fDesde) q = q.gte('fecha', fDesde)
-      if (fHasta) q = q.lte('fecha', fHasta)
+      if (desde) q = q.gte('fecha', desde)
+      if (hasta) q = q.lte('fecha', hasta)
       if (fTipo) q = q.eq('tipo', fTipo)
       if (fTurno) q = q.eq('turno', fTurno)
-      if (fEstado) q = q.eq('estado', fEstado)
+      if (estado) q = q.eq('estado', estado)
       if (fProfesional) q = q.eq('registrado_por_id', fProfesional)
       if (fAlcance === 'activos') q = q.eq('ingreso.estado', 'activo')
       if (fAlcance === 'cerrados') q = q.neq('ingreso.estado', 'activo')
@@ -573,7 +602,7 @@ export function Eventos() {
             </div>
           </div>
           <div className="flex items-center gap-2 pt-1">
-            <button onClick={buscarIncidencias} disabled={buscando} className="btn-primary text-sm">
+            <button onClick={() => buscarIncidencias()} disabled={buscando} className="btn-primary text-sm">
               <Search className="w-4 h-4" />
               {buscando ? 'Buscando…' : 'Buscar'}
             </button>
