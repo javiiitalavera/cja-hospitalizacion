@@ -44,8 +44,9 @@ create schema if not exists private;
 create function public.inmutable_unaccent(text)
 returns text
 language sql immutable parallel safe
+set search_path = ''
 as $$
-  select unaccent('unaccent', $1)
+  select public.unaccent('public.unaccent', $1)
 $$;
 
 -- Pacientes: identidad y datos que no cambian entre ingresos. Las
@@ -459,6 +460,7 @@ $$;
 -- UPDATE, así que esto se hace con un disparador).
 create function public.evitar_cambio_autor_evento() returns trigger
 language plpgsql
+set search_path = ''
 as $$
 begin
   if NEW.registrado_por_id is distinct from OLD.registrado_por_id then
@@ -529,6 +531,7 @@ $$;
 -- programada de más abajo.
 create function public.generar_snapshot_items() returns void
 language plpgsql
+set search_path = ''
 as $$
 begin
   -- Se guarda también la habitación de ESE momento (no solo los
@@ -542,16 +545,16 @@ begin
   -- decir "no había contención": simplemente nunca se llegó a copiar.
   -- Confirmado por auditoría y reproducido de verdad antes de este
   -- arreglo.
-  insert into items_historico (ingreso_id, fecha, datos)
+  insert into public.items_historico (ingreso_id, fecha, datos)
   select
     ip.ingreso_id,
     current_date,
     row_to_json(ip)::jsonb
       || jsonb_build_object('_habitacion_snapshot', i.habitacion)
       || jsonb_build_object('_contencion_dia', c.dia, '_contencion_noche', c.noche)
-  from items_paciente ip
-  inner join ingresos i on i.id = ip.ingreso_id
-  left join contenciones c on c.ingreso_id = ip.ingreso_id
+  from public.items_paciente ip
+  inner join public.ingresos i on i.id = ip.ingreso_id
+  left join public.contenciones c on c.ingreso_id = ip.ingreso_id
   where i.estado = 'activo'
   on conflict (ingreso_id, fecha)
   do update set datos = excluded.datos;
@@ -588,6 +591,7 @@ $$;
 -- Actualiza updated_at automáticamente en cada UPDATE.
 create function public.update_updated_at() returns trigger
 language plpgsql
+set search_path = ''
 as $$
 begin
   new.updated_at = now();
@@ -624,6 +628,7 @@ $$;
 -- reloj del ordenador de quien guarda.
 create function public.set_actualizado_en() returns trigger
 language plpgsql
+set search_path = ''
 as $$
 begin
   new.actualizado_en = now();
@@ -637,6 +642,7 @@ $$;
 -- sin saberlo.
 create function public.incrementar_version_contencion() returns trigger
 language plpgsql
+set search_path = ''
 as $$
 begin
   if TG_OP = 'INSERT' then
@@ -806,6 +812,7 @@ create or replace function public.crear_paciente_e_ingreso(
 ) returns jsonb
 language plpgsql
 security invoker
+set search_path = ''
 as $$
 declare
   v_paciente_id uuid;
@@ -872,12 +879,13 @@ $$;
 
 -- security invoker: se ejecuta con los permisos de quien la llama, así
 -- que sigue exigiendo las mismas políticas RLS de siempre para poder
--- insertar en pacientes e ingresos — no es una puerta trasera. No fija
--- search_path (a diferencia de las funciones security definer del
--- resto del esquema): esa protección es contra suplantación de
--- esquema bajo privilegios elevados, y aquí no hay privilegios
--- elevados que suplantar; fijarlo rompía la llamada anidada a
--- inmutable_unaccent(), que depende del search_path de quien la llama.
+-- insertar en pacientes e ingresos — no es una puerta trasera.
+--
+-- Ya fija su propio search_path (antes no podía: dependía de que
+-- inmutable_unaccent() resolviera unaccent() con el search_path de
+-- quien llama. Al cualificar esa llamada por esquema dentro de la
+-- propia inmutable_unaccent(), esta función quedó libre para fijar
+-- el suyo también).
 grant execute on function public.crear_paciente_e_ingreso(jsonb, int, date, uuid, text, boolean) to authenticated;
 
 -- Compartida entre informe_ingreso, informe_alta, items_paciente y
@@ -887,6 +895,7 @@ grant execute on function public.crear_paciente_e_ingreso(jsonb, int, date, uuid
 -- de pisar el cambio de la primera en silencio.
 create function public.incrementar_version_generico() returns trigger
 language plpgsql
+set search_path = ''
 as $$
 begin
   if TG_OP = 'INSERT' then
@@ -1129,6 +1138,18 @@ revoke execute on function public.retirar_confirmacion_contencion(uuid) from pub
 revoke execute on function public.confirmar_contencion(uuid, integer) from public, anon;
 grant execute on function public.confirmar_contencion(uuid, integer) to authenticated;
 grant execute on function public.retirar_confirmacion_contencion(uuid) to authenticated;
+
+-- Lo mismo para las funciones que solo deben dispararse solas, nunca
+-- llamarse a mano — señaladas por el Security Advisor de Supabase.
+-- Confirmado antes que esto no era explotable de verdad (Postgres ya
+-- impide llamar una función de disparador fuera de un disparador
+-- real), pero conviene cerrar el permiso sobrante igualmente.
+revoke execute on function public.fijar_actualizado_por_evento() from public, anon, authenticated;
+revoke execute on function public.registrar_auditoria_eventos() from public, anon, authenticated;
+revoke execute on function public.fijar_habitacion_evento() from public, anon, authenticated;
+revoke execute on function public.registrar_auditoria() from public, anon, authenticated;
+revoke execute on function public.registrar_historial_contencion() from public, anon, authenticated;
+revoke execute on function public.gestionar_confirmacion_contencion() from public, anon, authenticated;
 
 
 -- ────────────────────────────────────────────────────────────
