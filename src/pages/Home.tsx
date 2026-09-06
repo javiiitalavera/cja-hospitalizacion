@@ -268,7 +268,7 @@ export default function Home() {
             <div>Ingreso</div>
             <div>Médico</div>
             <div>Contención</div>
-            <div>Incidencia</div>
+            <div>Incidencias</div>
             <div></div>
             <div></div>
           </div>
@@ -420,7 +420,7 @@ export default function Home() {
                     title="Ver incidencias de este paciente"
                   >
                     <AlertTriangle className="w-3 h-3 shrink-0" />
-                    Incidencia
+                    Incidencias
                   </div>
                   {/* Aviso de incidencias de los últimos 7 días, si las hay */}
                   {(() => {
