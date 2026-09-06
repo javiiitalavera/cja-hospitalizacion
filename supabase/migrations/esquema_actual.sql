@@ -1266,8 +1266,8 @@ as $$
 declare
   v_ingreso public.ingresos;
 begin
-  if coalesce(private.mi_rol(), '') <> 'medico' then
-    raise exception 'Solo un médico puede reabrir un episodio.';
+  if coalesce(private.mi_rol(), '') <> 'medico' and not private.soy_admin() then
+    raise exception 'Solo un médico o un administrador puede reabrir un episodio.';
   end if;
 
   select * into v_ingreso from public.ingresos where id = p_ingreso_id;
