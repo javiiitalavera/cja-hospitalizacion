@@ -1130,15 +1130,16 @@ create policy crear_evento on public.eventos for insert to authenticated
 -- Editar ya no exige ser el autor ni admin, ni episodio activo —
 -- cualquier profesional asistencial puede completar una incidencia
 -- en un turno posterior o tras el cierre, es un registro compartido.
--- Borrar sí sigue exigiendo episodio activo, autor o admin (sin
--- cambios ahí).
+-- Borrar tampoco exige ya episodio activo — el botón de borrar en la
+-- interfaz nunca lo comprobaba, así que aparecía igual en un episodio
+-- cerrado y Supabase lo bloqueaba en silencio al intentarlo de
+-- verdad. Sigue exigiendo ser el autor o un administrador.
 create policy editar_evento on public.eventos for update to authenticated
     using (private.mi_rol() in ('medico', 'enfermeria', 'auxiliar', 'tecnico'))
     with check (private.mi_rol() in ('medico', 'enfermeria', 'auxiliar', 'tecnico'));
 create policy borrar_evento on public.eventos for delete to authenticated
     using (
         private.mi_rol() in ('medico', 'enfermeria', 'auxiliar', 'tecnico')
-        and exists (select 1 from ingresos i where i.id = eventos.ingreso_id and i.estado = 'activo')
         and (registrado_por_id = (select id from profesionales where user_id = auth.uid() limit 1) or private.soy_admin())
     );
 
