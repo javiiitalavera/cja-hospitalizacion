@@ -320,7 +320,7 @@ function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
         )}
         {modalEscala === 'ing-gdsfast' && (
           <ModalEscala titulo="GDS / FAST — al ingreso" onCerrar={() => setModalEscala(null)}>
-            <EscalaGDSFAST gds={escalaIngreso.gds_estadio} fast={escalaIngreso.fast_estadio} disabled onChangeGds={() => {}} onChangeFast={() => {}} />
+            <EscalaGDSFAST gds={escalaIngreso.gds_estadio} fast={escalaIngreso.fast_estadio} disabled onCambiarGds={() => {}} onChangeFast={() => {}} />
           </ModalEscala>
         )}
 
@@ -345,7 +345,7 @@ function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
         {modalEscala === 'alta-gdsfast' && (
           <ModalEscala titulo="GDS / FAST — al alta" onCerrar={() => setModalEscala(null)}>
             <EscalaGDSFAST gds={escalaAlta.gds_estadio} fast={escalaAlta.fast_estadio}
-              onChangeGds={(v) => updateEscalaAlta({ gds_estadio: v })}
+              onCambiarGds={(gds, fastDirecto) => updateEscalaAlta({ gds_estadio: gds, fast_estadio: fastDirecto ?? '' })}
               onChangeFast={(v) => updateEscalaAlta({ fast_estadio: v })} />
           </ModalEscala>
         )}

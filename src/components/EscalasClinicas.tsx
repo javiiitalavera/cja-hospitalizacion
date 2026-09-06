@@ -1,7 +1,7 @@
 import { X } from 'lucide-react'
 import {
   BARTHEL_ITEMS, LAWTON_ITEMS, NPI_DOMINIOS, NPI_GRAVEDAD_OPCIONES,
-  GDS_ESTADIOS, FAST_ESTADIOS,
+  GDS_ESTADIOS, FAST_ESTADIOS, GDS_A_FAST_DIRECTO,
   totalBarthel, totalLawton, totalNPI,
   type NPIRespuestaDominio,
 } from '../types/escalas'
@@ -158,12 +158,15 @@ export function EscalaNPIQ({ value, onChange, disabled }: {
   const respuestas = value ?? {}
   const total = totalNPI(respuestas)
 
-  function marcar(key: string, presente: boolean) {
-    const actual = respuestas[key]
-    onChange({ ...respuestas, [key]: presente ? { presente: true, gravedad: actual?.gravedad } : { presente: false } })
-  }
-  function marcarGravedad(key: string, gravedad: string) {
-    onChange({ ...respuestas, [key]: { presente: true, gravedad } })
+  // Un único paso: Ausente, Leve, Moderada o Grave, en la misma fila
+  // — antes había que marcar "presente" primero y solo entonces
+  // aparecía la gravedad, dos clics para decir lo mismo que uno.
+  function marcar(key: string, valor: 'ausente' | string) {
+    if (valor === 'ausente') {
+      onChange({ ...respuestas, [key]: { presente: false } })
+    } else {
+      onChange({ ...respuestas, [key]: { presente: true, gravedad: valor } })
+    }
   }
 
   return (
@@ -175,31 +178,23 @@ export function EscalaNPIQ({ value, onChange, disabled }: {
       <div className="bg-white rounded-lg border px-4">
         {NPI_DOMINIOS.map((dominio) => {
           const r = respuestas[dominio.key]
+          const valorActual = r == null ? undefined : r.presente ? r.gravedad : 'ausente'
           return (
             <div key={dominio.key} className="py-2.5 border-b last:border-0">
               <p className="text-sm font-medium text-slate-700 mb-1.5">{dominio.label}</p>
               <div className="flex items-center gap-4 flex-wrap">
-                <label className={`flex items-center gap-2 text-sm ${disabled ? 'text-slate-400' : 'text-slate-600 cursor-pointer'}`}>
-                  <input type="radio" name={`${dominio.key}-presente`} checked={r?.presente === false} disabled={disabled}
-                    onChange={() => marcar(dominio.key, false)} />
+                <label className={`flex items-center gap-1.5 text-sm ${disabled ? 'text-slate-400' : 'text-slate-600 cursor-pointer'}`}>
+                  <input type="radio" name={`${dominio.key}-nivel`} checked={valorActual === 'ausente'} disabled={disabled}
+                    onChange={() => marcar(dominio.key, 'ausente')} />
                   Ausente
                 </label>
-                <label className={`flex items-center gap-2 text-sm ${disabled ? 'text-slate-400' : 'text-slate-600 cursor-pointer'}`}>
-                  <input type="radio" name={`${dominio.key}-presente`} checked={!!r?.presente} disabled={disabled}
-                    onChange={() => marcar(dominio.key, true)} />
-                  Presente
-                </label>
-                {r?.presente && (
-                  <div className="flex items-center gap-3 ml-2">
-                    {NPI_GRAVEDAD_OPCIONES.map((o) => (
-                      <label key={o.valor} className={`flex items-center gap-1.5 text-xs ${disabled ? 'text-slate-400' : 'text-slate-600 cursor-pointer'}`}>
-                        <input type="radio" name={`${dominio.key}-gravedad`} checked={r?.gravedad === o.valor} disabled={disabled}
-                          onChange={() => marcarGravedad(dominio.key, o.valor)} />
-                        {o.etiqueta}
-                      </label>
-                    ))}
-                  </div>
-                )}
+                {NPI_GRAVEDAD_OPCIONES.map((o) => (
+                  <label key={o.valor} className={`flex items-center gap-1.5 text-sm ${disabled ? 'text-slate-400' : 'text-slate-600 cursor-pointer'}`}>
+                    <input type="radio" name={`${dominio.key}-nivel`} checked={valorActual === o.valor} disabled={disabled}
+                      onChange={() => marcar(dominio.key, o.valor)} />
+                    {o.etiqueta}
+                  </label>
+                ))}
               </div>
             </div>
           )
@@ -209,45 +204,64 @@ export function EscalaNPIQ({ value, onChange, disabled }: {
   )
 }
 
-export function EscalaGDSFAST({ gds, fast, onChangeGds, onChangeFast, disabled }: {
+export function EscalaGDSFAST({ gds, fast, onCambiarGds, onChangeFast, disabled }: {
   gds: number | null | undefined
   fast: string | null | undefined
-  onChangeGds: (v: number) => void
+  // Un único callback con los dos valores a la vez — llamar a
+  // onChangeGds y onChangeFast por separado, casi en el mismo
+  // instante, hacía que el segundo guardado pisara al primero (los
+  // dos partían del mismo estado "antes de guardar" del padre,
+  // comprobado reproduciéndolo de verdad en el navegador).
+  onCambiarGds: (gds: number, fastDirecto: string | null) => void
   onChangeFast: (v: string) => void
   disabled?: boolean
 }) {
+  // Del 1 al 5, GDS y FAST son prácticamente lo mismo — se rellena
+  // solo. Solo a partir del 6 hace falta elegir el subestadio de
+  // verdad, porque ahí varias formas de deterioro pueden darse en
+  // cualquier orden. Antes había que rellenar las dos listas
+  // completas por separado, aunque casi siempre dijeran lo mismo.
+  function elegirGds(estadio: number) {
+    onCambiarGds(estadio, GDS_A_FAST_DIRECTO[estadio] ?? null)
+  }
+
+  const subestadios = gds === 6 || gds === 7
+    ? FAST_ESTADIOS.filter((e) => e.estadio.startsWith(String(gds)))
+    : []
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between mb-2">
-        <p className="text-sm font-semibold text-slate-700">GDS (Reisberg) y FAST</p>
+        <p className="text-sm font-semibold text-slate-700">GDS (Reisberg) / FAST</p>
         <span className="text-sm font-semibold px-2.5 py-1 rounded-full bg-primary-50 text-primary-700">
-          {gds ? `GDS ${gds}` : 'GDS —'} · {fast ? `FAST ${fast}` : 'FAST —'}
+          {gds ? `GDS ${gds}` : '—'}{fast ? ` · FAST ${fast}` : ''}
         </span>
       </div>
-      <div className="bg-white rounded-lg border p-3">
-        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Estadio GDS</p>
-        <div className="space-y-1.5">
-          {GDS_ESTADIOS.map((e) => (
-            <label key={e.estadio} className={`flex items-start gap-2 text-sm ${disabled ? 'text-slate-400' : 'text-slate-600 cursor-pointer'}`}>
-              <input type="radio" name="gds" checked={gds === e.estadio} disabled={disabled}
-                onChange={() => onChangeGds(e.estadio)} className="mt-0.5 shrink-0" />
-              <span><span className="font-medium">GDS {e.estadio}.</span> {e.descripcion}</span>
-            </label>
-          ))}
-        </div>
+      <div className="bg-white rounded-lg border divide-y">
+        {GDS_ESTADIOS.map((e) => (
+          <label key={e.estadio} className={`flex items-center gap-2.5 px-3 py-2.5 text-sm ${disabled ? 'text-slate-400' : 'text-slate-600 cursor-pointer hover:bg-slate-50'}`}>
+            <input type="radio" name="gds" checked={gds === e.estadio} disabled={disabled}
+              onChange={() => elegirGds(e.estadio)} className="shrink-0" />
+            <span><span className="font-semibold">{e.estadio}.</span> {e.corto}</span>
+          </label>
+        ))}
       </div>
-      <div className="bg-white rounded-lg border p-3">
-        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Estadio / subestadio FAST</p>
-        <div className="space-y-1.5">
-          {FAST_ESTADIOS.map((e) => (
-            <label key={e.estadio} className={`flex items-start gap-2 text-sm ${disabled ? 'text-slate-400' : 'text-slate-600 cursor-pointer'}`}>
-              <input type="radio" name="fast" checked={fast === e.estadio} disabled={disabled}
-                onChange={() => onChangeFast(e.estadio)} className="mt-0.5 shrink-0" />
-              <span><span className="font-medium">FAST {e.estadio}.</span> {e.descripcion}</span>
-            </label>
-          ))}
+      {/* Solo aparece para GDS 6 o 7 — el resto ya tiene su FAST
+          resuelto sin preguntar dos veces lo mismo. */}
+      {subestadios.length > 0 && (
+        <div>
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Subestadio FAST {gds}</p>
+          <div className="bg-white rounded-lg border divide-y">
+            {subestadios.map((e) => (
+              <label key={e.estadio} className={`flex items-center gap-2.5 px-3 py-2 text-sm ${disabled ? 'text-slate-400' : 'text-slate-600 cursor-pointer hover:bg-slate-50'}`}>
+                <input type="radio" name="fast-sub" checked={fast === e.estadio} disabled={disabled}
+                  onChange={() => onChangeFast(e.estadio)} className="shrink-0" />
+                <span><span className="font-semibold">{e.estadio}.</span> {e.corto}</span>
+              </label>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

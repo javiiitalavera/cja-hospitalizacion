@@ -285,7 +285,7 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
         {modalEscala === 'gdsfast' && (
           <ModalEscala titulo="GDS (Reisberg) y FAST" onCerrar={() => setModalEscala(null)}>
             <EscalaGDSFAST gds={escalas.gds_estadio} fast={escalas.fast_estadio} disabled={soloLectura}
-              onChangeGds={(v) => updateEscala({ gds_estadio: v })}
+              onCambiarGds={(gds, fastDirecto) => updateEscala({ gds_estadio: gds, fast_estadio: fastDirecto ?? '' })}
               onChangeFast={(v) => updateEscala({ fast_estadio: v })} />
           </ModalEscala>
         )}

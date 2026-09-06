@@ -186,36 +186,43 @@ export const NPI_GRAVEDAD_OPCIONES = [
 
 // ─── GDS (Reisberg) — 7 estadios ───────────────────────────────
 
-export const GDS_ESTADIOS: { estadio: number; descripcion: string }[] = [
-  { estadio: 1, descripcion: 'Sin déficit cognitivo. No hay quejas de pérdida de memoria ni déficit aparente en la entrevista clínica.' },
-  { estadio: 2, descripcion: 'Déficit cognitivo muy leve. Quejas subjetivas de pérdida de memoria (dónde ha colocado objetos, olvido de nombres antes bien conocidos); no hay evidencia objetiva en la entrevista.' },
-  { estadio: 3, descripcion: 'Déficit cognitivo leve. Primeros defectos claros: dificultad para orientarse en lugares no familiares, rendimiento laboral disminuido, dificultad para encontrar palabras o nombres, retención escasa al leer; puede negar los defectos, ansiedad leve-moderada.' },
-  { estadio: 4, descripcion: 'Déficit cognitivo moderado. Défictis claros en una entrevista clínica cuidadosa: conocimiento disminuido de sucesos actuales y recientes, dificultad para manejar finanzas o viajar solo, incapacidad para tareas complejas; negación como mecanismo de defensa, embotamiento afectivo.' },
-  { estadio: 5, descripcion: 'Déficit cognitivo moderadamente grave. No puede sobrevivir sin asistencia: no recuerda datos relevantes de su vida actual (dirección, teléfono), cierta desorientación en tiempo o lugar; necesita ayuda para elegir la ropa, conserva el conocimiento de sí mismo y de su familia.' },
-  { estadio: 6, descripcion: 'Déficit cognitivo grave. Puede olvidar el nombre del cónyuge, desorientación temporoespacial casi completa, necesita asistencia para las actividades básicas de la vida diaria, incontinencia, alteraciones de conducta (delirios, síntomas obsesivos, ansiedad, agitación).' },
-  { estadio: 7, descripcion: 'Déficit cognitivo muy grave. Pérdida progresiva de las capacidades verbales y psicomotoras, dependencia total para todas las actividades básicas de la vida diaria.' },
+export const GDS_ESTADIOS: { estadio: number; corto: string; descripcion: string }[] = [
+  { estadio: 1, corto: 'Sin alteración cognitiva', descripcion: 'No hay quejas de pérdida de memoria ni déficit aparente en la entrevista clínica.' },
+  { estadio: 2, corto: 'Olvidos subjetivos, sin evidencia objetiva', descripcion: 'Quejas subjetivas de pérdida de memoria (dónde ha colocado objetos, nombres); sin evidencia objetiva en la entrevista.' },
+  { estadio: 3, corto: 'Primeros defectos claros', descripcion: 'Dificultad para orientarse en lugares no familiares, rendimiento laboral disminuido, dificultad para encontrar palabras; puede negar los defectos.' },
+  { estadio: 4, corto: 'Dificultad en tareas complejas (finanzas, viajes)', descripcion: 'Conocimiento disminuido de sucesos actuales, dificultad para manejar finanzas o viajar solo, incapacidad para tareas complejas.' },
+  { estadio: 5, corto: 'Necesita ayuda para elegir la ropa', descripcion: 'No recuerda datos relevantes de su vida actual (dirección, teléfono); necesita ayuda para elegir la ropa; conserva el conocimiento de sí mismo y su familia.' },
+  { estadio: 6, corto: 'Necesita ayuda para actividades básicas', descripcion: 'Puede olvidar el nombre del cónyuge, desorientación casi completa, necesita ayuda para las actividades básicas, incontinencia, alteraciones de conducta.' },
+  { estadio: 7, corto: 'Pérdida del lenguaje y la marcha', descripcion: 'Pérdida progresiva de las capacidades verbales y psicomotoras, dependencia total para todas las actividades básicas.' },
 ]
 
 // ─── FAST — 7 estadios, con subestadios en 6 y 7 ───────────────
 
-export const FAST_ESTADIOS: { estadio: string; descripcion: string }[] = [
-  { estadio: '1', descripcion: 'Sin dificultades, ni subjetivas ni objetivas.' },
-  { estadio: '2', descripcion: 'Quejas subjetivas de olvido (p. ej., de dónde se han puesto las cosas).' },
-  { estadio: '3', descripcion: 'Dificultad para el trabajo o en situaciones sociales complejas, perceptible por compañeros o familia.' },
-  { estadio: '4', descripcion: 'Dificultad para tareas complejas de la vida diaria: planificar una comida para invitados, manejar las finanzas familiares, hacer las compras.' },
-  { estadio: '5', descripcion: 'Necesita ayuda para elegir la ropa adecuada a la ocasión o al clima.' },
-  { estadio: '6a', descripcion: 'Necesita ayuda para vestirse correctamente (puede ponerse la ropa al revés, o no conseguir ponérsela sin ayuda).' },
-  { estadio: '6b', descripcion: 'Necesita ayuda para bañarse correctamente (p. ej., miedo al baño, dificultad para regular la temperatura del agua).' },
-  { estadio: '6c', descripcion: 'Necesita ayuda con la mecánica del uso del retrete (tirar de la cadena, limpiarse, colocar el papel adecuadamente).' },
-  { estadio: '6d', descripcion: 'Incontinencia urinaria (ocasional o más frecuente).' },
-  { estadio: '6e', descripcion: 'Incontinencia fecal (ocasional o más frecuente).' },
-  { estadio: '7a', descripcion: 'Capacidad de hablar limitada a media docena de palabras inteligibles o menos, en el curso de un día o de una entrevista.' },
-  { estadio: '7b', descripcion: 'Capacidad de hablar limitada a una única palabra inteligible.' },
-  { estadio: '7c', descripcion: 'Pérdida de la capacidad de deambular (de caminar sin ayuda).' },
-  { estadio: '7d', descripcion: 'Pérdida de la capacidad de sentarse sin ayuda.' },
-  { estadio: '7e', descripcion: 'Pérdida de la capacidad de sonreír.' },
-  { estadio: '7f', descripcion: 'Pérdida de la capacidad de mantener la cabeza erguida.' },
+export const FAST_ESTADIOS: { estadio: string; corto: string; descripcion: string }[] = [
+  { estadio: '1', corto: 'Sin dificultades', descripcion: 'Sin dificultades, ni subjetivas ni objetivas.' },
+  { estadio: '2', corto: 'Olvidos subjetivos', descripcion: 'Quejas subjetivas de olvido (p. ej., de dónde se han puesto las cosas).' },
+  { estadio: '3', corto: 'Dificultad en el trabajo o social', descripcion: 'Dificultad para el trabajo o en situaciones sociales complejas, perceptible por compañeros o familia.' },
+  { estadio: '4', corto: 'Dificultad en tareas complejas', descripcion: 'Planificar una comida para invitados, manejar las finanzas familiares, hacer las compras.' },
+  { estadio: '5', corto: 'Ayuda para elegir la ropa', descripcion: 'Necesita ayuda para elegir la ropa adecuada a la ocasión o al clima.' },
+  { estadio: '6a', corto: 'Ayuda para vestirse', descripcion: 'Puede ponerse la ropa al revés, o no conseguir ponérsela sin ayuda.' },
+  { estadio: '6b', corto: 'Ayuda para bañarse', descripcion: 'Miedo al baño, dificultad para regular la temperatura del agua.' },
+  { estadio: '6c', corto: 'Ayuda con el retrete', descripcion: 'Dificultad con la mecánica del uso del retrete (cadena, limpiarse, papel).' },
+  { estadio: '6d', corto: 'Incontinencia urinaria', descripcion: 'Incontinencia urinaria, ocasional o más frecuente.' },
+  { estadio: '6e', corto: 'Incontinencia fecal', descripcion: 'Incontinencia fecal, ocasional o más frecuente.' },
+  { estadio: '7a', corto: 'Habla ≤ 6 palabras', descripcion: 'Capacidad de hablar limitada a media docena de palabras inteligibles o menos.' },
+  { estadio: '7b', corto: 'Habla 1 sola palabra', descripcion: 'Capacidad de hablar limitada a una única palabra inteligible.' },
+  { estadio: '7c', corto: 'Pierde la marcha', descripcion: 'Pérdida de la capacidad de deambular (caminar sin ayuda).' },
+  { estadio: '7d', corto: 'No se sienta sin ayuda', descripcion: 'Pérdida de la capacidad de sentarse sin ayuda.' },
+  { estadio: '7e', corto: 'No sonríe', descripcion: 'Pérdida de la capacidad de sonreír.' },
+  { estadio: '7f', corto: 'No sostiene la cabeza', descripcion: 'Pérdida de la capacidad de mantener la cabeza erguida.' },
 ]
+
+// Del 1 al 5, GDS y FAST corresponden uno a uno — no tiene sentido
+// preguntar dos veces lo mismo. Solo a partir del 6 hace falta
+// elegir el subestadio de verdad, porque ahí varias formas de
+// deterioro (vestirse, bañarse, el retrete...) pueden darse en
+// cualquier orden.
+export const GDS_A_FAST_DIRECTO: Record<number, string> = { 1: '1', 2: '2', 3: '3', 4: '4', 5: '5' }
 
 export interface EscalaClinica {
   id?: string
