@@ -29,22 +29,59 @@ function seccionXml(titulo: string, font = 'Calibri'): string {
   return `<w:p><w:pPr><w:spacing w:line="276" w:lineRule="auto"/><w:jc w:val="both"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="${font}" w:hAnsi="${font}"/><w:b/><w:u w:val="single"/></w:rPr><w:t>${esc(titulo)}</w:t></w:r></w:p>`
 }
 
-// Resumen de las cuatro escalas, con "Incompleta" cuando falta algo
-// — nunca un total inventado a partir de una escala a medio
-// contestar.
-function bloqueEscalasXml(e: EscalaClinica | null | undefined, font = 'Calibri'): string {
-  const barthel = e?.barthel_total != null ? `${e.barthel_total}/100` : 'Incompleta'
-  const lawton = e?.lawton_total != null ? `${e.lawton_total}/8` : 'Incompleta'
-  const npi = e?.npi_gravedad_total != null ? `${e.npi_gravedad_total}/36` : 'Incompleta'
-  const gdsFast = e?.gds_estadio || e?.fast_estadio
-    ? `GDS ${e?.gds_estadio ?? '—'} · FAST ${e?.fast_estadio ?? '—'}`
-    : 'Incompleta'
-  return [
-    parrafoBoldXml('Índice de Barthel: ', barthel, font),
-    parrafoBoldXml('Índice de Lawton: ', lawton, font),
-    parrafoBoldXml('NPI-Q (gravedad): ', npi, font),
-    parrafoBoldXml('GDS / FAST: ', gdsFast, font),
+// Tabla con el mismo estilo de bordes y fuente que el resto del
+// documento (igual que tablaMedicacionXml) — antes esto era texto
+// suelto en negrita, no una tabla real como pedía el resto del
+// informe.
+function filaEscalasXml(escala: string, ingreso: string, alta: string | null, font: string, w: { escala: number; valor: number }, negrita = false): string {
+  const b = `<w:top w:val="single" w:sz="4" w:space="0" w:color="auto"/><w:left w:val="single" w:sz="4" w:space="0" w:color="auto"/><w:bottom w:val="single" w:sz="4" w:space="0" w:color="auto"/><w:right w:val="single" w:sz="4" w:space="0" w:color="auto"/>`
+  function celda(ancho: number, texto: string, alinear: 'left' | 'center' = 'center'): string {
+    return `<w:tc><w:tcPr><w:tcW w:w="${ancho}" w:type="dxa"/><w:tcBorders>${b}</w:tcBorders></w:tcPr><w:p><w:pPr><w:jc w:val="${alinear}"/><w:spacing w:line="240" w:lineRule="auto"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="${font}" w:hAnsi="${font}"/>${negrita ? '<w:b/>' : ''}<w:sz w:val="18"/></w:rPr><w:t xml:space="preserve">${esc(texto)}</w:t></w:r></w:p></w:tc>`
+  }
+  return `<w:tr>${celda(w.escala, escala, 'left')}${celda(w.valor, ingreso)}${alta != null ? celda(w.valor, alta) : ''}</w:tr>`
+}
+
+// Una sola columna de resultado (informe de ingreso) o dos, ingreso
+// y alta, para comparar (informe de alta) — la misma tabla sirve
+// para ambos casos.
+function tablaEscalasXml(escalaIngreso: EscalaClinica | null | undefined, escalaAlta: EscalaClinica | null | undefined | 'sin_comparar', font = 'Calibri'): string {
+  const comparar = escalaAlta !== 'sin_comparar'
+  const ea = comparar ? (escalaAlta as EscalaClinica | null | undefined) : null
+
+  const escalaW = 2800
+  const valorW = comparar ? 2200 : 3000
+  const w = { escala: escalaW, valor: valorW }
+
+  const barthelI = escalaIngreso?.barthel_total != null ? `${escalaIngreso.barthel_total}/100` : 'Incompleta'
+  const lawtonI = escalaIngreso?.lawton_total != null ? `${escalaIngreso.lawton_total}/8` : 'Incompleta'
+  const npiI = escalaIngreso?.npi_gravedad_total != null ? `${escalaIngreso.npi_gravedad_total}/36` : 'Incompleta'
+  const gdsFastI = escalaIngreso?.gds_estadio || escalaIngreso?.fast_estadio
+    ? `GDS ${escalaIngreso?.gds_estadio ?? '—'} · FAST ${escalaIngreso?.fast_estadio ?? '—'}` : 'Incompleta'
+
+  const barthelA = comparar ? (ea?.barthel_total != null ? `${ea.barthel_total}/100` : 'Incompleta') : null
+  const lawtonA = comparar ? (ea?.lawton_total != null ? `${ea.lawton_total}/8` : 'Incompleta') : null
+  const npiA = comparar ? (ea?.npi_gravedad_total != null ? `${ea.npi_gravedad_total}/36` : 'Incompleta') : null
+  const gdsFastA = comparar
+    ? (ea?.gds_estadio || ea?.fast_estadio ? `GDS ${ea?.gds_estadio ?? '—'} · FAST ${ea?.fast_estadio ?? '—'}` : 'Incompleta')
+    : null
+
+  const cabecera = comparar
+    ? filaEscalasXml('ESCALA', 'INGRESO', 'ALTA', font, w, true)
+    : filaEscalasXml('ESCALA', 'RESULTADO', null, font, w, true)
+
+  const filas = [
+    filaEscalasXml('Índice de Barthel', barthelI, barthelA, font, w),
+    filaEscalasXml('Índice de Lawton', lawtonI, lawtonA, font, w),
+    filaEscalasXml('NPI-Q (gravedad)', npiI, npiA, font, w),
+    filaEscalasXml('GDS / FAST', gdsFastI, gdsFastA, font, w),
   ].join('')
+
+  const totalW = escalaW + valorW * (comparar ? 2 : 1)
+  return `<w:tbl><w:tblPr><w:tblW w:w="${totalW}" w:type="dxa"/></w:tblPr><w:tblGrid>
+    <w:gridCol w:w="${escalaW}"/>
+    <w:gridCol w:w="${valorW}"/>
+    ${comparar ? `<w:gridCol w:w="${valorW}"/>` : ''}
+  </w:tblGrid>${cabecera}${filas}</w:tbl>`
 }
 
 function lineasXml(texto: string | null | undefined, font = 'Calibri'): string {
@@ -209,7 +246,7 @@ export async function exportarInformeIngreso(ingreso: Ingreso, inf: InformeIngre
     lineasXml(inf.exploraciones_complementarias, font),
     parrafoXml('', font),
     seccionXml('ESCALAS CLÍNICAS AL INGRESO:', font),
-    bloqueEscalasXml(escala, font),
+    tablaEscalasXml(escala, 'sin_comparar', font),
     parrafoXml('', font),
     seccionXml('IMPRESIÓN DIAGNÓSTICA:', font),
     lineasXml(inf.impresion_diagnostica, font),
@@ -318,11 +355,8 @@ export async function exportarInformeAlta(ingreso: Ingreso, ii: InformeIngreso, 
     seccionXml('EVOLUCIÓN CLÍNICA Y COMENTARIOS:', font),
     lineasXml(ia.evolucion_clinica, font),
     parrafoXml('', font),
-    seccionXml('ESCALAS CLÍNICAS AL INGRESO:', font),
-    bloqueEscalasXml(escalaIngreso, font),
-    parrafoXml('', font),
-    seccionXml('ESCALAS CLÍNICAS AL ALTA:', font),
-    bloqueEscalasXml(escalaAlta, font),
+    seccionXml('ESCALAS CLÍNICAS: COMPARACIÓN INGRESO-ALTA:', font),
+    tablaEscalasXml(escalaIngreso, escalaAlta, font),
     parrafoXml('', font),
     seccionXml('JUICIOS CLÍNICOS:', font),
     lineasXml(ia.juicios_clinicos, font),

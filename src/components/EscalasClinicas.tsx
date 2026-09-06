@@ -1,9 +1,67 @@
+import { X } from 'lucide-react'
 import {
   BARTHEL_ITEMS, LAWTON_ITEMS, NPI_DOMINIOS, NPI_GRAVEDAD_OPCIONES,
   GDS_ESTADIOS, FAST_ESTADIOS,
   totalBarthel, totalLawton, totalNPI,
   type NPIRespuestaDominio,
 } from '../types/escalas'
+
+// Tarjeta compacta: nombre de la escala, resultado, y un botón para
+// abrir el modal donde de verdad se rellena — antes las cuatro
+// escalas completas iban siempre desplegadas en la página, un
+// scroll interminable que hacía el informe incómodo de rellenar.
+export function TarjetaEscala({ titulo, resultado, incompleta, onAbrir, soloLectura }: {
+  titulo: string
+  resultado: string
+  incompleta: boolean
+  onAbrir: () => void
+  soloLectura?: boolean
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onAbrir}
+      className="flex items-center justify-between w-full px-4 py-3 bg-white rounded-lg border border-slate-200 hover:border-primary-300 hover:bg-primary-50/20 transition-colors text-left"
+    >
+      <span className="text-sm font-medium text-slate-700">{titulo}</span>
+      <span className="flex items-center gap-3">
+        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+          incompleta ? 'bg-slate-100 text-slate-400' : 'bg-primary-50 text-primary-700'
+        }`}>
+          {resultado}
+        </span>
+        <span className="text-xs text-primary-600 font-medium whitespace-nowrap">
+          {soloLectura ? 'Ver →' : 'Completar →'}
+        </span>
+      </span>
+    </button>
+  )
+}
+
+export function ModalEscala({ titulo, onCerrar, children }: {
+  titulo: string
+  onCerrar: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={onCerrar}>
+      <div
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-6 py-4 border-b shrink-0">
+          <h3 className="font-bold text-slate-800">{titulo}</h3>
+          <button onClick={onCerrar} className="text-slate-400 hover:text-slate-600">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="p-6 overflow-y-auto">
+          {children}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 // Resultado en cabecera, compartido por las cuatro — "Incompleta" en
 // vez de un número cuando falta algo, nunca un total calculado con

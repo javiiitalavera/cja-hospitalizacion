@@ -6,7 +6,7 @@ import { ESTADO_INGRESO_LABEL as ESTADO_LABEL, ESTADO_INGRESO_COLOR as ESTADO_CO
 import { quitarTildes } from '../lib/busqueda'
 
 type TipoInforme = 'ingreso' | 'alta'
-type EstadoInforme = 'sin_iniciar' | 'borrador'
+type EstadoInforme = 'sin_iniciar' | 'en_elaboracion' | 'cerrado' | 'incompleto'
 
 interface InformeRow {
   id: string
@@ -32,6 +32,18 @@ function estaVacio(fila: Record<string, any>): boolean {
     if (Array.isArray(valor)) return valor.length === 0
     return false
   })
+}
+
+// Cuatro estados, según si hay contenido y si el episodio sigue
+// abierto — antes solo existían "sin iniciar" y "borrador", así que
+// un informe con un solo campo escrito y uno completado del todo se
+// veían exactamente igual, y un episodio ya cerrado con el informe
+// todavía vacío no se distinguía de uno normal a medio rellenar.
+function calcularEstado(fila: Record<string, any>, estadoIngreso: string): EstadoInforme {
+  const vacio = estaVacio(fila)
+  const cerrado = estadoIngreso !== 'activo'
+  if (cerrado) return vacio ? 'incompleto' : 'cerrado'
+  return vacio ? 'sin_iniciar' : 'en_elaboracion'
 }
 
 export function Informes() {
@@ -85,7 +97,7 @@ export function Informes() {
           nhc: i.paciente.nhc ?? null,
           medico: i.medico_responsable ? `${i.medico_responsable.nombre} ${i.medico_responsable.apellidos}` : '—',
           estadoIngreso: i.estado,
-          estadoInforme: estaVacio(r) ? 'sin_iniciar' : 'borrador',
+          estadoInforme: calcularEstado(r, i.estado),
         })
       })
 
@@ -105,7 +117,7 @@ export function Informes() {
           nhc: i.paciente.nhc ?? null,
           medico: i.medico_responsable ? `${i.medico_responsable.nombre} ${i.medico_responsable.apellidos}` : '—',
           estadoIngreso: i.estado,
-          estadoInforme: estaVacio(r) ? 'sin_iniciar' : 'borrador',
+          estadoInforme: calcularEstado(r, i.estado),
         })
       })
 
@@ -220,11 +232,22 @@ export function Informes() {
                   </span>
                 </td>
                 <td className="px-4 py-3">
-                  {/* Antes, un informe recién creado y todavía sin
-                      escribir se veía exactamente igual que uno
-                      terminado — no había forma de distinguirlos. */}
-                  <span className={`text-xs font-medium ${r.estadoInforme === 'sin_iniciar' ? 'text-slate-400 italic' : 'text-amber-600'}`}>
-                    {r.estadoInforme === 'sin_iniciar' ? 'Sin iniciar' : 'Borrador'}
+                  {/* Cuatro estados: vacío o con contenido, cruzado
+                      con si el episodio sigue activo o ya se cerró —
+                      antes un informe recién creado y uno terminado
+                      se veían igual, y un episodio cerrado con el
+                      informe vacío no se distinguía de uno normal a
+                      medio rellenar. */}
+                  <span className={`text-xs font-medium ${
+                    r.estadoInforme === 'sin_iniciar' ? 'text-slate-400 italic'
+                    : r.estadoInforme === 'en_elaboracion' ? 'text-amber-600'
+                    : r.estadoInforme === 'cerrado' ? 'text-emerald-600'
+                    : 'text-red-600 font-semibold'
+                  }`}>
+                    {r.estadoInforme === 'sin_iniciar' ? 'Sin iniciar'
+                      : r.estadoInforme === 'en_elaboracion' ? 'En elaboración'
+                      : r.estadoInforme === 'cerrado' ? 'Cerrado'
+                      : 'Incompleto'}
                   </span>
                 </td>
                 <td className="px-4 py-3 font-medium text-slate-800">{r.paciente}</td>

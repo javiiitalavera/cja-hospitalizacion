@@ -6,7 +6,7 @@ import { Download, Lock } from 'lucide-react'
 import { AutoTextarea } from './AutoTextarea'
 import { TablaMedicacion } from './TablaMedicacion'
 import { exportarInformeIngreso } from '../../lib/exportWord'
-import { EscalaBarthel, EscalaLawton, EscalaNPIQ, EscalaGDSFAST } from '../../components/EscalasClinicas'
+import { EscalaBarthel, EscalaLawton, EscalaNPIQ, EscalaGDSFAST, TarjetaEscala, ModalEscala } from '../../components/EscalasClinicas'
 import { totalBarthel, totalLawton, totalNPI } from '../../types/escalas'
 import type { EscalaClinica } from '../../types/escalas'
 
@@ -28,6 +28,7 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
   // no existe hasta el primer guardado.
   const [escalas, setEscalas] = useState<EscalaClinica>({})
   const [estadoEscalas, setEstadoEscalas] = useState<EstadoGuardado>('inactivo')
+  const [modalEscala, setModalEscala] = useState<'barthel' | 'lawton' | 'npi' | 'gdsfast' | null>(null)
   const debounceEscalasRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const escalasRef = useRef(escalas)
   escalasRef.current = escalas
@@ -245,15 +246,49 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
             <button onClick={recargarEscalasTrasConflicto} className="btn-secondary text-xs shrink-0">Ver la versión más reciente</button>
           </div>
         )}
-        <EscalaBarthel value={escalas.barthel_respuestas} disabled={soloLectura}
-          onChange={(v) => updateEscala({ barthel_respuestas: v, barthel_total: totalBarthel(v) })} />
-        <EscalaLawton value={escalas.lawton_respuestas} disabled={soloLectura}
-          onChange={(v) => updateEscala({ lawton_respuestas: v, lawton_total: totalLawton(v) })} />
-        <EscalaNPIQ value={escalas.npi_respuestas} disabled={soloLectura}
-          onChange={(v) => updateEscala({ npi_respuestas: v, npi_gravedad_total: totalNPI(v) })} />
-        <EscalaGDSFAST gds={escalas.gds_estadio} fast={escalas.fast_estadio} disabled={soloLectura}
-          onChangeGds={(v) => updateEscala({ gds_estadio: v })}
-          onChangeFast={(v) => updateEscala({ fast_estadio: v })} />
+        {/* Tarjetas, no las cuatro escalas desplegadas — cada una se
+            rellena en su propio modal, sin convertir el informe en
+            un scroll interminable. */}
+        <div className="space-y-2">
+          <TarjetaEscala titulo="Índice de Barthel" onAbrir={() => setModalEscala('barthel')} soloLectura={soloLectura}
+            resultado={escalas.barthel_total != null ? `${escalas.barthel_total}/100` : 'Incompleta'}
+            incompleta={escalas.barthel_total == null} />
+          <TarjetaEscala titulo="Índice de Lawton" onAbrir={() => setModalEscala('lawton')} soloLectura={soloLectura}
+            resultado={escalas.lawton_total != null ? `${escalas.lawton_total}/8` : 'Incompleta'}
+            incompleta={escalas.lawton_total == null} />
+          <TarjetaEscala titulo="NPI-Q (gravedad)" onAbrir={() => setModalEscala('npi')} soloLectura={soloLectura}
+            resultado={escalas.npi_gravedad_total != null ? `${escalas.npi_gravedad_total}/36` : 'Incompleta'}
+            incompleta={escalas.npi_gravedad_total == null} />
+          <TarjetaEscala titulo="GDS / FAST" onAbrir={() => setModalEscala('gdsfast')} soloLectura={soloLectura}
+            resultado={escalas.gds_estadio || escalas.fast_estadio ? `GDS ${escalas.gds_estadio ?? '—'} · FAST ${escalas.fast_estadio ?? '—'}` : 'Incompleta'}
+            incompleta={!escalas.gds_estadio && !escalas.fast_estadio} />
+        </div>
+
+        {modalEscala === 'barthel' && (
+          <ModalEscala titulo="Índice de Barthel" onCerrar={() => setModalEscala(null)}>
+            <EscalaBarthel value={escalas.barthel_respuestas} disabled={soloLectura}
+              onChange={(v) => updateEscala({ barthel_respuestas: v, barthel_total: totalBarthel(v) })} />
+          </ModalEscala>
+        )}
+        {modalEscala === 'lawton' && (
+          <ModalEscala titulo="Índice de Lawton" onCerrar={() => setModalEscala(null)}>
+            <EscalaLawton value={escalas.lawton_respuestas} disabled={soloLectura}
+              onChange={(v) => updateEscala({ lawton_respuestas: v, lawton_total: totalLawton(v) })} />
+          </ModalEscala>
+        )}
+        {modalEscala === 'npi' && (
+          <ModalEscala titulo="NPI-Q (gravedad)" onCerrar={() => setModalEscala(null)}>
+            <EscalaNPIQ value={escalas.npi_respuestas} disabled={soloLectura}
+              onChange={(v) => updateEscala({ npi_respuestas: v, npi_gravedad_total: totalNPI(v) })} />
+          </ModalEscala>
+        )}
+        {modalEscala === 'gdsfast' && (
+          <ModalEscala titulo="GDS (Reisberg) y FAST" onCerrar={() => setModalEscala(null)}>
+            <EscalaGDSFAST gds={escalas.gds_estadio} fast={escalas.fast_estadio} disabled={soloLectura}
+              onChangeGds={(v) => updateEscala({ gds_estadio: v })}
+              onChangeFast={(v) => updateEscala({ fast_estadio: v })} />
+          </ModalEscala>
+        )}
       </div>
 
       <div className="card p-6 space-y-4">

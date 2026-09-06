@@ -5,7 +5,7 @@ import { Download } from 'lucide-react'
 import { AutoTextarea } from './AutoTextarea'
 import { TablaMedicacion } from './TablaMedicacion'
 import { exportarInformeAlta } from '../../lib/exportWord'
-import { EscalaBarthel, EscalaLawton, EscalaNPIQ, EscalaGDSFAST } from '../../components/EscalasClinicas'
+import { EscalaBarthel, EscalaLawton, EscalaNPIQ, EscalaGDSFAST, TarjetaEscala, ModalEscala } from '../../components/EscalasClinicas'
 import { totalBarthel, totalLawton, totalNPI } from '../../types/escalas'
 import type { EscalaClinica } from '../../types/escalas'
 
@@ -28,6 +28,10 @@ function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
   const [escalaIngreso, setEscalaIngreso] = useState<EscalaClinica>({})
   const [escalaAlta, setEscalaAlta] = useState<EscalaClinica>({})
   const [estadoEscalas, setEstadoEscalas] = useState<EstadoGuardado>('inactivo')
+  const [modalEscala, setModalEscala] = useState<
+    'ing-barthel' | 'ing-lawton' | 'ing-npi' | 'ing-gdsfast' |
+    'alta-barthel' | 'alta-lawton' | 'alta-npi' | 'alta-gdsfast' | null
+  >(null)
   const debounceEscalasRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const escalaAltaRef = useRef(escalaAlta)
   escalaAltaRef.current = escalaAlta
@@ -265,28 +269,86 @@ function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
 
         <div>
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Resultado del ingreso (lectura)</p>
-          <div className="opacity-60 pointer-events-none space-y-4">
-            <EscalaBarthel value={escalaIngreso.barthel_respuestas} disabled onChange={() => {}} />
-            <EscalaLawton value={escalaIngreso.lawton_respuestas} disabled onChange={() => {}} />
-            <EscalaNPIQ value={escalaIngreso.npi_respuestas} disabled onChange={() => {}} />
-            <EscalaGDSFAST gds={escalaIngreso.gds_estadio} fast={escalaIngreso.fast_estadio} disabled onChangeGds={() => {}} onChangeFast={() => {}} />
+          <div className="space-y-2">
+            <TarjetaEscala titulo="Índice de Barthel" soloLectura onAbrir={() => setModalEscala('ing-barthel')}
+              resultado={escalaIngreso.barthel_total != null ? `${escalaIngreso.barthel_total}/100` : '—'}
+              incompleta={escalaIngreso.barthel_total == null} />
+            <TarjetaEscala titulo="Índice de Lawton" soloLectura onAbrir={() => setModalEscala('ing-lawton')}
+              resultado={escalaIngreso.lawton_total != null ? `${escalaIngreso.lawton_total}/8` : '—'}
+              incompleta={escalaIngreso.lawton_total == null} />
+            <TarjetaEscala titulo="NPI-Q (gravedad)" soloLectura onAbrir={() => setModalEscala('ing-npi')}
+              resultado={escalaIngreso.npi_gravedad_total != null ? `${escalaIngreso.npi_gravedad_total}/36` : '—'}
+              incompleta={escalaIngreso.npi_gravedad_total == null} />
+            <TarjetaEscala titulo="GDS / FAST" soloLectura onAbrir={() => setModalEscala('ing-gdsfast')}
+              resultado={escalaIngreso.gds_estadio || escalaIngreso.fast_estadio ? `GDS ${escalaIngreso.gds_estadio ?? '—'} · FAST ${escalaIngreso.fast_estadio ?? '—'}` : '—'}
+              incompleta={!escalaIngreso.gds_estadio && !escalaIngreso.fast_estadio} />
           </div>
         </div>
 
         <div>
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Escala al alta</p>
-          <div className="space-y-4">
+          <div className="space-y-2">
+            <TarjetaEscala titulo="Índice de Barthel" onAbrir={() => setModalEscala('alta-barthel')}
+              resultado={escalaAlta.barthel_total != null ? `${escalaAlta.barthel_total}/100` : 'Incompleta'}
+              incompleta={escalaAlta.barthel_total == null} />
+            <TarjetaEscala titulo="Índice de Lawton" onAbrir={() => setModalEscala('alta-lawton')}
+              resultado={escalaAlta.lawton_total != null ? `${escalaAlta.lawton_total}/8` : 'Incompleta'}
+              incompleta={escalaAlta.lawton_total == null} />
+            <TarjetaEscala titulo="NPI-Q (gravedad)" onAbrir={() => setModalEscala('alta-npi')}
+              resultado={escalaAlta.npi_gravedad_total != null ? `${escalaAlta.npi_gravedad_total}/36` : 'Incompleta'}
+              incompleta={escalaAlta.npi_gravedad_total == null} />
+            <TarjetaEscala titulo="GDS / FAST" onAbrir={() => setModalEscala('alta-gdsfast')}
+              resultado={escalaAlta.gds_estadio || escalaAlta.fast_estadio ? `GDS ${escalaAlta.gds_estadio ?? '—'} · FAST ${escalaAlta.fast_estadio ?? '—'}` : 'Incompleta'}
+              incompleta={!escalaAlta.gds_estadio && !escalaAlta.fast_estadio} />
+          </div>
+        </div>
+
+        {modalEscala === 'ing-barthel' && (
+          <ModalEscala titulo="Índice de Barthel — al ingreso" onCerrar={() => setModalEscala(null)}>
+            <EscalaBarthel value={escalaIngreso.barthel_respuestas} disabled onChange={() => {}} />
+          </ModalEscala>
+        )}
+        {modalEscala === 'ing-lawton' && (
+          <ModalEscala titulo="Índice de Lawton — al ingreso" onCerrar={() => setModalEscala(null)}>
+            <EscalaLawton value={escalaIngreso.lawton_respuestas} disabled onChange={() => {}} />
+          </ModalEscala>
+        )}
+        {modalEscala === 'ing-npi' && (
+          <ModalEscala titulo="NPI-Q — al ingreso" onCerrar={() => setModalEscala(null)}>
+            <EscalaNPIQ value={escalaIngreso.npi_respuestas} disabled onChange={() => {}} />
+          </ModalEscala>
+        )}
+        {modalEscala === 'ing-gdsfast' && (
+          <ModalEscala titulo="GDS / FAST — al ingreso" onCerrar={() => setModalEscala(null)}>
+            <EscalaGDSFAST gds={escalaIngreso.gds_estadio} fast={escalaIngreso.fast_estadio} disabled onChangeGds={() => {}} onChangeFast={() => {}} />
+          </ModalEscala>
+        )}
+
+        {modalEscala === 'alta-barthel' && (
+          <ModalEscala titulo="Índice de Barthel — al alta" onCerrar={() => setModalEscala(null)}>
             <EscalaBarthel value={escalaAlta.barthel_respuestas}
               onChange={(v) => updateEscalaAlta({ barthel_respuestas: v, barthel_total: totalBarthel(v) })} />
+          </ModalEscala>
+        )}
+        {modalEscala === 'alta-lawton' && (
+          <ModalEscala titulo="Índice de Lawton — al alta" onCerrar={() => setModalEscala(null)}>
             <EscalaLawton value={escalaAlta.lawton_respuestas}
               onChange={(v) => updateEscalaAlta({ lawton_respuestas: v, lawton_total: totalLawton(v) })} />
+          </ModalEscala>
+        )}
+        {modalEscala === 'alta-npi' && (
+          <ModalEscala titulo="NPI-Q — al alta" onCerrar={() => setModalEscala(null)}>
             <EscalaNPIQ value={escalaAlta.npi_respuestas}
               onChange={(v) => updateEscalaAlta({ npi_respuestas: v, npi_gravedad_total: totalNPI(v) })} />
+          </ModalEscala>
+        )}
+        {modalEscala === 'alta-gdsfast' && (
+          <ModalEscala titulo="GDS / FAST — al alta" onCerrar={() => setModalEscala(null)}>
             <EscalaGDSFAST gds={escalaAlta.gds_estadio} fast={escalaAlta.fast_estadio}
               onChangeGds={(v) => updateEscalaAlta({ gds_estadio: v })}
               onChangeFast={(v) => updateEscalaAlta({ fast_estadio: v })} />
-          </div>
-        </div>
+          </ModalEscala>
+        )}
       </div>
 
       <div className="card p-6 space-y-4">
