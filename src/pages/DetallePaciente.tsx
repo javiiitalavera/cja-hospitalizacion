@@ -30,6 +30,7 @@ interface Paciente {
   medico_cabecera?: string
   contacto_familiar_nombre?: string
   contacto_familiar_telefono?: string
+  version?: number
 }
 
 // Solo los campos que el propio formulario permite editar — el
@@ -63,6 +64,7 @@ export default function DetallePaciente() {
   const [conInformeIngreso, setConInformeIngreso] = useState<Set<string>>(new Set())
   const [conInformeAlta, setConInformeAlta] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
+  const [errorCarga, setErrorCarga] = useState('')
   const [tab, setTab] = useState<'ingresos' | 'datos'>('ingresos')
 
   // Edición de datos personales
@@ -70,62 +72,102 @@ export default function DetallePaciente() {
   const [editData, setEditData] = useState<Partial<Paciente>>({})
   const [savingEdit, setSavingEdit] = useState(false)
   const [editError, setEditError] = useState('')
+  const [conflicto, setConflicto] = useState(false)
 
-  useEffect(() => {
+  async function cargar() {
     if (!id) return
-    async function fetch() {
-      const { data: p } = await supabase.from('pacientes').select('*').eq('id', id).single()
-      setPaciente(p)
-      setEditData(p ?? {})
-
-      const { data: ings } = await supabase
-        .from('ingresos')
-        .select('*, medico_responsable:profesionales(nombre,apellidos)')
-        .eq('paciente_id', id)
-        .order('fecha_ingreso', { ascending: false })
-
-      const ingList = ings ?? []
-      setIngresos(ingList as Ingreso[])
-
-      const ingIds = ingList.map((i: any) => i.id)
-      if (ingIds.length > 0) {
-        const [{ data: evs }, { data: infIng }, { data: infAlta }] = await Promise.all([
-          supabase
-            .from('eventos')
-            .select('*, registrado_por:profesionales!registrado_por_id(nombre,apellidos)')
-            .in('ingreso_id', ingIds)
-            .order('fecha', { ascending: false }),
-          supabase.from('informe_ingreso').select('ingreso_id').in('ingreso_id', ingIds),
-          supabase.from('informe_alta').select('ingreso_id').in('ingreso_id', ingIds),
-        ])
-        setEventos(evs ?? [])
-        setConInformeIngreso(new Set((infIng ?? []).map((r: any) => r.ingreso_id)))
-        setConInformeAlta(new Set((infAlta ?? []).map((r: any) => r.ingreso_id)))
-      }
+    setLoading(true)
+    setErrorCarga('')
+    const { data: p, error } = await supabase.from('pacientes').select('*').eq('id', id).maybeSingle()
+    if (error) {
+      // Antes, un fallo real de carga (red, permisos...) se veía
+      // exactamente igual que "este paciente no existe" — algo muy
+      // distinto y bastante más alarmante de lo que había pasado en
+      // realidad.
+      setErrorCarga('No se pudo cargar la ficha del paciente: ' + error.message)
       setLoading(false)
+      return
     }
-    fetch()
-  }, [id])
+    setPaciente(p)
+    setEditData(p ? datosEditables(p) : {})
+
+    if (!p) { setLoading(false); return }
+
+    const { data: ings } = await supabase
+      .from('ingresos')
+      .select('*, medico_responsable:profesionales(nombre,apellidos)')
+      .eq('paciente_id', id)
+      .order('fecha_ingreso', { ascending: false })
+
+    const ingList = ings ?? []
+    setIngresos(ingList as Ingreso[])
+
+    const ingIds = ingList.map((i: any) => i.id)
+    if (ingIds.length > 0) {
+      const [{ data: evs }, { data: infIng }, { data: infAlta }] = await Promise.all([
+        supabase
+          .from('eventos')
+          .select('*, registrado_por:profesionales!registrado_por_id(nombre,apellidos)')
+          .in('ingreso_id', ingIds)
+          .order('fecha', { ascending: false }),
+        supabase.from('informe_ingreso').select('ingreso_id').in('ingreso_id', ingIds),
+        supabase.from('informe_alta').select('ingreso_id').in('ingreso_id', ingIds),
+      ])
+      setEventos(evs ?? [])
+      setConInformeIngreso(new Set((infIng ?? []).map((r: any) => r.ingreso_id)))
+      setConInformeAlta(new Set((infAlta ?? []).map((r: any) => r.ingreso_id)))
+    }
+    setLoading(false)
+  }
+
+  useEffect(() => { cargar() }, [id])
 
   async function guardarEdicion() {
     if (!paciente) return
     setSavingEdit(true)
     setEditError('')
-    const { error } = await supabase
+    setConflicto(false)
+    const { data: guardado, error } = await supabase
       .from('pacientes')
       .update(editData)
       .eq('id', paciente.id)
+      .eq('version', paciente.version ?? 1)
+      .select()
+      .maybeSingle()
+    setSavingEdit(false)
     if (error) {
       setEditError('Error al guardar: ' + error.message)
-      setSavingEdit(false)
       return
     }
-    setPaciente(prev => prev ? { ...prev, ...editData } : prev)
+    if (!guardado) {
+      // Alguien más ha guardado esta misma ficha mientras se
+      // editaba aquí — se avisa, sin perder lo que se había escrito,
+      // en vez de pisarlo en silencio.
+      setConflicto(true)
+      return
+    }
+    setPaciente(guardado)
     setEditando(false)
-    setSavingEdit(false)
+  }
+
+  async function recargarTrasConflicto() {
+    await cargar()
+    setConflicto(false)
+    setEditando(false)
   }
 
   if (loading) return <div className="p-8 text-slate-400">Cargando…</div>
+  if (errorCarga) {
+    return (
+      <div className="p-8">
+        <div className="card p-6 max-w-md">
+          <p className="font-semibold text-red-600">No se pudo cargar</p>
+          <p className="text-sm text-slate-500 mt-1 mb-3">{errorCarga}</p>
+          <button onClick={cargar} className="btn-secondary text-sm">Reintentar</button>
+        </div>
+      </div>
+    )
+  }
   if (!paciente) return <div className="p-8 text-slate-400">Paciente no encontrado</div>
 
   const nombreDelPaciente = nombreCompleto(paciente)
@@ -259,9 +301,12 @@ export default function DetallePaciente() {
                     <div className="text-right shrink-0">
                       <div className="flex gap-2 justify-end mb-2" onClick={(e) => e.stopPropagation()}>
                         {evCount > 0 && (
-                          <span className="flex items-center gap-1 text-xs text-slate-400">
+                          <button
+                            onClick={() => navigate(`/ingresos/${ing.id}?tab=eventos`)}
+                            className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 text-xs font-medium hover:bg-amber-100 transition-colors"
+                          >
                             <AlertTriangle className="w-3 h-3" />{evCount}
-                          </span>
+                          </button>
                         )}
                         {conInformeIngreso.has(ing.id) && (
                           <button
@@ -295,7 +340,7 @@ export default function DetallePaciente() {
             <div className="flex justify-end mb-3">
               {!esMedico ? null : editando ? (
                 <div className="flex gap-2">
-                  <button onClick={() => { setEditando(false); setEditData(datosEditables(paciente)); setEditError('') }}
+                  <button onClick={() => { setEditando(false); setEditData(datosEditables(paciente)); setEditError(''); setConflicto(false) }}
                     className="btn-secondary">
                     <X className="w-4 h-4" /> Cancelar
                   </button>
@@ -312,6 +357,13 @@ export default function DetallePaciente() {
 
             {editError && (
               <div className="mb-3 px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm">{editError}</div>
+            )}
+
+            {conflicto && (
+              <div className="mb-3 flex items-center justify-between gap-3 px-4 py-2.5 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg text-sm">
+                <span>Alguien más ha guardado cambios en esta ficha mientras la editabas. Lo que has escrito sigue aquí, sin guardar todavía.</span>
+                <button onClick={recargarTrasConflicto} className="btn-secondary text-xs shrink-0">Ver la versión más reciente</button>
+              </div>
             )}
 
             <div className="card overflow-hidden">

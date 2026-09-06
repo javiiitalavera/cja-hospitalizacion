@@ -67,6 +67,11 @@ create table public.pacientes (
     medico_cabecera text,
     contacto_familiar_nombre text,
     contacto_familiar_telefono text,
+    -- Sube en cada guardado real; si al guardar no coincide con la
+    -- que se leyó, es que alguien más guardó mientras tanto. Mismo
+    -- principio que ya usan informe de ingreso, informe de alta,
+    -- ítems y CMBD.
+    version integer not null default 1,
     created_at timestamptz default now(),
     nombre_normalizado text generated always as (public.inmutable_unaccent(lower(nombre))) stored,
     primer_apellido_normalizado text generated always as (public.inmutable_unaccent(lower(primer_apellido))) stored,
@@ -946,6 +951,7 @@ create trigger incrementar_version before insert or update on public.informe_ing
 create trigger incrementar_version before insert or update on public.informe_alta    for each row execute function public.incrementar_version_generico();
 create trigger incrementar_version before insert or update on public.items_paciente  for each row execute function public.incrementar_version_generico();
 create trigger incrementar_version before insert or update on public.cmbd            for each row execute function public.incrementar_version_generico();
+create trigger incrementar_version before insert or update on public.pacientes       for each row execute function public.incrementar_version_generico();
 
 create trigger guardar_historial_tras_cambio
   after insert or update of dia, noche on public.contenciones
