@@ -621,6 +621,16 @@ security definer
 set search_path = ''
 as $$
 begin
+  -- Al guardar, el formulario manda siempre día y noche, aunque no
+  -- se haya tocado nada — así que un guardado sin cambios reales
+  -- disparaba igualmente este trigger. Se compara con el valor
+  -- anterior (igual que ya hace incrementar_version_contencion) para
+  -- no registrar "Pauta modificada" cuando en realidad no cambió
+  -- nada.
+  if TG_OP = 'UPDATE' and NEW.dia is not distinct from OLD.dia and NEW.noche is not distinct from OLD.noche then
+    return NEW;
+  end if;
+
   insert into public.contenciones_historial (ingreso_id, dia, noche, cambiado_por_id, cambiado_en, tipo_accion, actor_id)
   values (
     NEW.ingreso_id, NEW.dia, NEW.noche, NEW.actualizado_por_id, NEW.actualizado_en,

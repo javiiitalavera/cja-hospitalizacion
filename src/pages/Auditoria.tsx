@@ -2,6 +2,8 @@ import { Fragment, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import { History } from 'lucide-react'
+import { TIPO_EVENTO_LABEL } from '../types/eventos'
+import { CONTENCION_DIA_LABEL, CONTENCION_NOCHE_LABEL, type ContencionDia, type ContencionNoche } from '../types/contenciones'
 
 // Etiquetas legibles
 const TABLA_LABEL: Record<string, string> = {
@@ -47,6 +49,21 @@ function accionLabel(accion: string): string {
 }
 function accionColor(accion: string): string {
   return ACCION_COLOR[accion.toUpperCase()] ?? 'bg-slate-100 text-slate-600'
+}
+
+// Para contención, ya existen los diccionarios de etiquetas humanas
+// en el resto de la aplicación — se reutilizan aquí en vez de volcar
+// el JSON en crudo con códigos como "continua_seguridad". El resto
+// de tablas, con formas muy distintas entre sí, se queda con el
+// JSON tal cual: traducir campo a campo cada una sería una solución
+// genérica mucho más grande para un beneficio menor.
+function formatearValor(tabla: string, valor: Record<string, any>): string {
+  if (tabla === 'contencion') {
+    const dia = valor.dia && valor.dia !== 'ninguna' ? CONTENCION_DIA_LABEL[valor.dia as ContencionDia] ?? valor.dia : 'Ninguna'
+    const noche = ((valor.noche as ContencionNoche[]) ?? []).map((n) => CONTENCION_NOCHE_LABEL[n] ?? n)
+    return `Día: ${dia}\nNoche: ${noche.length > 0 ? noche.join(', ') : 'Ninguna'}`
+  }
+  return JSON.stringify(valor, null, 2)
 }
 
 // Fila unificada: mezcla registros de "auditoria" (identificados por
@@ -209,11 +226,40 @@ export function Auditoria() {
           .from('eventos')
           .select('id, tipo, ingreso:ingresos(paciente:pacientes(nombre, primer_apellido))')
           .in('id', idsEventos)
-          .then(({ data }) => {
+          .then(async ({ data }) => {
+            const encontrados = new Set<string>()
             ;(data ?? []).forEach((e: any) => {
+              encontrados.add(e.id)
+              const tipoLegible = TIPO_EVENTO_LABEL[e.tipo as keyof typeof TIPO_EVENTO_LABEL] ?? e.tipo
               const paciente = e.ingreso?.paciente ? `${e.ingreso.paciente.nombre} ${e.ingreso.paciente.primer_apellido}` : null
-              nuevo[`eventos:${e.id}`] = paciente ? `${e.tipo} · ${paciente}` : e.tipo
+              nuevo[`eventos:${e.id}`] = paciente ? `${tipoLegible} · ${paciente}` : tipoLegible
             })
+
+            // Una incidencia borrada ya no aparece en la consulta de
+            // arriba — sin esto, "Afecta a" se quedaba en "—" para
+            // cualquier cambio sobre algo ya eliminado. valores_antes
+            // conserva el tipo y el ingreso de cuando existía, así
+            // que se puede reconstruir igual, con una única consulta
+            // agrupada más, no una por fila.
+            const faltantes = todas.filter((f) => f.tabla === 'eventos' && f.registro_id && !encontrados.has(f.registro_id))
+            const porIngreso = new Map<string, { registroId: string; tipo: string }>()
+            faltantes.forEach((f) => {
+              const va = f.valores_antes as any
+              if (va?.ingreso_id) porIngreso.set(va.ingreso_id, { registroId: f.registro_id!, tipo: va.tipo })
+            })
+            if (porIngreso.size > 0) {
+              const { data: ingsBorrados } = await supabase
+                .from('ingresos')
+                .select('id, paciente:pacientes(nombre, primer_apellido)')
+                .in('id', [...porIngreso.keys()])
+              ;(ingsBorrados ?? []).forEach((i: any) => {
+                const info = porIngreso.get(i.id)
+                if (!info) return
+                const tipoLegible = TIPO_EVENTO_LABEL[info.tipo as keyof typeof TIPO_EVENTO_LABEL] ?? info.tipo
+                const paciente = i.paciente ? `${i.paciente.nombre} ${i.paciente.primer_apellido}` : null
+                nuevo[`eventos:${info.registroId}`] = paciente ? `${tipoLegible} · ${paciente} (eliminada)` : `${tipoLegible} (eliminada)`
+              })
+            }
           })
       )
     }
@@ -265,7 +311,7 @@ export function Auditoria() {
   }
 
   return (
-    <div className="p-6 md:p-8 max-w-5xl">
+    <div className="p-6 md:p-8 max-w-6xl">
       <div className="flex items-center gap-2 mb-1">
         <History className="w-5 h-5 text-slate-400" />
         <h1 className="text-2xl font-bold text-slate-800">Auditoría de cambios</h1>
@@ -373,7 +419,7 @@ export function Auditoria() {
                               <p className="font-semibold text-slate-500 uppercase tracking-wide mb-1">Antes</p>
                               {f.valores_antes ? (
                                 <pre className="whitespace-pre-wrap text-slate-600 bg-white rounded-lg border p-2">
-                                  {JSON.stringify(f.valores_antes, null, 2)}
+                                  {formatearValor(f.tabla, f.valores_antes)}
                                 </pre>
                               ) : (
                                 <p className="text-slate-400 italic">No existía todavía</p>
@@ -383,7 +429,7 @@ export function Auditoria() {
                               <p className="font-semibold text-slate-500 uppercase tracking-wide mb-1">Después</p>
                               {f.valores_despues ? (
                                 <pre className="whitespace-pre-wrap text-slate-600 bg-white rounded-lg border p-2">
-                                  {JSON.stringify(f.valores_despues, null, 2)}
+                                  {formatearValor(f.tabla, f.valores_despues)}
                                 </pre>
                               ) : (
                                 <p className="text-slate-400 italic">Se ha eliminado</p>
