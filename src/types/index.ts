@@ -70,6 +70,7 @@ export interface Ingreso {
   paciente_id: string
   fecha_ingreso: string
   fecha_alta?: string
+  dado_de_alta_en?: string
   habitacion?: number
   medico_responsable_id?: string
   motivo_ingreso?: string

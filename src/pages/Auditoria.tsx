@@ -30,6 +30,7 @@ const ACCION_LABEL: Record<string, string> = {
   PAUTA_MODIFICADA: 'Pauta modificada',
   CONFIRMADA: 'Confirmada',
   CONFIRMACION_RETIRADA: 'Confirmación retirada',
+  REAPERTURA: 'Episodio reabierto',
 }
 
 const ACCION_COLOR: Record<string, string> = {
@@ -42,6 +43,7 @@ const ACCION_COLOR: Record<string, string> = {
   PAUTA_MODIFICADA: 'bg-amber-50 text-amber-700',
   CONFIRMADA: 'bg-emerald-50 text-emerald-700',
   CONFIRMACION_RETIRADA: 'bg-red-50 text-red-700',
+  REAPERTURA: 'bg-amber-50 text-amber-700',
 }
 
 function accionLabel(accion: string): string {

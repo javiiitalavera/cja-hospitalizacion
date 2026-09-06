@@ -103,6 +103,10 @@ create table public.ingresos (
     paciente_id uuid not null references public.pacientes(id),
     fecha_ingreso date not null,
     fecha_alta date,
+    -- Con hora real, a diferencia de fecha_alta — la pone
+    -- dar_de_alta(), y se usa para calcular la ventana de 24h en la
+    -- que un episodio se puede reabrir si se cerró por error.
+    dado_de_alta_en timestamptz,
     habitacion integer check (habitacion >= 1 and habitacion <= 33),
     medico_responsable_id uuid references public.profesionales(id),
     motivo_ingreso text,
@@ -1230,7 +1234,7 @@ begin
   end if;
 
   update public.ingresos
-  set estado = v_estado, fecha_alta = p_fecha_alta
+  set estado = v_estado, fecha_alta = p_fecha_alta, dado_de_alta_en = now()
   where id = p_ingreso_id and estado = 'activo'
   returning * into v_actualizado;
 
@@ -1247,6 +1251,61 @@ end;
 $$;
 
 grant execute on function public.dar_de_alta(uuid, date, text) to authenticated;
+
+-- Reabrir un episodio dado de alta por error — mismo permiso que dar
+-- de alta (médico), dentro de las 24h siguientes. security definer
+-- porque necesita escribir directamente en auditoria (nadie tiene
+-- permiso de insertar ahí a mano, solo los disparadores) — por eso
+-- las comprobaciones de quién puede hacerlo van explícitas aquí
+-- dentro, no delegadas a RLS.
+create or replace function public.reabrir_episodio(p_ingreso_id uuid) returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_ingreso public.ingresos;
+begin
+  if coalesce(private.mi_rol(), '') <> 'medico' then
+    raise exception 'Solo un médico puede reabrir un episodio.';
+  end if;
+
+  select * into v_ingreso from public.ingresos where id = p_ingreso_id;
+
+  if v_ingreso is null then
+    raise exception 'Ingreso no encontrado.';
+  end if;
+
+  if v_ingreso.estado = 'activo' then
+    raise exception 'Este episodio ya está activo.';
+  end if;
+
+  if v_ingreso.dado_de_alta_en is null or now() - v_ingreso.dado_de_alta_en > interval '24 hours' then
+    raise exception 'Solo se puede reabrir un episodio dentro de las 24 horas siguientes al alta.';
+  end if;
+
+  update public.ingresos
+  set estado = 'activo', fecha_alta = null, dado_de_alta_en = null
+  where id = p_ingreso_id;
+
+  update public.cmbd
+  set circunstancia_alta = null
+  where ingreso_id = p_ingreso_id;
+
+  -- Rastro explícito: el disparador genérico de auditoría ya registra
+  -- el UPDATE de ingresos, pero solo como una edición cualquiera, sin
+  -- guardar qué decía antes y qué dice después — esto sí lo hace, y
+  -- deja claro que fue una reapertura, no un cambio distinto.
+  insert into public.auditoria (tabla, registro_id, accion, usuario_id, valores_antes, valores_despues)
+  values (
+    'ingresos', p_ingreso_id, 'reapertura', auth.uid(),
+    jsonb_build_object('estado', v_ingreso.estado, 'fecha_alta', v_ingreso.fecha_alta),
+    jsonb_build_object('estado', 'activo', 'fecha_alta', null)
+  );
+end;
+$$;
+
+grant execute on function public.reabrir_episodio(uuid) to authenticated;
 
 -- Lo mismo para las funciones que solo deben dispararse solas, nunca
 -- llamarse a mano — señaladas por el Security Advisor de Supabase.

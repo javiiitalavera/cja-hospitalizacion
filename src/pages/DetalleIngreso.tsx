@@ -5,7 +5,7 @@ import { hoyLocal, edad } from '../lib/fechas'
 import { useAuth } from '../lib/AuthContext'
 import type { Ingreso } from '../types'
 import { ESTADO_INGRESO_LABEL as ESTADO_LABEL, ESTADO_INGRESO_COLOR as ESTADO_COLOR, nombreCompleto } from '../types'
-import { ChevronLeft, User, FileText, ClipboardList, AlertTriangle, FileCheck, LogOut, Database, Lock } from 'lucide-react'
+import { ChevronLeft, User, FileText, ClipboardList, AlertTriangle, FileCheck, LogOut, Database, Lock, RotateCcw } from 'lucide-react'
 import { TabDatos } from './ingreso/TabDatos'
 import { TabInformeIngreso } from './ingreso/TabInformeIngreso'
 import { TabInformeAlta } from './ingreso/TabInformeAlta'
@@ -51,6 +51,9 @@ export default function DetalleIngreso() {
   })
   const [procesandoAlta, setProcesandoAlta] = useState(false)
   const [errorAlta, setErrorAlta] = useState('')
+  const [confirmarReabrir, setConfirmarReabrir] = useState(false)
+  const [procesandoReabrir, setProcesandoReabrir] = useState(false)
+  const [errorReabrir, setErrorReabrir] = useState('')
 
   async function cargar() {
     if (!id) return
@@ -119,6 +122,24 @@ export default function DetalleIngreso() {
   // para todo el mundo, médico incluido. Corregir algo después del cierre
   // requiere un mecanismo de rectificación explícito, no editar en caliente.
   const episodioCerrado = ingreso.estado !== 'activo'
+  // Solo dentro de las primeras 24h desde el alta — se recalcula en
+  // el propio cliente para decidir si mostrar el botón, aunque quien
+  // de verdad hace cumplir el límite es la función del servidor.
+  const dentroDeVentanaReapertura = !!ingreso.dado_de_alta_en &&
+    (Date.now() - new Date(ingreso.dado_de_alta_en).getTime()) <= 24 * 60 * 60 * 1000
+
+  async function reabrirEpisodio() {
+    setProcesandoReabrir(true)
+    setErrorReabrir('')
+    const { error } = await supabase.rpc('reabrir_episodio', { p_ingreso_id: id })
+    setProcesandoReabrir(false)
+    if (error) {
+      setErrorReabrir(error.message)
+      return
+    }
+    setConfirmarReabrir(false)
+    await cargar()
+  }
 
   const p = ingreso.paciente!
   const nombreDelPaciente = nombreCompleto(p)
@@ -172,7 +193,42 @@ export default function DetalleIngreso() {
               Dar de alta
             </button>
           )}
+          {/* Mismo permiso que dar de alta — el mismo médico que
+              puede cerrar un episodio puede deshacerlo si fue un
+              error, pero solo dentro de las 24h siguientes: pasado
+              ese margen, ya no es "un despiste recién cometido". */}
+          {ingreso.estado !== 'activo' && esMedico && dentroDeVentanaReapertura && (
+            <button
+              onClick={() => setConfirmarReabrir(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-medium transition-colors shrink-0"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              Reabrir episodio
+            </button>
+          )}
         </div>
+
+        {/* Confirmación de reapertura */}
+        {confirmarReabrir && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setConfirmarReabrir(false)}>
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6" onClick={(e) => e.stopPropagation()}>
+              <h2 className="text-base font-bold text-slate-800 mb-2">Reabrir episodio</h2>
+              <p className="text-sm text-slate-500 mb-4">
+                El episodio volverá a estar activo, y se borrará la fecha y el motivo del alta. Quedará registrado en Auditoría.
+              </p>
+              {errorReabrir && (
+                <p className="mb-4 text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{errorReabrir}</p>
+              )}
+              <div className="flex gap-3">
+                <button onClick={() => setConfirmarReabrir(false)} className="btn-secondary flex-1">Cancelar</button>
+                <button onClick={reabrirEpisodio} disabled={procesandoReabrir} className="btn-primary flex-1">
+                  <RotateCcw className="w-4 h-4" />
+                  {procesandoReabrir ? 'Reabriendo…' : 'Confirmar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Tabs */}
         <div className="flex gap-1 mt-4 -mb-4">
