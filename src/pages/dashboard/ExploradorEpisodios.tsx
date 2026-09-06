@@ -32,37 +32,35 @@ interface FiltrosExplorador {
   tipoIncidencia: string
 }
 
-const FILTROS_VACIOS: FiltrosExplorador = {
-  busqueda: '', desdeIngreso: '', hastaIngreso: '', desdeAlta: '', hastaAlta: '',
-  solapaDesde: '', solapaHasta: '', estado: '', medicoId: '', estanciaMin: '', estanciaMax: '',
-  conIncidencias: '', tipoIncidencia: '',
-}
-
-export function ExploradorEpisodios({ filtrosIniciales }: { filtrosIniciales?: Record<string, string> }) {
+export function ExploradorEpisodios() {
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
 
-  const [filtros, setFiltros] = useState<FiltrosExplorador>(() => {
-    const f = filtrosIniciales ?? Object.fromEntries(searchParams.entries())
-    return {
-      ...FILTROS_VACIOS,
-      desdeIngreso: f.desde_ingreso || '',
-      hastaIngreso: f.hasta_ingreso || '',
-      desdeAlta: f.desde_alta || '',
-      hastaAlta: f.hasta_alta || '',
-      estado: f.estado || '',
-      estanciaMin: f.estancia_min || '',
-      // Antes se perdía: el filtro de médico del Dashboard llegaba
-      // hasta aquí, se veía en la cabecera, pero el Explorador seguía
-      // buscando con "Todos" por dentro.
-      medicoId: f.medico || '',
-    }
-  })
-  const [medicos, setMedicos] = useState<{ id: string; nombre: string; apellidos: string }[]>([])
-  const [orden, setOrden] = useState<'paciente' | 'ingreso' | 'alta' | 'estancia' | 'medico'>('ingreso')
-  const [ordenDir, setOrdenDir] = useState<'asc' | 'desc'>('desc')
-  const [pagina, setPagina] = useState(1)
+  // La URL es la única fuente de verdad — nada de estado de React
+  // por separado que se pueda desincronizar. Recargar la página,
+  // volver atrás, o llegar aquí desde otra pestaña del Dashboard da
+  // siempre el mismo resultado, porque siempre se lee lo mismo.
+  const filtros: FiltrosExplorador = {
+    busqueda: searchParams.get('busqueda') || '',
+    desdeIngreso: searchParams.get('desde_ingreso') || '',
+    hastaIngreso: searchParams.get('hasta_ingreso') || '',
+    desdeAlta: searchParams.get('desde_alta') || '',
+    hastaAlta: searchParams.get('hasta_alta') || '',
+    solapaDesde: searchParams.get('solapa_desde') || '',
+    solapaHasta: searchParams.get('solapa_hasta') || '',
+    estado: searchParams.get('estado') || '',
+    medicoId: searchParams.get('medico') || '',
+    estanciaMin: searchParams.get('estancia_min') || '',
+    estanciaMax: searchParams.get('estancia_max') || '',
+    conIncidencias: searchParams.get('con_incidencias') || '',
+    tipoIncidencia: searchParams.get('tipo_incidencia') || '',
+  }
+  const orden = (searchParams.get('orden') as 'paciente' | 'ingreso' | 'alta' | 'estancia' | 'medico') || 'ingreso'
+  const ordenDir = (searchParams.get('orden_dir') as 'asc' | 'desc') || 'desc'
+  const pagina = Number(searchParams.get('pagina') || '1')
   const POR_PAGINA = 50
+
+  const [medicos, setMedicos] = useState<{ id: string; nombre: string; apellidos: string }[]>([])
 
   const [filas, setFilas] = useState<Fila[]>([])
   const [total, setTotal] = useState(0)
@@ -114,17 +112,46 @@ export function ExploradorEpisodios({ filtrosIniciales }: { filtrosIniciales?: R
     setEstado((data?.filas ?? []).length === 0 ? 'sin_datos' : 'listo')
   }
 
-  useEffect(() => { buscar() }, [filtros, orden, ordenDir, pagina])
+  // searchParams.toString() como dependencia: cualquier cambio real
+  // en la URL (venga de aquí o de fuera) dispara una nueva búsqueda.
+  useEffect(() => { buscar() }, [searchParams.toString()])
+
+  // Cambia una o varias claves de la URL a la vez, preservando las
+  // demás — incluidas las que pertenecen al propio Dashboard (vista,
+  // periodo...), que no debe tocar esta pantalla.
+  function actualizarURL(cambios: Record<string, string | null>) {
+    const params = new URLSearchParams(searchParams)
+    for (const [clave, valor] of Object.entries(cambios)) {
+      if (valor === null || valor === '') params.delete(clave)
+      else params.set(clave, valor)
+    }
+    params.delete('pagina') // cualquier cambio de filtro u orden vuelve a la página 1
+    setSearchParams(params, { replace: true })
+  }
 
   function cambiarOrden(col: typeof orden) {
-    if (orden === col) setOrdenDir((d) => (d === 'asc' ? 'desc' : 'asc'))
-    else { setOrden(col); setOrdenDir('asc') }
-    setPagina(1)
+    if (orden === col) actualizarURL({ orden_dir: ordenDir === 'asc' ? 'desc' : 'asc' })
+    else actualizarURL({ orden: col, orden_dir: 'asc' })
+  }
+
+  function irAPagina(p: number) {
+    const params = new URLSearchParams(searchParams)
+    params.set('pagina', String(p))
+    setSearchParams(params, { replace: true })
   }
 
   function set(cambios: Partial<FiltrosExplorador>) {
-    setFiltros((f) => ({ ...f, ...cambios }))
-    setPagina(1)
+    const MAPA: Record<keyof FiltrosExplorador, string> = {
+      busqueda: 'busqueda', desdeIngreso: 'desde_ingreso', hastaIngreso: 'hasta_ingreso',
+      desdeAlta: 'desde_alta', hastaAlta: 'hasta_alta', solapaDesde: 'solapa_desde', solapaHasta: 'solapa_hasta',
+      estado: 'estado', medicoId: 'medico', estanciaMin: 'estancia_min', estanciaMax: 'estancia_max',
+      conIncidencias: 'con_incidencias', tipoIncidencia: 'tipo_incidencia',
+    }
+    const cambiosURL: Record<string, string | null> = {}
+    for (const [clave, valor] of Object.entries(cambios)) {
+      cambiosURL[MAPA[clave as keyof FiltrosExplorador]] = (valor as string) || null
+    }
+    actualizarURL(cambiosURL)
   }
 
   // Un resumen legible de los filtros aplicados, para que la
@@ -242,7 +269,11 @@ export function ExploradorEpisodios({ filtrosIniciales }: { filtrosIniciales?: R
           )}
         </div>
         <div className="flex items-center justify-between">
-          <button onClick={() => setFiltros(FILTROS_VACIOS)} className="btn-secondary text-xs">Limpiar filtros</button>
+          <button onClick={() => actualizarURL({
+            busqueda: null, desde_ingreso: null, hasta_ingreso: null, desde_alta: null, hasta_alta: null,
+            solapa_desde: null, solapa_hasta: null, estado: null, medico: null, estancia_min: null,
+            estancia_max: null, con_incidencias: null, tipo_incidencia: null,
+          })} className="btn-secondary text-xs">Limpiar filtros</button>
           <div className="flex gap-2">
             <button onClick={exportarCSV} className="btn-secondary text-xs gap-1"><Download className="w-3.5 h-3.5" /> Exportar CSV</button>
             <button onClick={imprimir} className="btn-secondary text-xs gap-1"><Printer className="w-3.5 h-3.5" /> Imprimir</button>
@@ -290,11 +321,11 @@ export function ExploradorEpisodios({ filtrosIniciales }: { filtrosIniciales?: R
 
       {estado === 'listo' && totalPaginas > 1 && (
         <div className="flex items-center justify-center gap-3">
-          <button disabled={pagina <= 1} onClick={() => setPagina((p) => p - 1)} className="btn-secondary text-xs disabled:opacity-40">
+          <button disabled={pagina <= 1} onClick={() => irAPagina(pagina - 1)} className="btn-secondary text-xs disabled:opacity-40">
             <ChevronLeft className="w-4 h-4" />
           </button>
           <span className="text-xs text-slate-500">Página {pagina} de {totalPaginas}</span>
-          <button disabled={pagina >= totalPaginas} onClick={() => setPagina((p) => p + 1)} className="btn-secondary text-xs disabled:opacity-40">
+          <button disabled={pagina >= totalPaginas} onClick={() => irAPagina(pagina + 1)} className="btn-secondary text-xs disabled:opacity-40">
             <ChevronRight className="w-4 h-4" />
           </button>
         </div>
