@@ -242,6 +242,21 @@ create table public.eventos (
     datos jsonb not null default '{}',
     notas text,
     registrado_por_id uuid references public.profesionales(id),
+    -- Quién tocó la fila por última vez, y cuándo — distinto de
+    -- registrado_por_id (el autor original, inmutable). Cualquier
+    -- profesional asistencial puede completar una incidencia ajena
+    -- en un turno posterior; esto deja constancia de quién lo hizo.
+    actualizado_por_id uuid references public.profesionales(id),
+    actualizado_en timestamptz,
+    -- Para lo que se sabrá con certeza más adelante (una caída cuyas
+    -- consecuencias se confirman días después) — sin exigir rellenar
+    -- con un valor inventado con tal de poder guardar.
+    estado text not null default 'completa' check (estado in ('pendiente', 'completa')),
+    -- La habitación EN EL MOMENTO del suceso, no la actual del
+    -- ingreso — si hay un traslado después, el histórico no debe
+    -- cambiar de habitación con él. Se rellena sola (ver disparador
+    -- fijar_habitacion_evento), nunca a mano.
+    habitacion_evento integer,
     created_at timestamptz default now()
 );
 
@@ -312,6 +327,12 @@ create table public.auditoria (
     registro_id uuid,
     accion text not null,
     usuario_id uuid,
+    -- Opcionales, y solo las rellena el disparador de "eventos" por
+    -- ahora — el resto de tablas sigue exactamente igual que antes.
+    -- Sin esto, la auditoría solo sabía decir "algo cambió", nunca
+    -- qué decía antes y qué dice después.
+    valores_antes jsonb,
+    valores_despues jsonb,
     fecha timestamptz not null default now()
 );
 
@@ -442,6 +463,62 @@ as $$
 begin
   if NEW.registrado_por_id is distinct from OLD.registrado_por_id then
     raise exception 'No se puede cambiar quién registró una incidencia ya existente.';
+  end if;
+  return NEW;
+end;
+$$;
+
+-- Pone siempre actualizado_por_id/actualizado_en según quien hace el
+-- cambio de verdad — nunca lo que mande el propio cliente.
+create function public.fijar_actualizado_por_evento() returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  NEW.actualizado_por_id := (select id from public.profesionales where user_id = auth.uid() limit 1);
+  NEW.actualizado_en := now();
+  return NEW;
+end;
+$$;
+
+-- Auditoría con valores de antes/después, solo para eventos — deja
+-- constancia de qué decía la incidencia exactamente antes y después
+-- de cada cambio, y quién fue, no solo que "alguien la tocó".
+create function public.registrar_auditoria_eventos() returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_usuario uuid;
+begin
+  select id into v_usuario from public.profesionales where user_id = auth.uid() limit 1;
+  insert into public.auditoria (tabla, registro_id, accion, usuario_id, valores_antes, valores_despues)
+  values (
+    'eventos',
+    coalesce(NEW.id, OLD.id),
+    lower(TG_OP),
+    v_usuario,
+    case when TG_OP = 'INSERT' then null else to_jsonb(OLD) end,
+    case when TG_OP = 'DELETE' then null else to_jsonb(NEW) end
+  );
+  return coalesce(NEW, OLD);
+end;
+$$;
+
+-- La habitación EN EL MOMENTO del suceso — si al insertar no se
+-- indica, se toma la habitación actual del ingreso, y ya no se
+-- vuelve a tocar (no hay disparador de "update" para esto: un
+-- traslado posterior no debe reescribir el histórico).
+create function public.fijar_habitacion_evento() returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if NEW.habitacion_evento is null then
+    select habitacion into NEW.habitacion_evento from public.ingresos where id = NEW.ingreso_id;
   end if;
   return NEW;
 end;
@@ -830,6 +907,18 @@ create trigger bloquear_cambio_autor_evento
     before update on public.eventos
     for each row execute function public.evitar_cambio_autor_evento();
 
+create trigger fijar_actualizado_por
+    before update on public.eventos
+    for each row execute function public.fijar_actualizado_por_evento();
+
+create trigger aud_eventos
+    after insert or update or delete on public.eventos
+    for each row execute function public.registrar_auditoria_eventos();
+
+create trigger fijar_habitacion_evento
+    before insert on public.eventos
+    for each row execute function public.fijar_habitacion_evento();
+
 create trigger aud_pacientes    after insert or update or delete on public.pacientes    for each row execute function public.registrar_auditoria();
 create trigger aud_profesionales after insert or update or delete on public.profesionales for each row execute function public.registrar_auditoria();
 create trigger aud_ingresos     after insert or update or delete on public.ingresos     for each row execute function public.registrar_auditoria();
@@ -966,16 +1055,18 @@ create policy crear_evento on public.eventos for insert to authenticated
 -- ejemplo, para corregir o borrar una incidencia dada de alta por
 -- error). El resto del equipo puede seguir viéndolas todas, pero no
 -- tocar las que no son suyas.
+-- Editar ya no exige ser el autor ni admin — cualquier profesional
+-- asistencial puede completar una incidencia en un turno posterior,
+-- es un registro compartido. Borrar sí sigue exigiéndolo (ver la
+-- política de borrar más abajo, sin cambios).
 create policy editar_evento on public.eventos for update to authenticated
     using (
         private.mi_rol() in ('medico', 'enfermeria', 'auxiliar', 'tecnico')
         and exists (select 1 from ingresos i where i.id = eventos.ingreso_id and i.estado = 'activo')
-        and (registrado_por_id = (select id from profesionales where user_id = auth.uid() limit 1) or private.soy_admin())
     )
     with check (
         private.mi_rol() in ('medico', 'enfermeria', 'auxiliar', 'tecnico')
         and exists (select 1 from ingresos i where i.id = eventos.ingreso_id and i.estado = 'activo')
-        and (registrado_por_id = (select id from profesionales where user_id = auth.uid() limit 1) or private.soy_admin())
     );
 create policy borrar_evento on public.eventos for delete to authenticated
     using (
