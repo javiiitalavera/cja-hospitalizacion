@@ -1458,10 +1458,12 @@ begin
       or 'contencion_fija' = any(c.noche) or 'contencion_si_precisa' = any(c.noche)
     );
 
+  -- Sin el filtro de "ingreso activo": una incidencia puede quedar
+  -- pendiente de completar después del alta, y debe seguir contando
+  -- como trabajo pendiente igualmente.
   select count(*) into v_incidencias_pendientes
   from public.eventos e
-  inner join public.ingresos i on i.id = e.ingreso_id
-  where e.estado = 'pendiente' and i.estado = 'activo';
+  where e.estado = 'pendiente';
 
   return jsonb_build_object(
     'pacientes_ingresados', v_activos,
@@ -2072,5 +2074,23 @@ $$;
 grant execute on function public.buscar_episodios_dashboard(
   text, date, date, date, date, date, date, text, uuid, integer, integer, boolean, text, text, text, integer, integer, boolean
 ) to authenticated;
+
+commit;
+
+-- Las seis funciones del Dashboard son security invoker y ya
+-- comprueban private.mi_rol() — no hay fuga de datos —, pero se
+-- quedaron con el permiso de ejecución por defecto que Postgres
+-- concede a PUBLIC. Se revoca, igual que el resto de funciones
+-- sensibles del proyecto.
+begin;
+
+revoke execute on function public.dashboard_situacion_actual() from public, anon;
+revoke execute on function public.dashboard_resumen(date, date, uuid, text) from public, anon;
+revoke execute on function public.dashboard_series(date, date, uuid, text) from public, anon;
+revoke execute on function public.dashboard_actividad_detalle(date, date, uuid, text) from public, anon;
+revoke execute on function public.dashboard_seguridad(date, date, uuid, text) from public, anon;
+revoke execute on function public.buscar_episodios_dashboard(
+  text, date, date, date, date, date, date, text, uuid, integer, integer, boolean, text, text, text, integer, integer, boolean
+) from public, anon;
 
 commit;

@@ -9,7 +9,11 @@ export interface Filtros {
   desde: string
   hasta: string
   medicoId: string | null
-  estado: 'activo' | 'alta' | 'alta_traslado' | 'exitus' | null
+  // "estado" ya no vive aquí: representa la situación final/actual
+  // del episodio, y aplicado a datos históricos daba resultados
+  // engañosos (p. ej. "Activo" seguía mostrando altas del periodo).
+  // Se queda únicamente en el Explorador de episodios, donde sí
+  // tiene sentido — filtrar la lista de episodios por su estado real.
   comparar: boolean
 }
 

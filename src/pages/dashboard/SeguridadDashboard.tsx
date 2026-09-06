@@ -33,7 +33,7 @@ export function SeguridadDashboard({ filtros, desde, hasta, onExplorar }: {
     setEstado('cargando')
     setError('')
     const { data, error: err } = await supabase.rpc('dashboard_seguridad', {
-      p_desde: desde, p_hasta: hasta, p_medico_id: filtros.medicoId, p_estado_filtro: filtros.estado,
+      p_desde: desde, p_hasta: hasta, p_medico_id: filtros.medicoId, p_estado_filtro: null,
     })
     if (miSecuencia !== secuenciaRef.current) return
     if (err) { setError(err.message); setEstado('error'); return }
@@ -41,7 +41,7 @@ export function SeguridadDashboard({ filtros, desde, hasta, onExplorar }: {
     setEstado('listo')
   }
 
-  useEffect(() => { cargar() }, [desde, hasta, filtros.medicoId, filtros.estado])
+  useEffect(() => { cargar() }, [desde, hasta, filtros.medicoId])
 
   function irATipo(tipo: string) {
     onExplorar({ desde, hasta, tipo_incidencia: tipo })

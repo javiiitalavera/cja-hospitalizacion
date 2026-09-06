@@ -48,7 +48,7 @@ export function ActividadDashboard({ filtros, desde, hasta, onExplorar }: {
     setEstadoSeries('cargando'); setErrorSeries('')
     setEstadoDetalle('cargando'); setErrorDetalle('')
 
-    const params = { p_desde: desde, p_hasta: hasta, p_medico_id: filtros.medicoId, p_estado_filtro: filtros.estado }
+    const params = { p_desde: desde, p_hasta: hasta, p_medico_id: filtros.medicoId, p_estado_filtro: null }
 
     const [rResumen, rSeries, rDetalle] = await Promise.all([
       supabase.rpc('dashboard_resumen', params),
@@ -68,7 +68,7 @@ export function ActividadDashboard({ filtros, desde, hasta, onExplorar }: {
     else { setDetalle(rDetalle.data); setEstadoDetalle('listo') }
   }
 
-  useEffect(() => { cargar() }, [desde, hasta, filtros.medicoId, filtros.estado])
+  useEffect(() => { cargar() }, [desde, hasta, filtros.medicoId])
 
   const balance = resumen ? resumen.ingresos_nuevos - resumen.salidas_totales : null
   const maxBanda = detalle ? Math.max(1, ...BANDAS_ESTANCIA.map((b) => detalle.distribucion_estancia[b.clave] ?? 0)) : 1
@@ -172,9 +172,9 @@ export function ActividadDashboard({ filtros, desde, hasta, onExplorar }: {
         <p className="section-title">Episodios activos de larga duración</p>
         {estadoDetalle === 'listo' && detalle && (
           <div className="grid grid-cols-3 gap-3">
-            <TarjetaMetrica etiqueta="Más de 30 días" valor={detalle.activos_mas_30} onClick={() => onExplorar({ estancia_min: '30', estado: 'activo' })} />
-            <TarjetaMetrica etiqueta="Más de 60 días" valor={detalle.activos_mas_60} onClick={() => onExplorar({ estancia_min: '60', estado: 'activo' })} />
-            <TarjetaMetrica etiqueta="Más de 90 días" valor={detalle.activos_mas_90} onClick={() => onExplorar({ estancia_min: '90', estado: 'activo' })} />
+            <TarjetaMetrica etiqueta="30 días o más" valor={detalle.activos_mas_30} onClick={() => onExplorar({ estancia_min: '30', estado: 'activo' })} />
+            <TarjetaMetrica etiqueta="60 días o más" valor={detalle.activos_mas_60} onClick={() => onExplorar({ estancia_min: '60', estado: 'activo' })} />
+            <TarjetaMetrica etiqueta="90 días o más" valor={detalle.activos_mas_90} onClick={() => onExplorar({ estancia_min: '90', estado: 'activo' })} />
           </div>
         )}
       </section>

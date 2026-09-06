@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { LayoutDashboard } from 'lucide-react'
+import { supabase } from '../../lib/supabase'
 import type { Filtros, Periodo } from './tipos'
 import { calcularRango } from './metricas'
 import { DashboardFiltros } from './DashboardFiltros'
@@ -19,7 +20,6 @@ function filtrosDesdeURL(params: URLSearchParams): Filtros {
     desde: params.get('desde') || '',
     hasta: params.get('hasta') || '',
     medicoId: params.get('medico'),
-    estado: (params.get('estado') as Filtros['estado']) || null,
     comparar: params.get('comparar') === '1',
   }
 }
@@ -30,6 +30,15 @@ export function Dashboard() {
   const [vista, setVista] = useState<Vista>((searchParams.get('vista') as Vista) || 'resumen')
   const [filtros, setFiltros] = useState<Filtros>(() => filtrosDesdeURL(searchParams))
 
+  // "Todo el historial" tiene que empezar en el primer ingreso real,
+  // no en una fecha inventada — 2000-01-01 generaba miles de días
+  // vacíos y una ocupación media que no significaba nada (0,2%).
+  const [primeraFecha, setPrimeraFecha] = useState<string | null>(null)
+  useEffect(() => {
+    supabase.from('ingresos').select('fecha_ingreso').order('fecha_ingreso', { ascending: true }).limit(1)
+      .then(({ data }) => setPrimeraFecha(data?.[0]?.fecha_ingreso ?? null))
+  }, [])
+
   useEffect(() => {
     const params = new URLSearchParams()
     params.set('vista', vista)
@@ -39,18 +48,21 @@ export function Dashboard() {
       if (filtros.hasta) params.set('hasta', filtros.hasta)
     }
     if (filtros.medicoId) params.set('medico', filtros.medicoId)
-    if (filtros.estado) params.set('estado', filtros.estado)
     if (filtros.comparar) params.set('comparar', '1')
     setSearchParams(params, { replace: true })
   }, [vista, filtros])
 
-  const { desde, hasta } = calcularRango(filtros.periodo, filtros.desde, filtros.hasta)
+  const { desde, hasta } = calcularRango(filtros.periodo, filtros.desde, filtros.hasta, primeraFecha)
 
   // Los indicadores que llevan a "ver los episodios/incidencias que
   // componen la cifra" navegan fuera del Dashboard — no se duplica
-  // aquí un buscador que ya existe en Incidencias.
+  // aquí un buscador que ya existe en Incidencias. El médico
+  // responsable viaja siempre con el resto de filtros: si la cifra
+  // se calculó filtrada por un médico, el listado que la explica
+  // tiene que aplicarlo también, o deja de ser exactamente esa cifra.
   function irAIncidencias(filtroExtra?: Record<string, string>) {
     const params = new URLSearchParams({ desde, hasta, ...filtroExtra })
+    if (filtros.medicoId) params.set('medico_responsable', filtros.medicoId)
     navigate(`/eventos?${params.toString()}`)
   }
 
@@ -60,7 +72,9 @@ export function Dashboard() {
   // estancias largas...), no de incidencias.
   const [presetExplorador, setPresetExplorador] = useState<Record<string, string> | null>(null)
   function irAExplorador(filtroExtra?: Record<string, string>) {
-    setPresetExplorador({ desde, hasta, ...filtroExtra })
+    const preset: Record<string, string> = { desde, hasta, ...filtroExtra }
+    if (filtros.medicoId) preset.medico = filtros.medicoId
+    setPresetExplorador(preset)
     setVista('explorador')
   }
 
@@ -96,7 +110,7 @@ export function Dashboard() {
         ))}
       </div>
 
-      <DashboardFiltros filtros={filtros} onCambiar={setFiltros} />
+      <DashboardFiltros filtros={filtros} onCambiar={setFiltros} mostrarComparar={vista === 'resumen'} />
 
       {vista === 'resumen' && (
         <ResumenDashboard filtros={filtros} desde={desde} hasta={hasta} onExplorar={irAIncidencias} onExplorarEpisodios={irAExplorador} />

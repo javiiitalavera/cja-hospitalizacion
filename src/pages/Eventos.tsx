@@ -172,9 +172,9 @@ export function Eventos() {
   // exportar — y actúa exactamente sobre lo que el filtro esté
   // mostrando, con los propios filtros indicados arriba, para que
   // nunca haya duda de qué es cada tabla o archivo.
-  const [profesionales, setProfesionales] = useState<{ id: string; nombre: string; apellidos: string }[]>([])
+  const [profesionales, setProfesionales] = useState<{ id: string; nombre: string; apellidos: string; rol: string }[]>([])
   useEffect(() => {
-    supabase.from('profesionales').select('id, nombre, apellidos').order('apellidos')
+    supabase.from('profesionales').select('id, nombre, apellidos, rol').order('apellidos')
       .then(({ data }) => setProfesionales(data ?? []))
   }, [])
 
@@ -186,6 +186,12 @@ export function Eventos() {
   const [fEstado, setFEstado] = useState('')
   const [fProfesional, setFProfesional] = useState('')
   const [fAlcance, setFAlcance] = useState<'activos' | 'cerrados' | 'todos'>('todos')
+  // Distinto de fProfesional (quién registró la incidencia): este es
+  // el médico responsable del ingreso — el mismo concepto que usa el
+  // Dashboard para filtrar. Sin esto, llegar aquí desde una cifra ya
+  // filtrada por médico responsable mostraba resultados que no
+  // coincidían con esa cifra.
+  const [fMedicoResponsable, setFMedicoResponsable] = useState('')
 
   // El Dashboard (y en el futuro otras pantallas) puede llegar aquí
   // con filtros ya decididos en la URL — se leen una sola vez al
@@ -196,16 +202,18 @@ export function Eventos() {
     const hasta = searchParams.get('hasta') ?? undefined
     const incidenciasParam = searchParams.get('incidencias') // 'pendiente' | 'todas'
     const tipoParam = searchParams.get('tipo_incidencia') as TipoEvento | null
-    if (!desde && !hasta && !incidenciasParam && !tipoParam) return
+    const medicoParam = searchParams.get('medico_responsable')
+    if (!desde && !hasta && !incidenciasParam && !tipoParam && !medicoParam) return
 
     const estado = incidenciasParam === 'pendiente' ? 'pendiente' : undefined
     if (desde) setFDesde(desde)
     if (hasta) setFHasta(hasta)
     if (estado) setFEstado(estado)
     if (tipoParam) setFTipo(tipoParam)
+    if (medicoParam) setFMedicoResponsable(medicoParam)
     // Valores explícitos, no el estado del componente — así no
     // importa si React ya ha aplicado o no los setF... de arriba.
-    buscarIncidencias({ desde, hasta, estado, tipo: tipoParam ?? undefined })
+    buscarIncidencias({ desde, hasta, estado, tipo: tipoParam ?? undefined, medicoResponsable: medicoParam ?? undefined })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -214,7 +222,7 @@ export function Eventos() {
   const [resultados, setResultados] = useState<any[]>([])
   const [buscado, setBuscado] = useState(false)
 
-  async function buscarIncidencias(overrides?: { desde?: string; hasta?: string; estado?: string; tipo?: TipoEvento }) {
+  async function buscarIncidencias(overrides?: { desde?: string; hasta?: string; estado?: string; tipo?: TipoEvento; medicoResponsable?: string }) {
     setBuscando(true)
     setErrorBusqueda('')
     try {
@@ -226,13 +234,14 @@ export function Eventos() {
       const hasta = overrides?.hasta ?? fHasta
       const estado = overrides?.estado ?? fEstado
       const tipo = overrides?.tipo ?? fTipo
+      const medicoResponsable = overrides?.medicoResponsable ?? fMedicoResponsable
 
       let q = supabase
         .from('eventos')
         .select(`
           id, tipo, fecha, hora, turno, datos, notas, estado, habitacion_evento,
           registrado_por:profesionales!registrado_por_id(nombre, apellidos),
-          ingreso:ingresos!inner(id, habitacion, estado, paciente:pacientes(nombre, primer_apellido, segundo_apellido))
+          ingreso:ingresos!inner(id, habitacion, estado, medico_responsable_id, paciente:pacientes(nombre, primer_apellido, segundo_apellido))
         `)
         .order('fecha', { ascending: false })
 
@@ -242,6 +251,10 @@ export function Eventos() {
       if (fTurno) q = q.eq('turno', fTurno)
       if (estado) q = q.eq('estado', estado)
       if (fProfesional) q = q.eq('registrado_por_id', fProfesional)
+      // Distinto de fProfesional: este es el médico responsable del
+      // ingreso, no quien registró la incidencia — el mismo concepto
+      // que usa el filtro de médico del Dashboard.
+      if (medicoResponsable) q = q.eq('ingreso.medico_responsable_id', medicoResponsable)
       if (fAlcance === 'activos') q = q.eq('ingreso.estado', 'activo')
       if (fAlcance === 'cerrados') q = q.neq('ingreso.estado', 'activo')
 
@@ -284,6 +297,10 @@ export function Eventos() {
     if (fProfesional) {
       const p = profesionales.find((x) => x.id === fProfesional)
       if (p) partes.push(`Registrado por ${p.nombre} ${p.apellidos}`)
+    }
+    if (fMedicoResponsable) {
+      const m = profesionales.find((x) => x.id === fMedicoResponsable)
+      if (m) partes.push(`Médico responsable: ${m.nombre} ${m.apellidos}`)
     }
     partes.push(fAlcance === 'activos' ? 'Solo ingresos activos' : fAlcance === 'cerrados' ? 'Solo episodios cerrados' : 'Activos y cerrados')
     return partes.length > 0 ? partes.join(' · ') : 'Sin filtros aplicados'
@@ -593,6 +610,13 @@ export function Eventos() {
               <select className="input" value={fProfesional} onChange={(e) => setFProfesional(e.target.value)}>
                 <option value="">Todos</option>
                 {profesionales.map((p) => <option key={p.id} value={p.id}>{p.nombre} {p.apellidos}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="label">Médico responsable del ingreso</label>
+              <select className="input" value={fMedicoResponsable} onChange={(e) => setFMedicoResponsable(e.target.value)}>
+                <option value="">Todos</option>
+                {profesionales.filter((p) => p.rol === 'medico').map((p) => <option key={p.id} value={p.id}>{p.nombre} {p.apellidos}</option>)}
               </select>
             </div>
             <div>

@@ -3,7 +3,7 @@ import type { Periodo } from './tipos'
 
 // ─── Rango del periodo elegido ──────────────────────────────────
 
-export function calcularRango(periodo: Periodo, desdePersonalizado?: string, hastaPersonalizado?: string): { desde: string; hasta: string } {
+export function calcularRango(periodo: Periodo, desdePersonalizado?: string, hastaPersonalizado?: string, primeraFechaReal?: string | null): { desde: string; hasta: string } {
   const hoy = new Date()
   const hoyStr = fmt(hoy)
 
@@ -18,9 +18,12 @@ export function calcularRango(periodo: Periodo, desdePersonalizado?: string, has
     return { desde: fmt(new Date(hoy.getFullYear(), 0, 1)), hasta: hoyStr }
   }
   if (periodo === 'todo') {
-    // No hay un "desde" real — 2000-01-01 es, en la práctica, "desde
-    // siempre" para una clínica que no existía entonces.
-    return { desde: '2000-01-01', hasta: hoyStr }
+    // El primer ingreso real, no una fecha inventada — 2000-01-01
+    // generaba miles de días vacíos en las series y hundía la
+    // ocupación media a un valor sin significado (0,2%). Mientras se
+    // resuelve la fecha real, se usa hoy mismo como "desde" — un
+    // rango de un solo día, nunca "vacío desde el año 2000".
+    return { desde: primeraFechaReal || hoyStr, hasta: hoyStr }
   }
   // Personalizado
   return { desde: desdePersonalizado || hoyStr, hasta: hastaPersonalizado || hoyStr }
@@ -107,7 +110,10 @@ export function calcularRangoComparacion(periodo: Periodo, desde: string, hasta:
 // bueno o malo: eso lo decide quien lee la cifra, no el color de un
 // icono puesto sin pensar.
 export function variacion(actual: number, anterior: number): { absoluta: number; pct: number | null } {
-  const absoluta = actual - anterior
+  // Redondeado a un decimal — sin esto, restar dos números con
+  // decimales podía dar cosas como 17.700000000000003, un artefacto
+  // de la aritmética de coma flotante, no un dato real.
+  const absoluta = Math.round((actual - anterior) * 10) / 10
   const pct = anterior !== 0 ? Math.round((absoluta / anterior) * 1000) / 10 : null
   return { absoluta, pct }
 }

@@ -55,7 +55,7 @@ export function ResumenDashboard({ filtros, desde, hasta, onExplorar, onExplorar
       p_desde: desde,
       p_hasta: hasta,
       p_medico_id: filtros.medicoId,
-      p_estado_filtro: filtros.estado,
+      p_estado_filtro: null,
     }
 
     const [resActual, resSerie] = await Promise.all([
@@ -86,7 +86,7 @@ export function ResumenDashboard({ filtros, desde, hasta, onExplorar, onExplorar
       if (rangoAnt) {
         const { data } = await supabase.rpc('dashboard_resumen', {
           p_desde: rangoAnt.desde, p_hasta: rangoAnt.hasta,
-          p_medico_id: filtros.medicoId, p_estado_filtro: filtros.estado,
+          p_medico_id: filtros.medicoId, p_estado_filtro: null,
         })
         if (miSecuencia === secuenciaRef.current) setResumenAnterior(data ?? null)
       }
@@ -96,7 +96,7 @@ export function ResumenDashboard({ filtros, desde, hasta, onExplorar, onExplorar
   }
 
   useEffect(() => { cargarSituacion() }, [])
-  useEffect(() => { cargarResumenYSeries() }, [desde, hasta, filtros.medicoId, filtros.estado, filtros.comparar, filtros.periodo])
+  useEffect(() => { cargarResumenYSeries() }, [desde, hasta, filtros.medicoId, filtros.comparar, filtros.periodo])
 
   function comparacionTexto(actual: number, etiqueta: string, esPct = false): string | undefined {
     if (!resumenAnterior) return undefined
@@ -104,7 +104,14 @@ export function ResumenDashboard({ filtros, desde, hasta, onExplorar, onExplorar
     if (anterior == null) return undefined
     const { absoluta, pct } = variacion(actual, anterior)
     const signo = absoluta > 0 ? '+' : ''
-    return `Periodo anterior: ${anterior}${esPct ? '%' : ''} (${signo}${absoluta}${pct != null ? `, ${signo}${pct}%` : ''})`
+    // Para porcentajes, la diferencia se expresa en puntos
+    // porcentuales (pp), no en "%" — decir "+17.7%" de una cifra que
+    // ya era un porcentaje sería un porcentaje de un porcentaje, que
+    // no es lo que nadie quiere leer aquí.
+    if (esPct) {
+      return `Periodo anterior: ${anterior}% (${signo}${absoluta} pp)`
+    }
+    return `Periodo anterior: ${anterior} (${signo}${absoluta}${pct != null ? `, ${signo}${pct}%` : ''})`
   }
 
   return (
@@ -120,8 +127,13 @@ export function ResumenDashboard({ filtros, desde, hasta, onExplorar, onExplorar
         {estadoSituacion === 'listo' && situacion && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <TarjetaMetrica etiqueta="Ingresados ahora" valor={situacion.pacientes_ingresados} subvalor={`${situacion.ocupacion_actual_pct}% de ocupación`} />
-            <TarjetaMetrica etiqueta="Estancia > 60 días" valor={situacion.estancia_larga_60} />
-            <TarjetaMetrica etiqueta="Semáforo rojo/naranja" valor={situacion.semaforo_riesgo} onClick={() => onExplorar()} />
+            <TarjetaMetrica etiqueta="Estancia ≥ 60 días" valor={situacion.estancia_larga_60} />
+            {/* Sin onClick a propósito: Incidencias no puede explicar
+                qué pacientes componen el semáforo de caídas — eso es
+                un dato de Hoja de Ítems, no de eventos. Una tarjeta
+                que no puede abrir exactamente lo que representa no
+                debería ser pulsable. */}
+            <TarjetaMetrica etiqueta="Semáforo rojo/naranja" valor={situacion.semaforo_riesgo} />
             <TarjetaMetrica etiqueta="Con contención activa" valor={situacion.contencion_activa} />
             <TarjetaMetrica etiqueta="Contención sin confirmar" valor={situacion.contencion_pendiente_confirmacion} />
             <TarjetaMetrica etiqueta="Incidencias pendientes" valor={situacion.incidencias_pendientes} onClick={() => onExplorar({ incidencias: 'pendiente' })} />

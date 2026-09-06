@@ -52,6 +52,10 @@ export function ExploradorEpisodios({ filtrosIniciales }: { filtrosIniciales?: R
       hastaAlta: f.hasta_alta || '',
       estado: f.estado || '',
       estanciaMin: f.estancia_min || '',
+      // Antes se perdía: el filtro de médico del Dashboard llegaba
+      // hasta aquí, se veía en la cabecera, pero el Explorador seguía
+      // buscando con "Todos" por dentro.
+      medicoId: f.medico || '',
     }
   })
   const [medicos, setMedicos] = useState<{ id: string; nombre: string; apellidos: string }[]>([])

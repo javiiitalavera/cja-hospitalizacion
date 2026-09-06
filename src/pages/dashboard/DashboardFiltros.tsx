@@ -3,9 +3,12 @@ import { supabase } from '../../lib/supabase'
 import type { Filtros, Periodo } from './tipos'
 import { RotateCcw } from 'lucide-react'
 
-export function DashboardFiltros({ filtros, onCambiar }: {
+export function DashboardFiltros({ filtros, onCambiar, mostrarComparar }: {
   filtros: Filtros
   onCambiar: (f: Filtros) => void
+  // "Comparar" solo tiene sentido donde de verdad se usa — Actividad
+  // y Seguridad mostraban el selector y lo ignoraban por completo.
+  mostrarComparar: boolean
 }) {
   const [medicos, setMedicos] = useState<{ id: string; nombre: string; apellidos: string }[]>([])
 
@@ -19,7 +22,7 @@ export function DashboardFiltros({ filtros, onCambiar }: {
   }
 
   function restablecer() {
-    onCambiar({ periodo: 'mes', desde: '', hasta: '', medicoId: null, estado: null, comparar: false })
+    onCambiar({ periodo: 'mes', desde: '', hasta: '', medicoId: null, comparar: false })
   }
 
   const periodos: { valor: Periodo; etiqueta: string }[] = [
@@ -60,23 +63,22 @@ export function DashboardFiltros({ filtros, onCambiar }: {
           {medicos.map((m) => <option key={m.id} value={m.id}>{m.nombre} {m.apellidos}</option>)}
         </select>
 
-        <select className="input py-1.5 max-w-[180px]" value={filtros.estado ?? ''} onChange={(e) => set({ estado: (e.target.value || null) as Filtros['estado'] })}>
-          <option value="">Todos los estados</option>
-          <option value="activo">Activo</option>
-          <option value="alta">Alta</option>
-          <option value="alta_traslado">Traslado</option>
-          <option value="exitus">Éxitus</option>
-        </select>
+        {mostrarComparar && (
+          <>
+            <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer px-2">
+              <input type="checkbox" checked={filtros.comparar} onChange={(e) => set({ comparar: e.target.checked })} />
+              Comparar con el periodo anterior
+            </label>
 
-        <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer px-2">
-          <input type="checkbox" checked={filtros.comparar} onChange={(e) => set({ comparar: e.target.checked })} />
-          Comparar con el periodo anterior
-        </label>
-
-        {filtros.periodo !== 'todo' && filtros.comparar && (
-          <span className="text-[11px] text-slate-400 italic">
-            (sin comparación disponible en "Todo el historial")
-          </span>
+            {/* Antes esta condición estaba invertida: el aviso salía
+                precisamente cuando SÍ había comparación disponible,
+                y se callaba cuando de verdad no la había. */}
+            {filtros.periodo === 'todo' && filtros.comparar && (
+              <span className="text-[11px] text-slate-400 italic">
+                (sin comparación disponible en "Todo el historial")
+              </span>
+            )}
+          </>
         )}
 
         <button onClick={restablecer} className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600 ml-auto">
