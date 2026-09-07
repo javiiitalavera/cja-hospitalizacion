@@ -175,14 +175,19 @@ export default function ModalContencion({ ingresoId, onClose, onGuardado, pacien
   }
 
   async function retirar() {
-    if (!profesional) return
+    if (!profesional || !ultimo) return
     setConfirmando(true)
     setError('')
     const { error: err } = await supabase.rpc('retirar_confirmacion_contencion', {
       p_ingreso_id: ingresoId,
+      p_version_esperada: ultimo.version,
     })
     setConfirmando(false)
     if (err) {
+      if (err.message === 'version_desactualizada') {
+        setConflicto(true)
+        return
+      }
       setError('No se pudo retirar la confirmación: ' + err.message)
       return
     }

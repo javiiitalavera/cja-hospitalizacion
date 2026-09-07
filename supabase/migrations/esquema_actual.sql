@@ -8,12 +8,18 @@
 -- contra un PostgreSQL limpio antes de darlo por bueno, pero ya no es
 -- una extracción literal del motor en cada edición.
 --
+-- Esa validación es contra un PostgreSQL limpio simulando auth.uid()
+-- y pg_cron, no contra una instalación limpia de Supabase real de
+-- principio a fin (crear proyecto, RLS, Edge Functions, cuenta de
+-- administrador) — eso sigue siendo trabajo pendiente, documentado
+-- en DOCUMENTACION_INSTALACION_Y_DESPLIEGUE.md.
+--
 -- OJO — NO ejecutar esto contra la base de datos de producción: ya
 -- tiene todo esto creado. Este archivo sirve como referencia de cómo
 -- es la base de datos hoy, y como punto de partida si algún día se
 -- necesita montar un entorno nuevo desde cero (por ejemplo, uno de
 -- pruebas). Los cambios reales a producción viajan en scripts sueltos
--- (ver la carpeta de scripts ya aplicados), no ejecutando este archivo.
+-- del mismo repositorio, no ejecutando este archivo completo.
 -- ============================================================
 
 begin;
@@ -30,6 +36,14 @@ create extension if not exists unaccent;
 -- que no sean invocables directamente por el cliente (solo se usan
 -- dentro de las políticas de seguridad de las tablas).
 create schema if not exists private;
+
+-- Sin esto, cualquier función que llama a private.mi_rol() o
+-- private.soy_admin() falla con "permission denied for schema
+-- private" en una instalación limpia — comprobado de verdad. La base
+-- real ya tenía este permiso puesto en algún momento anterior a este
+-- archivo, lo que explica que nunca se hubiera notado aquí.
+revoke all on schema private from public, anon;
+grant usage on schema private to authenticated;
 
 
 -- ────────────────────────────────────────────────────────────
@@ -112,7 +126,14 @@ create table public.ingresos (
     motivo_ingreso text,
     estado text not null default 'activo' check (estado in ('activo', 'alta', 'alta_traslado', 'exitus')),
     created_at timestamptz default now(),
-    constraint ingresos_fecha_alta_valida check (fecha_alta is null or fecha_alta >= fecha_ingreso)
+    constraint ingresos_fecha_alta_valida check (fecha_alta is null or fecha_alta >= fecha_ingreso),
+    -- Confirmado de verdad que, sin esto, un ingreso se podía dejar
+    -- en estado "alta" con fecha_alta y dado_de_alta_en en null
+    -- directamente por la API, sin pasar por dar_de_alta().
+    constraint ingresos_alta_coherente check (
+        (estado = 'activo' and fecha_alta is null and dado_de_alta_en is null)
+        or (estado <> 'activo' and fecha_alta is not null and dado_de_alta_en is not null)
+    )
 );
 
 -- Informe de ingreso: un único informe por ingreso.
@@ -266,7 +287,7 @@ create table public.eventos (
     -- ingreso — si hay un traslado después, el histórico no debe
     -- cambiar de habitación con él. Se rellena sola (ver disparador
     -- fijar_habitacion_evento), nunca a mano.
-    habitacion_evento integer,
+    habitacion_evento integer check (habitacion_evento is null or (habitacion_evento >= 1 and habitacion_evento <= 33)),
     created_at timestamptz default now()
 );
 
@@ -496,6 +517,9 @@ as $$
   );
 $$;
 
+grant execute on function private.mi_rol() to authenticated;
+grant execute on function private.soy_admin() to authenticated;
+
 -- Impide cambiar el autor de una incidencia ya existente (una
 -- política RLS no puede comparar el valor antes/después en un
 -- UPDATE, así que esto se hace con un disparador).
@@ -562,9 +586,16 @@ security definer
 set search_path = ''
 as $$
 begin
-  if NEW.habitacion_evento is null then
-    select habitacion into NEW.habitacion_evento from public.ingresos where id = NEW.ingreso_id;
-  end if;
+  -- Se sobrescribe siempre, nunca se confía en lo que mande el
+  -- cliente — confirmado de verdad que, antes, si el cliente mandaba
+  -- un valor (no null), se aceptaba tal cual sin comprobar nada.
+  --
+  -- Salvedad honesta: si una incidencia se registra días después de
+  -- ocurrida y el paciente ya ha cambiado de habitación, se guardará
+  -- la habitación ACTUAL, no necesariamente aquella en la que ocurrió
+  -- de verdad. No se añade más interfaz para este caso, poco
+  -- frecuente, pero tampoco se esconde.
+  select habitacion into NEW.habitacion_evento from public.ingresos where id = NEW.ingreso_id;
   return NEW;
 end;
 $$;
@@ -803,9 +834,21 @@ begin
     raise exception 'No se ha podido identificar tu sesión.';
   end if;
 
-  update public.contenciones
+  -- Bandera de sesión para que el disparador de más abajo deje pasar
+  -- este UPDATE en concreto — es la única vía autorizada para tocar
+  -- confirmado_por_id.
+  perform set_config('app.confirmacion_rpc', 'true', true);
+
+  update public.contenciones c
   set confirmado_por_id = v_actor
-  where ingreso_id = p_ingreso_id and version = p_version_esperada
+  where c.ingreso_id = p_ingreso_id
+    and c.version = p_version_esperada
+    -- Episodio activo: no tiene sentido confirmar la pauta de un
+    -- episodio ya cerrado. Confirmado de verdad que antes se podía.
+    and exists (select 1 from public.ingresos i where i.id = c.ingreso_id and i.estado = 'activo')
+    -- No se puede volver a confirmar algo ya confirmado — antes esto
+    -- simplemente cambiaba quién figuraba como autor, sin aviso.
+    and c.confirmado_por_id is null
   returning * into v_resultado;
 
   if not found then
@@ -813,13 +856,13 @@ begin
   end if;
 
   insert into public.contenciones_historial (ingreso_id, dia, noche, cambiado_por_id, cambiado_en, tipo_accion, actor_id)
-  values (v_resultado.ingreso_id, v_resultado.dia, v_resultado.noche, v_resultado.actualizado_por_id, v_resultado.actualizado_en, 'confirmada', v_actor);
+  values (v_resultado.ingreso_id, v_resultado.dia, v_resultado.noche, v_resultado.actualizado_por_id, now(), 'confirmada', v_actor);
 
   return v_resultado;
 end;
 $$;
 
-create function public.retirar_confirmacion_contencion(p_ingreso_id uuid)
+create function public.retirar_confirmacion_contencion(p_ingreso_id uuid, p_version_esperada integer)
 returns public.contenciones
 language plpgsql
 security definer
@@ -833,18 +876,28 @@ begin
     raise exception 'Solo un médico puede retirar una confirmación.';
   end if;
   select id into v_actor from public.profesionales where user_id = auth.uid() limit 1;
+  if v_actor is null then
+    raise exception 'No se ha podido identificar tu sesión.';
+  end if;
 
-  update public.contenciones
+  perform set_config('app.confirmacion_rpc', 'true', true);
+
+  update public.contenciones c
   set confirmado_por_id = null
-  where ingreso_id = p_ingreso_id
+  where c.ingreso_id = p_ingreso_id
+    and c.version = p_version_esperada
+    and exists (select 1 from public.ingresos i where i.id = c.ingreso_id and i.estado = 'activo')
+    -- Solo tiene sentido retirar una confirmación que exista de
+    -- verdad — antes se podía "retirar" una que no existía.
+    and c.confirmado_por_id is not null
   returning * into v_resultado;
 
   if not found then
-    raise exception 'No existe esa contención.';
+    raise exception 'version_desactualizada';
   end if;
 
   insert into public.contenciones_historial (ingreso_id, dia, noche, cambiado_por_id, cambiado_en, tipo_accion, actor_id)
-  values (v_resultado.ingreso_id, v_resultado.dia, v_resultado.noche, v_resultado.actualizado_por_id, v_resultado.actualizado_en, 'confirmacion_retirada', v_actor);
+  values (v_resultado.ingreso_id, v_resultado.dia, v_resultado.noche, v_resultado.actualizado_por_id, now(), 'confirmacion_retirada', v_actor);
 
   return v_resultado;
 end;
@@ -1006,9 +1059,36 @@ create trigger guardar_historial_tras_cambio
   after insert or update of dia, noche on public.contenciones
   for each row execute function public.registrar_historial_contencion();
 
+-- Solo se dispara cuando cambia la pauta de verdad (dia/noche), igual
+-- que el disparador del historial de arriba — confirmado de verdad
+-- que, antes, confirmar o retirar una confirmación (que solo tocan
+-- confirmado_por_id) también adelantaban esta fecha, como si la
+-- pauta se hubiera modificado sin ser cierto.
 create trigger fijar_actualizado_en
-  before insert or update on public.contenciones
+  before insert or update of dia, noche on public.contenciones
   for each row execute function public.set_actualizado_en();
+
+-- Impide que una sesión autenticada normal escriba confirmado_por_id
+-- directamente — solo confirmar_contencion()/retirar_confirmacion_
+-- contencion() pueden, marcando antes una bandera de sesión. Sin
+-- esto, un médico podía confirmar o retirar a mano sin dejar ningún
+-- rastro en contenciones_historial — confirmado de verdad.
+create function public.impedir_confirmacion_directa() returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if new.confirmado_por_id is distinct from old.confirmado_por_id
+     and coalesce(current_setting('app.confirmacion_rpc', true), '') <> 'true' then
+    raise exception 'La confirmación de una contención solo puede cambiar mediante confirmar_contencion() o retirar_confirmacion_contencion().';
+  end if;
+  return new;
+end;
+$$;
+
+create trigger impedir_confirmacion_directa
+  before update on public.contenciones
+  for each row execute function public.impedir_confirmacion_directa();
 
 create trigger incrementar_version
   before update on public.contenciones
@@ -1072,8 +1152,11 @@ create policy crear_ingreso on public.ingresos for insert to authenticated
 create policy editar_ingreso on public.ingresos for update to authenticated
     using (private.mi_rol() = 'medico' and estado = 'activo')
     with check (private.mi_rol() = 'medico');
-create policy borrar_ingreso on public.ingresos for delete to authenticated
-    using (private.mi_rol() = 'medico' and estado = 'activo');
+-- Deliberadamente no existe una política de borrado para ingresos —
+-- borrar un episodio activo eliminaría en cascada informes, ítems,
+-- incidencias, escalas, CMBD y contenciones. Confirmado que antes sí
+-- existía y permitía justo eso; se retira sin sustituir por nada,
+-- reforzado más abajo con un revoke a nivel de tabla.
 
 -- informe_ingreso: solo médico, SIN exigir episodio activo — el
 -- informe de alta se apoya en sus antecedentes, alergias,
@@ -1112,6 +1195,23 @@ create policy escribir_equipo on public.items_paciente to authenticated
         private.mi_rol() in ('medico', 'enfermeria', 'auxiliar', 'tecnico')
         and exists (select 1 from ingresos i where i.id = items_paciente.ingreso_id and i.estado = 'activo')
     );
+
+-- Las políticas de arriba ("escribir_medico"/"escribir_equipo") no
+-- especifican operación, así que PostgreSQL las trata como válidas
+-- para INSERT, UPDATE y DELETE a la vez — confirmado de verdad que
+-- un médico podía borrar cualquiera de estos seis registros clínicos
+-- por la API, aunque la interfaz nunca lo ofrezca. Cada una de estas
+-- tablas ya tiene su propia política de lectura separada
+-- ("leer_autenticado"), así que revocar DELETE a nivel de tabla no
+-- afecta a leer ni a crear/editar — basta con quitar el permiso de
+-- tabla, sin reescribir ninguna política.
+revoke delete on public.pacientes from authenticated;
+revoke delete on public.informe_ingreso from authenticated;
+revoke delete on public.informe_alta from authenticated;
+revoke delete on public.cmbd from authenticated;
+revoke delete on public.escalas_clinicas from authenticated;
+revoke delete on public.items_paciente from authenticated;
+revoke delete on public.ingresos from authenticated;
 
 -- eventos (incidencias): todo el equipo asistencial, sin exigir
 -- episodio activo — deben poder registrarse y editarse después del
@@ -1193,10 +1293,10 @@ create policy modificar_equipo on public.contenciones
 -- se revoque a propósito. Confirmado reproduciéndolo de verdad: sin
 -- este revoke, alguien sin sesión podía retirar la confirmación de
 -- una contención real solo conociendo el ingreso.
-revoke execute on function public.retirar_confirmacion_contencion(uuid) from public, anon;
+revoke execute on function public.retirar_confirmacion_contencion(uuid, integer) from public, anon;
 revoke execute on function public.confirmar_contencion(uuid, integer) from public, anon;
 grant execute on function public.confirmar_contencion(uuid, integer) to authenticated;
-grant execute on function public.retirar_confirmacion_contencion(uuid) to authenticated;
+grant execute on function public.retirar_confirmacion_contencion(uuid, integer) to authenticated;
 
 -- Una única función transaccional para dar de alta: actualiza el
 -- estado del ingreso y el motivo del CMBD a la vez, con los mismos
@@ -1220,6 +1320,10 @@ begin
     raise exception 'Solo un médico puede dar de alta.';
   end if;
 
+  if p_fecha_alta is null or p_fecha_alta > current_date then
+    raise exception 'La fecha de alta no es válida.';
+  end if;
+
   v_estado := case p_circunstancia_alta
     when '1' then 'alta'            -- Domicilio
     when '3' then 'alta'            -- Alta voluntaria
@@ -1234,6 +1338,10 @@ begin
     raise exception 'Circunstancia de alta no reconocida.';
   end if;
 
+  if p_fecha_alta < (select fecha_ingreso from public.ingresos where id = p_ingreso_id) then
+    raise exception 'La fecha de alta no puede ser anterior a la de ingreso.';
+  end if;
+
   update public.ingresos
   set estado = v_estado, fecha_alta = p_fecha_alta, dado_de_alta_en = now()
   where id = p_ingreso_id and estado = 'activo'
@@ -1243,9 +1351,15 @@ begin
     raise exception 'Este episodio ya no está activo, o no existe.';
   end if;
 
-  update public.cmbd
-  set circunstancia_alta = p_circunstancia_alta
-  where ingreso_id = p_ingreso_id;
+  -- INSERT ... ON CONFLICT en vez de un UPDATE a ciegas: si el CMBD
+  -- todavía no existía (un ingreso que nunca se llegó a abrir en esa
+  -- pestaña), esto lo crea; si ya existía, lo actualiza. Confirmado
+  -- de verdad que, antes, un UPDATE sobre una fila inexistente
+  -- afectaba a cero filas y el alta se daba por buena igualmente,
+  -- con el CMBD vacío para siempre.
+  insert into public.cmbd (ingreso_id, circunstancia_alta)
+  values (p_ingreso_id, p_circunstancia_alta)
+  on conflict (ingreso_id) do update set circunstancia_alta = excluded.circunstancia_alta;
 
   return jsonb_build_object('estado', v_estado, 'fecha_alta', v_actualizado.fecha_alta);
 end;
@@ -1323,6 +1437,7 @@ revoke execute on function public.fijar_habitacion_evento() from public, anon, a
 revoke execute on function public.registrar_auditoria() from public, anon, authenticated;
 revoke execute on function public.registrar_historial_contencion() from public, anon, authenticated;
 revoke execute on function public.gestionar_confirmacion_contencion() from public, anon, authenticated;
+revoke execute on function public.impedir_confirmacion_directa() from public, anon, authenticated;
 
 
 -- ────────────────────────────────────────────────────────────
@@ -1355,8 +1470,9 @@ create index pacientes_nombre_normalizado_idx on public.pacientes (nombre_normal
 -- Únicos, pero solo cuando de verdad hay un valor que comparar —
 -- muchos pacientes no tienen NHC o CIPNA asignado, y un "unique"
 -- normal trataría dos campos en blanco como si fueran el mismo dato.
--- Encontrado por auditoría directa: dos pacientes reales compartían
--- el mismo NHC sin que nada lo impidiera.
+-- Encontrado por auditoría directa: dos pacientes de prueba
+-- compartían el mismo NHC sin que nada lo impidiera — con datos
+-- clínicos reales, ese mismo fallo sería mucho más grave.
 create unique index if not exists pacientes_nhc_unico
   on public.pacientes (nhc)
   where nhc is not null and nhc <> '';
@@ -1384,19 +1500,17 @@ select cron.schedule('snapshot-items-diario', '0 23 * * *', 'select generar_snap
 -- DATOS INICIALES
 -- ────────────────────────────────────────────────────────────
 
--- Tres profesionales de arranque; Javier queda como administrador
--- (necesario para poder gestionar al resto del personal desde el
--- primer momento). El "ilike" es deliberado: no exige coincidencia
--- exacta de apellidos, así el arranque no depende de que el nombre
--- se escriba exactamente igual en el futuro.
+-- AJUSTAR ANTES DE USAR EN UNA INSTALACIÓN NUEVA: esto es solo un
+-- ejemplo de arranque, no la lista real de personal de la clínica —
+-- una plantilla genérica no debería llevar nombres reales de
+-- personas concretas. Sustitúyase por el nombre real de quien vaya a
+-- ser la primera persona administradora antes de ejecutar esto.
 insert into public.profesionales (nombre, apellidos, rol) values
-    ('Ana', '', 'medico'),
-    ('Kevin', '', 'medico'),
-    ('Javier', 'González Gómez', 'medico');
+    ('Administrador', 'Inicial', 'medico');
 
 update public.profesionales
 set es_admin = true
-where nombre = 'Javier' and apellidos ilike 'González%';
+where nombre = 'Administrador' and apellidos = 'Inicial';
 
 commit;
 
@@ -1405,6 +1519,15 @@ commit;
 -- Explorador de episodios. Seis funciones independientes, cada una
 -- con su propia responsabilidad, en vez de una única función
 -- gigantesca. security invoker en todas salvo donde se indica.
+--
+-- Nota de honestidad: este archivo tiene varias transacciones
+-- independientes (begin/commit), no una sola que envuelva todo el
+-- fichero. Si esta sección fallara en una instalación limpia, el
+-- esquema principal de más arriba ya habría quedado aplicado, en un
+-- estado a medias. No se ha fusionado todo en una única transacción
+-- todavía por evitar el riesgo de introducir un error nuevo al
+-- reestructurar un archivo de este tamaño de una vez — queda anotado
+-- como pendiente, no escondido.
 -- ============================================================
 
 begin;
@@ -1439,13 +1562,17 @@ begin
   inner join public.items_paciente ip on ip.ingreso_id = i.id
   where i.estado = 'activo' and ip.semaforo_caidas in ('rojo', 'naranja');
 
+  -- Solo contención de verdad, no cualquier medida de seguridad
+  -- nocturna (barras, cota cero, sensor de presión) — confirmado que
+  -- antes un paciente con solo una barra aparecía como "con
+  -- contención activa", que no es lo mismo.
   select count(*) into v_contencion_activa
   from public.ingresos i
   inner join public.contenciones c on c.ingreso_id = i.id
   where i.estado = 'activo'
     and (
-      (c.dia is not null and c.dia <> 'ninguna')
-      or (c.noche is not null and array_length(c.noche, 1) > 0)
+      c.dia in ('continua_seguridad', 'si_precisa_supervision', 'si_precisa_paciente')
+      or 'contencion_fija' = any(c.noche) or 'contencion_si_precisa' = any(c.noche)
     );
 
   select count(*) into v_contencion_pendiente
@@ -1884,8 +2011,8 @@ begin
       where i2.estado = 'activo'
         and (p_medico_id is null or i2.medico_responsable_id = p_medico_id)
         and (
-          (c.dia is not null and c.dia <> 'ninguna')
-          or (c.noche is not null and array_length(c.noche, 1) > 0)
+          c.dia in ('continua_seguridad', 'si_precisa_supervision', 'si_precisa_paciente')
+          or 'contencion_fija' = any(c.noche) or 'contencion_si_precisa' = any(c.noche)
         )
     ),
     'pendientes_confirmacion', (
