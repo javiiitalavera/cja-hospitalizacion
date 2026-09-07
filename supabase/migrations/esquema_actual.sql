@@ -1424,8 +1424,8 @@ declare
   v_contencion_pendiente integer;
   v_incidencias_pendientes integer;
 begin
-  if private.mi_rol() is null then
-    raise exception 'No autorizado.';
+  if not private.soy_admin() then
+    raise exception 'Solo un administrador puede acceder al Dashboard.';
   end if;
 
   select count(*) into v_activos from public.ingresos where estado = 'activo';
@@ -1504,8 +1504,8 @@ declare
   v_reingresos integer;
   v_incidencias integer;
 begin
-  if private.mi_rol() is null then
-    raise exception 'No autorizado.';
+  if not private.soy_admin() then
+    raise exception 'Solo un administrador puede acceder al Dashboard.';
   end if;
   if p_desde > p_hasta then
     raise exception 'La fecha "desde" no puede ser posterior a "hasta".';
@@ -1621,8 +1621,8 @@ declare
   v_ocupacion jsonb;
   v_movimientos jsonb;
 begin
-  if private.mi_rol() is null then
-    raise exception 'No autorizado.';
+  if not private.soy_admin() then
+    raise exception 'Solo un administrador puede acceder al Dashboard.';
   end if;
   if p_desde > p_hasta then
     raise exception 'La fecha "desde" no puede ser posterior a "hasta".';
@@ -1711,8 +1711,8 @@ declare
   v_por_sexo jsonb;
   v_edad_media numeric;
 begin
-  if private.mi_rol() is null then
-    raise exception 'No autorizado.';
+  if not private.soy_admin() then
+    raise exception 'Solo un administrador puede acceder al Dashboard.';
   end if;
 
   select jsonb_build_object(
@@ -1799,8 +1799,8 @@ declare
   v_otras jsonb;
   v_contenciones jsonb;
 begin
-  if private.mi_rol() is null then
-    raise exception 'No autorizado.';
+  if not private.soy_admin() then
+    raise exception 'Solo un administrador puede acceder al Dashboard.';
   end if;
   if p_desde > p_hasta then
     raise exception 'La fecha "desde" no puede ser posterior a "hasta".';
@@ -1953,8 +1953,8 @@ declare
   v_orden_col text;
   v_orden_dir text;
 begin
-  if private.mi_rol() is null then
-    raise exception 'No autorizado.';
+  if not private.soy_admin() then
+    raise exception 'Solo un administrador puede acceder al Dashboard.';
   end if;
   if p_estado is not null and p_estado not in ('activo', 'alta', 'alta_traslado', 'exitus') then
     raise exception 'Estado no reconocido: %', p_estado;

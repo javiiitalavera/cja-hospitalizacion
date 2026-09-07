@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { LayoutDashboard } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { useAuth } from '../../lib/AuthContext'
 import type { Filtros, Periodo } from './tipos'
 import { calcularRango } from './metricas'
 import { DashboardFiltros } from './DashboardFiltros'
@@ -25,6 +26,7 @@ function filtrosDesdeURL(params: URLSearchParams): Filtros {
 }
 
 export function Dashboard() {
+  const { esAdmin } = useAuth()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const vista = (searchParams.get('vista') as Vista) || 'resumen'
@@ -105,6 +107,24 @@ export function Dashboard() {
     { valor: 'seguridad', etiqueta: 'Seguridad', disponible: true },
     { valor: 'explorador', etiqueta: 'Explorador de episodios', disponible: true },
   ]
+
+  // Antes lo veía cualquier profesional — ahora, igual que Personal
+  // y Auditoría, queda restringido a administradores. Va después de
+  // todos los hooks a propósito: un "return" antes de un useState o
+  // useEffect rompería las reglas de hooks de React en cuanto
+  // esAdmin cambiara de valor entre renderizados.
+  if (!esAdmin) {
+    return (
+      <div className="p-8">
+        <div className="card p-6 max-w-md">
+          <p className="font-semibold text-slate-800">Acceso restringido</p>
+          <p className="text-sm text-slate-500 mt-1">
+            Solo los administradores pueden ver el Dashboard.
+          </p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="p-6 md:p-8 space-y-6 max-w-6xl">
