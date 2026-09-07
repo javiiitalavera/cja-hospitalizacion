@@ -502,6 +502,15 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
     return faltan
   }
 
+  // Igual que handleExportar: cancela el guardado automático pendiente
+  // antes de guardar a mano — si no, el debounce de 1,5s podía
+  // dispararse justo después con una versión ya desactualizada y
+  // mostrar un conflicto contra la propia sesión de quien guarda.
+  async function handleGuardar() {
+    if (debounceRef.current) { clearTimeout(debounceRef.current); debounceRef.current = null }
+    await save(dataRef.current)
+  }
+
   async function handleExportar() {
     const faltan = camposFaltantes(dataRef.current)
     if (faltan.length > 0) {
@@ -545,7 +554,7 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
             {estado === 'guardado' && <span className="text-emerald-600">✓ Guardado</span>}
             {estado === 'error' && <span className="text-red-600 font-semibold">✗ Error al guardar</span>}
           </span>
-          <button type="button" onClick={() => save()} className="btn-secondary text-xs py-1.5">
+          <button type="button" onClick={handleGuardar} className="btn-secondary text-xs py-1.5">
             <Save className="w-3.5 h-3.5" /> Guardar
           </button>
           <button type="button" onClick={handleExportar} disabled={exportando}
