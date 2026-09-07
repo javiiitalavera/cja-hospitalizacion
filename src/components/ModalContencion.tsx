@@ -5,6 +5,7 @@ import { X, Save, History as HistoryIcon, ChevronDown, AlertCircle, ShieldCheck 
 import {
   DIA_OPCIONES, NOCHE_OPCIONES, CONTENCION_DIA_LABEL, CONTENCION_DIA_DESC, CONTENCION_NOCHE_LABEL,
   severidadDia, severidadNoche, SEVERIDAD_ESTILO, necesitaConfirmacion,
+  TIPO_ACCION_HISTORIAL_LABEL, TIPO_ACCION_HISTORIAL_COLOR,
   type ContencionDia, type ContencionNoche, type EstadoContencion, type HistorialContencion,
 } from '../types/contenciones'
 
@@ -71,7 +72,7 @@ export default function ModalContencion({ ingresoId, onClose, onGuardado, pacien
     if (historial !== null) { setMostrarHistorial((v) => !v); return }
     const { data, error: err } = await supabase
       .from('contenciones_historial')
-      .select('*, cambiado_por:profesionales!cambiado_por_id(nombre, apellidos)')
+      .select('*, actor:profesionales!actor_id(nombre, apellidos)')
       .eq('ingreso_id', ingresoId)
       .order('cambiado_en', { ascending: false })
       .limit(20)
@@ -360,16 +361,29 @@ export default function ModalContencion({ ingresoId, onClose, onGuardado, pacien
                     ) : (
                       historial?.map((h) => (
                         <div key={h.id} className="text-xs bg-slate-50 rounded px-2.5 py-1.5">
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            {h.tipo_accion && (
+                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${TIPO_ACCION_HISTORIAL_COLOR[h.tipo_accion] ?? 'bg-slate-100 text-slate-600'}`}>
+                                {TIPO_ACCION_HISTORIAL_LABEL[h.tipo_accion] ?? h.tipo_accion}
+                              </span>
+                            )}
+                            <span className="text-slate-400">
+                              {new Date(h.cambiado_en).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })}
+                            </span>
+                          </div>
                           <p className="text-slate-600">
                             <span className="font-medium">Día:</span> {h.dia ? CONTENCION_DIA_LABEL[h.dia] : '—'}
                             {' · '}
                             <span className="font-medium">Noche:</span>{' '}
                             {h.noche && h.noche.length > 0 ? h.noche.map((n) => CONTENCION_NOCHE_LABEL[n]).join(', ') : 'ninguna'}
                           </p>
-                          <p className="text-slate-400 mt-0.5">
-                            {new Date(h.cambiado_en).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })}
-                            {h.cambiado_por && ` · ${h.cambiado_por.nombre} ${h.cambiado_por.apellidos}`}
-                          </p>
+                          {/* El actor es quien hizo ESTA acción en
+                              concreto — para confirmar o retirar una
+                              confirmación, es una persona distinta de
+                              quien había editado la pauta antes. */}
+                          {h.actor && (
+                            <p className="text-slate-400 mt-0.5">{h.actor.nombre} {h.actor.apellidos}</p>
+                          )}
                         </div>
                       ))
                     )}

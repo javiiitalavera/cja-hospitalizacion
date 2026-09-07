@@ -131,7 +131,14 @@ export function Dashboard() {
         ))}
       </div>
 
-      <DashboardFiltros filtros={filtros} onCambiar={actualizarFiltros} mostrarComparar={vista === 'resumen'} />
+      {/* El Explorador tiene sus propios filtros (fechas, estado,
+          médico, estancia, incidencias) — la barra global no le
+          afecta en absoluto, así que mostrarla ahí solo genera la
+          falsa impresión de que "Este mes" o "Restablecer filtros"
+          deberían hacer algo en esta pantalla. */}
+      {vista !== 'explorador' && (
+        <DashboardFiltros filtros={filtros} onCambiar={actualizarFiltros} mostrarComparar={vista === 'resumen'} />
+      )}
 
       {vista === 'resumen' && (
         <ResumenDashboard filtros={filtros} desde={desde} hasta={hasta} onExplorar={irAIncidencias} onExplorarEpisodios={irAExplorador} />

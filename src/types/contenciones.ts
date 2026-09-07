@@ -74,9 +74,17 @@ export interface HistorialContencion {
   ingreso_id: string
   dia: ContencionDia | null
   noche: ContencionNoche[] | null
-  cambiado_por_id?: string
   cambiado_en: string
-  cambiado_por?: { nombre: string; apellidos: string }
+  // Qué pasó exactamente, y quién lo hizo de verdad — para confirmar
+  // o retirar una confirmación, es una persona distinta de quien
+  // había editado la pauta por última vez. Antes la pantalla solo
+  // mostraba "quién editó el contenido" para cada fila, así que una
+  // confirmación médica se veía atribuida a quien había tocado la
+  // pauta antes, no a quien confirmó — un fallo de atribución real,
+  // no cosmético.
+  tipo_accion?: 'pauta_creada' | 'pauta_modificada' | 'confirmada' | 'confirmacion_retirada'
+  actor_id?: string
+  actor?: { nombre: string; apellidos: string }
 }
 
 // ─── Gravedad y color, compartidos entre el modal y los iconos ──
@@ -119,4 +127,20 @@ export function necesitaConfirmacion(dia: ContencionDia | null | undefined, noch
   const sevDia = severidadDia(dia)
   const sevNoche = severidadNoche(noche)
   return sevDia === 'activa' || sevDia === 'si_precisa' || sevNoche === 'activa' || sevNoche === 'si_precisa'
+}
+
+// Para distinguir visualmente cada fila del historial — antes todas
+// se veían igual, sin decir si esa fila era la pauta al crearse, un
+// cambio de contenido, una confirmación, o una confirmación retirada.
+export const TIPO_ACCION_HISTORIAL_LABEL: Record<string, string> = {
+  pauta_creada: 'Pauta creada',
+  pauta_modificada: 'Pauta modificada',
+  confirmada: 'Confirmada',
+  confirmacion_retirada: 'Confirmación retirada',
+}
+export const TIPO_ACCION_HISTORIAL_COLOR: Record<string, string> = {
+  pauta_creada: 'bg-slate-100 text-slate-600',
+  pauta_modificada: 'bg-amber-50 text-amber-700',
+  confirmada: 'bg-emerald-50 text-emerald-700',
+  confirmacion_retirada: 'bg-red-50 text-red-700',
 }
