@@ -49,6 +49,7 @@ export default function Home() {
   )
   const [eventosPorIngreso, setEventosPorIngreso] = useState<Record<string, string[]>>({})
   const [contencionesPorIngreso, setContencionesPorIngreso] = useState<Record<string, { dia: ContencionDia | null; noche: ContencionNoche[] | null; confirmado_por_id: string | null }>>({})
+  const [incidenciasPendientesCount, setIncidenciasPendientesCount] = useState(0)
   const [modalContencion, setModalContencion] = useState<string | null>(null) // ingresoId
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -99,6 +100,7 @@ export default function Home() {
           { data: informesData, error: errInformes },
           { data: eventosData, error: errEventos },
           { mapa: contencionesPorIngresoMapa, error: errPautas },
+          { data: pendientesData, error: errPendientes },
         ] = await Promise.all([
           supabase.from('items_paciente').select('ingreso_id,semaforo_caidas').in('ingreso_id', ids),
           supabase.from('informe_ingreso').select('ingreso_id,impresion_diagnostica').in('ingreso_id', ids),
@@ -108,15 +110,20 @@ export default function Home() {
           // historial", que no es lo mismo de un vistazo.
           supabase.from('eventos').select('ingreso_id,tipo').in('ingreso_id', ids).gte('fecha', hace7dias()),
           fetchContencionesPorIngreso(ids),
+          // Sin límite de fecha, a propósito — una incidencia puede
+          // llevar pendiente de completar más de 7 días y no por eso
+          // deja de ser trabajo pendiente.
+          supabase.from('eventos').select('id').in('ingreso_id', ids).eq('estado', 'pendiente'),
         ])
 
         // La lista de pacientes es lo esencial y ya se ha podido
-        // mostrar; si falla alguna de estas cuatro consultas
+        // mostrar; si falla alguna de estas cinco consultas
         // auxiliares, se avisa sin ocultar la lista — más útil que
         // "no hay incidencias" cuando en realidad no se sabe.
-        if (errItems || errInformes || errEventos || errPautas) {
+        if (errItems || errInformes || errEventos || errPautas || errPendientes) {
           setErrorAuxiliar('Algunos datos (diagnóstico, incidencias, contención) podrían no estar actualizados.')
         }
+        setIncidenciasPendientesCount((pendientesData ?? []).length)
 
         const itemsMap: Record<string, { semaforo_caidas?: string }> = {}
         ;(itemsData ?? []).forEach((it: any) => {
@@ -139,6 +146,8 @@ export default function Home() {
         setEventosPorIngreso(eventosMap)
 
         setContencionesPorIngreso(contencionesPorIngresoMapa as Record<string, { dia: ContencionDia | null; noche: ContencionNoche[] | null; confirmado_por_id: string | null }>)
+      } else {
+        setIncidenciasPendientesCount(0)
       }
     } finally {
       // Sin esto, un fallo en cualquiera de las consultas de arriba
@@ -178,8 +187,49 @@ export default function Home() {
   const ocupadas = ingresos.length
   const libres = slots.filter((s) => s === null).length
 
+  // Ya hay datos cargados para las dos cosas — no hace falta una
+  // consulta nueva para esta cuenta, solo mirar lo que ya se tiene.
+  const contencionesPendientesCount = ingresos.filter((i) => {
+    const c = contencionesPorIngreso[i.id]
+    return c && necesitaConfirmacion(c.dia, c.noche) && !c.confirmado_por_id
+  }).length
+  const primeraContencionPendienteId = ingresos.find((i) => {
+    const c = contencionesPorIngreso[i.id]
+    return c && necesitaConfirmacion(c.dia, c.noche) && !c.confirmado_por_id
+  })?.id
+
   return (
     <div className="p-6 md:p-8">
+      {/* Pendiente de revisión — solo aparece si hay algo, y solo
+          cuenta ingresos activos (los cerrados ya no son "trabajo
+          pendiente" de hoy). Cada línea lleva directamente adonde
+          hace falta ir para resolverlo. */}
+      {(incidenciasPendientesCount > 0 || contencionesPendientesCount > 0) && (
+        <div className="mb-5 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+          <p className="text-xs font-semibold text-amber-800 uppercase tracking-wide mb-1.5">Pendiente de revisión</p>
+          <div className="space-y-1">
+            {incidenciasPendientesCount > 0 && (
+              <button
+                onClick={() => navigate('/eventos?incidencias=pendiente')}
+                className="flex items-center gap-1.5 text-sm text-amber-800 hover:text-amber-900 hover:underline"
+              >
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                {incidenciasPendientesCount} incidencia{incidenciasPendientesCount === 1 ? '' : 's'} pendiente{incidenciasPendientesCount === 1 ? '' : 's'} de completar
+              </button>
+            )}
+            {contencionesPendientesCount > 0 && (
+              <button
+                onClick={() => primeraContencionPendienteId && setModalContencion(primeraContencionPendienteId)}
+                className="flex items-center gap-1.5 text-sm text-amber-800 hover:text-amber-900 hover:underline"
+              >
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                {contencionesPendientesCount} contención{contencionesPendientesCount === 1 ? '' : 'es'} pendiente{contencionesPendientesCount === 1 ? '' : 's'} de confirmación médica
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-start justify-between mb-5">
         <div>
