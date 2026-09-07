@@ -484,16 +484,20 @@ export default function Home() {
                       suceso sin saberlo. Ahora lleva primero a ver lo
                       que ya hay registrado; desde ahí, si hace falta,
                       se registra uno nuevo con conocimiento de causa. */}
-                  <div
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      navigate(`/ingresos/${ingreso.id}?tab=eventos`)
-                    }}
-                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 transition-colors text-xs font-medium cursor-pointer"
-                    title="Ver incidencias de este paciente"
-                  >
-                    <AlertTriangle className="w-3 h-3 shrink-0" />
-                    Incidencias
+                  <div className="relative group/tt">
+                    <div
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        navigate(`/ingresos/${ingreso.id}?tab=eventos`)
+                      }}
+                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 transition-colors text-xs font-medium cursor-pointer"
+                    >
+                      <AlertTriangle className="w-3 h-3 shrink-0" />
+                      Incidencias
+                    </div>
+                    <Tooltip titulo="Incidencias">
+                      <p className="text-xs text-slate-100">Ver incidencias de este paciente</p>
+                    </Tooltip>
                   </div>
                   {/* Aviso de incidencias de los últimos 7 días, si las hay */}
                   {(() => {
