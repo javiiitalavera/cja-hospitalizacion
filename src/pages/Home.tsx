@@ -5,12 +5,13 @@ import { useAuth } from '../lib/AuthContext'
 import type { Ingreso } from '../types'
 import { SEMAFORO_CAIDAS_COLOR as SEMAFORO, nombreCompleto } from '../types'
 import { edad, diasEntre, formatFechaLocal } from '../lib/fechas'
-import { Plus, ClipboardList, ChevronRight, AlertTriangle, AlertCircle, Sun, Moon, RefreshCw } from 'lucide-react'
+import { Plus, ClipboardList, ChevronRight, AlertTriangle, AlertCircle, Sun, Moon, RefreshCw, Printer } from 'lucide-react'
 import ModalContencion from '../components/ModalContencion'
 import Tooltip from '../components/Tooltip'
 import { fetchContencionesPorIngreso } from '../lib/contenciones'
+import { imprimirListaHabitaciones } from '../lib/imprimir'
 import {
-  severidadDia, severidadNoche, SEVERIDAD_ESTILO,
+  severidadDia, severidadNoche, SEVERIDAD_ESTILO, necesitaConfirmacion,
   CONTENCION_DIA_LABEL, CONTENCION_NOCHE_LABEL,
   type ContencionDia, type ContencionNoche,
 } from '../types/contenciones'
@@ -47,7 +48,7 @@ export default function Home() {
     {}
   )
   const [eventosPorIngreso, setEventosPorIngreso] = useState<Record<string, string[]>>({})
-  const [contencionesPorIngreso, setContencionesPorIngreso] = useState<Record<string, { dia: ContencionDia | null; noche: ContencionNoche[] | null }>>({})
+  const [contencionesPorIngreso, setContencionesPorIngreso] = useState<Record<string, { dia: ContencionDia | null; noche: ContencionNoche[] | null; confirmado_por_id: string | null }>>({})
   const [modalContencion, setModalContencion] = useState<string | null>(null) // ingresoId
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -137,7 +138,7 @@ export default function Home() {
         })
         setEventosPorIngreso(eventosMap)
 
-        setContencionesPorIngreso(contencionesPorIngresoMapa as Record<string, { dia: ContencionDia | null; noche: ContencionNoche[] | null }>)
+        setContencionesPorIngreso(contencionesPorIngresoMapa as Record<string, { dia: ContencionDia | null; noche: ContencionNoche[] | null; confirmado_por_id: string | null }>)
       }
     } finally {
       // Sin esto, un fallo en cualquiera de las consultas de arriba
@@ -198,6 +199,14 @@ export default function Home() {
           >
             <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
             Actualizar
+          </button>
+          <button
+            onClick={() => imprimirListaHabitaciones(slots.map((s) => s?.paciente ? nombreCompleto(s.paciente) : null))}
+            className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-slate-200 text-slate-500 hover:bg-slate-50 font-medium"
+            title="Imprimir lista de pacientes"
+          >
+            <Printer className="w-3.5 h-3.5" />
+            Imprimir
           </button>
         </div>
       </div>
@@ -386,19 +395,33 @@ export default function Home() {
                         : (valor as ContencionNoche[] | undefined)?.length
                           ? (valor as ContencionNoche[]).map((v) => CONTENCION_NOCHE_LABEL[v]).join(', ')
                           : 'Ninguna'
+                      // Pendiente de confirmar: severidad activa/si
+                      // precisa, y todavía sin firma de un médico —
+                      // se avisa con un parpadeo suave, no solo un
+                      // color, para que no pase desapercibido en un
+                      // vistazo rápido a la lista.
+                      const pendienteConfirmar = eje === 'dia'
+                        ? necesitaConfirmacion(estado?.dia, null) && !estado?.confirmado_por_id
+                        : necesitaConfirmacion(null, estado?.noche) && !estado?.confirmado_por_id
                       return (
                         <div key={eje} className="relative group/tt">
                           <button
                             onClick={(e) => { e.stopPropagation(); setModalContencion(ingreso.id) }}
-                            className={`relative flex items-center justify-center w-6 h-6 rounded-md border transition-colors ${estilo.bg} ${estilo.border} ${estilo.text} hover:opacity-80`}
+                            className={`relative flex items-center justify-center w-6 h-6 rounded-md border transition-colors ${estilo.bg} ${estilo.border} ${estilo.text} hover:opacity-80 ${pendienteConfirmar ? 'animate-pulse ring-2 ring-amber-400' : ''}`}
                           >
                             <Icono className="w-3.5 h-3.5" />
                             {sev === 'sin_revisar' && (
                               <AlertCircle className="w-2.5 h-2.5 text-slate-400 absolute -top-1 -right-1 bg-white rounded-full" />
                             )}
+                            {pendienteConfirmar && (
+                              <span className="w-2 h-2 rounded-full bg-amber-500 absolute -top-0.5 -right-0.5 animate-ping" />
+                            )}
                           </button>
                           <Tooltip titulo={eje === 'dia' ? 'Día' : 'Noche'}>
                             <p className="text-xs text-slate-100">{etiqueta}</p>
+                            {pendienteConfirmar && (
+                              <p className="text-xs text-amber-300 font-medium mt-0.5">Pendiente de confirmación médica</p>
+                            )}
                           </Tooltip>
                         </div>
                       )
