@@ -90,7 +90,7 @@ export default function DetalleIngreso() {
     // y el motivo del CMBD a la vez — antes eran dos preguntas
     // separadas por el mismo dato, y el CMBD podía quedar con un
     // motivo vacío o incompatible con el estado real del ingreso.
-    const { data, error } = await supabase.rpc('dar_de_alta', {
+    const { error } = await supabase.rpc('dar_de_alta', {
       p_ingreso_id: id,
       p_fecha_alta: altaForm.fecha_alta,
       p_circunstancia_alta: altaForm.circunstancia_alta,
@@ -100,7 +100,12 @@ export default function DetalleIngreso() {
       setErrorAlta('No se pudo registrar el alta: ' + error.message)
       return
     }
-    setIngreso((prev) => (prev ? { ...prev, estado: data.estado, fecha_alta: data.fecha_alta } : prev))
+    // Se recarga desde el servidor en vez de parchear el estado local
+    // a mano — la interfaz también necesita dado_de_alta_en (para
+    // decidir si mostrar "Reabrir episodio"), y ese campo no viene en
+    // la respuesta de la función; antes el botón no aparecía hasta
+    // recargar la página entera.
+    await cargar()
     setModalAlta(false)
   }
 

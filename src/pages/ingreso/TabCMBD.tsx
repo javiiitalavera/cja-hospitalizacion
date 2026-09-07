@@ -122,6 +122,13 @@ function BuscadorCIE({ value, onChange }: {
   const [q, setQ] = useState(value)
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  // Al hacer clic en una sugerencia, el input pierde el foco antes de
+  // que el propio clic termine de procesarse — el "blur" se dispara
+  // primero, con un cierre que todavía recuerda el texto ANTIGUO que
+  // se había escrito, no el código recién elegido. El aviso retrasado
+  // de blur, 150ms después, acababa sobrescribiendo la selección
+  // correcta con ese texto viejo. Esta bandera evita exactamente eso.
+  const seleccionadaRef = useRef(false)
 
   useEffect(() => { setQ(value) }, [value])
 
@@ -154,6 +161,10 @@ function BuscadorCIE({ value, onChange }: {
           // conocido, completa su descripción oficial.
           setTimeout(() => {
             setOpen(false)
+            // Si el blur vino de hacer clic en una sugerencia, esa
+            // selección ya es la buena — no hay nada que confirmar
+            // aquí, y usar el texto tecleado antes la sobrescribiría.
+            if (seleccionadaRef.current) { seleccionadaRef.current = false; return }
             const texto = q.trim()
             if (!texto) { onChange('', ''); return }
             const match = CIE10.find(c => c.code.toLowerCase() === texto.toLowerCase())
@@ -166,6 +177,7 @@ function BuscadorCIE({ value, onChange }: {
           {resultados.map(r => (
             <button type="button" key={r.code}
               className="w-full text-left px-3 py-2 text-xs hover:bg-slate-50 border-b last:border-0 flex gap-3"
+              onMouseDown={() => { seleccionadaRef.current = true }}
               onClick={() => { onChange(r.code, r.desc); setQ(r.code); setOpen(false) }}>
               <span className="font-mono font-bold text-primary-700 shrink-0 w-16">{r.code}</span>
               <span className="text-slate-600">{r.desc}</span>
@@ -179,9 +191,9 @@ function BuscadorCIE({ value, onChange }: {
 
 // ─── FILA DIAGNÓSTICO ─────────────────────────────────────────
 
-function FilaDx({ label, codigo, desc, poad, onCodigo, onDesc, onPoad, required }: {
+function FilaDx({ label, codigo, desc, poad, onCodigoYDesc, onDesc, onPoad, required }: {
   label: string; codigo: string; desc: string; poad: boolean | null
-  onCodigo: (v: string) => void; onDesc: (v: string) => void
+  onCodigoYDesc: (codigo: string, desc: string) => void; onDesc: (v: string) => void
   onPoad: (v: boolean) => void; required?: boolean
 }) {
   return (
@@ -190,7 +202,7 @@ function FilaDx({ label, codigo, desc, poad, onCodigo, onDesc, onPoad, required 
         {label}{required && <span className="text-red-400 ml-0.5">*</span>}
       </span>
       <div className="space-y-1.5">
-        <BuscadorCIE value={codigo} onChange={(c, d) => { onCodigo(c); onDesc(d) }} />
+        <BuscadorCIE value={codigo} onChange={(c, d) => onCodigoYDesc(c, d)} />
         {(codigo || desc) && (
           <input className="input text-xs text-slate-500" placeholder="Descripción"
             value={desc} onChange={e => onDesc(e.target.value)} />
@@ -239,6 +251,7 @@ function FilaProc({ label, codigo, desc, onCodigo, onDesc }: {
 // ─── TIPOS ───────────────────────────────────────────────────
 
 interface CMBDData {
+  id?: string
   version?: number
   diagnostico_principal?: string; diagnostico_principal_desc?: string; diagnostico_principal_poad?: boolean
   diagnostico_secundario_1?: string; diagnostico_secundario_1_desc?: string; diagnostico_secundario_1_poad?: boolean
@@ -367,6 +380,37 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
   async function save(d = dataRef.current): Promise<boolean> {
     const miSecuencia = ++saveSeqRef.current
     setEstado('guardando')
+
+    // Un ingreso recién creado todavía no tiene fila en cmbd — antes
+    // esto se trataba siempre como un UPDATE, que sobre una fila
+    // inexistente no actualiza nada y se veía como un falso conflicto
+    // de concurrencia en el primer guardado de cada ingreso nuevo.
+    if (!d.id) {
+      const { id, version, ...campos } = d as any
+      const { data: creado, error } = await supabase
+        .from('cmbd')
+        .insert({ ingreso_id: ingresoId, ...campos })
+        .select()
+        .maybeSingle()
+      if (miSecuencia !== saveSeqRef.current) return true
+      if (error) {
+        // Si otra sesión se adelantó de verdad (misma restricción
+        // única ingreso_id), se recarga la fila real en vez de
+        // insistir en crear una segunda.
+        if (error.code === '23505') {
+          await recargarTrasConflicto()
+          setEstado('conflicto')
+          return false
+        }
+        setEstado('error')
+        return false
+      }
+      setData(creado as CMBDData)
+      setEstado('guardado')
+      setTimeout(() => setEstado((e) => (e === 'guardado' ? 'inactivo' : e)), 2500)
+      return true
+    }
+
     // Antes usaba upsert(); ahora es un update() con la versión que
     // se leyó — si alguien más ha guardado mientras tanto, esta
     // actualización no encuentra ninguna fila y avisa, en vez de
@@ -402,6 +446,22 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
     debounceRef.current = setTimeout(() => save(next), 1500)
   }
 
+  // Para cuando dos campos cambian a la vez (código y descripción de
+  // un CIE-10, por ejemplo) — llamar a update() dos veces seguidas
+  // hacía que la segunda pisara a la primera, porque las dos partían
+  // del mismo dataRef.current "antes de guardar" (el mismo fallo que
+  // ya apareció una vez con GDS y FAST). Con una sola actualización
+  // que aplica los dos campos juntos, no hay ninguna ventana en la
+  // que uno se pierda.
+  function updateFields(cambios: Partial<CMBDData>) {
+    if (estado === 'conflicto') return
+    const next = { ...dataRef.current, ...cambios }
+    setData(next)
+    setEstado('pendiente')
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => save(next), 1500)
+  }
+
   function updateDx(n: number, field: 'code' | 'desc' | 'poad', value: any) {
     if (n === 0) {
       if (field === 'code') update('diagnostico_principal', value)
@@ -411,6 +471,20 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
       if (field === 'code') update(`diagnostico_secundario_${n}` as keyof CMBDData, value)
       else if (field === 'desc') update(`diagnostico_secundario_${n}_desc` as keyof CMBDData, value)
       else update(`diagnostico_secundario_${n}_poad` as keyof CMBDData, value)
+    }
+  }
+
+  // Específica para cuando el buscador de CIE-10 devuelve código y
+  // descripción a la vez — una sola actualización, no dos update()
+  // seguidos que puedan pisarse entre sí.
+  function updateDxCodigoYDesc(n: number, codigo: string, desc: string) {
+    if (n === 0) {
+      updateFields({ diagnostico_principal: codigo, diagnostico_principal_desc: desc })
+    } else {
+      updateFields({
+        [`diagnostico_secundario_${n}`]: codigo,
+        [`diagnostico_secundario_${n}_desc`]: desc,
+      } as Partial<CMBDData>)
     }
   }
 
@@ -437,6 +511,12 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
       return
     }
     setErrorFaltantes([])
+    // Si había un guardado automático pendiente (el debounce de 1,5s
+    // tras el último cambio), se cancela aquí — de lo contrario podía
+    // dispararse justo después de este guardado manual y toparse con
+    // una versión ya desactualizada, mostrando un conflicto contra la
+    // propia sesión de quien exporta.
+    if (debounceRef.current) { clearTimeout(debounceRef.current); debounceRef.current = null }
     setExportando(true)
     const ok = await save()
     if (ok) await exportarExcel(dataRef.current, ingreso)
@@ -548,7 +628,7 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
           codigo={data.diagnostico_principal ?? ''}
           desc={data.diagnostico_principal_desc ?? ''}
           poad={data.diagnostico_principal_poad ?? null}
-          onCodigo={v => updateDx(0, 'code', v)}
+          onCodigoYDesc={(c, d) => updateDxCodigoYDesc(0, c, d)}
           onDesc={v => updateDx(0, 'desc', v)}
           onPoad={v => updateDx(0, 'poad', v)}
         />
@@ -559,7 +639,7 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
               codigo={(data as any)[`diagnostico_secundario_${n}`] ?? ''}
               desc={(data as any)[`diagnostico_secundario_${n}_desc`] ?? ''}
               poad={(data as any)[`diagnostico_secundario_${n}_poad`] ?? null}
-              onCodigo={v => updateDx(n, 'code', v)}
+              onCodigoYDesc={(c, d) => updateDxCodigoYDesc(n, c, d)}
               onDesc={v => updateDx(n, 'desc', v)}
               onPoad={v => updateDx(n, 'poad', v)}
             />

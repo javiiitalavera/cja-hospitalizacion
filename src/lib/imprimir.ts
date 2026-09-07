@@ -37,11 +37,11 @@ export function imprimirListaHabitaciones(nombresPorHabitacion: (string | null)[
   const win = window.open('', '_blank')
   if (!win) return
   const filas = nombresPorHabitacion.map((nombre, i) => `
-    <tr class="fila-datos">
+    <tr>
       <td class="col-hab">${i + 1}</td>
       <td class="col-nombre">${nombre ? escapeHtml(nombre) : ''}</td>
+      <td class="col-libre"></td>
     </tr>
-    <tr class="fila-escribir"><td colspan="2"></td></tr>
   `).join('')
   const html = `<html><head><title>Lista de pacientes</title>
     <style>
@@ -50,14 +50,18 @@ export function imprimirListaHabitaciones(nombresPorHabitacion: (string | null)[
       h1 { font-size: 15pt; margin-bottom: 2px; }
       p { color: #666; font-size: 9pt; margin-top: 0; margin-bottom: 12px; }
       table { border-collapse: collapse; width: 100%; font-size: 10pt; table-layout: fixed; }
-      .col-hab { width: 14%; }
-      .col-nombre { width: 86%; }
-      .fila-datos td { border: 1px solid #999; padding: 4px 8px; text-align: left; height: 22px; }
-      .fila-escribir td { border: 1px solid #999; border-top: none; height: 22px; }
+      th { border: 1px solid #999; padding: 4px 8px; text-align: left; background: #f3f3f3; font-size: 9pt; }
+      td { border: 1px solid #999; padding: 4px 8px; text-align: left; height: 24px; }
+      .col-hab { width: 10%; }
+      .col-nombre { width: 30%; }
+      .col-libre { width: 60%; }
     </style></head><body>
     <h1>Lista de pacientes</h1>
     <p>Habitaciones 1 a 33 · ${new Date().toLocaleDateString('es-ES')}</p>
-    <table>${filas}</table>
+    <table>
+      <thead><tr><th class="col-hab">Hab.</th><th class="col-nombre">Paciente</th><th class="col-libre"></th></tr></thead>
+      <tbody>${filas}</tbody>
+    </table>
     </body></html>`
   win.document.write(html)
   win.document.close()
