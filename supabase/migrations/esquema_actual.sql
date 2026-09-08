@@ -937,7 +937,7 @@ begin
   -- forzar: dos historias clínicas con el mismo NHC o CIPNA es
   -- siempre un error de datos, nunca dos personas distintas de
   -- verdad. Encontrado por auditoría directa contra Supabase: dos
-  -- pacientes reales compartían el mismo NHC sin que nada lo impidiera.
+  -- pacientes de prueba compartían el mismo NHC sin que nada lo impidiera.
   if v_nhc is not null and exists (select 1 from public.pacientes where nhc = v_nhc) then
     raise exception using errcode = 'P0001', message = 'nhc_duplicado:' || v_nhc;
   end if;
@@ -992,6 +992,7 @@ $$;
 -- quien llama. Al cualificar esa llamada por esquema dentro de la
 -- propia inmutable_unaccent(), esta función quedó libre para fijar
 -- el suyo también).
+revoke execute on function public.crear_paciente_e_ingreso(jsonb, int, date, uuid, text, boolean) from public, anon;
 grant execute on function public.crear_paciente_e_ingreso(jsonb, int, date, uuid, text, boolean) to authenticated;
 
 -- Compartida entre informe_ingreso, informe_alta, items_paciente y
@@ -1010,6 +1011,27 @@ begin
     NEW.version := OLD.version + 1;
   end if;
   return NEW;
+end;
+$$;
+
+-- El estado clínico del episodio, su fecha de alta y la marca temporal
+-- forman una única transición. Solo dar_de_alta() y reabrir_episodio()
+-- pueden modificar ese trío; una actualización REST directa no debe
+-- cerrar ni reabrir episodios saltándose el CMBD y las comprobaciones.
+create function public.impedir_cambio_estado_ingreso_directo() returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if (
+       new.estado is distinct from old.estado
+       or new.fecha_alta is distinct from old.fecha_alta
+       or new.dado_de_alta_en is distinct from old.dado_de_alta_en
+     )
+     and coalesce(current_setting('app.cambio_estado_ingreso_rpc', true), '') <> 'true' then
+    raise exception 'El alta o la reapertura de un episodio solo puede realizarse mediante dar_de_alta() o reabrir_episodio().';
+  end if;
+  return new;
 end;
 $$;
 
@@ -1041,6 +1063,10 @@ create trigger aud_informe_ingreso after insert or update or delete on public.in
 create trigger aud_informe_alta after insert or update or delete on public.informe_alta for each row execute function public.registrar_auditoria();
 create trigger aud_cmbd         after insert or update or delete on public.cmbd         for each row execute function public.registrar_auditoria();
 create trigger aud_escalas_clinicas after insert or update or delete on public.escalas_clinicas for each row execute function public.registrar_auditoria();
+
+create trigger impedir_cambio_estado_ingreso_directo
+    before update on public.ingresos
+    for each row execute function public.impedir_cambio_estado_ingreso_directo();
 
 create trigger trg_items_updated         before update on public.items_paciente  for each row execute function public.update_updated_at();
 create trigger trg_informe_ingreso_updated before update on public.informe_ingreso for each row execute function public.update_updated_at();
@@ -1086,7 +1112,11 @@ begin
 end;
 $$;
 
-create trigger impedir_confirmacion_directa
+-- El prefijo "a_" es deliberado: PostgreSQL ejecuta los disparadores
+-- del mismo tipo por orden alfabético. Esta comprobación debe ver el
+-- valor anterior antes de que gestionar_confirmacion invalide una
+-- confirmación al cambiar la pauta.
+create trigger a_impedir_confirmacion_directa
   before update on public.contenciones
   for each row execute function public.impedir_confirmacion_directa();
 
@@ -1342,6 +1372,8 @@ begin
     raise exception 'La fecha de alta no puede ser anterior a la de ingreso.';
   end if;
 
+  perform set_config('app.cambio_estado_ingreso_rpc', 'true', true);
+
   update public.ingresos
   set estado = v_estado, fecha_alta = p_fecha_alta, dado_de_alta_en = now()
   where id = p_ingreso_id and estado = 'activo'
@@ -1365,6 +1397,7 @@ begin
 end;
 $$;
 
+revoke execute on function public.dar_de_alta(uuid, date, text) from public, anon;
 grant execute on function public.dar_de_alta(uuid, date, text) to authenticated;
 
 -- Reabrir un episodio dado de alta por error — mismo permiso que dar
@@ -1398,6 +1431,8 @@ begin
   if v_ingreso.dado_de_alta_en is null or now() - v_ingreso.dado_de_alta_en > interval '24 hours' then
     raise exception 'Solo se puede reabrir un episodio dentro de las 24 horas siguientes al alta.';
   end if;
+
+  perform set_config('app.cambio_estado_ingreso_rpc', 'true', true);
 
   update public.ingresos
   set estado = 'activo', fecha_alta = null, dado_de_alta_en = null
@@ -1438,6 +1473,7 @@ revoke execute on function public.registrar_auditoria() from public, anon, authe
 revoke execute on function public.registrar_historial_contencion() from public, anon, authenticated;
 revoke execute on function public.gestionar_confirmacion_contencion() from public, anon, authenticated;
 revoke execute on function public.impedir_confirmacion_directa() from public, anon, authenticated;
+revoke execute on function public.impedir_cambio_estado_ingreso_directo() from public, anon, authenticated;
 
 
 -- ────────────────────────────────────────────────────────────

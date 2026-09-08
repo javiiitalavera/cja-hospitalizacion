@@ -17,6 +17,11 @@ Estado verificado:
 - Las siete Edge Functions utilizadas por la pantalla Personal están incluidas en `supabase/functions/`.
 - La reconstrucción completa de un Supabase vacío aún no está automatizada ni se ha convertido en un flujo reproducible mediante Supabase CLI.
 - `npm run lint` no está limpio actualmente: da errores y avisos. Esto no impide el build, pero debe constar como deuda técnica y no debe presentarse el lint como una comprobación superada.
+- `npm audit --omit=dev` conserva un aviso de severidad alta en `xlsx` para el
+  que npm no ofrece una versión corregida. En esta aplicación la biblioteca se
+  usa para generar el XLSX del CMBD a partir de datos internos, no para abrir
+  ficheros subidos por usuarios; aun así, debe revisarse o sustituirse antes de
+  considerar cerrada la deuda de dependencias.
 
 ## 2. Estructura relevante
 
@@ -27,7 +32,9 @@ Estado verificado:
 ├── supabase/
 │   ├── functions/                    # Edge Functions
 │   └── migrations/
-│       └── esquema_actual.sql        # Esquema completo para una BD vacía
+│       ├── esquema_actual.sql        # Esquema completo para una BD vacía
+│       └── 20260908_correcciones_finales.sql
+│                                      # Cambio incremental para la BD actual
 ├── .env.example                      # Variables públicas necesarias
 ├── package.json
 ├── package-lock.json
@@ -38,7 +45,8 @@ En el estado actual no existen:
 
 - `supabase/config.toml`;
 - una dependencia de Supabase CLI fijada en `package.json`;
-- un historial incremental de migraciones con nombres timestamp;
+- un historial completo de migraciones incrementales (solo se conserva la
+  corrección final de 2026-09-08 como migración aplicable al proyecto actual);
 - datos ficticios de prueba o cuentas de prueba automatizadas;
 - pruebas automáticas de RLS;
 - un proceso CI que reconstruya la base y ejecute la regresión.
@@ -119,11 +127,19 @@ Tras cambiar cualquiera de las dos variables hay que volver a desplegar el front
 - índices y restricciones de unicidad;
 - tarea nocturna `snapshot-items-diario`;
 - funciones del Dashboard y explorador de episodios;
-- tres fichas iniciales de profesionales, una de ellas marcada como administradora.
+- una ficha genérica de profesional marcada como administradora, todavía sin
+  enlazar a una cuenta de `auth.users`.
 
 ### 6.2. Advertencia crítica
 
 **No ejecutar `esquema_actual.sql` sobre el proyecto Supabase actual.** El propio archivo crea tablas, funciones, políticas y disparadores desde cero. Su destino es exclusivamente un proyecto vacío de prueba o una reconstrucción futura planificada.
+
+Para actualizar el proyecto actual con las correcciones finales de esta ronda,
+el único archivo previsto para ejecutarse es
+`supabase/migrations/20260908_correcciones_finales.sql`. Es una migración
+incremental: corrige el orden de los disparadores de contenciones y obliga a
+que las altas y reaperturas pasen por sus RPC transaccionales. Debe probarse
+primero en un entorno de prueba o con una copia recuperable de la base.
 
 La base alojada actualmente sigue siendo la fuente efectiva de verdad. El archivo SQL es la representación que pretende reproducirla, pero esa equivalencia deberá confirmarse mediante una instalación limpia y una comparación contra el esquema remoto antes de una migración real.
 
@@ -147,7 +163,7 @@ Este procedimiento se documenta para una futura prueba controlada; todavía no e
 
 ## 7. Creación de la primera cuenta administradora
 
-El esquema crea fichas en `public.profesionales`, pero no puede crear de forma segura una contraseña ni una cuenta real en `auth.users`. Una de esas fichas queda marcada con `es_admin = true` y `user_id = null`.
+El esquema crea una ficha genérica en `public.profesionales`, pero no puede crear de forma segura una contraseña ni una cuenta real en `auth.users`. Esa ficha queda marcada con `es_admin = true` y `user_id = null`.
 
 Procedimiento manual inicial:
 
@@ -262,7 +278,7 @@ Antes de usar datos clínicos reales o trasladar la aplicación a infraestructur
 1. Inicializar formalmente Supabase CLI y añadir `supabase/config.toml`.
 2. Obtener y revisar una baseline desde el esquema alojado real.
 3. Conciliar esa baseline con `esquema_actual.sql`.
-4. Separar del esquema las fichas nominales de profesionales que hoy se crean como datos iniciales y definir un procedimiento genérico para el primer administrador.
+4. Separar del esquema la ficha genérica de arranque y convertir la creación del primer administrador en un procedimiento explícito.
 5. Adoptar migraciones timestamp para los cambios posteriores.
 6. Crear datos ficticios reproducibles, sin información personal.
 7. Automatizar `db reset`, pruebas RLS por rol y regresiones críticas.
