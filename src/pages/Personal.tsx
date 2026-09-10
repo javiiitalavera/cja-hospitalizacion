@@ -22,12 +22,12 @@ export function Personal() {
   const [resetTarget, setResetTarget] = useState<Profesional | null>(null)
   const [editTarget, setEditTarget] = useState<Profesional | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
-  const [feedback, setFeedback] = useState<{ tipo: 'ok' | 'error'; texto: string } | null>(null)
+  const [feedback, setFeedback] = useState<{ tipo: 'ok' | 'error' | 'aviso'; texto: string } | null>(null)
   const [confirmar, setConfirmar] = useState<ConfirmData | null>(null)
   const timerRef = useRef<number | undefined>(undefined)
 
   // Aviso en línea (verde/rojo) que se desvanece solo. Sustituye a los alert().
-  function notificar(tipo: 'ok' | 'error', texto: string) {
+  function notificar(tipo: 'ok' | 'error' | 'aviso', texto: string) {
     setFeedback({ tipo, texto })
     if (timerRef.current) window.clearTimeout(timerRef.current)
     timerRef.current = window.setTimeout(() => setFeedback(null), 4000)
@@ -203,7 +203,9 @@ export function Personal() {
         <div className={`mb-4 text-sm rounded-lg px-3 py-2 border ${
           feedback.tipo === 'ok'
             ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
-            : 'bg-red-50 text-red-600 border-red-100'
+            : feedback.tipo === 'aviso'
+              ? 'bg-amber-50 text-amber-700 border-amber-100'
+              : 'bg-red-50 text-red-600 border-red-100'
         }`}>
           {feedback.texto}
         </div>
@@ -371,7 +373,14 @@ export function Personal() {
           profesional={editTarget}
           emailActual={editTarget.user_id ? accesos[editTarget.user_id]?.email : null}
           onCerrar={() => setEditTarget(null)}
-          onGuardado={(msg) => { setEditTarget(null); notificar('ok', msg); cargar() }}
+          onGuardado={(msg, aviso) => {
+            setEditTarget(null)
+            // Si la función avisa de que no pudo dejar constancia en
+            // Auditoría, se muestra ese aviso en vez del mensaje de
+            // éxito normal — sin esto, quedaba silenciado del todo.
+            notificar(aviso ? 'aviso' : 'ok', aviso ?? msg)
+            cargar()
+          }}
         />
       )}
 
@@ -429,6 +438,7 @@ function ModalPassword({ profesional, onCerrar }: { profesional: Profesional; on
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [hecho, setHecho] = useState(false)
+  const [aviso, setAviso] = useState('')
   const [enviando, setEnviando] = useState(false)
 
   async function guardar() {
@@ -446,6 +456,11 @@ function ModalPassword({ profesional, onCerrar }: { profesional: Profesional; on
       setError((data as any)?.error ?? 'No se pudo restablecer la contraseña.')
       return
     }
+    // Aunque la contraseña se cambió correctamente, la función puede
+    // avisar de que no pudo dejar constancia en Auditoría — sin
+    // mostrar esto, el administrador vería una confirmación normal
+    // y nunca se enteraría de que faltó ese registro.
+    if ((data as any)?.aviso) setAviso((data as any).aviso)
     setHecho(true)
   }
 
@@ -465,6 +480,11 @@ function ModalPassword({ profesional, onCerrar }: { profesional: Profesional; on
               Contraseña cambiada para <span className="font-medium">{profesional.nombre} {profesional.apellidos}</span>.
               Comunícasela de forma segura.
             </p>
+            {aviso && (
+              <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                {aviso}
+              </p>
+            )}
             <div className="flex justify-end">
               <button onClick={onCerrar} className="btn-primary">Hecho</button>
             </div>
@@ -608,7 +628,7 @@ function ModalEditar({ profesional, emailActual, onCerrar, onGuardado }: {
   profesional: Profesional
   emailActual?: string | null
   onCerrar: () => void
-  onGuardado: (mensaje: string) => void
+  onGuardado: (mensaje: string, aviso?: string) => void
 }) {
   const [nombre, setNombre] = useState(profesional.nombre)
   const [apellidos, setApellidos] = useState(profesional.apellidos)
@@ -650,7 +670,7 @@ function ModalEditar({ profesional, emailActual, onCerrar, onGuardado }: {
       setErrorEmail((data as any)?.error ?? 'No se pudo cambiar el correo.')
       return
     }
-    onGuardado('Correo de acceso actualizado.')
+    onGuardado('Correo de acceso actualizado.', (data as any)?.aviso)
   }
 
   async function guardarDatos() {

@@ -81,13 +81,21 @@ Deno.serve(async (req) => {
 
     // El correo vive solo en Auth, no en "profesionales" — sin este
     // registro explícito, el cambio no dejaría ningún rastro en la
-    // auditoría.
-    await admin.from('auditoria').insert({
+    // auditoría. Se comprueba el error en vez de descartarlo: si esta
+    // inserción fallara, el correo ya se habría cambiado en Auth, así
+    // que no tiene sentido deshacer nada — pero si se ignorara el
+    // fallo en silencio, el administrador vería una confirmación
+    // normal sin saber que la auditoría se quedó sin ese registro.
+    const { error: audErr } = await admin.from('auditoria').insert({
       tabla: 'profesionales',
       registro_id: profesionalId,
       accion: 'cambio_email',
       usuario_id: userData.user.id,
     })
+    if (audErr) {
+      console.error('cambiar-email-profesional: el correo se cambió pero la auditoría falló:', audErr.message)
+      return respuesta(200, { ok: true, aviso: 'El correo se cambió, pero no se pudo registrar en la auditoría.' })
+    }
 
     return respuesta(200, { ok: true })
   } catch (e) {

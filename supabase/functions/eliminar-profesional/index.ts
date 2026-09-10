@@ -83,19 +83,38 @@ Deno.serve(async (req) => {
     }
 
     // ── 5. Comprobar ANTES de tocar nada si tiene datos clínicos ──
-    // Las dos únicas tablas que de verdad referencian a un profesional
-    // en producción: ingresos (médico responsable) y eventos
-    // (quién registró la incidencia).
-    const [{ count: comoMedico }, { count: comoRegistrador }] = await Promise.all([
+    // Siete columnas en total referencian a un profesional. Antes
+    // solo se comprobaban dos (médico responsable, autor de
+    // incidencia) — las otras cinco quedaban protegidas igualmente
+    // por la restricción de clave foránea de la base de datos (no
+    // había pérdida de trazabilidad posible), pero el intento fallaba
+    // con un error genérico de PostgreSQL en vez de este mensaje
+    // claro. Ahora se comprueban las siete.
+    const [
+      { count: comoMedico },
+      { count: comoEnEventos },
+      { count: comoEnContenciones },
+      { count: comoEnHistorialContenciones },
+    ] = await Promise.all([
       admin.from('ingresos').select('id', { count: 'exact', head: true }).eq('medico_responsable_id', profesionalId),
-      admin.from('eventos').select('id', { count: 'exact', head: true }).eq('registrado_por_id', profesionalId),
+      admin.from('eventos').select('id', { count: 'exact', head: true })
+        .or(`registrado_por_id.eq.${profesionalId},actualizado_por_id.eq.${profesionalId}`),
+      admin.from('contenciones').select('id', { count: 'exact', head: true })
+        .or(`actualizado_por_id.eq.${profesionalId},confirmado_por_id.eq.${profesionalId}`),
+      admin.from('contenciones_historial').select('id', { count: 'exact', head: true })
+        .or(`cambiado_por_id.eq.${profesionalId},actor_id.eq.${profesionalId}`),
     ])
 
-    if ((comoMedico ?? 0) > 0 || (comoRegistrador ?? 0) > 0) {
+    if (
+      (comoMedico ?? 0) > 0 ||
+      (comoEnEventos ?? 0) > 0 ||
+      (comoEnContenciones ?? 0) > 0 ||
+      (comoEnHistorialContenciones ?? 0) > 0
+    ) {
       return respuesta(409, {
         error:
           'No se puede eliminar: esta persona tiene registros clínicos a su nombre ' +
-          '(como médico responsable de un ingreso o como autora de una incidencia). ' +
+          '(como médico responsable de un ingreso, en incidencias, o en contenciones y su historial). ' +
           'Para conservar la trazabilidad, dale de baja en su lugar.',
       })
     }

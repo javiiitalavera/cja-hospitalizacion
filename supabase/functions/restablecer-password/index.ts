@@ -82,13 +82,19 @@ Deno.serve(async (req) => {
     // de auditoría propio (la contraseña vive solo en Auth, no en
     // "profesionales") — así que, sin esto, no quedaba ningún rastro
     // de que había pasado. Se registra a mano, con quién lo hizo y a
-    // quién afectó, sin guardar la contraseña en ningún sitio.
-    await admin.from('auditoria').insert({
+    // quién afectó, sin guardar la contraseña en ningún sitio. Se
+    // comprueba el error en vez de descartarlo, por la misma razón
+    // que en cambiar-email-profesional.
+    const { error: audErr } = await admin.from('auditoria').insert({
       tabla: 'profesionales',
       registro_id: profesionalId,
       accion: 'password_reset',
       usuario_id: userData.user.id,
     })
+    if (audErr) {
+      console.error('restablecer-password: la contraseña se cambió pero la auditoría falló:', audErr.message)
+      return respuesta(200, { ok: true, aviso: 'La contraseña se cambió, pero no se pudo registrar en la auditoría.' })
+    }
 
     return respuesta(200, { ok: true })
   } catch (e) {
