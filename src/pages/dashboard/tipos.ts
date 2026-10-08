@@ -22,7 +22,11 @@ export interface SituacionActual {
   ocupacion_actual_pct: number
   estancia_larga_60: number
   semaforo_riesgo: number
+  // Contención "activa" (continua por seguridad / contención fija) y
+  // "si precisa" se cuentan por separado y son excluyentes: un
+  // paciente cuenta en una sola, la más grave.
   contencion_activa: number
+  contencion_si_precisa: number
   contencion_pendiente_confirmacion: number
   incidencias_pendientes: number
 }

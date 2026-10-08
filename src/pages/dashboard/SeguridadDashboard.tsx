@@ -14,7 +14,7 @@ interface Seguridad {
   caidas: { total: number; con_lesion: number; pendientes_valoracion: number; graves: number; tasa_total_1000: number | null; tasa_con_lesion_1000: number | null }
   ulceras: { presentes_al_ingreso: number; aparecidas_durante: number; grado_iii_iv: number; tasa_aparecidas_1000: number | null }
   otras: { errores_medicacion: number; efectos_adversos: number; infecciones_nosocomiales: number; agresiones: number; fugas: number; pendientes_completar: number }
-  contenciones: { pacientes_con_contencion_activa: number; pendientes_confirmacion: number; cambios_pauta_periodo: number }
+  contenciones: { pacientes_con_contencion_activa: number; pacientes_con_si_precisa: number; pendientes_confirmacion: number; cambios_pauta_periodo: number }
 }
 
 export function SeguridadDashboard({ filtros, desde, hasta, onExplorar }: {
@@ -33,7 +33,7 @@ export function SeguridadDashboard({ filtros, desde, hasta, onExplorar }: {
     setEstado('cargando')
     setError('')
     const { data, error: err } = await supabase.rpc('dashboard_seguridad', {
-      p_desde: desde, p_hasta: hasta, p_medico_id: filtros.medicoId, p_estado_filtro: null,
+      p_desde: desde, p_hasta: hasta, p_medico_id: filtros.medicoId,
     })
     if (miSecuencia !== secuenciaRef.current) return
     if (err) { setError(err.message); setEstado('error'); return }
@@ -117,15 +117,19 @@ export function SeguridadDashboard({ filtros, desde, hasta, onExplorar }: {
               <TarjetaMetrica etiqueta="Infecciones nosocomiales" valor={datos.otras.infecciones_nosocomiales} onClick={() => irATipo('infeccion_nosocomial')} />
               <TarjetaMetrica etiqueta="Agresiones" valor={datos.otras.agresiones} onClick={() => irATipo('agresividad_fisica')} />
               <TarjetaMetrica etiqueta="Fugas" valor={datos.otras.fugas} onClick={() => irATipo('fuga')} />
-              <TarjetaMetrica etiqueta="Pendientes de completar" valor={datos.otras.pendientes_completar} onClick={() => onExplorar({ desde, hasta, incidencias: 'pendiente' })} />
+              <TarjetaMetrica etiqueta="Pendientes de completar" valor={datos.otras.pendientes_completar} subvalor="De todos los tipos del periodo" onClick={() => onExplorar({ desde, hasta, incidencias: 'pendiente' })} />
             </div>
           </section>
 
           {/* ── Contenciones ────────────────────────────────── */}
           <section>
             <p className="section-title">Contenciones</p>
-            <div className="grid grid-cols-3 gap-3">
-              <TarjetaMetrica etiqueta="Pacientes con contención activa" valor={datos.contenciones.pacientes_con_contencion_activa} />
+            <p className="text-xs text-slate-400 -mt-3 mb-2">
+              Pacientes ingresados hoy. «Activa» es continua por seguridad o contención fija; «si precisa» solo cuenta a quien no tiene ninguna activa.
+            </p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <TarjetaMetrica etiqueta="Con contención activa" valor={datos.contenciones.pacientes_con_contencion_activa} />
+              <TarjetaMetrica etiqueta="Con contención «si precisa»" valor={datos.contenciones.pacientes_con_si_precisa} />
               <TarjetaMetrica etiqueta="Pendientes de confirmación" valor={datos.contenciones.pendientes_confirmacion} />
               <TarjetaMetrica etiqueta="Cambios de pauta en el periodo" valor={datos.contenciones.cambios_pauta_periodo} />
             </div>

@@ -34,7 +34,13 @@ export function ResumenDashboard({ filtros, desde, hasta, onExplorar, onExplorar
   async function cargarSituacion() {
     setEstadoSituacion('cargando')
     setErrorSituacion('')
-    const { data, error } = await supabase.rpc('dashboard_situacion_actual')
+    // El filtro de médico también afecta a esta foto de hoy. Sin médico
+    // elegido se llama sin parámetros, que sirve igual con la base de
+    // datos anterior a la corrección.
+    const { data, error } = await supabase.rpc(
+      'dashboard_situacion_actual',
+      filtros.medicoId ? { p_medico_id: filtros.medicoId } : undefined
+    )
     if (error) {
       setErrorSituacion(error.message)
       setEstadoSituacion('error')
@@ -55,7 +61,6 @@ export function ResumenDashboard({ filtros, desde, hasta, onExplorar, onExplorar
       p_desde: desde,
       p_hasta: hasta,
       p_medico_id: filtros.medicoId,
-      p_estado_filtro: null,
     }
 
     const [resActual, resSerie] = await Promise.all([
@@ -86,7 +91,7 @@ export function ResumenDashboard({ filtros, desde, hasta, onExplorar, onExplorar
       if (rangoAnt) {
         const { data } = await supabase.rpc('dashboard_resumen', {
           p_desde: rangoAnt.desde, p_hasta: rangoAnt.hasta,
-          p_medico_id: filtros.medicoId, p_estado_filtro: null,
+          p_medico_id: filtros.medicoId,
         })
         if (miSecuencia === secuenciaRef.current) setResumenAnterior(data ?? null)
       }
@@ -95,7 +100,7 @@ export function ResumenDashboard({ filtros, desde, hasta, onExplorar, onExplorar
     }
   }
 
-  useEffect(() => { cargarSituacion() }, [])
+  useEffect(() => { cargarSituacion() }, [filtros.medicoId])
   useEffect(() => { cargarResumenYSeries() }, [desde, hasta, filtros.medicoId, filtros.comparar, filtros.periodo])
 
   function comparacionTexto(actual: number, etiqueta: string, esPct = false): string | undefined {
@@ -120,7 +125,7 @@ export function ResumenDashboard({ filtros, desde, hasta, onExplorar, onExplorar
       <section>
         <div className="flex items-center justify-between mb-2">
           <p className="section-title mb-0">Situación actual</p>
-          <span className="text-xs text-slate-400">A fecha de hoy — no cambia con el periodo elegido</span>
+          <span className="text-xs text-slate-400">A fecha de hoy — no cambia con el periodo; sí con el médico elegido</span>
         </div>
         {estadoSituacion === 'cargando' && <EstadoCargando />}
         {estadoSituacion === 'error' && <EstadoError mensaje={errorSituacion} onReintentar={cargarSituacion} />}
@@ -134,7 +139,10 @@ export function ResumenDashboard({ filtros, desde, hasta, onExplorar, onExplorar
                 que no puede abrir exactamente lo que representa no
                 debería ser pulsable. */}
             <TarjetaMetrica etiqueta="Semáforo rojo/naranja" valor={situacion.semaforo_riesgo} />
-            <TarjetaMetrica etiqueta="Con contención activa" valor={situacion.contencion_activa} />
+            <TarjetaMetrica etiqueta="Con contención activa" valor={situacion.contencion_activa}
+              subvalor="Continua por seguridad o contención fija" />
+            <TarjetaMetrica etiqueta="Con contención «si precisa»" valor={situacion.contencion_si_precisa}
+              subvalor="Sin ninguna activa" />
             <TarjetaMetrica etiqueta="Contención sin confirmar" valor={situacion.contencion_pendiente_confirmacion} />
             <TarjetaMetrica etiqueta="Incidencias pendientes" valor={situacion.incidencias_pendientes} onClick={() => onExplorar({ incidencias: 'pendiente' })} />
           </div>
@@ -167,8 +175,12 @@ export function ResumenDashboard({ filtros, desde, hasta, onExplorar, onExplorar
               comparacion={comparacionTexto(resumen.ocupacion_media_pct, 'ocupacion_media_pct', true)} />
             <TarjetaMetrica etiqueta="Estancia media" valor={`${resumen.estancia_media_dias} d`}
               subvalor={`Mediana: ${resumen.estancia_mediana_dias} d`} />
-            <TarjetaMetrica etiqueta="Reingresos ≤30 días" valor={`${resumen.reingresos_30d} de ${resumen.ingresos_nuevos}`}
-              subvalor={resumen.ingresos_nuevos > 0 ? `${Math.round(resumen.reingresos_30d / resumen.ingresos_nuevos * 1000) / 10}%` : undefined} />
+            {/* Proporción sobre los ingresos nuevos del periodo (cuántos de
+                ellos son reingresos), no la tasa clásica sobre las altas. */}
+            <TarjetaMetrica etiqueta="Ingresos que son reingresos (≤30 días)" valor={`${resumen.reingresos_30d} de ${resumen.ingresos_nuevos}`}
+              subvalor={resumen.ingresos_nuevos > 0
+                ? `${Math.round(resumen.reingresos_30d / resumen.ingresos_nuevos * 1000) / 10}% de los ingresos nuevos · alta o traslado previo en 30 días`
+                : 'Alta o traslado previo en los 30 días anteriores'} />
             <TarjetaMetrica etiqueta="Incidencias" valor={resumen.incidencias_total}
               subvalor={resumen.incidencias_tasa_1000 != null ? `${resumen.incidencias_tasa_1000} por 1.000 días-estancia` : undefined}
               comparacion={comparacionTexto(resumen.incidencias_total, 'incidencias_total')}

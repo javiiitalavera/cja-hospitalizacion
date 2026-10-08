@@ -520,6 +520,30 @@ $$;
 grant execute on function private.mi_rol() to authenticated;
 grant execute on function private.soy_admin() to authenticated;
 
+-- "Hoy" según el reloj de la clínica (Madrid), no el de UTC. Entre las
+-- 00:00 y las 02:00 de Navarra, current_date de Supabase todavía marca
+-- el día anterior.
+create or replace function private.hoy_madrid() returns date
+language sql stable
+set search_path to ''
+as $$
+  select (now() at time zone 'Europe/Madrid')::date;
+$$;
+
+-- Número de camas de la unidad: un único sitio donde cambiarlo. Hoy
+-- hay una sola unidad de 33 camas.
+create or replace function private.numero_camas() returns integer
+language sql immutable
+set search_path to ''
+as $$
+  select 33;
+$$;
+
+revoke execute on function private.hoy_madrid() from public, anon;
+revoke execute on function private.numero_camas() from public, anon;
+grant execute on function private.hoy_madrid() to authenticated;
+grant execute on function private.numero_camas() to authenticated;
+
 -- Impide cambiar el autor de una incidencia ya existente (una
 -- política RLS no puede comparar el valor antes/después en un
 -- UPDATE, así que esto se hace con un disparador).
@@ -1350,7 +1374,7 @@ begin
     raise exception 'Solo un médico puede dar de alta.';
   end if;
 
-  if p_fecha_alta is null or p_fecha_alta > current_date then
+  if p_fecha_alta is null or p_fecha_alta > private.hoy_madrid() then
     raise exception 'La fecha de alta no es válida.';
   end if;
 
@@ -1568,85 +1592,21 @@ commit;
 
 begin;
 
-create or replace function public.dashboard_situacion_actual()
-returns jsonb
-language plpgsql
-security invoker
-stable
-set search_path = ''
-as $$
-declare
-  v_activos integer;
-  v_estancia_larga integer;
-  v_semaforo_riesgo integer;
-  v_contencion_activa integer;
-  v_contencion_pendiente integer;
-  v_incidencias_pendientes integer;
-begin
-  if not private.soy_admin() then
-    raise exception 'Solo un administrador puede acceder al Dashboard.';
-  end if;
+-- ============================================================
+-- Funciones del Dashboard (todas security invoker, solo administradores)
+--
+-- Convenciones comunes:
+--   · "Hoy" es la fecha de Madrid (private.hoy_madrid()), no la de UTC.
+--   · El número de camas sale de private.numero_camas().
+--   · Un episodio ocupa cama desde el día de ingreso hasta el día
+--     anterior al alta (el día de ingreso cuenta; el del alta, no).
+--   · Contención "activa" = continua por seguridad (día) o contención
+--     fija (noche). "Si precisa" = cualquier pauta "si precisa" que no
+--     sea ya activa. Son excluyentes: un paciente cuenta en una sola.
+-- ============================================================
 
-  select count(*) into v_activos from public.ingresos where estado = 'activo';
-
-  select count(*) into v_estancia_larga
-  from public.ingresos
-  where estado = 'activo' and fecha_ingreso <= current_date - 60;
-
-  select count(*) into v_semaforo_riesgo
-  from public.ingresos i
-  inner join public.items_paciente ip on ip.ingreso_id = i.id
-  where i.estado = 'activo' and ip.semaforo_caidas in ('rojo', 'naranja');
-
-  -- Solo contención de verdad, no cualquier medida de seguridad
-  -- nocturna (barras, cota cero, sensor de presión) — confirmado que
-  -- antes un paciente con solo una barra aparecía como "con
-  -- contención activa", que no es lo mismo.
-  select count(*) into v_contencion_activa
-  from public.ingresos i
-  inner join public.contenciones c on c.ingreso_id = i.id
-  where i.estado = 'activo'
-    and (
-      c.dia in ('continua_seguridad', 'si_precisa_supervision', 'si_precisa_paciente')
-      or 'contencion_fija' = any(c.noche) or 'contencion_si_precisa' = any(c.noche)
-    );
-
-  select count(*) into v_contencion_pendiente
-  from public.ingresos i
-  inner join public.contenciones c on c.ingreso_id = i.id
-  where i.estado = 'activo'
-    and c.confirmado_por_id is null
-    and (
-      c.dia = 'continua_seguridad' or c.dia in ('si_precisa_supervision', 'si_precisa_paciente')
-      or 'contencion_fija' = any(c.noche) or 'contencion_si_precisa' = any(c.noche)
-    );
-
-  -- Sin el filtro de "ingreso activo": una incidencia puede quedar
-  -- pendiente de completar después del alta, y debe seguir contando
-  -- como trabajo pendiente igualmente.
-  select count(*) into v_incidencias_pendientes
-  from public.eventos e
-  where e.estado = 'pendiente';
-
-  return jsonb_build_object(
-    'pacientes_ingresados', v_activos,
-    'ocupacion_actual_pct', round(v_activos::numeric / 33 * 100, 1),
-    'estancia_larga_60', v_estancia_larga,
-    'semaforo_riesgo', v_semaforo_riesgo,
-    'contencion_activa', v_contencion_activa,
-    'contencion_pendiente_confirmacion', v_contencion_pendiente,
-    'incidencias_pendientes', v_incidencias_pendientes
-  );
-end;
-$$;
-
-grant execute on function public.dashboard_situacion_actual() to authenticated;
-
-create or replace function public.dashboard_resumen(
-  p_desde date,
-  p_hasta date,
-  p_medico_id uuid default null,
-  p_estado_filtro text default null
+create or replace function public.dashboard_situacion_actual(
+  p_medico_id uuid default null
 ) returns jsonb
 language plpgsql
 security invoker
@@ -1654,6 +1614,95 @@ stable
 set search_path = ''
 as $$
 declare
+  v_hoy date := private.hoy_madrid();
+  v_camas integer := private.numero_camas();
+  v_activos integer;
+  v_estancia_larga integer;
+  v_semaforo_riesgo integer;
+  v_contencion_activa integer;
+  v_contencion_si_precisa integer;
+  v_contencion_pendiente integer;
+  v_incidencias_pendientes integer;
+begin
+  if not private.soy_admin() then
+    raise exception 'Solo un administrador puede acceder al Dashboard.';
+  end if;
+
+  select count(*) into v_activos
+  from public.ingresos i
+  where i.estado = 'activo'
+    and (p_medico_id is null or i.medico_responsable_id = p_medico_id);
+
+  select count(*) into v_estancia_larga
+  from public.ingresos i
+  where i.estado = 'activo'
+    and i.fecha_ingreso <= v_hoy - 60
+    and (p_medico_id is null or i.medico_responsable_id = p_medico_id);
+
+  select count(*) into v_semaforo_riesgo
+  from public.ingresos i
+  inner join public.items_paciente ip on ip.ingreso_id = i.id
+  where i.estado = 'activo'
+    and ip.semaforo_caidas in ('rojo', 'naranja')
+    and (p_medico_id is null or i.medico_responsable_id = p_medico_id);
+
+  -- Solo contención de verdad, no cualquier medida de seguridad
+  -- nocturna (barras, cota cero, sensor de presión). Misma regla que
+  -- severidadDia / severidadNoche en la aplicación: "activa" y "si
+  -- precisa" son niveles distintos, y los dos necesitan confirmación.
+  with pauta as (
+    select
+      (coalesce(c.dia = 'continua_seguridad', false)
+        or coalesce('contencion_fija' = any(c.noche), false)) as activa,
+      (coalesce(c.dia in ('si_precisa_supervision', 'si_precisa_paciente'), false)
+        or coalesce('contencion_si_precisa' = any(c.noche), false)) as si_precisa,
+      c.confirmado_por_id
+    from public.ingresos i
+    inner join public.contenciones c on c.ingreso_id = i.id
+    where i.estado = 'activo'
+      and (p_medico_id is null or i.medico_responsable_id = p_medico_id)
+  )
+  select
+    count(*) filter (where activa),
+    count(*) filter (where si_precisa and not activa),
+    count(*) filter (where (activa or si_precisa) and confirmado_por_id is null)
+  into v_contencion_activa, v_contencion_si_precisa, v_contencion_pendiente
+  from pauta;
+
+  -- Sin el filtro de "ingreso activo": una incidencia puede quedar
+  -- pendiente de completar después del alta, y debe seguir contando
+  -- como trabajo pendiente igualmente.
+  select count(*) into v_incidencias_pendientes
+  from public.eventos e
+  inner join public.ingresos i on i.id = e.ingreso_id
+  where e.estado = 'pendiente'
+    and (p_medico_id is null or i.medico_responsable_id = p_medico_id);
+
+  return jsonb_build_object(
+    'pacientes_ingresados', v_activos,
+    'ocupacion_actual_pct', round(v_activos::numeric / v_camas * 100, 1),
+    'estancia_larga_60', v_estancia_larga,
+    'semaforo_riesgo', v_semaforo_riesgo,
+    'contencion_activa', v_contencion_activa,
+    'contencion_si_precisa', v_contencion_si_precisa,
+    'contencion_pendiente_confirmacion', v_contencion_pendiente,
+    'incidencias_pendientes', v_incidencias_pendientes
+  );
+end;
+$$;
+
+create or replace function public.dashboard_resumen(
+  p_desde date,
+  p_hasta date,
+  p_medico_id uuid default null
+) returns jsonb
+language plpgsql
+security invoker
+stable
+set search_path = ''
+as $$
+declare
+  v_camas integer := private.numero_camas();
   v_ingresos_nuevos integer;
   v_altas integer;
   v_traslados integer;
@@ -1673,15 +1722,11 @@ begin
   if p_desde > p_hasta then
     raise exception 'La fecha "desde" no puede ser posterior a "hasta".';
   end if;
-  if p_estado_filtro is not null and p_estado_filtro not in ('activo', 'alta', 'alta_traslado', 'exitus') then
-    raise exception 'Estado de filtro no reconocido: %', p_estado_filtro;
-  end if;
 
   select count(*) into v_ingresos_nuevos
   from public.ingresos i
   where i.fecha_ingreso between p_desde and p_hasta
-    and (p_medico_id is null or i.medico_responsable_id = p_medico_id)
-    and (p_estado_filtro is null or i.estado = p_estado_filtro);
+    and (p_medico_id is null or i.medico_responsable_id = p_medico_id);
 
   select
     count(*) filter (where i.estado = 'alta'),
@@ -1698,8 +1743,7 @@ begin
   from public.ingresos i
   where i.fecha_ingreso <= p_hasta
     and (i.fecha_alta is null or i.fecha_alta >= p_desde)
-    and (p_medico_id is null or i.medico_responsable_id = p_medico_id)
-    and (p_estado_filtro is null or i.estado = p_estado_filtro);
+    and (p_medico_id is null or i.medico_responsable_id = p_medico_id);
 
   with dias as (
     select generate_series(p_desde, p_hasta, interval '1 day')::date as f
@@ -1710,10 +1754,9 @@ begin
       on i.fecha_ingreso <= d.f
       and (i.fecha_alta > d.f or i.fecha_alta is null)
       and (p_medico_id is null or i.medico_responsable_id = p_medico_id)
-      and (p_estado_filtro is null or i.estado = p_estado_filtro)
     group by d.f
   )
-  select avg(camas) / 33 * 100, min(camas) / 33.0 * 100, max(camas) / 33.0 * 100
+  select avg(camas) / v_camas * 100, min(camas)::numeric / v_camas * 100, max(camas)::numeric / v_camas * 100
   into v_ocupacion_media, v_ocupacion_min, v_ocupacion_max
   from ocupacion;
 
@@ -1725,11 +1768,13 @@ begin
   where i.fecha_alta between p_desde and p_hasta
     and (p_medico_id is null or i.medico_responsable_id = p_medico_id);
 
+  -- Ingresos nuevos del periodo que son reingresos: el mismo paciente
+  -- (misma ficha) tuvo un alta o traslado en los 30 días anteriores.
+  -- Es una proporción sobre ingresos, no la tasa clásica sobre altas.
   select count(*) into v_reingresos
   from public.ingresos i
   where i.fecha_ingreso between p_desde and p_hasta
     and (p_medico_id is null or i.medico_responsable_id = p_medico_id)
-    and (p_estado_filtro is null or i.estado = p_estado_filtro)
     and exists (
       select 1 from public.ingresos previo
       where previo.paciente_id = i.paciente_id
@@ -1743,8 +1788,7 @@ begin
   from public.eventos e
   inner join public.ingresos i on i.id = e.ingreso_id
   where e.fecha between p_desde and p_hasta
-    and (p_medico_id is null or i.medico_responsable_id = p_medico_id)
-    and (p_estado_filtro is null or i.estado = p_estado_filtro);
+    and (p_medico_id is null or i.medico_responsable_id = p_medico_id);
 
   return jsonb_build_object(
     'ingresos_nuevos', v_ingresos_nuevos,
@@ -1765,13 +1809,10 @@ begin
 end;
 $$;
 
-grant execute on function public.dashboard_resumen(date, date, uuid, text) to authenticated;
-
 create or replace function public.dashboard_series(
   p_desde date,
   p_hasta date,
-  p_medico_id uuid default null,
-  p_estado_filtro text default null
+  p_medico_id uuid default null
 ) returns jsonb
 language plpgsql
 security invoker
@@ -1806,24 +1847,23 @@ begin
     where i.fecha_ingreso <= d.f
       and (i.fecha_alta > d.f or i.fecha_alta is null)
       and (p_medico_id is null or i.medico_responsable_id = p_medico_id)
-      and (p_estado_filtro is null or i.estado = p_estado_filtro)
   )) order by d.f)
   into v_ocupacion
   from dias d;
 
+  -- Tramos naturales: las semanas empiezan en lunes y los meses el día
+  -- 1. El primer y el último tramo se recortan al periodo elegido, así
+  -- que pueden ser parciales, pero nunca se solapan ni dejan huecos.
   with periodos as (
-    select generate_series(p_desde, p_hasta, ('1 ' || v_bucket)::interval) as inicio
+    select generate_series(
+      date_trunc(v_bucket, p_desde::timestamp),
+      p_hasta::timestamp,
+      ('1 ' || v_bucket)::interval
+    ) as natural_inicio
   ), rangos as (
     select
-      inicio::date as inicio,
-      least(
-        (case v_bucket
-          when 'day' then inicio + interval '1 day'
-          when 'week' then inicio + interval '1 week'
-          else inicio + interval '1 month'
-        end)::date - 1,
-        p_hasta
-      ) as fin
+      greatest(natural_inicio::date, p_desde) as inicio,
+      least((natural_inicio + ('1 ' || v_bucket)::interval)::date - 1, p_hasta) as fin
     from periodos
   )
   select jsonb_agg(jsonb_build_object(
@@ -1833,7 +1873,6 @@ begin
       select count(*) from public.ingresos i
       where i.fecha_ingreso between r.inicio and r.fin
         and (p_medico_id is null or i.medico_responsable_id = p_medico_id)
-        and (p_estado_filtro is null or i.estado = p_estado_filtro)
     ),
     'salidas', (
       select count(*) from public.ingresos i
@@ -1852,13 +1891,10 @@ begin
 end;
 $$;
 
-grant execute on function public.dashboard_series(date, date, uuid, text) to authenticated;
-
 create or replace function public.dashboard_actividad_detalle(
   p_desde date,
   p_hasta date,
-  p_medico_id uuid default null,
-  p_estado_filtro text default null
+  p_medico_id uuid default null
 ) returns jsonb
 language plpgsql
 security invoker
@@ -1866,6 +1902,7 @@ stable
 set search_path = ''
 as $$
 declare
+  v_hoy date := private.hoy_madrid();
   v_distribucion_estancia jsonb;
   v_activos_30 integer;
   v_activos_60 integer;
@@ -1890,9 +1927,9 @@ begin
     and (p_medico_id is null or i.medico_responsable_id = p_medico_id);
 
   select
-    count(*) filter (where fecha_ingreso <= current_date - 30),
-    count(*) filter (where fecha_ingreso <= current_date - 60),
-    count(*) filter (where fecha_ingreso <= current_date - 90)
+    count(*) filter (where fecha_ingreso <= v_hoy - 30),
+    count(*) filter (where fecha_ingreso <= v_hoy - 60),
+    count(*) filter (where fecha_ingreso <= v_hoy - 90)
   into v_activos_30, v_activos_60, v_activos_90
   from public.ingresos
   where estado = 'activo'
@@ -1910,25 +1947,31 @@ begin
     where fecha_ingreso between p_desde and p_hasta
       and medico_responsable_id is not null
       and (p_medico_id is null or medico_responsable_id = p_medico_id)
-      and (p_estado_filtro is null or estado = p_estado_filtro)
     group by medico_responsable_id
   ) c
   inner join public.profesionales pr on pr.id = c.medico_responsable_id;
 
+  -- Personas, no episodios: cada paciente con ingreso en el periodo
+  -- cuenta una sola vez, con la edad de su primer ingreso del periodo.
   select
     jsonb_build_object(
-      'hombre', count(*) filter (where p.sexo = 'hombre'),
-      'mujer', count(*) filter (where p.sexo = 'mujer'),
-      'otro', count(*) filter (where p.sexo = 'otro'),
-      'sin_dato', count(*) filter (where p.sexo is null)
+      'hombre', count(*) filter (where t.sexo = 'hombre'),
+      'mujer', count(*) filter (where t.sexo = 'mujer'),
+      'otro', count(*) filter (where t.sexo = 'otro'),
+      'sin_dato', count(*) filter (where t.sexo is null)
     ),
-    avg(extract(year from age(i.fecha_ingreso, p.fecha_nacimiento)))
+    avg(t.edad)
   into v_por_sexo, v_edad_media
-  from public.ingresos i
-  inner join public.pacientes p on p.id = i.paciente_id
-  where i.fecha_ingreso between p_desde and p_hasta
-    and (p_medico_id is null or i.medico_responsable_id = p_medico_id)
-    and (p_estado_filtro is null or i.estado = p_estado_filtro);
+  from (
+    select distinct on (i.paciente_id)
+      p.sexo,
+      extract(year from age(i.fecha_ingreso, p.fecha_nacimiento)) as edad
+    from public.ingresos i
+    inner join public.pacientes p on p.id = i.paciente_id
+    where i.fecha_ingreso between p_desde and p_hasta
+      and (p_medico_id is null or i.medico_responsable_id = p_medico_id)
+    order by i.paciente_id, i.fecha_ingreso
+  ) t;
 
   return jsonb_build_object(
     'distribucion_estancia', v_distribucion_estancia,
@@ -1942,13 +1985,10 @@ begin
 end;
 $$;
 
-grant execute on function public.dashboard_actividad_detalle(date, date, uuid, text) to authenticated;
-
 create or replace function public.dashboard_seguridad(
   p_desde date,
   p_hasta date,
-  p_medico_id uuid default null,
-  p_estado_filtro text default null
+  p_medico_id uuid default null
 ) returns jsonb
 language plpgsql
 security invoker
@@ -1975,8 +2015,7 @@ begin
   from public.ingresos i
   where i.fecha_ingreso <= p_hasta
     and (i.fecha_alta is null or i.fecha_alta >= p_desde)
-    and (p_medico_id is null or i.medico_responsable_id = p_medico_id)
-    and (p_estado_filtro is null or i.estado = p_estado_filtro);
+    and (p_medico_id is null or i.medico_responsable_id = p_medico_id);
 
   select coalesce(jsonb_agg(jsonb_build_object(
     'tipo', t.tipo,
@@ -1993,7 +2032,6 @@ begin
     inner join public.ingresos i on i.id = e.ingreso_id
     where e.fecha between p_desde and p_hasta
       and (p_medico_id is null or i.medico_responsable_id = p_medico_id)
-      and (p_estado_filtro is null or i.estado = p_estado_filtro)
     group by e.tipo
   ) t;
 
@@ -2008,8 +2046,7 @@ begin
   from public.eventos e
   inner join public.ingresos i on i.id = e.ingreso_id
   where e.tipo = 'caida' and e.fecha between p_desde and p_hasta
-    and (p_medico_id is null or i.medico_responsable_id = p_medico_id)
-    and (p_estado_filtro is null or i.estado = p_estado_filtro);
+    and (p_medico_id is null or i.medico_responsable_id = p_medico_id);
 
   select jsonb_build_object(
     'presentes_al_ingreso', count(*) filter (where e.datos->>'momento' = 'Al ingreso'),
@@ -2022,9 +2059,12 @@ begin
   from public.eventos e
   inner join public.ingresos i on i.id = e.ingreso_id
   where e.tipo = 'ulcera' and e.fecha between p_desde and p_hasta
-    and (p_medico_id is null or i.medico_responsable_id = p_medico_id)
-    and (p_estado_filtro is null or i.estado = p_estado_filtro);
+    and (p_medico_id is null or i.medico_responsable_id = p_medico_id);
 
+  -- "Pendientes de completar" cuenta las incidencias pendientes de
+  -- TODOS los tipos del periodo (también caídas y úlceras), igual que
+  -- la tabla "por tipo" y que la lista que se abre al pulsarla. Los
+  -- recuentos de cada tipo siguen filtrando por su tipo.
   select jsonb_build_object(
     'errores_medicacion', count(*) filter (where e.tipo = 'error_medicacion'),
     'efectos_adversos', count(*) filter (where e.tipo = 'efecto_adverso_medicacion'),
@@ -2035,38 +2075,30 @@ begin
   ) into v_otras
   from public.eventos e
   inner join public.ingresos i on i.id = e.ingreso_id
-  where e.tipo in ('error_medicacion', 'efecto_adverso_medicacion', 'infeccion_nosocomial', 'agresividad_fisica', 'fuga')
-    and e.fecha between p_desde and p_hasta
-    and (p_medico_id is null or i.medico_responsable_id = p_medico_id)
-    and (p_estado_filtro is null or i.estado = p_estado_filtro);
+  where e.fecha between p_desde and p_hasta
+    and (p_medico_id is null or i.medico_responsable_id = p_medico_id);
 
+  with pauta as (
+    select
+      (coalesce(c.dia = 'continua_seguridad', false)
+        or coalesce('contencion_fija' = any(c.noche), false)) as activa,
+      (coalesce(c.dia in ('si_precisa_supervision', 'si_precisa_paciente'), false)
+        or coalesce('contencion_si_precisa' = any(c.noche), false)) as si_precisa,
+      c.confirmado_por_id
+    from public.ingresos i2
+    inner join public.contenciones c on c.ingreso_id = i2.id
+    where i2.estado = 'activo'
+      and (p_medico_id is null or i2.medico_responsable_id = p_medico_id)
+  )
   select jsonb_build_object(
-    'pacientes_con_contencion_activa', (
-      select count(*) from public.ingresos i2
-      inner join public.contenciones c on c.ingreso_id = i2.id
-      where i2.estado = 'activo'
-        and (p_medico_id is null or i2.medico_responsable_id = p_medico_id)
-        and (
-          c.dia in ('continua_seguridad', 'si_precisa_supervision', 'si_precisa_paciente')
-          or 'contencion_fija' = any(c.noche) or 'contencion_si_precisa' = any(c.noche)
-        )
-    ),
-    'pendientes_confirmacion', (
-      select count(*) from public.ingresos i2
-      inner join public.contenciones c on c.ingreso_id = i2.id
-      where i2.estado = 'activo'
-        and (p_medico_id is null or i2.medico_responsable_id = p_medico_id)
-        and c.confirmado_por_id is null
-        and (
-          c.dia = 'continua_seguridad' or c.dia in ('si_precisa_supervision', 'si_precisa_paciente')
-          or 'contencion_fija' = any(c.noche) or 'contencion_si_precisa' = any(c.noche)
-        )
-    ),
+    'pacientes_con_contencion_activa', (select count(*) from pauta where activa),
+    'pacientes_con_si_precisa', (select count(*) from pauta where si_precisa and not activa),
+    'pendientes_confirmacion', (select count(*) from pauta where (activa or si_precisa) and confirmado_por_id is null),
     'cambios_pauta_periodo', (
       select count(*) from public.contenciones_historial ch
       inner join public.ingresos i2 on i2.id = ch.ingreso_id
       where ch.tipo_accion in ('pauta_creada', 'pauta_modificada')
-        and ch.cambiado_en::date between p_desde and p_hasta
+        and (ch.cambiado_en at time zone 'Europe/Madrid')::date between p_desde and p_hasta
         and (p_medico_id is null or i2.medico_responsable_id = p_medico_id)
     )
   ) into v_contenciones;
@@ -2081,8 +2113,6 @@ begin
   );
 end;
 $$;
-
-grant execute on function public.dashboard_seguridad(date, date, uuid, text) to authenticated;
 
 create or replace function public.buscar_episodios_dashboard(
   p_busqueda text default null,
@@ -2144,7 +2174,7 @@ begin
       p.nombre, p.primer_apellido, p.segundo_apellido, p.nhc,
       (p.primer_apellido || ' ' || coalesce(p.segundo_apellido, '') || ' ' || p.nombre) as nombre_orden,
       nullif(coalesce(m.nombre || ' ' || m.apellidos, ''), '') as medico_nombre,
-      (case when i.fecha_alta is not null then i.fecha_alta - i.fecha_ingreso else current_date - i.fecha_ingreso end) as dias_estancia,
+      (case when i.fecha_alta is not null then i.fecha_alta - i.fecha_ingreso else private.hoy_madrid() - i.fecha_ingreso end) as dias_estancia,
       (select count(*) from public.eventos e where e.ingreso_id = i.id) as num_incidencias
     from public.ingresos i
     inner join public.pacientes p on p.id = i.paciente_id
@@ -2184,7 +2214,7 @@ begin
         p.nombre, p.primer_apellido, p.segundo_apellido, p.nhc,
         (p.primer_apellido || '' '' || coalesce(p.segundo_apellido, '''') || '' '' || p.nombre) as nombre_orden,
         nullif(coalesce(m.nombre || '' '' || m.apellidos, ''''), '''') as medico_nombre,
-        (case when i.fecha_alta is not null then i.fecha_alta - i.fecha_ingreso else current_date - i.fecha_ingreso end) as dias_estancia,
+        (case when i.fecha_alta is not null then i.fecha_alta - i.fecha_ingreso else private.hoy_madrid() - i.fecha_ingreso end) as dias_estancia,
         (select count(*) from public.eventos e where e.ingreso_id = i.id) as num_incidencias
       from public.ingresos i
       inner join public.pacientes p on p.id = i.paciente_id
@@ -2235,26 +2265,22 @@ begin
 end;
 $$;
 
-grant execute on function public.buscar_episodios_dashboard(
-  text, date, date, date, date, date, date, text, uuid, integer, integer, boolean, text, text, text, integer, integer, boolean
-) to authenticated;
-
-commit;
-
--- Las seis funciones del Dashboard son security invoker y ya
--- comprueban private.mi_rol() — no hay fuga de datos —, pero se
--- quedaron con el permiso de ejecución por defecto que Postgres
--- concede a PUBLIC. Se revoca, igual que el resto de funciones
--- sensibles del proyecto.
-begin;
-
-revoke execute on function public.dashboard_situacion_actual() from public, anon;
-revoke execute on function public.dashboard_resumen(date, date, uuid, text) from public, anon;
-revoke execute on function public.dashboard_series(date, date, uuid, text) from public, anon;
-revoke execute on function public.dashboard_actividad_detalle(date, date, uuid, text) from public, anon;
-revoke execute on function public.dashboard_seguridad(date, date, uuid, text) from public, anon;
+revoke execute on function public.dashboard_situacion_actual(uuid) from public, anon;
+revoke execute on function public.dashboard_resumen(date, date, uuid) from public, anon;
+revoke execute on function public.dashboard_series(date, date, uuid) from public, anon;
+revoke execute on function public.dashboard_actividad_detalle(date, date, uuid) from public, anon;
+revoke execute on function public.dashboard_seguridad(date, date, uuid) from public, anon;
 revoke execute on function public.buscar_episodios_dashboard(
   text, date, date, date, date, date, date, text, uuid, integer, integer, boolean, text, text, text, integer, integer, boolean
 ) from public, anon;
+
+grant execute on function public.dashboard_situacion_actual(uuid) to authenticated;
+grant execute on function public.dashboard_resumen(date, date, uuid) to authenticated;
+grant execute on function public.dashboard_series(date, date, uuid) to authenticated;
+grant execute on function public.dashboard_actividad_detalle(date, date, uuid) to authenticated;
+grant execute on function public.dashboard_seguridad(date, date, uuid) to authenticated;
+grant execute on function public.buscar_episodios_dashboard(
+  text, date, date, date, date, date, date, text, uuid, integer, integer, boolean, text, text, text, integer, integer, boolean
+) to authenticated;
 
 commit;

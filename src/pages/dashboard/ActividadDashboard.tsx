@@ -48,7 +48,7 @@ export function ActividadDashboard({ filtros, desde, hasta, onExplorar }: {
     setEstadoSeries('cargando'); setErrorSeries('')
     setEstadoDetalle('cargando'); setErrorDetalle('')
 
-    const params = { p_desde: desde, p_hasta: hasta, p_medico_id: filtros.medicoId, p_estado_filtro: null }
+    const params = { p_desde: desde, p_hasta: hasta, p_medico_id: filtros.medicoId }
 
     const [rResumen, rSeries, rDetalle] = await Promise.all([
       supabase.rpc('dashboard_resumen', params),
@@ -213,9 +213,12 @@ export function ActividadDashboard({ filtros, desde, hasta, onExplorar }: {
       {/* ── Edad y sexo: información secundaria ──────────────── */}
       <section>
         <p className="section-title">Edad y sexo · información secundaria</p>
+        <p className="text-xs text-slate-400 -mt-3 mb-2">
+          Cuenta pacientes distintos con algún ingreso en el periodo (no episodios), con la edad de su primer ingreso del periodo.
+        </p>
         {estadoDetalle === 'listo' && detalle && (
           <div className="card p-4 flex flex-wrap items-center gap-6 text-sm text-slate-600">
-            <span>Edad media al ingreso: <strong className="text-slate-800">{detalle.edad_media} años</strong></span>
+            <span>Edad media de los pacientes ingresados: <strong className="text-slate-800">{detalle.edad_media} años</strong></span>
             {totalPorSexo > 0 && (
               <span>
                 Hombres: <strong className="text-slate-800">{detalle.por_sexo.hombre ?? 0}</strong> ·{' '}
