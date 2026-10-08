@@ -136,6 +136,12 @@ function FormularioLesion({
     setError('')
     if (!f.localizacion.trim()) { setError('Indica la localización.'); return }
     if (!profesional) { setError('Tu cuenta no tiene ficha de profesional.'); return }
+    // El origen de una úlcera por presión alimenta el Dashboard (úlceras
+    // producidas en el centro frente a las que ya traía), así que es obligatorio.
+    if (f.caracteristicas === 'upp' && !f.origen) {
+      setError('Indica si la úlcera por presión se produjo dentro o fuera del centro: cuenta para los indicadores del Dashboard.')
+      return
+    }
     const frec = aEntero(pauta.frecuencia_horas)
     if (!editando && frec !== null && (Number.isNaN(frec) || frec < 1 || frec > 720)) {
       setError('La frecuencia debe ser un número entero de horas entre 1 y 720.'); return
@@ -206,9 +212,9 @@ function FormularioLesion({
               onChange={(e) => setF({ ...f, fecha_inicio: e.target.value })} />
           </div>
           <div>
-            <label className="label">Se produjo…</label>
+            <label className="label">Se produjo…{f.caracteristicas === 'upp' && ' *'}</label>
             <select className="input" value={f.origen} onChange={(e) => setF({ ...f, origen: e.target.value })}>
-              <option value="">Sin indicar</option>
+              <option value="">{f.caracteristicas === 'upp' ? '— Selecciona —' : 'Sin indicar'}</option>
               <option value="centro">Dentro del centro</option>
               <option value="fuera">Fuera del centro</option>
             </select>

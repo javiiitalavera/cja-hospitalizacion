@@ -182,7 +182,7 @@ export function ResumenDashboard({ filtros, desde, hasta, onExplorar, onExplorar
                 ? `${Math.round(resumen.reingresos_30d / resumen.ingresos_nuevos * 1000) / 10}% de los ingresos nuevos · alta o traslado previo en 30 días`
                 : 'Alta o traslado previo en los 30 días anteriores'} />
             <TarjetaMetrica etiqueta="Incidencias" valor={resumen.incidencias_total}
-              subvalor={resumen.incidencias_tasa_1000 != null ? `${resumen.incidencias_tasa_1000} por 1.000 días-estancia` : undefined}
+              subvalor={(resumen.incidencias_tasa_1000 != null ? `${resumen.incidencias_tasa_1000} por 1.000 días-estancia · ` : '') + 'sin úlceras por presión (ver Seguridad)'}
               comparacion={comparacionTexto(resumen.incidencias_total, 'incidencias_total')}
               onClick={() => onExplorar({ incidencias: 'todas', desde, hasta })} />
           </div>

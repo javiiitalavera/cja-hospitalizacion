@@ -109,6 +109,7 @@ export default function DetallePaciente() {
           .from('eventos')
           .select('*, registrado_por:profesionales!registrado_por_id(nombre,apellidos)')
           .in('ingreso_id', ingIds)
+          .neq('tipo', 'ulcera')   // las úlceras ya no son incidencia (están en Curas)
           .order('fecha', { ascending: false }),
         supabase.from('informe_ingreso').select('ingreso_id').in('ingreso_id', ingIds),
         supabase.from('informe_alta').select('ingreso_id').in('ingreso_id', ingIds),

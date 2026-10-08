@@ -12,16 +12,18 @@ const TIPO_LABEL: Record<string, string> = {
 interface Seguridad {
   por_tipo: { tipo: string; total: number; pacientes_afectados: number; pendientes: number; tasa_1000: number | null }[]
   caidas: { total: number; con_lesion: number; pendientes_valoracion: number; graves: number; tasa_total_1000: number | null; tasa_con_lesion_1000: number | null }
-  ulceras: { presentes_al_ingreso: number; aparecidas_durante: number; grado_iii_iv: number; tasa_aparecidas_1000: number | null }
+  // sin_origen y pacientes_afectados son opcionales: no existen hasta que se ejecuta el SQL de úlceras en Curas.
+  ulceras: { presentes_al_ingreso: number; aparecidas_durante: number; grado_iii_iv: number; tasa_aparecidas_1000: number | null; sin_origen?: number; pacientes_afectados?: number }
   otras: { errores_medicacion: number; efectos_adversos: number; infecciones_nosocomiales: number; agresiones: number; fugas: number; pendientes_completar: number }
   contenciones: { pacientes_con_contencion_activa: number; pacientes_con_si_precisa: number; pendientes_confirmacion: number; cambios_pauta_periodo: number }
 }
 
-export function SeguridadDashboard({ filtros, desde, hasta, onExplorar }: {
+export function SeguridadDashboard({ filtros, desde, hasta, onExplorar, onExplorarEpisodios }: {
   filtros: Filtros
   desde: string
   hasta: string
   onExplorar: (filtroExtra?: Record<string, string>) => void
+  onExplorarEpisodios: (filtroExtra?: Record<string, string>) => void
 }) {
   const [datos, setDatos] = useState<Seguridad | null>(null)
   const [estado, setEstado] = useState<EstadoCarga>('cargando')
@@ -45,6 +47,12 @@ export function SeguridadDashboard({ filtros, desde, hasta, onExplorar }: {
 
   function irATipo(tipo: string) {
     onExplorar({ desde, hasta, tipo_incidencia: tipo })
+  }
+
+  // Las úlceras por presión viven en Curas, no en Incidencias: el listado
+  // que las explica es el de episodios con alguna úlcera, no el de incidencias.
+  function irAEpisodiosConUPP() {
+    onExplorarEpisodios({ solapa_desde: desde, solapa_hasta: hasta, con_incidencias: 'si', tipo_incidencia: 'ulcera' })
   }
 
   return (
@@ -100,11 +108,17 @@ export function SeguridadDashboard({ filtros, desde, hasta, onExplorar }: {
           {/* ── Úlceras ─────────────────────────────────────── */}
           <section>
             <p className="section-title">Úlceras por presión</p>
+            <p className="text-xs text-slate-500 mb-3">
+              Se registran en Plan de cuidados → Curas (no como incidencia). El periodo se cuenta por la fecha de inicio o detección.
+              Al pulsar una tarjeta se abre el listado de episodios del periodo con alguna úlcera por presión.
+            </p>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              <TarjetaMetrica etiqueta="Presentes al ingreso" valor={datos.ulceras.presentes_al_ingreso} />
-              <TarjetaMetrica etiqueta="Aparecidas durante el ingreso" valor={datos.ulceras.aparecidas_durante} onClick={() => irATipo('ulcera')} />
-              <TarjetaMetrica etiqueta="Grados III-IV" valor={datos.ulceras.grado_iii_iv} />
-              <TarjetaMetrica etiqueta="Tasa de aparición" valor={datos.ulceras.tasa_aparecidas_1000 ?? '—'} subvalor="por 1.000 días-estancia, solo las aparecidas durante" />
+              <TarjetaMetrica etiqueta="Producidas en el centro" valor={datos.ulceras.aparecidas_durante} subvalor="Origen: dentro del centro" onClick={irAEpisodiosConUPP} />
+              <TarjetaMetrica etiqueta="Presentes al ingreso" valor={datos.ulceras.presentes_al_ingreso} subvalor="Origen: fuera del centro" onClick={irAEpisodiosConUPP} />
+              <TarjetaMetrica etiqueta="Sin origen indicado" valor={datos.ulceras.sin_origen ?? '—'} subvalor="Pendientes de completar en Curas" onClick={irAEpisodiosConUPP} />
+              <TarjetaMetrica etiqueta="Grados III-IV" valor={datos.ulceras.grado_iii_iv} subvalor="Grado máximo registrado" onClick={irAEpisodiosConUPP} />
+              <TarjetaMetrica etiqueta="Pacientes afectados" valor={datos.ulceras.pacientes_afectados ?? '—'} onClick={irAEpisodiosConUPP} />
+              <TarjetaMetrica etiqueta="Tasa de aparición" valor={datos.ulceras.tasa_aparecidas_1000 ?? '—'} subvalor="por 1.000 días-estancia, solo las producidas en el centro" />
             </div>
           </section>
 

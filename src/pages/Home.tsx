@@ -108,12 +108,12 @@ export default function Home() {
           // del ingreso, así que con el tiempo el aviso dejaba de
           // decir "algo nuevo" para convertirse en "esto tiene
           // historial", que no es lo mismo de un vistazo.
-          supabase.from('eventos').select('ingreso_id,tipo').in('ingreso_id', ids).gte('fecha', hace7dias()),
+          supabase.from('eventos').select('ingreso_id,tipo').in('ingreso_id', ids).neq('tipo', 'ulcera').gte('fecha', hace7dias()),
           fetchContencionesPorIngreso(ids),
           // Sin límite de fecha, a propósito — una incidencia puede
           // llevar pendiente de completar más de 7 días y no por eso
           // deja de ser trabajo pendiente.
-          supabase.from('eventos').select('id').in('ingreso_id', ids).eq('estado', 'pendiente'),
+          supabase.from('eventos').select('id').in('ingreso_id', ids).neq('tipo', 'ulcera').eq('estado', 'pendiente'),
         ])
 
         // La lista de pacientes es lo esencial y ya se ha podido

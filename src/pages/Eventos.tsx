@@ -16,7 +16,7 @@ import FormularioEvento from '../components/FormularioEvento'
 // ─── CONSTANTES ────────────────────────────────────────────────
 
 const TIPOS_ORDEN: TipoEvento[] = [
-  'caida', 'ulcera', 'agresividad_fisica',
+  'caida', 'agresividad_fisica',
   'fuga', 'infeccion_nosocomial', 'error_medicacion', 'efecto_adverso_medicacion',
 ]
 
@@ -119,6 +119,7 @@ export function Eventos() {
           ingreso:ingresos!inner(id, habitacion, estado, paciente:pacientes(nombre, primer_apellido, segundo_apellido))
         `)
         .eq('ingreso.estado', 'activo')
+        .neq('tipo', 'ulcera')   // las úlceras ya no son incidencia (están en Curas)
         .order('fecha', { ascending: false })
       if (err) {
         setErrorEstado('No se pudo cargar el estado actual: ' + err.message)
@@ -243,6 +244,7 @@ export function Eventos() {
           registrado_por:profesionales!registrado_por_id(nombre, apellidos),
           ingreso:ingresos!inner(id, habitacion, estado, medico_responsable_id, paciente:pacientes(nombre, primer_apellido, segundo_apellido))
         `)
+        .neq('tipo', 'ulcera')   // las úlceras ya no son incidencia (están en Curas)
         .order('fecha', { ascending: false })
 
       if (desde) q = q.gte('fecha', desde)

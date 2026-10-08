@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { hoyLocal } from '../lib/fechas'
 import { useAuth } from '../lib/AuthContext'
 import type { Profesional } from '../types'
-import { TIPO_EVENTO_LABEL, CAMPOS_POR_TIPO, TURNO_LABEL, turnoSegunHora, type TipoEvento, type Evento } from '../types/eventos'
+import { TIPO_EVENTO_LABEL, TIPOS_REGISTRABLES, CAMPOS_POR_TIPO, TURNO_LABEL, turnoSegunHora, type TipoEvento, type Evento } from '../types/eventos'
 import { X, Save } from 'lucide-react'
 
 interface Props {
@@ -55,6 +55,7 @@ export default function FormularioEvento({ ingresoId, eventoExistente, onClose, 
       .from('eventos')
       .select('id, tipo, fecha, hora, notas, registrado_por:profesionales!registrado_por_id(nombre, apellidos, rol)')
       .eq('ingreso_id', ingresoId)
+      .neq('tipo', 'ulcera')
       .gte('fecha', hace3dias.toISOString().slice(0, 10))
       .order('fecha', { ascending: false })
       .then(({ data }) => setRecientes((data ?? []) as unknown as Evento[]))
@@ -210,7 +211,7 @@ export default function FormularioEvento({ ingresoId, eventoExistente, onClose, 
             <label className="label">Tipo de evento *</label>
             <select className="input" value={tipo} onChange={(e) => setTipo(e.target.value as TipoEvento)}>
               <option value="">— Selecciona —</option>
-              {(Object.keys(TIPO_EVENTO_LABEL) as TipoEvento[]).map((t) => (
+              {TIPOS_REGISTRABLES.map((t) => (
                 <option key={t} value={t}>
                   {TIPO_EVENTO_LABEL[t]}
                 </option>

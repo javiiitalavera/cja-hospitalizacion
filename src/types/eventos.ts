@@ -17,6 +17,13 @@ export const TIPO_EVENTO_LABEL: Record<TipoEvento, string> = {
   fuga: 'Fuga',
 }
 
+// Las úlceras por presión ya no son una incidencia: se registran en Plan de
+// cuidados → Curas. El tipo se conserva aquí solo para poder mostrar (por
+// ejemplo en Auditoría) los eventos antiguos; no se ofrece al registrar ni se
+// muestra en los listados de Incidencias.
+export const TIPO_EVENTO_RETIRADO: TipoEvento = 'ulcera'
+export const TIPOS_REGISTRABLES = (Object.keys(TIPO_EVENTO_LABEL) as TipoEvento[]).filter((t) => t !== TIPO_EVENTO_RETIRADO)
+
 export const TIPO_EVENTO_COLOR: Record<TipoEvento, string> = {
   caida: 'bg-orange-100 text-orange-700 border-orange-200',
   ulcera: 'bg-red-100 text-red-700 border-red-200',

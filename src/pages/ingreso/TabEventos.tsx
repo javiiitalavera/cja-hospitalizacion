@@ -32,6 +32,7 @@ function TabEventos({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteIn
         .from('eventos')
         .select('*, registrado_por:profesionales!registrado_por_id(nombre, apellidos, rol)')
         .eq('ingreso_id', ingresoId)
+        .neq('tipo', 'ulcera')   // las úlceras ya no son incidencia (están en Curas)
         .order('fecha', { ascending: false })
         .order('created_at', { ascending: false })
       if (err) {

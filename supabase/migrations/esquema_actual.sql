@@ -1672,10 +1672,15 @@ begin
   -- Sin el filtro de "ingreso activo": una incidencia puede quedar
   -- pendiente de completar después del alta, y debe seguir contando
   -- como trabajo pendiente igualmente.
+  -- Las úlceras por presión ya no son una incidencia: se registran en
+  -- Curas y tienen su propio apartado en Seguridad. Se excluyen aquí
+  -- (también los eventos antiguos de ese tipo) para que la cifra coincida
+  -- con la lista de Incidencias.
   select count(*) into v_incidencias_pendientes
   from public.eventos e
   inner join public.ingresos i on i.id = e.ingreso_id
   where e.estado = 'pendiente'
+    and e.tipo <> 'ulcera'
     and (p_medico_id is null or i.medico_responsable_id = p_medico_id);
 
   return jsonb_build_object(
@@ -1784,10 +1789,13 @@ begin
         and previo.fecha_alta >= i.fecha_ingreso - 30
     );
 
+  -- Sin úlceras por presión (ver dashboard_seguridad): así la cifra
+  -- coincide con la lista de Incidencias a la que lleva.
   select count(*) into v_incidencias
   from public.eventos e
   inner join public.ingresos i on i.id = e.ingreso_id
   where e.fecha between p_desde and p_hasta
+    and e.tipo <> 'ulcera'
     and (p_medico_id is null or i.medico_responsable_id = p_medico_id);
 
   return jsonb_build_object(
@@ -2031,6 +2039,7 @@ begin
     from public.eventos e
     inner join public.ingresos i on i.id = e.ingreso_id
     where e.fecha between p_desde and p_hasta
+      and e.tipo <> 'ulcera'
       and (p_medico_id is null or i.medico_responsable_id = p_medico_id)
     group by e.tipo
   ) t;
@@ -2048,21 +2057,36 @@ begin
   where e.tipo = 'caida' and e.fecha between p_desde and p_hasta
     and (p_medico_id is null or i.medico_responsable_id = p_medico_id);
 
+  -- Úlceras por presión: salen de Curas (curas_lesiones con tipo 'upp'),
+  -- no de las incidencias. Periodo = fecha de inicio/detección.
+  --   producidas en el centro  -> origen 'centro'  (las que cuentan para la tasa)
+  --   presentes al ingreso     -> origen 'fuera'
+  --   sin origen indicado      -> origen null (pendiente de completar en Curas)
+  -- Grado III-IV: el grado MÁXIMO que haya llegado a registrarse.
+  with upp as (
+    select l.id, l.ingreso_id, l.origen,
+           (select max(case v.grado when 'I' then 1 when 'II' then 2 when 'III' then 3 when 'IV' then 4 end)
+              from public.curas_valoraciones v where v.lesion_id = l.id) as grado_max
+    from public.curas_lesiones l
+    inner join public.ingresos i on i.id = l.ingreso_id
+    where l.caracteristicas = 'upp'
+      and l.fecha_inicio between p_desde and p_hasta
+      and (p_medico_id is null or i.medico_responsable_id = p_medico_id)
+  )
   select jsonb_build_object(
-    'presentes_al_ingreso', count(*) filter (where e.datos->>'momento' = 'Al ingreso'),
-    'aparecidas_durante', count(*) filter (where e.datos->>'momento' = 'Durante el ingreso'),
-    'grado_iii_iv', count(*) filter (where e.datos->>'grado' in ('Grado III', 'Grado IV')),
+    'presentes_al_ingreso', count(*) filter (where origen = 'fuera'),
+    'aparecidas_durante', count(*) filter (where origen = 'centro'),
+    'sin_origen', count(*) filter (where origen is null),
+    'grado_iii_iv', count(*) filter (where grado_max >= 3),
+    'pacientes_afectados', count(distinct ingreso_id),
     'tasa_aparecidas_1000', case when v_dias_estancia > 0 then round(
-      count(*) filter (where e.datos->>'momento' = 'Durante el ingreso')::numeric / v_dias_estancia * 1000, 2
+      count(*) filter (where origen = 'centro')::numeric / v_dias_estancia * 1000, 2
     ) else null end
   ) into v_ulceras
-  from public.eventos e
-  inner join public.ingresos i on i.id = e.ingreso_id
-  where e.tipo = 'ulcera' and e.fecha between p_desde and p_hasta
-    and (p_medico_id is null or i.medico_responsable_id = p_medico_id);
+  from upp;
 
   -- "Pendientes de completar" cuenta las incidencias pendientes de
-  -- TODOS los tipos del periodo (también caídas y úlceras), igual que
+  -- TODOS los tipos del periodo (también las caídas), igual que
   -- la tabla "por tipo" y que la lista que se abre al pulsarla. Los
   -- recuentos de cada tipo siguen filtrando por su tipo.
   select jsonb_build_object(
@@ -2076,6 +2100,7 @@ begin
   from public.eventos e
   inner join public.ingresos i on i.id = e.ingreso_id
   where e.fecha between p_desde and p_hasta
+    and e.tipo <> 'ulcera'
     and (p_medico_id is null or i.medico_responsable_id = p_medico_id);
 
   with pauta as (
@@ -2175,7 +2200,7 @@ begin
       (p.primer_apellido || ' ' || coalesce(p.segundo_apellido, '') || ' ' || p.nombre) as nombre_orden,
       nullif(coalesce(m.nombre || ' ' || m.apellidos, ''), '') as medico_nombre,
       (case when i.fecha_alta is not null then i.fecha_alta - i.fecha_ingreso else private.hoy_madrid() - i.fecha_ingreso end) as dias_estancia,
-      (select count(*) from public.eventos e where e.ingreso_id = i.id) as num_incidencias
+      (select count(*) from public.eventos e where e.ingreso_id = i.id and e.tipo <> 'ulcera') as num_incidencias
     from public.ingresos i
     inner join public.pacientes p on p.id = i.paciente_id
     left join public.profesionales m on m.id = i.medico_responsable_id
@@ -2198,8 +2223,12 @@ begin
       and (p_medico_id is null or i.medico_responsable_id = p_medico_id)
       and (
         p_con_incidencias is null or (
-          (select count(*) from public.eventos e where e.ingreso_id = i.id
-            and (p_tipo_incidencia is null or e.tipo = p_tipo_incidencia)) > 0
+          case when p_tipo_incidencia = 'ulcera'
+            -- Úlceras por presión: viven en Curas, no en incidencias.
+            then exists (select 1 from public.curas_lesiones l where l.ingreso_id = i.id and l.caracteristicas = 'upp')
+            else (select count(*) from public.eventos e where e.ingreso_id = i.id and e.tipo <> 'ulcera'
+                    and (p_tipo_incidencia is null or e.tipo = p_tipo_incidencia)) > 0
+          end
         ) = p_con_incidencias
       )
   )
@@ -2215,7 +2244,7 @@ begin
         (p.primer_apellido || '' '' || coalesce(p.segundo_apellido, '''') || '' '' || p.nombre) as nombre_orden,
         nullif(coalesce(m.nombre || '' '' || m.apellidos, ''''), '''') as medico_nombre,
         (case when i.fecha_alta is not null then i.fecha_alta - i.fecha_ingreso else private.hoy_madrid() - i.fecha_ingreso end) as dias_estancia,
-        (select count(*) from public.eventos e where e.ingreso_id = i.id) as num_incidencias
+        (select count(*) from public.eventos e where e.ingreso_id = i.id and e.tipo <> ''ulcera'') as num_incidencias
       from public.ingresos i
       inner join public.pacientes p on p.id = i.paciente_id
       left join public.profesionales m on m.id = i.medico_responsable_id
@@ -2238,8 +2267,11 @@ begin
         and ($9::uuid is null or i.medico_responsable_id = $9::uuid)
         and (
           $10::boolean is null or (
-            (select count(*) from public.eventos e where e.ingreso_id = i.id
-              and ($11::text is null or e.tipo = $11::text)) > 0
+            case when $11::text = ''ulcera''
+              then exists (select 1 from public.curas_lesiones l where l.ingreso_id = i.id and l.caracteristicas = ''upp'')
+              else (select count(*) from public.eventos e where e.ingreso_id = i.id and e.tipo <> ''ulcera''
+                      and ($11::text is null or e.tipo = $11::text)) > 0
+            end
           ) = $10::boolean
         )
     )
@@ -2316,6 +2348,9 @@ create table if not exists public.curas_lesiones (
     origen text check (origen in ('centro', 'fuera')),
     notas text check (notas is null or length(notas) <= 2000),
     registrado_por_id uuid references public.profesionales(id),
+    -- Si la lesión se creó al pasar una antigua incidencia "úlcera por
+    -- presión" a Curas: de qué incidencia viene (para no duplicarla).
+    evento_origen_id uuid unique references public.eventos(id) on delete set null,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now(),
     check (fecha_fin is null or fecha_fin >= fecha_inicio)
@@ -2556,5 +2591,30 @@ create policy borrar_registro_cura on public.curas_registro for delete to authen
     );
 -- (curas_registro no tiene política de UPDATE: no se edita, se marca o se desmarca.)
 
+
+-- Las úlceras por presión ya no se registran como incidencia (se hace en
+-- Curas). Los eventos antiguos de ese tipo se conservan, pero no se pueden
+-- crear nuevos.
+create or replace function public.impedir_evento_ulcera() returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  raise exception 'Las úlceras por presión ya no se registran como incidencia: se registran en Plan de cuidados → Curas.';
+end;
+$$;
+
+drop trigger if exists impedir_evento_ulcera on public.eventos;
+create trigger impedir_evento_ulcera
+    before insert on public.eventos
+    for each row when (NEW.tipo = 'ulcera')
+    execute function public.impedir_evento_ulcera();
+drop trigger if exists impedir_evento_ulcera_upd on public.eventos;
+create trigger impedir_evento_ulcera_upd
+    before update of tipo on public.eventos
+    for each row when (NEW.tipo = 'ulcera' and OLD.tipo is distinct from 'ulcera')
+    execute function public.impedir_evento_ulcera();
+
+revoke execute on function public.impedir_evento_ulcera() from public, anon, authenticated;
 
 commit;

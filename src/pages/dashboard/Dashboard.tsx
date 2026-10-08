@@ -90,7 +90,7 @@ export function Dashboard() {
   function irAExplorador(filtroExtra?: Record<string, string>) {
     const params = new URLSearchParams(searchParams)
     params.set('vista', 'explorador')
-    const claves = ['desde_ingreso', 'hasta_ingreso', 'desde_alta', 'hasta_alta', 'estado', 'estancia_min', 'estancia_max'] as const
+    const claves = ['desde_ingreso', 'hasta_ingreso', 'desde_alta', 'hasta_alta', 'solapa_desde', 'solapa_hasta', 'estado', 'estancia_min', 'estancia_max', 'con_incidencias', 'tipo_incidencia'] as const
     for (const clave of claves) {
       const valor = filtroExtra?.[clave]
       if (valor) params.set(clave, valor)
@@ -167,7 +167,7 @@ export function Dashboard() {
         <ActividadDashboard filtros={filtros} desde={desde} hasta={hasta} onExplorar={irAExplorador} />
       )}
       {vista === 'seguridad' && (
-        <SeguridadDashboard filtros={filtros} desde={desde} hasta={hasta} onExplorar={irAIncidencias} />
+        <SeguridadDashboard filtros={filtros} desde={desde} hasta={hasta} onExplorar={irAIncidencias} onExplorarEpisodios={irAExplorador} />
       )}
       {vista === 'explorador' && <ExploradorEpisodios />}
       {vista !== 'resumen' && vista !== 'actividad' && vista !== 'explorador' && vista !== 'seguridad' && (
