@@ -5,13 +5,14 @@ import { hoyLocal, edad } from '../lib/fechas'
 import { useAuth } from '../lib/AuthContext'
 import type { Ingreso } from '../types'
 import { ESTADO_INGRESO_LABEL as ESTADO_LABEL, ESTADO_INGRESO_COLOR as ESTADO_COLOR, nombreCompleto } from '../types'
-import { ChevronLeft, User, FileText, ClipboardList, Activity, LogOut, Database, Lock, RotateCcw, Construction, Bandage } from 'lucide-react'
+import { ChevronLeft, User, FileText, ClipboardList, Activity, LogOut, Database, Lock, RotateCcw, Construction } from 'lucide-react'
 import { TabDatos } from './ingreso/TabDatos'
 import { TabInformeIngreso } from './ingreso/TabInformeIngreso'
 import { TabInformeAlta } from './ingreso/TabInformeAlta'
 import { TabItems } from './ingreso/TabItems'
 import { TabEventos } from './ingreso/TabEventos'
 import { TabCMBD } from './ingreso/TabCMBD'
+import { TabCuras } from './ingreso/TabCuras'
 import { TIPALT_LABEL } from '../lib/alta'
 
 // Estructura de la ficha: pestañas principales y, dentro de algunas,
@@ -43,7 +44,7 @@ const TABS: Tab[] = [
   {
     id: 'plan', label: 'Plan de cuidados', icon: ClipboardList,
     subs: [
-      { id: 'curas', label: 'Curas', seccion: 'curas', enConstruccion: true },
+      { id: 'curas', label: 'Curas', seccion: 'curas' },
       { id: 'items', label: 'Ítems', seccion: 'items' },
     ],
     subPorDefecto: 'items',
@@ -443,15 +444,7 @@ export default function DetalleIngreso() {
           )}
           {seccion === 'ingreso' && id && <TabInformeIngreso ingresoId={id} ingreso={ingreso} />}
           {seccion === 'alta' && id && <TabInformeAlta ingresoId={id} ingreso={ingreso} />}
-          {seccion === 'curas' && (
-            <div className="card p-8 max-w-xl text-center mx-auto">
-              <Bandage className="w-8 h-8 text-slate-300 mx-auto mb-3" />
-              <p className="font-semibold text-slate-700">Curas</p>
-              <p className="text-sm text-slate-500 mt-1">
-                Esta función está en construcción. Aquí se registrarán las curas del paciente durante el ingreso.
-              </p>
-            </div>
-          )}
+          {seccion === 'curas' && id && <TabCuras ingresoId={id} episodioActivo={!episodioCerrado} />}
           {seccion === 'items' && id && (
             <TabItems
               ingresoId={id}

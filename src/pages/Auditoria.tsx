@@ -16,6 +16,9 @@ const TABLA_LABEL: Record<string, string> = {
   eventos: 'Incidencia',
   contencion: 'Contención',
   escalas_clinicas: 'Escalas clínicas',
+  curas_lesiones: 'Cura (lesión)',
+  curas_valoraciones: 'Cura (valoración)',
+  curas_registro: 'Cura (marca diaria)',
 }
 
 // Las claves van en mayúsculas a propósito — la búsqueda siempre
