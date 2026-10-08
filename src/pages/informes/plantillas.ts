@@ -29,7 +29,6 @@ export interface InformePuntual {
 export interface Plantilla {
   id: PlantillaId
   label: string
-  descripcion: string
   // Título dentro del documento y título corto de la cabecera del Word.
   titulo: string
   tituloCabecera: string
@@ -45,7 +44,7 @@ const CAMPOS_ESTADO_ACTUAL: CampoInforme[] = [
   { key: 'antecedentes_familiares', label: 'Antecedentes familiares', grupo: 'ANTECEDENTES PATOLÓGICOS' },
   {
     key: 'tratamiento', label: 'Tratamiento', grupo: 'ANTECEDENTES PATOLÓGICOS',
-    ayuda: 'Se rellena con la medicación del informe de alta (o del de ingreso si aún no hay alta). Revísala: puede no ser la pauta de hoy.',
+    ayuda: 'Revísala: puede no ser la pauta actual.',
   },
   { key: 'vgi_social', label: 'Social', grupo: 'VALORACIÓN GERIÁTRICA INTEGRAL' },
   { key: 'vgi_funcional', label: 'Funcional', grupo: 'VALORACIÓN GERIÁTRICA INTEGRAL' },
@@ -65,10 +64,7 @@ const CAMPOS_ESTADO_ACTUAL: CampoInforme[] = [
   { key: 'exploracion_neurologica', label: 'Exploración neurológica', grupo: 'EXPLORACIÓN' },
   { key: 'exploracion_psicopatologica', label: 'Exploración psicopatológica', grupo: 'EXPLORACIÓN' },
   { key: 'exploraciones_complementarias', label: 'Exploraciones complementarias', grupo: 'EXPLORACIÓN' },
-  {
-    key: 'escalas', label: 'Escalas clínicas', grupo: 'ESCALAS Y DIAGNÓSTICO',
-    ayuda: 'Se rellena con las escalas del informe de ingreso y, si existen, las del alta.',
-  },
+  { key: 'escalas', label: 'Escalas clínicas', grupo: 'ESCALAS Y DIAGNÓSTICO' },
   { key: 'impresion_diagnostica', label: 'Impresión diagnóstica (al ingreso)', grupo: 'ESCALAS Y DIAGNÓSTICO' },
   { key: 'plan_objetivos', label: 'Plan terapéutico: objetivos', grupo: 'PLAN TERAPÉUTICO AL INGRESO' },
   { key: 'plan_medicacion', label: 'Plan terapéutico: medicación', grupo: 'PLAN TERAPÉUTICO AL INGRESO' },
@@ -82,7 +78,6 @@ export const PLANTILLAS: Plantilla[] = [
   {
     id: 'derivacion_urgencias',
     label: 'Derivación a urgencias',
-    descripcion: 'Motivo de derivación, enfermedad actual y plan.',
     titulo: 'Informe de derivación a urgencias',
     tituloCabecera: 'INFORME DE DERIVACIÓN',
     campos: [
@@ -93,8 +88,7 @@ export const PLANTILLAS: Plantilla[] = [
   },
   {
     id: 'estado_actual',
-    label: 'Estado actual (trabajadora social, familia o residencia)',
-    descripcion: 'Todos los campos del informe de ingreso (rellenos con él y con el de alta) más evolución clínica, diagnósticos y plan.',
+    label: 'Estado actual',
     titulo: 'Informe de estado actual',
     tituloCabecera: 'INFORME DE ESTADO ACTUAL',
     campos: CAMPOS_ESTADO_ACTUAL,
@@ -102,7 +96,6 @@ export const PLANTILLAS: Plantilla[] = [
   {
     id: 'libre',
     label: 'Informe libre',
-    descripcion: 'Un único cuadro de texto en blanco.',
     titulo: 'Informe médico',
     tituloCabecera: 'INFORME MÉDICO',
     campos: [{ key: 'contenido', label: 'Contenido' }],

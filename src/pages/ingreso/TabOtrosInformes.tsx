@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowLeft, Download, FileText, Lock, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, ChevronDown, ChevronRight, Download, FileText, Lock, Plus, Trash2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/AuthContext'
 import { exportarInformePuntual } from '../../lib/exportWord'
@@ -95,7 +95,6 @@ export function TabOtrosInformes({ ingresoId, ingreso }: { ingresoId: string; in
               className="card p-4 text-left hover:border-primary-300 hover:bg-primary-50/30 transition-colors disabled:opacity-60"
             >
               <p className="font-semibold text-slate-800">{pl.label}</p>
-              <p className="text-sm text-slate-500 mt-0.5">{pl.descripcion}</p>
             </button>
           ))}
         </div>
@@ -107,10 +106,7 @@ export function TabOtrosInformes({ ingresoId, ingreso }: { ingresoId: string; in
   return (
     <div className="max-w-3xl space-y-4">
       <div className="flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-base font-bold text-slate-800">Otros informes</h2>
-          <p className="text-sm text-slate-500">Derivación a urgencias, estado actual o informe libre, además de los de ingreso y alta.</p>
-        </div>
+        <h2 className="text-base font-bold text-slate-800">Otros informes</h2>
         {esMedico && (
           <button onClick={() => { setErrorCrear(''); setEligiendo(true) }} className="btn-primary shrink-0">
             <Plus className="w-4 h-4" /> Nuevo informe
@@ -121,7 +117,7 @@ export function TabOtrosInformes({ ingresoId, ingreso }: { ingresoId: string; in
       {!esMedico && (
         <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
           <Lock className="w-4 h-4 shrink-0" />
-          Solo lectura: tu rol puede consultar y exportar estos informes, pero solo un médico puede redactarlos.
+          Solo lectura: solo un médico puede redactar informes.
         </div>
       )}
 
@@ -135,7 +131,7 @@ export function TabOtrosInformes({ ingresoId, ingreso }: { ingresoId: string; in
       {!loading && !errorCarga && lista.length === 0 && (
         <div className="card p-8 text-center text-sm text-slate-400">
           <FileText className="w-6 h-6 mx-auto mb-2 text-slate-300" />
-          Todavía no hay otros informes en este ingreso.
+          No hay informes.
         </div>
       )}
 
@@ -148,9 +144,8 @@ export function TabOtrosInformes({ ingresoId, ingreso }: { ingresoId: string; in
           >
             <p className="font-semibold text-slate-800">{PLANTILLA_LABEL[inf.plantilla] ?? inf.plantilla}</p>
             <p className="text-xs text-slate-500 mt-1">
-              Creado el {fechaHora(inf.created_at)}
-              {inf.registrado_por ? ` por ${inf.registrado_por.nombre} ${inf.registrado_por.apellidos}` : ''}
-              {inf.updated_at && inf.updated_at !== inf.created_at ? ` · Modificado el ${fechaHora(inf.updated_at)}` : ''}
+              {fechaHora(inf.created_at)}
+              {inf.registrado_por ? ` · ${inf.registrado_por.nombre} ${inf.registrado_por.apellidos}` : ''}
             </p>
           </button>
         ))}
@@ -189,6 +184,9 @@ function EditorInforme({
   const [estado, setEstado] = useState<EstadoGuardado>('inactivo')
   const [errorGuardado, setErrorGuardado] = useState('')
   const [errorAccion, setErrorAccion] = useState('')
+  const [abiertos, setAbiertos] = useState<Set<string>>(new Set())
+  const alternar = (titulo: string) =>
+    setAbiertos((a) => { const n = new Set(a); if (n.has(titulo)) n.delete(titulo); else n.add(titulo); return n })
 
   // Estado vivo para el guardado (los temporizadores no ven el estado de React de su render).
   const vivo = useRef(campos)
@@ -262,7 +260,7 @@ function EditorInforme({
   async function volver() {
     if (esMedico) {
       const ok = await guardar()
-      if (!ok) { setErrorAccion('No se ha podido guardar el informe, así que no se sale. Revisa el aviso de guardado.'); return }
+      if (!ok) { setErrorAccion('No se ha podido guardar; revisa el aviso.'); return }
     }
     onVolver()
   }
@@ -306,29 +304,46 @@ function EditorInforme({
 
       {estado === 'conflicto' && (
         <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-lg px-4 py-3 flex items-center justify-between gap-3">
-          <span>Alguien más ha guardado cambios en este informe mientras lo editabas. Lo que has escrito sigue aquí, sin guardar todavía.</span>
+          <span>Alguien más ha guardado este informe. Lo que has escrito sigue aquí, sin guardar.</span>
           <button onClick={recargarTrasConflicto} className="btn-secondary text-xs shrink-0">Ver la versión más reciente</button>
         </div>
       )}
       {!esMedico && (
         <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
           <Lock className="w-4 h-4 shrink-0" />
-          Solo lectura: tu rol puede consultar esta sección, pero solo un médico puede editarla.
+          Solo lectura: solo un médico puede editar.
         </div>
       )}
 
-      {bloquesDe(plantilla.campos).map((b) => (
-        <div key={b.titulo} className="card p-6 space-y-4">
-          <p className="section-title">{b.titulo}</p>
-          {b.campos.map((c) => (
-            <div key={c.key}>
-              {b.conEtiqueta && <span className="label">{c.label}</span>}
-              <AutoTextarea disabled={!esMedico} value={campos[c.key] ?? ''} onChange={(v) => cambiar(c.key, v)} />
-              {c.ayuda && <p className="text-xs text-amber-700 mt-1">{c.ayuda}</p>}
-            </div>
-          ))}
-        </div>
-      ))}
+      {bloquesDe(plantilla.campos).map((b) => {
+        // Los grupos del informe de ingreso van plegados; los campos nuevos, abiertos.
+        const plegable = b.conEtiqueta
+        const abierto = !plegable || abiertos.has(b.titulo)
+        return (
+          <div key={b.titulo} className="card p-6 space-y-4">
+            {plegable ? (
+              <button
+                type="button"
+                onClick={() => alternar(b.titulo)}
+                className="section-title mb-0 w-full flex items-center gap-1.5 text-left"
+                aria-expanded={abierto}
+              >
+                {abierto ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                {b.titulo}
+              </button>
+            ) : (
+              <p className="section-title">{b.titulo}</p>
+            )}
+            {abierto && b.campos.map((c) => (
+              <div key={c.key}>
+                {b.conEtiqueta && <span className="label">{c.label}</span>}
+                <AutoTextarea disabled={!esMedico} value={campos[c.key] ?? ''} onChange={(v) => cambiar(c.key, v)} />
+                {c.ayuda && <p className="text-xs text-amber-700 mt-1">{c.ayuda}</p>}
+              </div>
+            ))}
+          </div>
+        )
+      })}
 
       {errorAccion && <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{errorAccion}</p>}
 
