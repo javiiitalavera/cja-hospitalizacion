@@ -5,7 +5,7 @@ import { hoyLocal, edad } from '../lib/fechas'
 import { useAuth } from '../lib/AuthContext'
 import type { Ingreso } from '../types'
 import { ESTADO_INGRESO_LABEL as ESTADO_LABEL, ESTADO_INGRESO_COLOR as ESTADO_COLOR, nombreCompleto } from '../types'
-import { ChevronLeft, User, FileText, ClipboardList, AlertTriangle, FileCheck, LogOut, Database, Lock, RotateCcw } from 'lucide-react'
+import { ChevronLeft, User, FileText, ClipboardList, Activity, LogOut, Database, Lock, RotateCcw, Construction, Bandage } from 'lucide-react'
 import { TabDatos } from './ingreso/TabDatos'
 import { TabInformeIngreso } from './ingreso/TabInformeIngreso'
 import { TabInformeAlta } from './ingreso/TabInformeAlta'
@@ -14,14 +14,71 @@ import { TabEventos } from './ingreso/TabEventos'
 import { TabCMBD } from './ingreso/TabCMBD'
 import { TIPALT_LABEL } from '../lib/alta'
 
-const TABS = [
-  { id: 'datos', label: 'Datos', icon: User },
-  { id: 'ingreso', label: 'Informe ingreso', icon: FileText },
-  { id: 'alta', label: 'Informe alta', icon: FileCheck },
-  { id: 'items', label: 'Ítems', icon: ClipboardList },
-  { id: 'eventos', label: 'Incidencias', icon: AlertTriangle },
-  { id: 'cmbd',      label: 'CMBD',      icon: Database },
+// Estructura de la ficha: pestañas principales y, dentro de algunas,
+// subpestañas. Cada contenido tiene un identificador de "sección"
+// (datos, ingreso, alta, curas, items, incidencias, cmbd) que es el que
+// usan los permisos y el aviso de solo lectura más abajo.
+type Seccion = 'datos' | 'ingreso' | 'alta' | 'curas' | 'items' | 'incidencias' | 'cmbd'
+
+type Sub = { id: string; label: string; seccion: Seccion; enConstruccion?: boolean }
+type Tab = {
+  id: string
+  label: string
+  icon: typeof User
+  seccion?: Seccion            // pestañas sin subpestañas
+  subs?: Sub[]                 // pestañas con subpestañas
+  subPorDefecto?: string       // subpestaña que se abre al entrar (por defecto, la primera)
+  enConstruccion?: boolean
+}
+
+const TABS: Tab[] = [
+  { id: 'datos', label: 'Datos', icon: User, seccion: 'datos' },
+  {
+    id: 'informes', label: 'Informes', icon: FileText,
+    subs: [
+      { id: 'ingreso', label: 'Informe de ingreso', seccion: 'ingreso' },
+      { id: 'alta', label: 'Informe de alta', seccion: 'alta' },
+    ],
+  },
+  {
+    id: 'plan', label: 'Plan de cuidados', icon: ClipboardList,
+    subs: [
+      { id: 'curas', label: 'Curas', seccion: 'curas', enConstruccion: true },
+      { id: 'items', label: 'Ítems', seccion: 'items' },
+    ],
+    subPorDefecto: 'items',
+  },
+  {
+    id: 'seguimiento', label: 'Seguimiento', icon: Activity,
+    subs: [
+      { id: 'incidencias', label: 'Incidencias', seccion: 'incidencias' },
+    ],
+  },
+  { id: 'cmbd', label: 'CMBD', icon: Database, seccion: 'cmbd', enConstruccion: true },
 ]
+
+// Enlaces antiguos (?tab=ingreso, ?tab=eventos…) que siguen existiendo
+// en otras pantallas y en enlaces ya compartidos: se traducen a la nueva
+// estructura para que sigan abriendo la pestaña correcta.
+const ALIAS_TABS: Record<string, { tab: string; sub: string }> = {
+  ingreso: { tab: 'informes', sub: 'ingreso' },
+  alta: { tab: 'informes', sub: 'alta' },
+  items: { tab: 'plan', sub: 'items' },
+  curas: { tab: 'plan', sub: 'curas' },
+  eventos: { tab: 'seguimiento', sub: 'incidencias' },
+}
+
+function resolverPestana(tabParam: string | null, subParam: string | null): { tab: Tab; sub: Sub | null } {
+  const alias = tabParam ? ALIAS_TABS[tabParam] : undefined
+  const tabId = alias?.tab ?? tabParam ?? 'datos'
+  const tab = TABS.find((t) => t.id === tabId) ?? TABS[0]
+  if (!tab.subs) return { tab, sub: null }
+  const subId = alias?.sub ?? subParam ?? tab.subPorDefecto ?? tab.subs[0].id
+  const sub = tab.subs.find((s) => s.id === subId)
+    ?? tab.subs.find((s) => s.id === tab.subPorDefecto)
+    ?? tab.subs[0]
+  return { tab, sub }
+}
 
 export default function DetalleIngreso() {
   const { id } = useParams<{ id: string }>()
@@ -29,18 +86,11 @@ export default function DetalleIngreso() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { rol, esAdmin } = useAuth()
   const esMedico = rol === 'medico'
-  const [tab, setTab] = useState(searchParams.get('tab') ?? 'datos')
-
-  // El useState de arriba solo se ejecuta al primer montaje. Si se
-  // navega de un ingreso a otro (p. ej. desde Informes o desde
-  // Episodios del paciente) sin recargar la página completa, React
-  // reutiliza el mismo componente y la pestaña se quedaría "pegada"
-  // a la anterior, ignorando el nuevo ?tab= de la URL. Este efecto lo
-  // corrige, resincronizando cuando cambia el ingreso mostrado.
-  useEffect(() => {
-    const tabUrl = searchParams.get('tab')
-    if (tabUrl) setTab(tabUrl)
-  }, [id])
+  // La pestaña y la subpestaña se leen siempre de la URL (?tab=…&sub=…),
+  // sin estado propio: así, al navegar de un ingreso a otro sin recargar
+  // la página, la pestaña nunca se queda "pegada" a la anterior.
+  const { tab: tabActual, sub: subActual } = resolverPestana(searchParams.get('tab'), searchParams.get('sub'))
+  const seccion: Seccion = subActual ? subActual.seccion : tabActual.seccion!
   const [ingreso, setIngreso] = useState<Ingreso | null>(null)
   const [loading, setLoading] = useState(true)
   const [errorCarga, setErrorCarga] = useState('')
@@ -146,6 +196,19 @@ export default function DetalleIngreso() {
     await cargar()
   }
 
+  // replace: true — cambiar de pestaña no debería llenar el historial del
+  // navegador con una entrada por cada clic, solo dejar que recargar o
+  // compartir el enlace abra la pestaña correcta.
+  function irA(tabId: string, subId?: string) {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.set('tab', tabId)
+      if (subId) next.set('sub', subId)
+      else next.delete('sub')
+      return next
+    }, { replace: true })
+  }
+
   const p = ingreso.paciente!
   const nombreDelPaciente = nombreCompleto(p)
   const edadPaciente = edad(p.fecha_nacimiento)
@@ -237,29 +300,23 @@ export default function DetalleIngreso() {
 
         {/* Tabs */}
         <div className="flex gap-1 mt-4 -mb-4">
-          {TABS.map(({ id: tid, label, icon: Icon }) => (
+          {TABS.map(({ id: tid, label, icon: Icon, enConstruccion }) => (
             <button
               key={tid}
-              onClick={() => {
-                setTab(tid)
-                // replace: true — cambiar de pestaña no debería llenar
-                // el historial del navegador con una entrada por cada
-                // clic, solo dejar que recargar o compartir el enlace
-                // abra la pestaña correcta.
-                setSearchParams((prev) => {
-                  const next = new URLSearchParams(prev)
-                  next.set('tab', tid)
-                  return next
-                }, { replace: true })
-              }}
+              onClick={() => irA(tid)}
               className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-                tab === tid
+                tabActual.id === tid
                   ? 'border-primary-600 text-primary-700'
                   : 'border-transparent text-slate-500 hover:text-slate-700'
               }`}
             >
               <Icon className="w-3.5 h-3.5" />
               {label}
+              {enConstruccion && (
+                <span className="ml-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                  en construcción
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -317,6 +374,36 @@ export default function DetalleIngreso() {
 
       {/* Tab content */}
       <div className="flex-1 overflow-y-auto p-8">
+        {/* Subpestañas (solo en las pestañas que las tienen) */}
+        {tabActual.subs && subActual && (
+          <div className="flex flex-wrap gap-2 mb-6 pb-4 border-b border-slate-100">
+            {tabActual.subs.map((s) => (
+              <button
+                key={s.id}
+                onClick={() => irA(tabActual.id, s.id)}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  subActual.id === s.id
+                    ? 'bg-primary-50 text-primary-700'
+                    : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                {s.label}
+                {s.enConstruccion && (
+                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                    en construcción
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+        {/* Aviso de sección en construcción */}
+        {seccion === 'cmbd' && (
+          <div className="mb-4 flex items-center gap-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+            <Construction className="w-4 h-4 shrink-0" />
+            El CMBD está en construcción: puede cambiar y no debe usarse todavía como registro definitivo.
+          </div>
+        )}
         {/* Episodio cerrado: Datos e Ítems pasan a solo lectura para
             todos — corregir algo ahí requiere un mecanismo explícito,
             no editar en caliente. Informe de ingreso (solo médicos,
@@ -325,7 +412,7 @@ export default function DetalleIngreso() {
             médicos) e Incidencias (cualquier asistencial) se quedan
             editables tras el cierre — cada uno gestiona su propio
             aviso de solo lectura si corresponde por rol. */}
-        {episodioCerrado && ['datos', 'items'].includes(tab) && (
+        {episodioCerrado && ['datos', 'items'].includes(seccion) && (
           <div className="mb-4 flex items-center gap-2 text-sm text-slate-600 bg-slate-100 border border-slate-200 rounded-lg px-3 py-2">
             <Lock className="w-4 h-4 shrink-0" />
             Episodio cerrado ({ESTADO_LABEL[ingreso.estado] ?? ingreso.estado}): solo lectura, ya no se puede editar.
@@ -333,7 +420,7 @@ export default function DetalleIngreso() {
         )}
         {/* Aviso de solo lectura por rol (independiente de si el episodio
             sigue activo o ya está cerrado: siempre es cosa del médico) */}
-        {!esMedico && ['datos', 'ingreso', 'alta', 'cmbd'].includes(tab) && (
+        {!esMedico && ['datos', 'ingreso', 'alta', 'cmbd'].includes(seccion) && (
           <div className="mb-4 flex items-center gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
             <Lock className="w-4 h-4 shrink-0" />
             Solo lectura: tu rol puede consultar esta sección, pero solo un médico puede editarla.
@@ -342,34 +429,43 @@ export default function DetalleIngreso() {
         {/* fieldset disabled desactiva de golpe todos los campos de dentro */}
         <fieldset
           disabled={
-            (episodioCerrado && ['datos', 'items'].includes(tab)) ||
-            (!esMedico && ['datos', 'ingreso', 'alta', 'cmbd'].includes(tab))
+            (episodioCerrado && ['datos', 'items'].includes(seccion)) ||
+            (!esMedico && ['datos', 'ingreso', 'alta', 'cmbd'].includes(seccion))
           }
           className="min-w-0 border-0 p-0 m-0"
         >
-          {tab === 'datos' && (
+          {seccion === 'datos' && (
             <TabDatos
               ingreso={ingreso}
               onUpdate={setIngreso}
               iniciarEditando={searchParams.get('editar') === 'habitacion'}
             />
           )}
-          {tab === 'ingreso' && id && <TabInformeIngreso ingresoId={id} ingreso={ingreso} />}
-          {tab === 'alta' && id && <TabInformeAlta ingresoId={id} ingreso={ingreso} />}
-          {tab === 'items' && id && (
+          {seccion === 'ingreso' && id && <TabInformeIngreso ingresoId={id} ingreso={ingreso} />}
+          {seccion === 'alta' && id && <TabInformeAlta ingresoId={id} ingreso={ingreso} />}
+          {seccion === 'curas' && (
+            <div className="card p-8 max-w-xl text-center mx-auto">
+              <Bandage className="w-8 h-8 text-slate-300 mx-auto mb-3" />
+              <p className="font-semibold text-slate-700">Curas</p>
+              <p className="text-sm text-slate-500 mt-1">
+                Esta función está en construcción. Aquí se registrarán las curas del paciente durante el ingreso.
+              </p>
+            </div>
+          )}
+          {seccion === 'items' && id && (
             <TabItems
               ingresoId={id}
               key={id}
               pacienteInfo={p ? { nombre: nombreDelPaciente, habitacion: ingreso.habitacion } : undefined}
             />
           )}
-          {tab === 'eventos' && id && (
+          {seccion === 'incidencias' && id && (
             <TabEventos
               ingresoId={id}
               pacienteInfo={p ? { nombre: nombreDelPaciente, habitacion: ingreso.habitacion } : undefined}
             />
           )}
-          {tab === 'cmbd' && id && <TabCMBD ingresoId={id} ingreso={ingreso} />}
+          {seccion === 'cmbd' && id && <TabCMBD ingresoId={id} ingreso={ingreso} />}
         </fieldset>
       </div>
     </div>
