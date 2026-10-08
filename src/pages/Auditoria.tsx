@@ -11,6 +11,7 @@ const TABLA_LABEL: Record<string, string> = {
   ingresos: 'Ingreso',
   informe_ingreso: 'Informe de ingreso',
   informe_alta: 'Informe de alta',
+  informes_puntuales: 'Otro informe',
   cmbd: 'CMBD',
   profesionales: 'Personal',
   eventos: 'Incidencia',
@@ -198,6 +199,7 @@ export function Auditoria() {
     const idsInformeIngreso = idsDe('informe_ingreso')
     const idsInformeAlta = idsDe('informe_alta')
     const idsCmbd = idsDe('cmbd')
+    const idsInformesPuntuales = idsDe('informes_puntuales')
     // Los de contención usan el propio ingreso_id como registro_id.
     const idsContencion = idsDe('contencion')
 
@@ -273,6 +275,7 @@ export function Auditoria() {
     for (const [tabla, ids] of [
       ['informe_ingreso', idsInformeIngreso],
       ['informe_alta', idsInformeAlta],
+      ['informes_puntuales', idsInformesPuntuales],
       ['cmbd', idsCmbd],
     ] as const) {
       if (ids.length) {

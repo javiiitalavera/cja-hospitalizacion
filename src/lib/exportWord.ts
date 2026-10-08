@@ -1,6 +1,7 @@
 import JSZip from 'jszip'
 import type { FilaMedicacion, Ingreso, InformeIngreso, InformeAlta } from '../types'
 import type { EscalaClinica } from '../types/escalas'
+import type { InformePuntual, PlantillaId } from '../pages/informes/plantillas'
 import { nombreCompleto } from '../types'
 import { TOMAS } from '../pages/ingreso/TablaMedicacion'
 import { edad, hoyLocal } from './fechas'
@@ -394,4 +395,89 @@ export async function exportarInformeAlta(ingreso: Ingreso, ii: InformeIngreso, 
   zip.file('word/header1.xml', inyectarHeader(headerRaw, p, fingreso, falta))
 
   descargar(zip, `Informe_Alta_${p.primer_apellido ?? 'paciente'}_${hoyLocal()}.docx`)
+}
+
+// ─── INFORMES PUNTUALES ("Otros informes") ────────────────────────────────────
+//
+// Mismo documento base (membrete y cabecera de paciente) que el informe de
+// alta; solo cambian el título de la cabecera y la fecha, y el cuerpo es la
+// lista de secciones del informe. Las secciones sin texto no se imprimen.
+
+const TITULO_CABECERA: Record<PlantillaId, string> = {
+  derivacion_urgencias: 'INFORME DE DERIVACIÓN',
+  trabajo_social: 'INFORME SOCIAL',
+  estado_actual: 'INFORME DE ESTADO ACTUAL',
+  libre: 'INFORME MÉDICO',
+}
+
+function tituloCentradoXml(texto: string, font = 'Calibri'): string {
+  return `<w:p><w:pPr><w:spacing w:line="276" w:lineRule="auto"/><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="${font}" w:hAnsi="${font}"/><w:b/><w:sz w:val="26"/></w:rPr><w:t xml:space="preserve">${esc(texto)}</w:t></w:r></w:p>`
+}
+
+function avisoBorradorXml(font = 'Calibri'): string {
+  return `<w:p><w:pPr><w:spacing w:line="276" w:lineRule="auto"/><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="${font}" w:hAnsi="${font}"/><w:b/><w:color w:val="C00000"/></w:rPr><w:t xml:space="preserve">BORRADOR — pendiente de firma, no válido como documento definitivo</w:t></w:r></w:p>`
+}
+
+function fechaDeInforme(fecha: string): Date {
+  const [y, m, d] = fecha.split('-').map(Number)
+  return new Date(y, (m ?? 1) - 1, d ?? 1)
+}
+
+export function cuerpoInformePuntualXml(ingreso: Ingreso, inf: InformePuntual, font = 'Calibri'): string {
+  const p = ingreso.paciente!
+  const fecha = fechaDeInforme(inf.fecha)
+  const edadPaciente = edad(p.fecha_nacimiento, inf.fecha) ?? '?'
+  const tratamiento = p.sexo === 'mujer' ? 'Dña.' : 'D.'
+  const finicio = ingreso.fecha_ingreso ? new Date(ingreso.fecha_ingreso).toLocaleDateString('es-ES') : ''
+  const ffin = ingreso.fecha_alta ? new Date(ingreso.fecha_alta).toLocaleDateString('es-ES') : ''
+  const ingresado = p.sexo === 'mujer' ? 'ingresada' : 'ingresado'
+  const estancia = ffin
+    ? `${ingresado} en nuestra Unidad de Hospitalización del ${finicio} al ${ffin}`
+    : `${ingresado} en nuestra Unidad de Hospitalización desde el ${finicio}`
+  const firmante = inf.firmado_por ?? inf.registrado_por ?? null
+
+  const secciones = (inf.secciones ?? [])
+    .filter((s) => s.texto?.trim())
+    .map((s) => [
+      seccionXml(`${s.titulo.trim().toUpperCase()}:`, font),
+      lineasXml(s.texto, font),
+      parrafoXml('', font),
+    ].join(''))
+    .join('')
+
+  return [
+    inf.estado === 'borrador' ? avisoBorradorXml(font) : '',
+    tituloCentradoXml(inf.titulo, font),
+    inf.destinatario?.trim() ? parrafoBoldXml('Dirigido a: ', inf.destinatario.trim(), font) : '',
+    parrafoXml('', font),
+    parrafoXml(`${tratamiento} ${nombreCompleto(p)}, de ${edadPaciente} años, ${estancia}.`, font),
+    parrafoXml('', font),
+    secciones,
+    parrafoXml('', font),
+    parrafoXml(`Fdo. ${firmante ? `Dr/a. ${firmante.nombre} ${firmante.apellidos}` : ''}.`, font),
+    parrafoXml(`${firmante?.especialidad ?? 'Médico Especialista'}${firmante?.colegiado ? `. Col. ${firmante.colegiado}` : ''}.`, font),
+    `<w:p><w:pPr><w:spacing w:line="276" w:lineRule="auto"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="${font}" w:hAnsi="${font}"/></w:rPr><w:tab/><w:t xml:space="preserve">Alsasua, a ${fecha.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}</w:t></w:r></w:p>`,
+  ].join('')
+}
+
+export async function exportarInformePuntual(ingreso: Ingreso, inf: InformePuntual): Promise<void> {
+  const zip = await cargarPlantilla('plantilla_alta.docx')
+  const p = ingreso.paciente!
+  const fingreso = ingreso.fecha_ingreso ? new Date(ingreso.fecha_ingreso).toLocaleDateString('es-ES') : ''
+
+  const cuerpo = cuerpoInformePuntualXml(ingreso, inf)
+  const xmlRaw = await zip.file('word/document.xml')!.async('string')
+  const sectPr = xmlRaw.match(/<w:sectPr[\s\S]*<\/w:sectPr>/)?.[0] ?? ''
+  zip.file('word/document.xml', xmlRaw.replace(/<w:body>[\s\S]*<\/w:body>/, `<w:body>${cuerpo}${sectPr}</w:body>`))
+
+  const fechaInforme = fechaDeInforme(inf.fecha).toLocaleDateString('es-ES')
+  const headerRaw = await zip.file('word/header1.xml')!.async('string')
+  zip.file(
+    'word/header1.xml',
+    inyectarHeader(headerRaw, p, fingreso, '')
+      .replace(/(<w:t[^>]*>)INFORME DE ALTA(<\/w:t>)/g, `$1${esc(TITULO_CABECERA[inf.plantilla] ?? 'INFORME MÉDICO')}$2`)
+      .replace(/(<w:t[^>]*>)Fecha de alta: (<\/w:t>)/g, `$1Fecha del informe: ${fechaInforme}$2`)
+  )
+
+  descargar(zip, `Informe_${inf.plantilla}_${p.primer_apellido ?? 'paciente'}_${inf.fecha}.docx`)
 }
