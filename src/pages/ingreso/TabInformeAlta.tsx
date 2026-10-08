@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import type { FilaMedicacion, Ingreso, InformeAlta, InformeIngreso } from '../../types'
 import { Download } from 'lucide-react'
-import { AutoTextarea } from './AutoTextarea'
+import { AutoTextarea, FILAS_CAMPO } from './AutoTextarea'
 import { TablaMedicacion } from './TablaMedicacion'
 import { exportarInformeAlta } from '../../lib/exportWord'
 import { EscalaBarthel, EscalaLawton, EscalaNPIQ, EscalaGDSFAST, ModalEscala } from '../../components/EscalasClinicas'
@@ -165,7 +165,7 @@ function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
   const field = (key: keyof InformeAlta, label: string) => (
     <div key={key}>
       <span className="label">{label}</span>
-      <AutoTextarea value={(data[key] as string) ?? ''} onChange={(v) => update(key, v)} />
+      <AutoTextarea value={(data[key] as string) ?? ''} onChange={(v) => update(key, v)} filas={FILAS_CAMPO[key]} />
     </div>
   )
 

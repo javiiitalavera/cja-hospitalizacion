@@ -408,7 +408,7 @@ function tituloCentradoXml(texto: string, font = 'Calibri'): string {
   return `<w:p><w:pPr><w:spacing w:line="276" w:lineRule="auto"/><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="${font}" w:hAnsi="${font}"/><w:b/><w:sz w:val="26"/></w:rPr><w:t xml:space="preserve">${esc(texto)}</w:t></w:r></w:p>`
 }
 
-export function cuerpoInformePuntualXml(ingreso: Ingreso, inf: InformePuntual, font = 'Calibri'): string {
+export function cuerpoInformePuntualXml(ingreso: Ingreso, inf: InformePuntual, heredados: Record<string, string> = {}, font = 'Calibri'): string {
   const p = ingreso.paciente!
   const plantilla = plantillaPorId(inf.plantilla)
   const hoy = new Date()
@@ -421,10 +421,15 @@ export function cuerpoInformePuntualXml(ingreso: Ingreso, inf: InformePuntual, f
     ? `${ingresado} en nuestra Unidad de Hospitalización del ${finicio} al ${ffin}`
     : `${ingresado} en nuestra Unidad de Hospitalización desde el ${finicio}`
 
+  // Primero los campos heredados (se leen de los informes de ingreso y alta,
+  // nunca de lo guardado en este informe) y después los propios.
+  const campos = [
+    ...(plantilla.heredados ?? []).map((c) => ({ c, texto: heredados[c.key] })),
+    ...plantilla.campos.map((c) => ({ c, texto: inf.campos?.[c.key] })),
+  ]
   const partes: string[] = []
   let grupoActual = ''
-  for (const c of plantilla.campos) {
-    const texto = inf.campos?.[c.key]
+  for (const { c, texto } of campos) {
     if (!texto?.trim()) continue
     if (c.grupo) {
       if (c.grupo !== grupoActual) {
@@ -453,12 +458,12 @@ export function cuerpoInformePuntualXml(ingreso: Ingreso, inf: InformePuntual, f
   ].join('')
 }
 
-export async function exportarInformePuntual(ingreso: Ingreso, inf: InformePuntual): Promise<void> {
+export async function exportarInformePuntual(ingreso: Ingreso, inf: InformePuntual, heredados: Record<string, string> = {}): Promise<void> {
   const zip = await cargarPlantilla('plantilla_alta.docx')
   const p = ingreso.paciente!
   const fingreso = ingreso.fecha_ingreso ? new Date(ingreso.fecha_ingreso).toLocaleDateString('es-ES') : ''
 
-  const cuerpo = cuerpoInformePuntualXml(ingreso, inf)
+  const cuerpo = cuerpoInformePuntualXml(ingreso, inf, heredados)
   const xmlRaw = await zip.file('word/document.xml')!.async('string')
   const sectPr = xmlRaw.match(/<w:sectPr[\s\S]*<\/w:sectPr>/)?.[0] ?? ''
   zip.file('word/document.xml', xmlRaw.replace(/<w:body>[\s\S]*<\/w:body>/, `<w:body>${cuerpo}${sectPr}</w:body>`))

@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/AuthContext'
 import type { FilaMedicacion, Ingreso, InformeIngreso } from '../../types'
 import { Download, Lock } from 'lucide-react'
-import { AutoTextarea } from './AutoTextarea'
+import { AutoTextarea, FILAS_CAMPO } from './AutoTextarea'
 import { TablaMedicacion } from './TablaMedicacion'
 import { exportarInformeIngreso } from '../../lib/exportWord'
 import { EscalaBarthel, EscalaLawton, EscalaNPIQ, EscalaGDSFAST, TarjetaEscala, ModalEscala } from '../../components/EscalasClinicas'
@@ -154,7 +154,7 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
   const field = (key: keyof InformeIngreso, label: string) => (
     <div key={key}>
       <span className="label">{label}</span>
-      <AutoTextarea value={(data[key] as string) ?? ''} onChange={(v) => update(key, v)} disabled={soloLectura} />
+      <AutoTextarea value={(data[key] as string) ?? ''} onChange={(v) => update(key, v)} disabled={soloLectura} filas={FILAS_CAMPO[key]} />
     </div>
   )
 

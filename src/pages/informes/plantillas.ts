@@ -7,11 +7,10 @@ export type PlantillaId = 'derivacion_urgencias' | 'estado_actual' | 'libre'
 export interface CampoInforme {
   key: string
   label: string
-  // Encabezado de grupo (como "ANTECEDENTES PATOLÓGICOS" en el informe de
-  // ingreso). Sin grupo, el propio campo es una sección del documento.
+  // Encabezado de grupo en el documento Word (solo campos heredados).
   grupo?: string
-  // Aviso breve bajo el campo.
-  ayuda?: string
+  // Tamaño inicial del cuadro, en líneas; luego crece solo.
+  filas?: number
 }
 
 export interface InformePuntual {
@@ -29,23 +28,28 @@ export interface InformePuntual {
 export interface Plantilla {
   id: PlantillaId
   label: string
+  // Una línea que explica para qué sirve el informe.
+  subtitulo: string
   // Título dentro del documento y título corto de la cabecera del Word.
   titulo: string
   tituloCabecera: string
+  // Campos que se escriben en este informe.
   campos: CampoInforme[]
+  // Campos que NO se editan aquí: se leen del informe de ingreso (y de
+  // alta, para medicación y escalas) en el momento de exportar, y salen
+  // en el Word antes de los campos propios.
+  heredados?: CampoInforme[]
+  avisoHeredados?: string
 }
 
-// Todos los campos del informe de ingreso (mismos nombres que su tabla,
-// para poder copiarlos tal cual) más evolución clínica, diagnósticos y plan.
-const CAMPOS_ESTADO_ACTUAL: CampoInforme[] = [
+// Campos del informe de ingreso (mismos nombres que su tabla, para leerlos
+// tal cual). "tratamiento" y "escalas" se construyen al exportar.
+const HEREDADOS_INGRESO: CampoInforme[] = [
   { key: 'alergias', label: 'Alergias', grupo: 'ANTECEDENTES PATOLÓGICOS' },
   { key: 'antecedentes_medicos', label: 'Antecedentes médicos', grupo: 'ANTECEDENTES PATOLÓGICOS' },
   { key: 'antecedentes_quirurgicos', label: 'Intervenciones quirúrgicas', grupo: 'ANTECEDENTES PATOLÓGICOS' },
   { key: 'antecedentes_familiares', label: 'Antecedentes familiares', grupo: 'ANTECEDENTES PATOLÓGICOS' },
-  {
-    key: 'tratamiento', label: 'Tratamiento', grupo: 'ANTECEDENTES PATOLÓGICOS',
-    ayuda: 'Revísala: puede no ser la pauta actual.',
-  },
+  { key: 'tratamiento', label: 'Tratamiento', grupo: 'ANTECEDENTES PATOLÓGICOS' },
   { key: 'vgi_social', label: 'Social', grupo: 'VALORACIÓN GERIÁTRICA INTEGRAL' },
   { key: 'vgi_funcional', label: 'Funcional', grupo: 'VALORACIÓN GERIÁTRICA INTEGRAL' },
   { key: 'vgi_cognitivo', label: 'Cognitivo', grupo: 'VALORACIÓN GERIÁTRICA INTEGRAL' },
@@ -69,36 +73,42 @@ const CAMPOS_ESTADO_ACTUAL: CampoInforme[] = [
   { key: 'plan_objetivos', label: 'Plan terapéutico: objetivos', grupo: 'PLAN TERAPÉUTICO AL INGRESO' },
   { key: 'plan_medicacion', label: 'Plan terapéutico: medicación', grupo: 'PLAN TERAPÉUTICO AL INGRESO' },
   { key: 'plan_otros_cuidados', label: 'Plan terapéutico: otros cuidados/intervenciones', grupo: 'PLAN TERAPÉUTICO AL INGRESO' },
-  { key: 'evolucion_clinica', label: 'Evolución clínica' },
-  { key: 'diagnosticos', label: 'Diagnósticos' },
-  { key: 'plan', label: 'Plan' },
 ]
 
 export const PLANTILLAS: Plantilla[] = [
   {
     id: 'derivacion_urgencias',
     label: 'Derivación a urgencias',
+    subtitulo: 'Para el hospital al que se deriva al paciente.',
     titulo: 'Informe de derivación a urgencias',
     tituloCabecera: 'INFORME DE DERIVACIÓN',
     campos: [
-      { key: 'motivo', label: 'Motivo de derivación' },
-      { key: 'enfermedad_actual', label: 'Enfermedad actual' },
-      { key: 'plan', label: 'Plan' },
+      { key: 'motivo', label: 'Motivo de derivación', filas: 3 },
+      { key: 'enfermedad_actual', label: 'Enfermedad actual', filas: 8 },
+      { key: 'plan', label: 'Plan', filas: 5 },
     ],
   },
   {
     id: 'estado_actual',
     label: 'Estado actual',
+    subtitulo: 'Para la trabajadora social, la familia o una residencia que piden el estado actual.',
     titulo: 'Informe de estado actual',
     tituloCabecera: 'INFORME DE ESTADO ACTUAL',
-    campos: CAMPOS_ESTADO_ACTUAL,
+    campos: [
+      { key: 'evolucion_clinica', label: 'Evolución clínica', filas: 8 },
+      { key: 'diagnosticos', label: 'Diagnósticos', filas: 4 },
+      { key: 'plan', label: 'Plan', filas: 5 },
+    ],
+    heredados: HEREDADOS_INGRESO,
+    avisoHeredados: 'Los datos del informe de ingreso se heredan al exportar (medicación y escalas, las más recientes).',
   },
   {
     id: 'libre',
     label: 'Informe libre',
+    subtitulo: 'Informe médico sin estructura fija.',
     titulo: 'Informe médico',
     tituloCabecera: 'INFORME MÉDICO',
-    campos: [{ key: 'contenido', label: 'Contenido' }],
+    campos: [{ key: 'contenido', label: 'Contenido', filas: 14 }],
   },
 ]
 

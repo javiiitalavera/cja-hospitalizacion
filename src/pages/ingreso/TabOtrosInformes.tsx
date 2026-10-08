@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowLeft, ChevronDown, ChevronRight, Download, FileText, Lock, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, Download, FileText, Lock, Plus, Trash2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/AuthContext'
 import { exportarInformePuntual } from '../../lib/exportWord'
 import type { Ingreso } from '../../types'
-import { cargarCamposIniciales } from '../informes/datosFicha'
+import { cargarCamposHeredados, cargarCamposIniciales } from '../informes/datosFicha'
 import { MAX_TEXTO, PLANTILLAS, PLANTILLA_LABEL, plantillaPorId } from '../informes/plantillas'
-import type { CampoInforme, InformePuntual, PlantillaId } from '../informes/plantillas'
+import type { InformePuntual, PlantillaId } from '../informes/plantillas'
 import { AutoTextarea } from './AutoTextarea'
 
 const SELECT_INFORME = '*, registrado_por:profesionales!registrado_por_id(nombre, apellidos)'
@@ -160,17 +160,6 @@ export function TabOtrosInformes({ ingresoId, ingreso }: { ingresoId: string; in
 
 type EstadoGuardado = 'inactivo' | 'pendiente' | 'guardando' | 'guardado' | 'error' | 'conflicto'
 
-// Un recuadro por grupo; un campo sin grupo es su propio recuadro.
-function bloquesDe(campos: CampoInforme[]): { titulo: string; campos: CampoInforme[]; conEtiqueta: boolean }[] {
-  const bloques: { titulo: string; campos: CampoInforme[]; conEtiqueta: boolean }[] = []
-  for (const c of campos) {
-    const ultimo = bloques[bloques.length - 1]
-    if (c.grupo && ultimo && ultimo.conEtiqueta && ultimo.titulo === c.grupo) ultimo.campos.push(c)
-    else bloques.push({ titulo: c.grupo ?? c.label, campos: [c], conEtiqueta: !!c.grupo })
-  }
-  return bloques
-}
-
 function EditorInforme({
   informe, ingreso, esMedico, onVolver,
 }: {
@@ -184,9 +173,6 @@ function EditorInforme({
   const [estado, setEstado] = useState<EstadoGuardado>('inactivo')
   const [errorGuardado, setErrorGuardado] = useState('')
   const [errorAccion, setErrorAccion] = useState('')
-  const [abiertos, setAbiertos] = useState<Set<string>>(new Set())
-  const alternar = (titulo: string) =>
-    setAbiertos((a) => { const n = new Set(a); if (n.has(titulo)) n.delete(titulo); else n.add(titulo); return n })
 
   // Estado vivo para el guardado (los temporizadores no ven el estado de React de su render).
   const vivo = useRef(campos)
@@ -270,7 +256,13 @@ function EditorInforme({
       const ok = await guardar()
       if (!ok) return
     }
-    await exportarInformePuntual(ingreso, { ...informe, campos: vivo.current })
+    try {
+      // Los campos heredados se leen ahora de los informes de ingreso y alta.
+      const heredados = await cargarCamposHeredados(informe.ingreso_id, informe.plantilla)
+      await exportarInformePuntual(ingreso, { ...informe, campos: vivo.current }, heredados)
+    } catch (e) {
+      setErrorAccion('No se pudo exportar: ' + (e instanceof Error ? e.message : String(e)))
+    }
   }
 
   async function eliminar() {
@@ -300,7 +292,16 @@ function EditorInforme({
         </div>
       </div>
 
-      <h2 className="text-base font-bold text-slate-800">{plantilla.titulo}</h2>
+      <div>
+        <h2 className="text-base font-bold text-slate-800">{plantilla.titulo}</h2>
+        <p className="text-sm text-slate-500">{plantilla.subtitulo}</p>
+      </div>
+
+      {plantilla.avisoHeredados && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-xs text-blue-700">
+          {plantilla.avisoHeredados}
+        </div>
+      )}
 
       {estado === 'conflicto' && (
         <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-lg px-4 py-3 flex items-center justify-between gap-3">
@@ -315,35 +316,12 @@ function EditorInforme({
         </div>
       )}
 
-      {bloquesDe(plantilla.campos).map((b) => {
-        // Los grupos del informe de ingreso van plegados; los campos nuevos, abiertos.
-        const plegable = b.conEtiqueta
-        const abierto = !plegable || abiertos.has(b.titulo)
-        return (
-          <div key={b.titulo} className="card p-6 space-y-4">
-            {plegable ? (
-              <button
-                type="button"
-                onClick={() => alternar(b.titulo)}
-                className="section-title mb-0 w-full flex items-center gap-1.5 text-left"
-                aria-expanded={abierto}
-              >
-                {abierto ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-                {b.titulo}
-              </button>
-            ) : (
-              <p className="section-title">{b.titulo}</p>
-            )}
-            {abierto && b.campos.map((c) => (
-              <div key={c.key}>
-                {b.conEtiqueta && <span className="label">{c.label}</span>}
-                <AutoTextarea disabled={!esMedico} value={campos[c.key] ?? ''} onChange={(v) => cambiar(c.key, v)} />
-                {c.ayuda && <p className="text-xs text-amber-700 mt-1">{c.ayuda}</p>}
-              </div>
-            ))}
-          </div>
-        )
-      })}
+      {plantilla.campos.map((c) => (
+        <div key={c.key} className="card p-6 space-y-4">
+          <p className="section-title">{c.label}</p>
+          <AutoTextarea disabled={!esMedico} filas={c.filas} value={campos[c.key] ?? ''} onChange={(v) => cambiar(c.key, v)} />
+        </div>
+      ))}
 
       {errorAccion && <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{errorAccion}</p>}
 
