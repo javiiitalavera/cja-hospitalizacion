@@ -2,6 +2,7 @@ import JSZip from 'jszip'
 import type { FilaMedicacion, Ingreso, InformeIngreso, InformeAlta } from '../types'
 import type { EscalaClinica } from '../types/escalas'
 import { plantillaPorId } from '../pages/informes/plantillas'
+import { GRUPOS_ENFERMERIA } from '../pages/informes/enfermeria'
 import type { InformePuntual } from '../pages/informes/plantillas'
 import { nombreCompleto } from '../types'
 import { TOMAS } from '../pages/ingreso/TablaMedicacion'
@@ -477,4 +478,69 @@ export async function exportarInformePuntual(ingreso: Ingreso, inf: InformePuntu
   )
 
   descargar(zip, `Informe_${inf.plantilla}_${p.primer_apellido ?? 'paciente'}_${hoyLocal()}.docx`)
+}
+
+// ─── INFORME DE ENFERMERÍA ────────────────────────────────────────────────────
+//
+// Mismo documento base (membrete y cabecera de paciente) y mismo estilo que
+// el informe del médico: título centrado, cada grupo como encabezado en
+// negrita subrayado, cada campo con su etiqueta en negrita. Los campos y los
+// grupos sin texto no se imprimen. Firma quien guardó el informe por última
+// vez (enfermería).
+
+export function cuerpoInformeEnfermeriaXml(
+  campos: Record<string, string>,
+  firmante: { nombre: string; apellidos: string } | null,
+  hoy: Date = new Date(),
+  font = 'Calibri'
+): string {
+  const partes: string[] = []
+  for (const grupo of GRUPOS_ENFERMERIA) {
+    const rellenos = grupo.campos.filter((c) => campos[c.key]?.trim())
+    if (rellenos.length === 0) continue
+    partes.push(seccionXml(`${grupo.titulo.toUpperCase()}:`, font))
+    for (const c of rellenos) {
+      const lineas = campos[c.key].trim().split('\n')
+      // La etiqueta va en negrita en la primera línea; si el texto ocupa
+      // más líneas, el resto salen debajo, como en el informe del médico.
+      partes.push(parrafoBoldXml(`${c.label}: `, lineas[0], font), ...lineas.slice(1).map((l) => parrafoXml(l, font)))
+    }
+    partes.push(parrafoXml('', font))
+  }
+  if (partes.length === 0) partes.push(parrafoXml('(Informe sin contenido)', font), parrafoXml('', font))
+
+  return [
+    tituloCentradoXml('Continuidad de cuidados de enfermería', font),
+    parrafoXml('', font),
+    ...partes,
+    parrafoXml('', font),
+    parrafoXml(`Fdo. ${firmante ? `${firmante.nombre} ${firmante.apellidos}` : ''}.`, font),
+    parrafoXml('Enfermería.', font),
+    `<w:p><w:pPr><w:spacing w:line="276" w:lineRule="auto"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="${font}" w:hAnsi="${font}"/></w:rPr><w:tab/><w:t xml:space="preserve">Alsasua, a ${hoy.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}</w:t></w:r></w:p>`,
+  ].join('')
+}
+
+export async function exportarInformeEnfermeria(
+  ingreso: Ingreso,
+  campos: Record<string, string>,
+  firmante: { nombre: string; apellidos: string } | null
+): Promise<void> {
+  const zip = await cargarPlantilla('plantilla_alta.docx')
+  const p = ingreso.paciente!
+  const fingreso = ingreso.fecha_ingreso ? new Date(ingreso.fecha_ingreso).toLocaleDateString('es-ES') : ''
+
+  const cuerpo = cuerpoInformeEnfermeriaXml(campos, firmante)
+  const xmlRaw = await zip.file('word/document.xml')!.async('string')
+  const sectPr = xmlRaw.match(/<w:sectPr[\s\S]*<\/w:sectPr>/)?.[0] ?? ''
+  zip.file('word/document.xml', xmlRaw.replace(/<w:body>[\s\S]*<\/w:body>/, `<w:body>${cuerpo}${sectPr}</w:body>`))
+
+  const headerRaw = await zip.file('word/header1.xml')!.async('string')
+  zip.file(
+    'word/header1.xml',
+    inyectarHeader(headerRaw, p, fingreso, '')
+      .replace(/(<w:t[^>]*>)INFORME DE ALTA(<\/w:t>)/g, `$1INFORME DE ENFERMERÍA$2`)
+      .replace(/(<w:t[^>]*>)Fecha de alta: (<\/w:t>)/g, `$1Fecha del informe: ${new Date().toLocaleDateString('es-ES')}$2`)
+  )
+
+  descargar(zip, `Informe_Enfermeria_${p.primer_apellido ?? 'paciente'}_${hoyLocal()}.docx`)
 }

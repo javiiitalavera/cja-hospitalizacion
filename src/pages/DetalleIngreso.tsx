@@ -14,6 +14,7 @@ import { TabEventos } from './ingreso/TabEventos'
 import { TabCMBD } from './ingreso/TabCMBD'
 import { TabCuras } from './ingreso/TabCuras'
 import { TabOtrosInformes } from './ingreso/TabOtrosInformes'
+import { TabInformeEnfermeria } from './ingreso/TabInformeEnfermeria'
 import { NavegadorPacientes } from './ingreso/NavegadorPacientes'
 import { TIPALT_LABEL } from '../lib/alta'
 
@@ -21,7 +22,7 @@ import { TIPALT_LABEL } from '../lib/alta'
 // subpestañas. Cada contenido tiene un identificador de "sección"
 // (datos, ingreso, alta, curas, items, incidencias, cmbd) que es el que
 // usan los permisos y el aviso de solo lectura más abajo.
-type Seccion = 'datos' | 'ingreso' | 'alta' | 'otros' | 'curas' | 'items' | 'incidencias' | 'cmbd'
+type Seccion = 'datos' | 'ingreso' | 'alta' | 'enfermeria' | 'otros' | 'curas' | 'items' | 'incidencias' | 'cmbd'
 
 type Sub = { id: string; label: string; seccion: Seccion; enConstruccion?: boolean }
 type Tab = {
@@ -41,6 +42,7 @@ const TABS: Tab[] = [
     subs: [
       { id: 'ingreso', label: 'Informe de ingreso', seccion: 'ingreso' },
       { id: 'alta', label: 'Informe de alta', seccion: 'alta' },
+      { id: 'enfermeria', label: 'Informe de enfermería', seccion: 'enfermeria' },
       { id: 'otros', label: 'Otros informes', seccion: 'otros' },
     ],
   },
@@ -453,6 +455,9 @@ export default function DetalleIngreso() {
           {/* Otros informes: el permiso (solo médicos escriben) lo gestiona
               la propia pestaña, porque el episodio cerrado no la bloquea
               y los demás roles sí pueden leer y exportar. */}
+          {/* Informe de enfermería: solo escribe enfermería; lo gestiona la
+              propia pestaña (aviso de solo lectura incluido). */}
+          {seccion === 'enfermeria' && id && <TabInformeEnfermeria ingresoId={id} ingreso={ingreso} />}
           {seccion === 'otros' && id && <TabOtrosInformes ingresoId={id} ingreso={ingreso} />}
           {seccion === 'curas' && id && <TabCuras ingresoId={id} episodioActivo={!episodioCerrado} />}
           {seccion === 'items' && id && (

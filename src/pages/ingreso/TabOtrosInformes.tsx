@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Download, FileText, Lock, Plus, Trash2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/AuthContext'
@@ -21,6 +22,7 @@ const fechaHora = (iso: string) =>
 export function TabOtrosInformes({ ingresoId, ingreso }: { ingresoId: string; ingreso: Ingreso }) {
   const { rol, profesional } = useAuth()
   const esMedico = rol === 'medico'
+  const [searchParams] = useSearchParams()
 
   const [lista, setLista] = useState<InformePuntual[]>([])
   const [loading, setLoading] = useState(true)
@@ -30,7 +32,7 @@ export function TabOtrosInformes({ ingresoId, ingreso }: { ingresoId: string; in
   const [creando, setCreando] = useState(false)
   const [errorCrear, setErrorCrear] = useState('')
 
-  async function cargar() {
+  async function cargar(): Promise<InformePuntual[]> {
     setLoading(true)
     setErrorCarga('')
     const { data, error } = await supabase
@@ -38,12 +40,23 @@ export function TabOtrosInformes({ ingresoId, ingreso }: { ingresoId: string; in
       .select(SELECT_INFORME)
       .eq('ingreso_id', ingresoId)
       .order('created_at', { ascending: false })
-    if (error) { setErrorCarga('No se pudieron cargar los informes: ' + error.message); setLoading(false); return }
-    setLista((data as unknown as InformePuntual[]) ?? [])
+    if (error) { setErrorCarga('No se pudieron cargar los informes: ' + error.message); setLoading(false); return [] }
+    const filas = (data as unknown as InformePuntual[]) ?? []
+    setLista(filas)
     setLoading(false)
+    return filas
   }
 
-  useEffect(() => { setAbierto(null); setEligiendo(false); cargar() }, [ingresoId])
+  // Con ?informe=<id> (enlace desde la pantalla Informes) se abre ese informe directamente.
+  useEffect(() => {
+    setAbierto(null)
+    setEligiendo(false)
+    cargar().then((filas) => {
+      const pedido = searchParams.get('informe')
+      const f = pedido ? filas.find((x) => x.id === pedido) : undefined
+      if (f) setAbierto(f)
+    })
+  }, [ingresoId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function crear(plantilla: PlantillaId) {
     if (!profesional) return
