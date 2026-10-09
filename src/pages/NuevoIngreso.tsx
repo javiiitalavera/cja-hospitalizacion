@@ -8,6 +8,7 @@ import type { Profesional, Paciente } from '../types'
 import { nombreCompleto } from '../types'
 import { ChevronLeft, Save, Search, UserPlus, RefreshCw, Lock } from 'lucide-react'
 import SelectorHabitacion from '../components/SelectorHabitacion'
+import { informeBaseReingreso } from '../lib/reingreso'
 
 export default function NuevoIngreso() {
   const navigate = useNavigate()
@@ -184,31 +185,9 @@ export default function NuevoIngreso() {
         ])
 
         if (infPrev) {
-          // Copiar campos estables, limpiar campos específicos del episodio
-          const {
-            id,
-            ingreso_id,
-            created_at,
-            updated_at,
-            evolucion,
-            situacion_cognitivo,
-            situacion_conductual,
-            situacion_animico,
-            situacion_funcional,
-            situacion_social,
-            exploracion_fisica,
-            exploracion_neurologica,
-            exploracion_psicopatologica,
-            exploraciones_complementarias,
-            impresion_diagnostica,
-            plan_objetivos,
-            plan_medicacion,
-            plan_otros_cuidados,
-            barthel,
-            lawton,
-            ...camposEstables
-          } = infPrev
-          informeBase = camposEstables
+          // Datos estables se copian; la VGI y el tratamiento se copian marcados
+          // "por revisar"; lo propio del episodio no se copia (ver lib/reingreso.ts).
+          informeBase = informeBaseReingreso(infPrev as Record<string, unknown>)
         }
 
         if (itemsPrev) {

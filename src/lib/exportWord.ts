@@ -297,6 +297,10 @@ function firmaMedico(ingreso: Ingreso): string[] {
 
 // Antecedentes, valoración, enfermedad actual, exploraciones y escalas: igual
 // en el informe de ingreso y en el de alta (que lo hereda del de ingreso).
+// Apartado opcional: solo se imprime si tiene texto.
+const hayTexto = (...textos: (string | null | undefined)[]) => textos.some((t) => !!t?.trim())
+const opcional = (texto: string | null | undefined, xml: () => string): string[] => (texto?.trim() ? [xml()] : [])
+
 function parteIngresoXml(ii: InformeIngreso, escalaIngreso: EscalaClinica | null | undefined, font: string, enAlta: boolean): string[] {
   return [
     espacioXml(),
@@ -312,25 +316,26 @@ function parteIngresoXml(ii: InformeIngreso, escalaIngreso: EscalaClinica | null
     tablaMedicacionXml(ii.tratamiento_ingreso_estructurado ?? [], font),
     espacioXml(),
     seccionXml('VALORACIÓN GERIÁTRICA INTEGRAL:', font),
-    campoXml('Social: ', ii.vgi_social, font),
-    parrafoBoldXml('Funcional: ', '', font),
-    lineasXml(ii.vgi_funcional, font),
-    parrafoBoldXml('Cognitivo: ', '', font),
-    lineasXml(ii.vgi_cognitivo, font),
-    campoXml('Sensorial: ', ii.vgi_sensorial, font),
-    campoXml('Nutricional: ', ii.vgi_nutricional, font),
-    campoXml('Dolor: ', ii.vgi_dolor, font),
-    campoXml('Otros síndromes geriátricos: ', ii.vgi_otros, font),
+    // Solo se imprimen los apartados con texto (las etiquetas vacías no aportan nada).
+    ...opcional(ii.vgi_social, () => campoXml('Social: ', ii.vgi_social, font)),
+    ...opcional(ii.vgi_funcional, () => parrafoBoldXml('Funcional: ', '', font) + lineasXml(ii.vgi_funcional, font)),
+    ...opcional(ii.vgi_cognitivo, () => parrafoBoldXml('Cognitivo: ', '', font) + lineasXml(ii.vgi_cognitivo, font)),
+    ...opcional(ii.vgi_sensorial, () => campoXml('Sensorial: ', ii.vgi_sensorial, font)),
+    ...opcional(ii.vgi_nutricional, () => campoXml('Nutricional: ', ii.vgi_nutricional, font)),
+    ...opcional(ii.vgi_dolor, () => campoXml('Dolor: ', ii.vgi_dolor, font)),
+    ...opcional(ii.vgi_otros, () => campoXml('Otros síndromes geriátricos: ', ii.vgi_otros, font)),
     seccionXml('ENFERMEDAD ACTUAL:', font),
     campoXml('Personalidad previa: ', ii.personalidad_previa, font),
     parrafoBoldXml('Evolución del deterioro cognitivo, conductual y funcional:', '', font),
     lineasXml(ii.evolucion, font),
-    parrafoBoldXml('Situación actual:', '', font, { antes: 100 }),
-    campoXml('Cognitivo: ', ii.situacion_cognitivo, font),
-    campoXml('Conductual: ', ii.situacion_conductual, font),
-    campoXml('Anímico: ', ii.situacion_animico, font),
-    campoXml('Funcional: ', ii.situacion_funcional, font),
-    campoXml('Social: ', ii.situacion_social, font),
+    ...(hayTexto(ii.situacion_cognitivo, ii.situacion_conductual, ii.situacion_animico, ii.situacion_funcional, ii.situacion_social)
+      ? [parrafoBoldXml('Situación actual:', '', font, { antes: 100 })]
+      : []),
+    ...opcional(ii.situacion_cognitivo, () => campoXml('Cognitivo: ', ii.situacion_cognitivo, font)),
+    ...opcional(ii.situacion_conductual, () => campoXml('Conductual: ', ii.situacion_conductual, font)),
+    ...opcional(ii.situacion_animico, () => campoXml('Anímico: ', ii.situacion_animico, font)),
+    ...opcional(ii.situacion_funcional, () => campoXml('Funcional: ', ii.situacion_funcional, font)),
+    ...opcional(ii.situacion_social, () => campoXml('Social: ', ii.situacion_social, font)),
     seccionXml('EXPLORACIÓN FÍSICA al ingreso:', font),
     lineasXml(ii.exploracion_fisica, font),
     seccionXml('EXPLORACIÓN NEUROLÓGICA al ingreso:', font),
@@ -348,7 +353,7 @@ function parteIngresoXml(ii: InformeIngreso, escalaIngreso: EscalaClinica | null
       seccionXml('PLAN TERAPÉUTICO Y OBJETIVOS:', font),
       parrafoBoldXml('Objetivos: ', '', font),
       lineasXml(ii.plan_objetivos, font),
-      parrafoBoldXml('Medicación: ', '', font, { antes: 100 }),
+      parrafoBoldXml('Cambios de medicación propuestos: ', '', font, { antes: 100 }),
       lineasXml(ii.plan_medicacion, font),
       parrafoBoldXml('Otros cuidados/intervenciones: ', '', font, { antes: 100 }),
       lineasXml(ii.plan_otros_cuidados, font),

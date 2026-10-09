@@ -112,6 +112,8 @@ export interface InformeIngreso {
   plan_objetivos?: string
   plan_medicacion?: string
   plan_otros_cuidados?: string
+  // copiados del ingreso anterior y aún sin revisar (ver lib/reingreso.ts)
+  campos_por_revisar?: string[]
   created_at: string
   updated_at: string
 }

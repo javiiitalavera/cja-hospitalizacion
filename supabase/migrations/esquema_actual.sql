@@ -170,6 +170,9 @@ create table public.informe_ingreso (
     plan_objetivos text,
     plan_medicacion text,
     plan_otros_cuidados text,
+    -- Campos copiados del ingreso anterior (reingreso) que el médico todavía
+    -- no ha revisado: vgi_*, tratamiento_ingreso_estructurado…
+    campos_por_revisar text[] not null default '{}',
     -- Sube en cada guardado real; si al guardar no coincide con la
     -- que se leyó, es que alguien más guardó mientras tanto.
     version integer not null default 1,

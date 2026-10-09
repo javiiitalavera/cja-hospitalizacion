@@ -17,13 +17,15 @@ export const FILAS_CAMPO: Record<string, number> = {
   evolucion_clinica: 8, juicios_clinicos: 4, recomendaciones_conductuales: 4, cuidados_enfermeria: 4, otras_recomendaciones: 3,
 }
 
-function AutoTextarea({ value, onChange, disabled, filas }: {
+function AutoTextarea({ value, onChange, disabled, filas, autoFocus }: {
   value: string
   onChange: (v: string) => void
   disabled?: boolean
   filas?: number
+  autoFocus?: boolean
 }) {
   const ref = useRef<HTMLTextAreaElement>(null)
+  useEffect(() => { if (autoFocus) ref.current?.focus() }, []) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (ref.current) {
       ref.current.style.height = 'auto'

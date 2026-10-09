@@ -2,13 +2,25 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/AuthContext'
 import type { FilaMedicacion, Ingreso, InformeIngreso } from '../../types'
-import { Download, Lock } from 'lucide-react'
+import { Download, Lock, AlertTriangle } from 'lucide-react'
 import { AutoTextarea, FILAS_CAMPO } from './AutoTextarea'
 import { TablaMedicacion } from './TablaMedicacion'
 import { exportarInformeIngreso } from '../../lib/exportWord'
 import { EscalaBarthel, EscalaLawton, EscalaNPIQ, EscalaGDSFAST, TarjetaEscala, ModalEscala } from '../../components/EscalasClinicas'
 import { totalBarthel, totalLawton, totalNPI } from '../../types/escalas'
+import { CAMPOS_REVISAR } from '../../lib/reingreso'
+import { añadirResumen, textoEscalasCognitivo, textoEscalasFuncional } from '../../lib/resumenEscalas'
 import type { EscalaClinica } from '../../types/escalas'
+
+// Apartados que no se rellenan siempre: salen plegados ("+ añadir") salvo que ya tengan texto.
+const OPCIONALES_VGI: [keyof InformeIngreso, string][] = [
+  ['vgi_sensorial', 'Sensorial'], ['vgi_nutricional', 'Nutricional'], ['vgi_dolor', 'Dolor'], ['vgi_otros', 'Otros síndromes geriátricos'],
+]
+const OPCIONALES_SITUACION: [keyof InformeIngreso, string][] = [
+  ['situacion_cognitivo', 'Cognitiva'], ['situacion_conductual', 'Conductual'], ['situacion_animico', 'Anímica'],
+  ['situacion_funcional', 'Funcional'], ['situacion_social', 'Social'],
+]
+const CAMPOS_OPCIONALES = [...OPCIONALES_VGI, ...OPCIONALES_SITUACION].map(([k]) => k as string)
 
 type EstadoGuardado = 'inactivo' | 'pendiente' | 'guardando' | 'guardado' | 'error' | 'conflicto'
 
@@ -21,6 +33,9 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
   const dataRef = useRef(data)
   dataRef.current = data
   const saveSeqRef = useRef(0)
+  // Campos opcionales desplegados (los que tienen texto se abren solos) y el último abierto, para darle el foco.
+  const [abiertos, setAbiertos] = useState<Set<string>>(new Set())
+  const [recienAbierto, setRecienAbierto] = useState<string | null>(null)
 
   // Escalas clínicas: tabla y ciclo de guardado propios, separados
   // del informe — cada una tiene su propia versión, y a diferencia
@@ -45,7 +60,10 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
 
   useEffect(() => {
     supabase.from('informe_ingreso').select('*').eq('ingreso_id', ingresoId).maybeSingle()
-      .then(({ data: d }) => setData(d ?? {}))
+      .then(({ data: d }) => {
+        setData(d ?? {})
+        setAbiertos(new Set(CAMPOS_OPCIONALES.filter((k) => ((d as Record<string, unknown> | null)?.[k] as string | undefined)?.trim())))
+      })
     // Se busca por ingreso_id (el de ESTE episodio, siempre nuevo en
     // un reingreso) — nunca puede traer, ni por accidente, las
     // escalas de un ingreso anterior del mismo paciente.
@@ -139,23 +157,79 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
   async function recargarTrasConflicto() {
     const { data: d } = await supabase.from('informe_ingreso').select('*').eq('ingreso_id', ingresoId).maybeSingle()
     setData(d ?? {})
+    setAbiertos((prev) => new Set([...prev, ...CAMPOS_OPCIONALES.filter((k) => ((d as Record<string, unknown> | null)?.[k] as string | undefined)?.trim())]))
     setEstado('inactivo')
   }
 
-  function update(key: keyof InformeIngreso, value: any) {
+  function update(key: keyof InformeIngreso, value: any, conservarAviso = false) {
     if (soloLectura || estado === 'conflicto') return
     const next = { ...dataRef.current, [key]: value }
+    // Editar un campo copiado del ingreso anterior cuenta como revisarlo.
+    if (!conservarAviso && next.campos_por_revisar?.includes(key as string)) {
+      next.campos_por_revisar = next.campos_por_revisar.filter((k) => k !== key)
+    }
     setData(next)
     setEstado('pendiente')
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => save(next), 1500)
   }
 
-  const field = (key: keyof InformeIngreso, label: string) => (
-    <div key={key}>
-      <span className="label">{label}</span>
-      <AutoTextarea value={(data[key] as string) ?? ''} onChange={(v) => update(key, v)} disabled={soloLectura} filas={FILAS_CAMPO[key]} />
+  const porRevisar = data.campos_por_revisar ?? []
+  function confirmarRevisado(key: string) {
+    update('campos_por_revisar', porRevisar.filter((k) => k !== key))
+  }
+  // Aviso de un campo copiado del ingreso anterior que aún no se ha revisado.
+  const avisoRevisar = (key: string) => porRevisar.includes(key) && (
+    <div className="flex items-center justify-between gap-3 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-2.5 py-1.5 mb-1.5">
+      <span className="flex items-center gap-1.5"><AlertTriangle className="w-3.5 h-3.5 shrink-0" />Copiado del ingreso anterior: revísalo.</span>
+      {!soloLectura && <button type="button" onClick={() => confirmarRevisado(key)} className="font-semibold underline underline-offset-2 shrink-0">Sigue vigente</button>}
     </div>
+  )
+
+  const field = (key: keyof InformeIngreso, label: string, accion?: React.ReactNode) => (
+    <div key={key}>
+      <div className="flex items-end justify-between gap-3">
+        <span className="label">{label}</span>
+        {accion}
+      </div>
+      {avisoRevisar(key as string)}
+      <AutoTextarea value={(data[key] as string) ?? ''} onChange={(v) => update(key, v)} disabled={soloLectura}
+        filas={FILAS_CAMPO[key]} autoFocus={recienAbierto === key} />
+    </div>
+  )
+
+  // Campos opcionales: se muestran los que tienen texto o se han abierto; el resto, como "+ etiqueta".
+  const opcionales = (keys: [keyof InformeIngreso, string][]) => {
+    const visibles = keys.filter(([k]) => abiertos.has(k as string) || ((data[k] as string | undefined) ?? '').trim() !== '')
+    const ocultos = keys.filter(([k]) => !visibles.some(([v]) => v === k))
+    return (
+      <>
+        {visibles.map(([k, l]) => field(k, l))}
+        {!soloLectura && ocultos.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-slate-500">Añadir:</span>
+            {ocultos.map(([k, l]) => (
+              <button key={k as string} type="button"
+                onClick={() => { setAbiertos((prev) => new Set(prev).add(k as string)); setRecienAbierto(k as string) }}
+                className="text-xs px-2.5 py-1 rounded-full border border-slate-300 text-slate-600 hover:bg-slate-50">
+                + {l}
+              </button>
+            ))}
+          </div>
+        )}
+      </>
+    )
+  }
+
+  // Botón que escribe en el campo el resultado de las escalas del INGRESO ya calculadas.
+  const botonEscalas = (key: keyof InformeIngreso, resumen: string, texto: string, ayuda: string) => !soloLectura && (
+    <button type="button"
+      disabled={!resumen}
+      title={resumen ? `Añade al campo: ${resumen}` : ayuda}
+      onClick={() => update(key, añadirResumen(data[key] as string | undefined, resumen), true)}
+      className="text-xs font-medium text-primary-700 hover:underline disabled:text-slate-400 disabled:no-underline disabled:cursor-not-allowed">
+      {texto}
+    </button>
   )
 
   const filasIngreso: FilaMedicacion[] = (data.tratamiento_ingreso_estructurado as FilaMedicacion[]) ?? []
@@ -195,6 +269,7 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
         {field('antecedentes_familiares', 'Antecedentes familiares')}
         <div>
           <span className="label">Tratamiento al ingreso</span>
+          {avisoRevisar('tratamiento_ingreso_estructurado')}
           <TablaMedicacion filas={filasIngreso}
             onChange={v => update('tratamiento_ingreso_estructurado', v)} disabled={soloLectura} />
         </div>
@@ -203,23 +278,17 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
       <div className="card p-6 space-y-4">
         <p className="section-title">Valoración Geriátrica Integral</p>
         {field('vgi_social', 'Social')}
-        {field('vgi_funcional', 'Funcional')}
-        {field('vgi_cognitivo', 'Cognitivo')}
-        {field('vgi_sensorial', 'Sensorial')}
-        {field('vgi_nutricional', 'Nutricional')}
-        {field('vgi_dolor', 'Dolor')}
-        {field('vgi_otros', 'Otros síndromes geriátricos')}
+        {field('vgi_funcional', 'Funcional', botonEscalas('vgi_funcional', textoEscalasFuncional(escalas), 'Insertar Barthel y Lawton', 'Completa antes el Barthel o el Lawton (más abajo, en Escalas clínicas al ingreso)'))}
+        {field('vgi_cognitivo', 'Cognitivo', botonEscalas('vgi_cognitivo', textoEscalasCognitivo(escalas), 'Insertar GDS y FAST', 'Completa antes el GDS/FAST (más abajo, en Escalas clínicas al ingreso)'))}
+        {opcionales(OPCIONALES_VGI)}
       </div>
 
       <div className="card p-6 space-y-4">
         <p className="section-title">Enfermedad actual</p>
         {field('personalidad_previa', 'Personalidad previa')}
         {field('evolucion', 'Evolución')}
-        {field('situacion_cognitivo', 'Situación cognitiva')}
-        {field('situacion_conductual', 'Situación conductual')}
-        {field('situacion_animico', 'Situación anímica')}
-        {field('situacion_funcional', 'Situación funcional')}
-        {field('situacion_social', 'Situación social')}
+        <p className="text-sm font-semibold text-slate-600 pt-1">Situación actual</p>
+        {opcionales(OPCIONALES_SITUACION)}
       </div>
 
       <div className="card p-6 space-y-4">
@@ -295,7 +364,7 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
         <p className="section-title">Diagnóstico y plan</p>
         {field('impresion_diagnostica', 'Impresión diagnóstica')}
         {field('plan_objetivos', 'Objetivos')}
-        {field('plan_medicacion', 'Medicación')}
+        {field('plan_medicacion', 'Cambios de medicación propuestos')}
         {field('plan_otros_cuidados', 'Otros cuidados / intervenciones')}
       </div>
 
@@ -303,6 +372,9 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
         <button type="button"
           onClick={async () => {
             if (!ingreso) return
+            if (porRevisar.length > 0 && !window.confirm(
+              `Hay apartados copiados del ingreso anterior que aún no has revisado:\n\n• ${porRevisar.map((k) => CAMPOS_REVISAR[k] ?? k).join('\n• ')}\n\n¿Exportar el Word igualmente?`
+            )) return
             if (!soloLectura) {
               const ok = await save()
               if (!ok) return

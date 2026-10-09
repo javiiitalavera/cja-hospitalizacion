@@ -71,7 +71,7 @@ const HEREDADOS_INGRESO: CampoInforme[] = [
   { key: 'escalas', label: 'Escalas clínicas', grupo: 'ESCALAS Y DIAGNÓSTICO' },
   { key: 'impresion_diagnostica', label: 'Impresión diagnóstica (al ingreso)', grupo: 'ESCALAS Y DIAGNÓSTICO' },
   { key: 'plan_objetivos', label: 'Plan terapéutico: objetivos', grupo: 'PLAN TERAPÉUTICO AL INGRESO' },
-  { key: 'plan_medicacion', label: 'Plan terapéutico: medicación', grupo: 'PLAN TERAPÉUTICO AL INGRESO' },
+  { key: 'plan_medicacion', label: 'Plan terapéutico: cambios de medicación propuestos', grupo: 'PLAN TERAPÉUTICO AL INGRESO' },
   { key: 'plan_otros_cuidados', label: 'Plan terapéutico: otros cuidados/intervenciones', grupo: 'PLAN TERAPÉUTICO AL INGRESO' },
 ]
 

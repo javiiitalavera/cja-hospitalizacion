@@ -4,7 +4,7 @@
 
 // Los campos que no cuentan como "contenido" al decidir si un informe
 // está sin empezar o no — todo lo demás que devuelva la consulta sí.
-const CAMPOS_NO_CONTENIDO = new Set(['id', 'ingreso_id', 'version', 'created_at', 'updated_at', 'ingreso'])
+const CAMPOS_NO_CONTENIDO = new Set(['id', 'ingreso_id', 'version', 'created_at', 'updated_at', 'ingreso', 'campos_por_revisar'])
 
 export function estaVacio(fila: Record<string, unknown>): boolean {
   return Object.entries(fila).every(([clave, valor]) => {
