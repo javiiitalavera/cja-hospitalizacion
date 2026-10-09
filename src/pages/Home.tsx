@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import type { Ingreso } from '../types'
 import { SEMAFORO_CAIDAS_COLOR as SEMAFORO, nombreCompleto } from '../types'
-import { edad, diasEntre, formatFechaLocal } from '../lib/fechas'
+import { edad, diasEntre, formatFechaLocal, hoyLocal } from '../lib/fechas'
 import { Plus, ClipboardList, ChevronRight, AlertTriangle, AlertCircle, Sun, Moon, RefreshCw, Printer } from 'lucide-react'
 import ModalContencion from '../components/ModalContencion'
 import Tooltip from '../components/Tooltip'
@@ -16,6 +16,9 @@ import {
   type ContencionDia, type ContencionNoche,
 } from '../types/contenciones'
 import { TIPO_EVENTO_LABEL, TIPO_EVENTO_COLOR, type TipoEvento } from '../types/eventos'
+import { BannerPendientes } from './inicio/BannerPendientes'
+import { calcularPendientes, cargarExtrasPendientes, EXTRAS_VACIOS } from './inicio/pendientes'
+import type { ExtrasPendientes, LineaPendiente } from './inicio/pendientes'
 
 // Fecha de hace 7 días exactos, en el mismo formato que usa el resto
 // de la aplicación para comparar con columnas "fecha".
@@ -49,7 +52,15 @@ export default function Home() {
   )
   const [eventosPorIngreso, setEventosPorIngreso] = useState<Record<string, string[]>>({})
   const [contencionesPorIngreso, setContencionesPorIngreso] = useState<Record<string, { dia: ContencionDia | null; noche: ContencionNoche[] | null; confirmado_por_id: string | null }>>({})
-  const [incidenciasPendientesCount, setIncidenciasPendientesCount] = useState(0)
+  // Todo lo que alimenta el recuadro "Pendiente". Hasta que no se ha
+  // cargado entero (null), el recuadro no se muestra: antes de tener los
+  // datos todo parecería "sin pautar" o "sin semáforo".
+  const [datosPendientes, setDatosPendientes] = useState<{
+    eventosPendientes: { ingreso_id: string; tipo: string }[]
+    extras: ExtrasPendientes
+    contencionesOk: boolean
+    semaforosOk: boolean
+  } | null>(null)
   const [modalContencion, setModalContencion] = useState<string | null>(null) // ingresoId
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -113,7 +124,7 @@ export default function Home() {
           // Sin límite de fecha, a propósito — una incidencia puede
           // llevar pendiente de completar más de 7 días y no por eso
           // deja de ser trabajo pendiente.
-          supabase.from('eventos').select('id').in('ingreso_id', ids).neq('tipo', 'ulcera').eq('estado', 'pendiente'),
+          supabase.from('eventos').select('id,ingreso_id,tipo').in('ingreso_id', ids).neq('tipo', 'ulcera').eq('estado', 'pendiente'),
         ])
 
         // La lista de pacientes es lo esencial y ya se ha podido
@@ -123,7 +134,6 @@ export default function Home() {
         if (errItems || errInformes || errEventos || errPautas || errPendientes) {
           setErrorAuxiliar('Algunos datos (diagnóstico, incidencias, contención) podrían no estar actualizados.')
         }
-        setIncidenciasPendientesCount((pendientesData ?? []).length)
 
         const itemsMap: Record<string, { semaforo_caidas?: string }> = {}
         ;(itemsData ?? []).forEach((it: any) => {
@@ -146,8 +156,24 @@ export default function Home() {
         setEventosPorIngreso(eventosMap)
 
         setContencionesPorIngreso(contencionesPorIngresoMapa as Record<string, { dia: ContencionDia | null; noche: ContencionNoche[] | null; confirmado_por_id: string | null }>)
+
+        // Lo que Inicio no tenía: lesiones, curas de hoy e informes.
+        const { extras, error: errExtras } = await cargarExtrasPendientes(
+          list.map((i) => ({ id: i.id, habitacion: i.habitacion ?? null, fecha_ingreso: i.fecha_ingreso })),
+          hoyLocal(),
+          esMedico
+        )
+        if (errExtras) {
+          setErrorAuxiliar('Algunos datos (diagnóstico, incidencias, contención, pendientes) podrían no estar actualizados.')
+        }
+        setDatosPendientes({
+          eventosPendientes: errPendientes ? [] : ((pendientesData ?? []) as { ingreso_id: string; tipo: string }[]),
+          extras,
+          contencionesOk: !errPautas,
+          semaforosOk: !errItems,
+        })
       } else {
-        setIncidenciasPendientesCount(0)
+        setDatosPendientes({ eventosPendientes: [], extras: EXTRAS_VACIOS, contencionesOk: true, semaforosOk: true })
       }
     } finally {
       // Sin esto, un fallo en cualquiera de las consultas de arriba
@@ -187,48 +213,33 @@ export default function Home() {
   const ocupadas = ingresos.length
   const libres = slots.filter((s) => s === null).length
 
-  // Ya hay datos cargados para las dos cosas — no hace falta una
-  // consulta nueva para esta cuenta, solo mirar lo que ya se tiene.
-  const contencionesPendientesCount = ingresos.filter((i) => {
-    const c = contencionesPorIngreso[i.id]
-    return c && necesitaConfirmacion(c.dia, c.noche) && !c.confirmado_por_id
-  }).length
-  const primeraContencionPendienteId = ingresos.find((i) => {
-    const c = contencionesPorIngreso[i.id]
-    return c && necesitaConfirmacion(c.dia, c.noche) && !c.confirmado_por_id
-  })?.id
+  // Lo que queda por hacer, según el perfil. Todo sale de datos ya
+  // cargados salvo lo que trae cargarExtrasPendientes.
+  const lineasPendientes: LineaPendiente[] = datosPendientes
+    ? calcularPendientes({
+        hoy: hoyLocal(),
+        esMedico,
+        ingresos: ingresos.map((i) => ({ id: i.id, habitacion: i.habitacion ?? null, fecha_ingreso: i.fecha_ingreso })),
+        contenciones: datosPendientes.contencionesOk ? contencionesPorIngreso : null,
+        semaforos: datosPendientes.semaforosOk
+          ? Object.fromEntries(Object.entries(items).map(([id, it]) => [id, it.semaforo_caidas]))
+          : null,
+        eventosPendientes: datosPendientes.eventosPendientes,
+        extras: datosPendientes.extras,
+      })
+    : []
+
+  function abrirPendiente(l: LineaPendiente) {
+    if (l.accion.tipo === 'contencion') setModalContencion(l.accion.ingresoId)
+    else navigate(l.accion.ruta)
+  }
 
   return (
     <div className="p-6 md:p-8">
-      {/* Pendiente de revisión — solo aparece si hay algo, y solo
-          cuenta ingresos activos (los cerrados ya no son "trabajo
-          pendiente" de hoy). Cada línea lleva directamente adonde
-          hace falta ir para resolverlo. */}
-      {(incidenciasPendientesCount > 0 || contencionesPendientesCount > 0) && (
-        <div className="mb-5 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-          <p className="text-xs font-semibold text-amber-800 uppercase tracking-wide mb-1.5">Pendiente de revisión</p>
-          <div className="space-y-1">
-            {incidenciasPendientesCount > 0 && (
-              <button
-                onClick={() => navigate('/eventos?incidencias=pendiente')}
-                className="flex items-center gap-1.5 text-sm text-amber-800 hover:text-amber-900 hover:underline"
-              >
-                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                {incidenciasPendientesCount} incidencia{incidenciasPendientesCount === 1 ? '' : 's'} pendiente{incidenciasPendientesCount === 1 ? '' : 's'} de completar
-              </button>
-            )}
-            {contencionesPendientesCount > 0 && (
-              <button
-                onClick={() => primeraContencionPendienteId && setModalContencion(primeraContencionPendienteId)}
-                className="flex items-center gap-1.5 text-sm text-amber-800 hover:text-amber-900 hover:underline"
-              >
-                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                {contencionesPendientesCount} contención{contencionesPendientesCount === 1 ? '' : 'es'} pendiente{contencionesPendientesCount === 1 ? '' : 's'} de confirmación médica
-              </button>
-            )}
-          </div>
-        </div>
-      )}
+      {/* Pendiente — solo aparece si hay algo, solo cuenta ingresos
+          activos, y cada perfil ve lo que le toca hacer. Cada línea
+          lleva directamente adonde hace falta ir. */}
+      <BannerPendientes lineas={lineasPendientes} onAccion={abrirPendiente} />
 
       {/* Header */}
       <div className="flex items-start justify-between mb-5">

@@ -14,6 +14,7 @@ import { TabEventos } from './ingreso/TabEventos'
 import { TabCMBD } from './ingreso/TabCMBD'
 import { TabCuras } from './ingreso/TabCuras'
 import { TabOtrosInformes } from './ingreso/TabOtrosInformes'
+import { NavegadorPacientes } from './ingreso/NavegadorPacientes'
 import { TIPALT_LABEL } from '../lib/alta'
 
 // Estructura de la ficha: pestañas principales y, dentro de algunas,
@@ -255,6 +256,8 @@ export default function DetalleIngreso() {
               </div>
             </div>
           </div>
+          <div className="flex items-center gap-3 shrink-0">
+          {id && <NavegadorPacientes ingresoId={id} />}
           {ingreso.estado === 'activo' && esMedico && (
             <button
               onClick={() => setModalAlta(true)}
@@ -277,6 +280,7 @@ export default function DetalleIngreso() {
               Reabrir episodio
             </button>
           )}
+          </div>
         </div>
 
         {/* Confirmación de reapertura */}

@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Outlet, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Outlet, Navigate, useParams } from 'react-router-dom'
 import { Suspense, lazy } from 'react'
 import { AuthProvider, useAuth } from './lib/AuthContext'
 import Layout from './components/Layout'
@@ -24,6 +24,14 @@ const Informes = lazy(() => import('./pages/Informes').then((m) => ({ default: m
 // pantalla en la sesión: el navegador la guarda en caché después).
 function CargandoPagina() {
   return <div className="p-8 text-slate-400 text-sm">Cargando…</div>
+}
+
+// La ficha se vuelve a montar entera al cambiar de paciente (flechas y
+// buscador de la cabecera): así ninguna pestaña arrastra estado del
+// paciente anterior.
+function DetalleIngresoPorId() {
+  const { id } = useParams<{ id: string }>()
+  return <DetalleIngreso key={id} />
 }
 
 // Guardián: decide si se puede pasar a las rutas protegidas.
@@ -71,7 +79,7 @@ export default function App() {
               <Route path="pacientes" element={<Suspense fallback={<CargandoPagina />}><Pacientes /></Suspense>} />
               <Route path="pacientes/nuevo" element={<Suspense fallback={<CargandoPagina />}><NuevoIngreso /></Suspense>} />
               <Route path="pacientes/:id" element={<Suspense fallback={<CargandoPagina />}><DetallePaciente /></Suspense>} />
-              <Route path="ingresos/:id" element={<Suspense fallback={<CargandoPagina />}><DetalleIngreso /></Suspense>} />
+              <Route path="ingresos/:id" element={<Suspense fallback={<CargandoPagina />}><DetalleIngresoPorId /></Suspense>} />
               <Route path="items" element={<Suspense fallback={<CargandoPagina />}><HojaItems /></Suspense>} />
               <Route path="curas" element={<Suspense fallback={<CargandoPagina />}><Curas /></Suspense>} />
               <Route path="eventos" element={<Suspense fallback={<CargandoPagina />}><Eventos /></Suspense>} />
