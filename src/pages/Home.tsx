@@ -453,11 +453,6 @@ export default function Home() {
 
   return (
     <div className="p-6 md:p-8">
-      {/* Pendiente — solo aparece si hay algo, solo cuenta ingresos
-          activos, y cada perfil ve lo que le toca hacer. Cada línea
-          lleva directamente adonde hace falta ir. */}
-      <BannerPendientes lineas={lineasPendientes} onAccion={abrirPendiente} />
-
       {/* Header */}
       <div className="flex items-start justify-between mb-5">
         <div>
@@ -496,6 +491,11 @@ export default function Home() {
           </button>
         </div>
       </div>
+
+      {/* Pendiente — solo aparece si hay algo, solo cuenta ingresos
+          activos, y cada perfil ve lo que le toca hacer. Cada línea
+          lleva directamente adonde hace falta ir. */}
+      <BannerPendientes lineas={lineasPendientes} onAccion={abrirPendiente} />
 
       {/* Aviso: pacientes ingresados sin habitación asignada. Sin esto,
           un paciente así simplemente no aparecía en ningún sitio de esta
