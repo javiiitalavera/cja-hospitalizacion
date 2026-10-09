@@ -124,6 +124,8 @@ export default function Curas() {
   async function alternar(p: PacienteConCuras, fecha: string) {
     if (!profesional || fecha > hoy) return
     const clave = `${p.id}|${fecha}`
+    // Solo se marca un día que toca según la pauta; una marca ya puesta siempre se puede quitar.
+    if (!registros.has(clave) && !tocaEse(p, fecha)) return
     setOcupado(clave)
     setErrorAccion('')
     const marca = registros.get(clave)
@@ -226,11 +228,11 @@ export default function Curas() {
                         <td key={d} className={`px-1 py-1 text-center ${d === hoy ? 'bg-primary-50/40' : ''}`}>
                           <button
                             onClick={() => alternar(p, d)}
-                            disabled={futuro || !profesional || ocupado === clave}
+                            disabled={futuro || !profesional || ocupado === clave || (!marca && !toca)}
                             title={
                               marca
                                 ? `Hecha${marca.realizada_por ? ' por ' + marca.realizada_por.nombre + ' ' + marca.realizada_por.apellidos : ''}`
-                                : toca ? 'Toca cura según la pauta' : futuro ? '' : 'Marcar cura hecha'
+                                : toca ? (pendiente ? 'Toca cura: marcar como hecha' : 'Toca cura según la pauta') : futuro ? '' : 'No toca cura este día según la pauta'
                             }
                             className={`w-10 h-9 rounded-md border text-sm flex items-center justify-center mx-auto transition-colors ${
                               marca
@@ -241,7 +243,7 @@ export default function Curas() {
                                     ? 'border-dashed border-slate-300 hover:bg-slate-50'
                                     : futuro
                                       ? 'border-slate-100 bg-slate-50'
-                                      : 'border-slate-200 hover:bg-slate-50'
+                                      : 'border-slate-200 cursor-not-allowed'
                             }`}
                           >
                             {marca && <Check className="w-4 h-4" />}
