@@ -7,6 +7,7 @@ import { SEMAFORO_CAIDAS_COLOR as SEMAFORO, nombreCompleto } from '../types'
 import { edad, diasEntre, formatFechaLocal, hoyLocal } from '../lib/fechas'
 import { Plus, ClipboardList, ChevronRight, AlertTriangle, AlertCircle, Sun, Moon, RefreshCw, Printer } from 'lucide-react'
 import ModalContencion from '../components/ModalContencion'
+import FormularioEvento from '../components/FormularioEvento'
 import Tooltip from '../components/Tooltip'
 import { fetchContencionesPorIngreso } from '../lib/contenciones'
 import { imprimirListaHabitaciones } from '../lib/imprimir'
@@ -62,6 +63,7 @@ export default function Home() {
     semaforosOk: boolean
   } | null>(null)
   const [modalContencion, setModalContencion] = useState<string | null>(null) // ingresoId
+  const [modalEvento, setModalEvento] = useState<string | null>(null) // ingresoId
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState('')
@@ -488,43 +490,43 @@ export default function Home() {
                       )
                     })}
                   </div>
-                  {/* Botón evento */}
-                  {/* Antes abría directamente el formulario de
-                      registrar — con decenas de personas en la
-                      planta, era fácil que dos registraran el mismo
-                      suceso sin saberlo. Ahora lleva primero a ver lo
-                      que ya hay registrado; desde ahí, si hace falta,
-                      se registra uno nuevo con conocimiento de causa. */}
-                  <div className="relative group/tt">
-                    <div
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        navigate(`/ingresos/${ingreso.id}?tab=eventos`)
-                      }}
-                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 transition-colors text-xs font-medium cursor-pointer"
-                    >
-                      <AlertTriangle className="w-3 h-3 shrink-0" />
-                      Incidencias
-                    </div>
-                    <Tooltip titulo="Incidencias">
-                      <p className="text-xs text-slate-100">Ver incidencias de este paciente</p>
-                    </Tooltip>
-                  </div>
-                  {/* Aviso de incidencias de los últimos 7 días, si las hay */}
+                  {/* Incidencias del paciente: no hay botón si no hay nada
+                      que contar (antes eran 32 botones idénticos). Con
+                      pendientes se ve en rojo; si solo hay recientes, en
+                      ámbar. Al pulsar, la lista de ese paciente. */}
                   {(() => {
-                    const tipos = eventosPorIngreso[ingreso.id]
-                    if (!tipos || tipos.length === 0) return <div />
-                    // Contar por tipo, respetando el orden habitual de tipos
+                    const tipos = eventosPorIngreso[ingreso.id] ?? []
+                    const pendientes = (datosPendientes?.eventosPendientes ?? []).filter((e) => e.ingreso_id === ingreso.id).length
+                    if (tipos.length === 0 && pendientes === 0) return <div />
+                    // Contar por tipo, de más a menos frecuentes
                     const conteo: Record<string, number> = {}
                     tipos.forEach((t) => { conteo[t] = (conteo[t] ?? 0) + 1 })
                     const entradas = Object.entries(conteo).sort((a, b) => b[1] - a[1])
+                    const hayPendientes = pendientes > 0
                     return (
                       <div className="relative group/tt">
-                        <div className="flex items-center gap-1 text-red-600 text-xs font-medium cursor-default w-fit">
-                          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                          {tipos.length}
-                        </div>
-                        <Tooltip titulo="Incidencias · últimos 7 días">
+                        <button
+                          type="button"
+                          data-incidencias={ingreso.id}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            navigate(`/ingresos/${ingreso.id}?tab=eventos`)
+                          }}
+                          className={`flex items-center gap-1 px-2 py-1 rounded-lg border text-xs font-medium transition-colors ${
+                            hayPendientes
+                              ? 'bg-red-50 border-red-200 text-red-700 hover:bg-red-100'
+                              : 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100'
+                          }`}
+                        >
+                          <AlertTriangle className="w-3 h-3 shrink-0" />
+                          {hayPendientes ? `${pendientes} pendiente${pendientes > 1 ? 's' : ''}` : tipos.length}
+                        </button>
+                        <Tooltip titulo={hayPendientes ? 'Incidencias pendientes de completar' : 'Incidencias · últimos 7 días'}>
+                          {hayPendientes && (
+                            <p className="text-xs text-slate-100 mb-1">
+                              {pendientes} sin completar · pulsa para verlas
+                            </p>
+                          )}
                           {entradas.map(([tipo, n]) => (
                             <div key={tipo} className="flex items-center gap-1.5 text-xs">
                               <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
@@ -538,6 +540,27 @@ export default function Home() {
                       </div>
                     )
                   })()}
+                  {/* Registrar una incidencia directamente (un solo paso).
+                      El formulario ya avisa si hay una del mismo tipo en
+                      las últimas 24 h, así que no se pierde la protección
+                      contra duplicados. */}
+                  <div className="relative group/tt">
+                    <button
+                      type="button"
+                      aria-label="Registrar incidencia"
+                      data-registrar={ingreso.id}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setModalEvento(ingreso.id)
+                      }}
+                      className="p-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-amber-50 hover:border-amber-200 hover:text-amber-700 transition-colors"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                    <Tooltip titulo="Registrar incidencia">
+                      <p className="text-xs text-slate-100">Caída, fuga, agresividad…</p>
+                    </Tooltip>
+                  </div>
                   {/* Arrow */}
                   <div className="flex justify-end">
                     <ChevronRight className="w-4 h-4 text-slate-200 group-hover:text-slate-500 transition-colors" />
@@ -557,6 +580,19 @@ export default function Home() {
           onGuardado={() => fetchData()}
           pacienteInfo={(() => {
             const ing = ingresos.find((i) => i.id === modalContencion)
+            return ing?.paciente ? { nombre: nombreCompleto(ing.paciente), habitacion: ing.habitacion } : undefined
+          })()}
+        />
+      )}
+
+      {/* Registrar incidencia sin salir de Inicio */}
+      {modalEvento && (
+        <FormularioEvento
+          ingresoId={modalEvento}
+          onClose={() => setModalEvento(null)}
+          onGuardado={() => { setModalEvento(null); fetchData() }}
+          pacienteInfo={(() => {
+            const ing = ingresos.find((i) => i.id === modalEvento)
             return ing?.paciente ? { nombre: nombreCompleto(ing.paciente), habitacion: ing.habitacion } : undefined
           })()}
         />
