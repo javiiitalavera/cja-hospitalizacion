@@ -98,7 +98,7 @@ export function TabOtrosInformes({ ingresoId, ingreso }: { ingresoId: string; in
             </button>
           ))}
         </div>
-        {creando && <p className="text-sm text-slate-400">Creando el informe…</p>}
+        {creando && <p className="text-sm text-slate-500">Creando el informe…</p>}
       </div>
     )
   }
@@ -121,7 +121,7 @@ export function TabOtrosInformes({ ingresoId, ingreso }: { ingresoId: string; in
         </div>
       )}
 
-      {loading && <p className="text-sm text-slate-400">Cargando…</p>}
+      {loading && <p className="text-sm text-slate-500">Cargando…</p>}
       {errorCarga && (
         <div className="card p-4 text-sm">
           <p className="text-red-600">{errorCarga}</p>
@@ -129,8 +129,8 @@ export function TabOtrosInformes({ ingresoId, ingreso }: { ingresoId: string; in
         </div>
       )}
       {!loading && !errorCarga && lista.length === 0 && (
-        <div className="card p-8 text-center text-sm text-slate-400">
-          <FileText className="w-6 h-6 mx-auto mb-2 text-slate-300" />
+        <div className="card p-8 text-center text-sm text-slate-500">
+          <FileText className="w-6 h-6 mx-auto mb-2 text-slate-400" />
           No hay informes.
         </div>
       )}
@@ -284,7 +284,7 @@ function EditorInforme({
         <button onClick={volver} className="text-sm text-slate-500 hover:text-slate-700 flex items-center gap-1">
           <ArrowLeft className="w-4 h-4" /> Volver a la lista
         </button>
-        <div className="text-xs text-slate-400 flex items-center gap-1">
+        <div className="text-xs text-slate-500 flex items-center gap-1">
           {estado === 'pendiente' && <><span className="w-1.5 h-1.5 rounded-full bg-slate-400 inline-block" /> Cambios pendientes</>}
           {estado === 'guardando' && <><span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse inline-block" /> Guardando…</>}
           {estado === 'guardado' && <><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" /> Guardado</>}

@@ -106,7 +106,7 @@ function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo
       <div className="card p-6 space-y-3">
         <p className="section-title">Seguridad y conducta</p>
         {estadoContencion === 'cargando' ? (
-          <p className="text-sm text-slate-400">Cargando…</p>
+          <p className="text-sm text-slate-500">Cargando…</p>
         ) : (
           <div className="flex items-center gap-2">
             {(['dia', 'noche'] as const).map((eje) => {
@@ -314,9 +314,9 @@ function HistoricoItems({ ingresoId }: { ingresoId: string }) {
     return String(v)
   }
 
-  if (loading) return <div className="text-xs text-slate-400 py-4 text-center">Cargando histórico…</div>
+  if (loading) return <div className="text-xs text-slate-500 py-4 text-center">Cargando histórico…</div>
   if (snapshots.length === 0) return (
-    <div className="card p-6 text-center text-sm text-slate-400">
+    <div className="card p-6 text-center text-sm text-slate-500">
       No hay snapshots guardados. Usa el botón "Snapshot del día" en la Hoja de Ítems.
     </div>
   )
@@ -345,7 +345,7 @@ function HistoricoItems({ ingresoId }: { ingresoId: string }) {
         {/* Detalle del snapshot */}
         <div className="flex-1 overflow-y-auto max-h-80">
           {!selected ? (
-            <div className="p-6 text-xs text-slate-400 text-center">
+            <div className="p-6 text-xs text-slate-500 text-center">
               Selecciona una fecha para ver el snapshot
             </div>
           ) : (
@@ -354,7 +354,7 @@ function HistoricoItems({ ingresoId }: { ingresoId: string }) {
                 .filter(([k]) => !SKIP.has(k) && selected.datos[k] !== null && selected.datos[k] !== undefined)
                 .map(([k, v]) => (
                   <div key={k} className="flex px-4 py-2 text-xs">
-                    <span className="w-44 text-slate-400 shrink-0">{LABELS[k] ?? k}</span>
+                    <span className="w-44 text-slate-500 shrink-0">{LABELS[k] ?? k}</span>
                     <span className="text-slate-700 font-medium">{formatVal(v)}</span>
                   </div>
                 ))}

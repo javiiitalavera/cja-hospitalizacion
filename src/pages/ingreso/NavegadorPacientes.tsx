@@ -122,7 +122,7 @@ export function NavegadorPacientes({ ingresoId }: { ingresoId: string }) {
       </button>
 
       <div className="relative">
-        <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+        <Search className="w-3.5 h-3.5 text-slate-500 absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none" />
         <input
           type="text"
           aria-label="Buscar paciente"
@@ -142,7 +142,7 @@ export function NavegadorPacientes({ ingresoId }: { ingresoId: string }) {
         {abierto && q.trim() !== '' && (
           <div role="listbox" className="absolute right-0 top-full mt-1 w-72 bg-white border border-slate-200 rounded-lg shadow-lg z-30 py-1">
             {resultados.length === 0 ? (
-              <p className="px-3 py-2 text-xs text-slate-400">Ningún paciente ingresado coincide.</p>
+              <p className="px-3 py-2 text-xs text-slate-500">Ningún paciente ingresado coincide.</p>
             ) : (
               resultados.map((r, idx) => (
                 <button
@@ -154,7 +154,7 @@ export function NavegadorPacientes({ ingresoId }: { ingresoId: string }) {
                   onClick={() => ir(r.id)}
                   className={`w-full text-left px-3 py-1.5 text-sm flex items-center gap-2 ${idx === sel ? 'bg-primary-50 text-primary-700' : 'text-slate-700 hover:bg-slate-50'}`}
                 >
-                  <span className="text-xs text-slate-400 w-10 shrink-0">{r.habitacion != null ? `Hab. ${r.habitacion}` : 'Sin hab.'}</span>
+                  <span className="text-xs text-slate-500 w-10 shrink-0">{r.habitacion != null ? `Hab. ${r.habitacion}` : 'Sin hab.'}</span>
                   <span className="truncate">{r.nombre}</span>
                 </button>
               ))

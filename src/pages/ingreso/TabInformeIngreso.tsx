@@ -164,7 +164,7 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
     <div className="max-w-3xl space-y-6">
       <div className="flex items-center justify-between gap-3">
         {soloLectura ? (
-          <span className="flex items-center gap-1.5 text-xs text-slate-400">
+          <span className="flex items-center gap-1.5 text-xs text-slate-500">
             <Lock className="w-3.5 h-3.5" /> Solo lectura: solo un médico puede editar este informe.
           </span>
         ) : episodioCerrado ? (
@@ -172,7 +172,7 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
             <Lock className="w-3.5 h-3.5" /> Episodio cerrado. Las modificaciones realizadas quedarán registradas en Auditoría.
           </span>
         ) : <span />}
-        <div className="flex items-center gap-3 text-xs text-slate-400">
+        <div className="flex items-center gap-3 text-xs text-slate-500">
           {estado === 'pendiente' && <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-slate-400 inline-block" /> Cambios pendientes</span>}
           {estado === 'guardando' && <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse inline-block" /> Guardando…</span>}
           {estado === 'guardado' && <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" /> Guardado</span>}
@@ -233,7 +233,7 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
       <div className="card p-6 space-y-6">
         <div className="flex items-center justify-between">
           <p className="section-title mb-0">Escalas clínicas al ingreso</p>
-          <span className="text-xs text-slate-400">
+          <span className="text-xs text-slate-500">
             {estadoEscalas === 'pendiente' && '● Cambios pendientes'}
             {estadoEscalas === 'guardando' && '● Guardando…'}
             {estadoEscalas === 'guardado' && <span className="text-emerald-600">✓ Guardado</span>}

@@ -26,9 +26,9 @@ const Bloque = memo(function Bloque({
     if (i.habitacion && i.habitacion > offset && i.habitacion <= offset + count) slots[i.habitacion - offset - 1] = i
   })
   const habNums = Array.from({ length: count }, (_, i) => i + 1 + offset)
-  const cellCls = 'border border-slate-400 text-center text-[7.5pt] leading-tight px-0.5 py-0'
+  const cellCls = 'border border-slate-400 text-center text-[9pt] leading-tight px-0.5 py-0'
   const labelCls =
-    'border border-slate-400 text-left text-[7.5pt] leading-tight px-1 py-0 font-medium bg-slate-100 whitespace-nowrap'
+    'border border-slate-400 text-left text-[9pt] leading-tight px-1 py-0 font-medium bg-slate-100 whitespace-nowrap'
 
   // Con el panel de edición abierto, esta tabla pierde sitio de
   // verdad (el contenido principal se estrecha con margen a la
@@ -36,20 +36,20 @@ const Bloque = memo(function Bloque({
   // columnas sin límite, hasta que las etiquetas se montaban unas
   // sobre otras. Con el ancho mínimo y el scroll horizontal, a partir
   // de cierto punto se desplaza en vez de aplastarse.
-  const anchoMinimo = 80 + count * 46
+  const anchoMinimo = 140 + count * 56
 
   return (
     <div className="overflow-x-auto">
-    <table className="w-full border-collapse table-fixed" style={{ fontSize: '7.5pt', minWidth: `${anchoMinimo}px` }}>
+    <table className="w-full border-collapse table-fixed" style={{ fontSize: '9pt', minWidth: `${anchoMinimo}px` }}>
       <colgroup>
-        <col style={{ width: '80px' }} />
+        <col style={{ width: '140px' }} />
         {habNums.map((n) => (
           <col key={n} style={{ width: `${100 / count}%` }} />
         ))}
       </colgroup>
       <thead>
         <tr>
-          <th className="border border-slate-400 bg-slate-200 text-[7.5pt] text-left px-1 py-0.5 font-bold">
+          <th className="border border-slate-400 bg-slate-200 text-[9pt] text-left px-1 py-0.5 font-bold">
             HABITACIÓN
           </th>
           {habNums.map((n) => {
@@ -59,7 +59,7 @@ const Bloque = memo(function Bloque({
             return (
               <th
                 key={n}
-                className={`border border-slate-400 text-[8pt] font-bold text-center py-0.5 ${!ing && !readOnly ? 'cursor-pointer hover:bg-primary-50' : ''}`}
+                className={`border border-slate-400 text-[9.5pt] font-bold text-center py-0.5 ${!ing && !readOnly ? 'cursor-pointer hover:bg-primary-50' : ''}`}
                 style={{ backgroundColor: bg, color }}
                 onClick={() => {
                   if (!ing && !readOnly && onSelectVacia) onSelectVacia(n)
@@ -77,7 +77,7 @@ const Bloque = memo(function Bloque({
           <Fragment key={grupo.titulo}>
             {grupo.mostrarTitulo !== false && (
               <tr key={`g-${grupo.titulo}`}>
-                <td colSpan={count + 1} className="border border-slate-400 bg-[#5b7a9d] text-white text-[7pt] font-bold px-1 py-0.5 tracking-wide">
+                <td colSpan={count + 1} className="border border-slate-400 bg-[#5b7a9d] text-white text-[8.5pt] font-bold px-1 py-0.5 tracking-wide">
                   {grupo.titulo.toUpperCase()}
                 </td>
               </tr>
@@ -120,7 +120,7 @@ const Bloque = memo(function Bloque({
                       <td
                         key={n}
                         className={`${cellCls} ${ingreso && !readOnly ? 'cursor-pointer hover:brightness-95' : !ingreso && !readOnly ? 'cursor-pointer hover:bg-primary-50/40' : ''} ${isSelected ? 'ring-2 ring-inset ring-primary-500' : ''}`}
-                        style={{ backgroundColor: cellBg, color, fontWeight: alertaActiva ? 700 : (BOLD_ROWS.has(fila.key) ? 600 : 400) }}
+                        style={{ backgroundColor: cellBg, color, fontWeight: alertaActiva ? 700 : (BOLD_ROWS.has(fila.key) ? 600 : 400), ...(fila.key === 'nombre' ? { fontSize: '8.5pt', hyphens: 'auto' as const } : {}) }}
                         onClick={() => {
                           if (ingreso && !readOnly) onSelect(ingreso)
                           else if (!ingreso && !readOnly && onSelectVacia && fila.key === 'nombre') onSelectVacia(n)

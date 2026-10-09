@@ -125,7 +125,7 @@ export function ResumenDashboard({ filtros, desde, hasta, onExplorar, onExplorar
       <section>
         <div className="flex items-center justify-between mb-2">
           <p className="section-title mb-0">Situación actual</p>
-          <span className="text-xs text-slate-400">A fecha de hoy — no cambia con el periodo; sí con el médico elegido</span>
+          <span className="text-xs text-slate-500">A fecha de hoy — no cambia con el periodo; sí con el médico elegido</span>
         </div>
         {estadoSituacion === 'cargando' && <EstadoCargando />}
         {estadoSituacion === 'error' && <EstadoError mensaje={errorSituacion} onReintentar={cargarSituacion} />}
@@ -198,8 +198,8 @@ export function ResumenDashboard({ filtros, desde, hasta, onExplorar, onExplorar
               <ResponsiveContainer width="100%" height={220}>
                 <LineChart data={series.ocupacion_diaria}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                  <XAxis dataKey="fecha" tick={{ fontSize: 10 }} />
-                  <YAxis tick={{ fontSize: 10 }} />
+                  <XAxis dataKey="fecha" tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 12 }} />
                   <Tooltip />
                   <Line type="monotone" dataKey="camas" stroke="#2563eb" strokeWidth={2} dot={false} />
                 </LineChart>
@@ -214,8 +214,8 @@ export function ResumenDashboard({ filtros, desde, hasta, onExplorar, onExplorar
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={series.movimientos}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                  <XAxis dataKey="inicio" tick={{ fontSize: 10 }} />
-                  <YAxis tick={{ fontSize: 10 }} />
+                  <XAxis dataKey="inicio" tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 12 }} />
                   <Tooltip />
                   <Bar dataKey="ingresos" fill="#2563eb" name="Ingresos" />
                   <Bar dataKey="salidas" fill="#94a3b8" name="Salidas" />

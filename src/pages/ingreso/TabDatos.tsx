@@ -101,8 +101,8 @@ function TabDatos({ ingreso, onUpdate, iniciarEditando = false }: { ingreso: Ing
           ['Teléfono familiar', p.contacto_familiar_telefono],
         ] as [string, string | null | undefined][]).map(([k, v]) => (
           <div key={k} className="flex py-1">
-            <span className="w-40 text-slate-400 shrink-0">{k}</span>
-            <span className="text-slate-700">{v || <span className="text-slate-300">—</span>}</span>
+            <span className="w-40 text-slate-500 shrink-0">{k}</span>
+            <span className="text-slate-700">{v || <span className="text-slate-400">—</span>}</span>
           </div>
         ))}
       </div>
@@ -129,7 +129,7 @@ function TabDatos({ ingreso, onUpdate, iniciarEditando = false }: { ingreso: Ing
               <p className="input bg-slate-50 text-slate-500 cursor-not-allowed">
                 {ingreso.fecha_alta ? new Date(ingreso.fecha_alta).toLocaleDateString('es-ES') : '—'}
               </p>
-              <p className="text-[11px] text-slate-400 mt-1">
+              <p className="text-xs text-slate-500 mt-1">
                 Se pone desde "Dar de alta", no aquí (para que vaya siempre junto con el estado).
               </p>
             </div>
@@ -147,7 +147,7 @@ function TabDatos({ ingreso, onUpdate, iniciarEditando = false }: { ingreso: Ing
               <p className="input bg-slate-50 text-slate-500 cursor-not-allowed">
                 {ESTADO_LABEL[ingreso.estado] ?? ingreso.estado}
               </p>
-              <p className="text-[11px] text-slate-400 mt-1">
+              <p className="text-xs text-slate-500 mt-1">
                 Se cambia desde "Dar de alta", no aquí.
               </p>
             </div>
@@ -200,7 +200,7 @@ function TabDatos({ ingreso, onUpdate, iniciarEditando = false }: { ingreso: Ing
           {rowsIngreso.map(([k, v]) => (
             <div key={k} className="flex px-5 py-3 text-sm">
               <span className="w-44 text-slate-500 shrink-0">{k}</span>
-              <span className="text-slate-800">{v || <span className="text-slate-300">—</span>}</span>
+              <span className="text-slate-800">{v || <span className="text-slate-400">—</span>}</span>
             </div>
           ))}
         </div>

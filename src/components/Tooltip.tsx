@@ -11,7 +11,7 @@ export default function Tooltip({ titulo, children }: { titulo?: string; childre
     <div className="hidden group-hover/tt:block absolute z-20 left-1/2 -translate-x-1/2 bottom-full mb-1.5 w-max max-w-[220px]">
       <div className="bg-slate-800 text-white rounded-lg shadow-lg py-2 px-3 space-y-1">
         {titulo && (
-          <p className="text-[10px] font-semibold text-slate-300 uppercase tracking-wide mb-0.5">{titulo}</p>
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-0.5">{titulo}</p>
         )}
         {children}
       </div>

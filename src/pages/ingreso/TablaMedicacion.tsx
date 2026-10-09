@@ -42,7 +42,7 @@ export function TablaMedicacion({ filas, onChange, disabled }: {
           <tbody>
             {filas.length === 0 ? (
               <tr>
-                <td colSpan={9} className="border border-slate-200 px-4 py-4 text-center text-slate-400 italic">
+                <td colSpan={9} className="border border-slate-200 px-4 py-4 text-center text-slate-500 italic">
                   Sin medicación añadida
                 </td>
               </tr>
@@ -74,7 +74,7 @@ export function TablaMedicacion({ filas, onChange, disabled }: {
                   <td className="border border-slate-200 p-1 text-center">
                     <button type="button"
                       onClick={() => onChange(filas.filter((_, idx) => idx !== i))}
-                      className="text-slate-300 hover:text-red-500 transition-colors">
+                      className="text-slate-400 hover:text-red-500 transition-colors">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </td>

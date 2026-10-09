@@ -322,7 +322,7 @@ export function Auditoria() {
   return (
     <div className="p-6 md:p-8 max-w-6xl">
       <div className="flex items-center gap-2 mb-1">
-        <History className="w-5 h-5 text-slate-400" />
+        <History className="w-5 h-5 text-slate-500" />
         <h1 className="text-2xl font-bold text-slate-800">Auditoría de cambios</h1>
       </div>
       <p className="text-sm text-slate-500 mb-6">Quién ha creado, editado o borrado, y cuándo.</p>
@@ -361,10 +361,10 @@ export function Auditoria() {
       </div>
 
       {cargando ? (
-        <p className="text-slate-400">Cargando…</p>
+        <p className="text-slate-500">Cargando…</p>
       ) : filasFiltradas.length === 0 ? (
         errorCambios || errorContencion ? null : (
-          <div className="card p-10 text-center text-slate-400 text-sm">No hay cambios registrados.</div>
+          <div className="card p-10 text-center text-slate-500 text-sm">No hay cambios registrados.</div>
         )
       ) : (
         <div className="card overflow-hidden">
@@ -404,7 +404,7 @@ export function Auditoria() {
                           // Un identificador nulo no demuestra que lo
                           // hiciera un proceso automático — solo que
                           // no se sabe quién fue.
-                          <span className="text-slate-400">Autor no identificado</span>
+                          <span className="text-slate-500">Autor no identificado</span>
                         )}
                       </td>
                       <td className="px-4 py-2 text-slate-600">{TABLA_LABEL[f.tabla] ?? f.tabla}</td>
@@ -416,7 +416,7 @@ export function Auditoria() {
                       <td className="px-4 py-2 text-slate-500">
                         {claveAfecta ? (afecta[claveAfecta] ?? '—') : '—'}
                       </td>
-                      <td className="px-4 py-2 text-slate-300">
+                      <td className="px-4 py-2 text-slate-400">
                         {tieneDetalle && (expandido === f.id ? '▾' : '▸')}
                       </td>
                     </tr>
@@ -431,7 +431,7 @@ export function Auditoria() {
                                   {formatearValor(f.tabla, f.valores_antes)}
                                 </pre>
                               ) : (
-                                <p className="text-slate-400 italic">No existía todavía</p>
+                                <p className="text-slate-500 italic">No existía todavía</p>
                               )}
                             </div>
                             <div>
@@ -441,7 +441,7 @@ export function Auditoria() {
                                   {formatearValor(f.tabla, f.valores_despues)}
                                 </pre>
                               ) : (
-                                <p className="text-slate-400 italic">Se ha eliminado</p>
+                                <p className="text-slate-500 italic">Se ha eliminado</p>
                               )}
                             </div>
                           </div>
@@ -456,7 +456,7 @@ export function Auditoria() {
         </div>
       )}
 
-      <p className="text-xs text-slate-400 mt-3">
+      <p className="text-xs text-slate-500 mt-3">
         Se muestran los últimos 300 cambios generales y los últimos 300 de contención.
       </p>
     </div>

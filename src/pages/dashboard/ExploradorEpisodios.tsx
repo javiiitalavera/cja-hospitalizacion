@@ -311,7 +311,7 @@ export function ExploradorEpisodios() {
                   <td className="px-4 py-2">{ESTADO_LABEL[f.estado] ?? f.estado}</td>
                   <td className="px-4 py-2 tabular-nums">{f.dias_estancia}</td>
                   <td className="px-4 py-2">{f.medico ?? '—'}</td>
-                  <td className="px-4 py-2 text-right tabular-nums">{f.num_incidencias || <span className="text-slate-300">—</span>}</td>
+                  <td className="px-4 py-2 text-right tabular-nums">{f.num_incidencias || <span className="text-slate-400">—</span>}</td>
                 </tr>
               ))}
             </tbody>

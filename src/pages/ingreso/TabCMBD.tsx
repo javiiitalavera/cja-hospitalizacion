@@ -212,11 +212,11 @@ function FilaDx({ label, codigo, desc, poad, onCodigoYDesc, onDesc, onPoad, requ
       <div className="pt-2 shrink-0">
         {codigo && (
           <div className="flex flex-col items-center gap-0.5">
-            <span className="text-[10px] text-slate-400 leading-none">Al ingreso</span>
+            <span className="text-xs text-slate-500 leading-none">Al ingreso</span>
             <button type="button"
               onClick={() => onPoad(!(poad === true))}
-              className={`w-12 h-6 rounded-full text-[10px] font-bold transition-colors ${
-                poad === true ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-400'
+              className={`w-12 h-6 rounded-full text-xs font-bold transition-colors ${
+                poad === true ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-500'
               }`}>
               {poad === true ? 'SÍ' : 'NO'}
             </button>
@@ -536,7 +536,7 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
   const nombreDelPaciente = p ? nombreCompleto(p) : '—'
   const edadPaciente = edad(p?.fecha_nacimiento)
 
-  if (loading) return <div className="text-slate-400 text-center py-10">Cargando…</div>
+  if (loading) return <div className="text-slate-500 text-center py-10">Cargando…</div>
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -545,10 +545,10 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide">CMBD · Conjunto Mínimo Básico de Datos</h2>
-          <p className="text-xs text-slate-400 mt-0.5">Registro al alta · {nombreDelPaciente}</p>
+          <p className="text-xs text-slate-500 mt-0.5">Registro al alta · {nombreDelPaciente}</p>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-slate-400">
+          <span className="text-xs text-slate-500">
             {estado === 'pendiente' && '● Cambios pendientes'}
             {estado === 'guardando' && '● Guardando…'}
             {estado === 'guardado' && <span className="text-emerald-600">✓ Guardado</span>}
@@ -576,24 +576,24 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
       <div className="card p-5 space-y-2">
         <p className="section-title">Datos del episodio</p>
         <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-sm">
-          <div><span className="text-slate-400 text-xs">Paciente: </span>{nombreDelPaciente}</div>
-          <div><span className="text-slate-400 text-xs">Edad: </span>{edadPaciente != null ? `${edadPaciente} años` : '—'}</div>
-          <div><span className="text-slate-400 text-xs">CIPNA: </span>{p?.cipna ?? '—'}</div>
-          <div><span className="text-slate-400 text-xs">NHC: </span>{p?.nhc ?? '—'}</div>
-          <div><span className="text-slate-400 text-xs">Sexo: </span>
+          <div><span className="text-slate-500 text-xs">Paciente: </span>{nombreDelPaciente}</div>
+          <div><span className="text-slate-500 text-xs">Edad: </span>{edadPaciente != null ? `${edadPaciente} años` : '—'}</div>
+          <div><span className="text-slate-500 text-xs">CIPNA: </span>{p?.cipna ?? '—'}</div>
+          <div><span className="text-slate-500 text-xs">NHC: </span>{p?.nhc ?? '—'}</div>
+          <div><span className="text-slate-500 text-xs">Sexo: </span>
             {p?.sexo === 'hombre' ? 'Varón (1)' : p?.sexo === 'mujer' ? 'Mujer (2)' : '—'}
           </div>
-          <div><span className="text-slate-400 text-xs">F. nacimiento: </span>
+          <div><span className="text-slate-500 text-xs">F. nacimiento: </span>
             {p?.fecha_nacimiento ? new Date(p.fecha_nacimiento).toLocaleDateString('es-ES') : '—'}
-            {p?.fecha_nacimiento && <span className="text-slate-300 text-xs ml-1">({fmtFecha(p.fecha_nacimiento)})</span>}
+            {p?.fecha_nacimiento && <span className="text-slate-400 text-xs ml-1">({fmtFecha(p.fecha_nacimiento)})</span>}
           </div>
-          <div><span className="text-slate-400 text-xs">F. ingreso: </span>
+          <div><span className="text-slate-500 text-xs">F. ingreso: </span>
             {ingreso?.fecha_ingreso ? new Date(ingreso.fecha_ingreso).toLocaleDateString('es-ES') : '—'}
           </div>
-          <div><span className="text-slate-400 text-xs">F. alta: </span>
+          <div><span className="text-slate-500 text-xs">F. alta: </span>
             {ingreso?.fecha_alta ? new Date(ingreso.fecha_alta).toLocaleDateString('es-ES') : <span className="text-amber-500 text-xs">Pendiente de alta</span>}
           </div>
-          <div><span className="text-slate-400 text-xs">Servicio: </span>
+          <div><span className="text-slate-500 text-xs">Servicio: </span>
             <span className="font-mono text-xs">{data.servicio ?? 'GRT'}</span>
           </div>
         </div>
@@ -630,7 +630,7 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
       <div className="card p-5 space-y-4">
         <div className="flex items-center justify-between">
           <p className="section-title mb-0">Diagnósticos CIE-10</p>
-          <span className="text-xs text-slate-400">Botón "Al ingreso" = POAD</span>
+          <span className="text-xs text-slate-500">Botón "Al ingreso" = POAD</span>
         </div>
 
         <FilaDx label="Principal" required
@@ -690,13 +690,13 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
             <div className="flex items-center gap-3">
               {faltan.length === 0
                 ? <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
-                : <Circle className="w-5 h-5 text-slate-300 shrink-0" />
+                : <Circle className="w-5 h-5 text-slate-400 shrink-0" />
               }
               <div>
                 <p className={`text-sm font-medium ${faltan.length === 0 ? 'text-emerald-700' : 'text-slate-600'}`}>
                   {faltan.length === 0 ? 'CMBD completo' : 'CMBD incompleto'}
                 </p>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-slate-500">
                   {faltan.length === 0
                     ? 'Tiene los campos mínimos para exportar.'
                     : `Falta: ${faltan.join(', ')}.`

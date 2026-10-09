@@ -368,7 +368,7 @@ export default function NuevoIngreso() {
     return (
       <div className="p-8">
         <div className="card p-6 max-w-md flex items-start gap-3">
-          <Lock className="w-5 h-5 text-slate-400 mt-0.5 shrink-0" />
+          <Lock className="w-5 h-5 text-slate-500 mt-0.5 shrink-0" />
           <div>
             <p className="font-semibold text-slate-800">Acceso restringido</p>
             <p className="text-sm text-slate-500 mt-1">
@@ -386,13 +386,13 @@ export default function NuevoIngreso() {
       <div className="flex items-center gap-3 mb-7">
         <button
           onClick={() => (paso === 'buscar' ? navigate(-1) : setPaso('buscar'))}
-          className="text-slate-400 hover:text-slate-600"
+          className="text-slate-500 hover:text-slate-600"
         >
           <ChevronLeft className="w-5 h-5" />
         </button>
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Nuevo ingreso</h1>
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-slate-500">
             {paso === 'buscar' && 'Busca si el paciente ya existe o crea uno nuevo'}
             {paso === 'reingreso' &&
               `Reingreso de ${pacienteSeleccionado?.primer_apellido}, ${pacienteSeleccionado?.nombre}`}
@@ -440,7 +440,7 @@ export default function NuevoIngreso() {
                         <p className="font-medium text-slate-800 text-sm">
                           {p.primer_apellido} {p.segundo_apellido ?? ''}, {p.nombre}
                         </p>
-                        <p className="text-xs text-slate-400">
+                        <p className="text-xs text-slate-500">
                           {fnac && `Nac. ${fnac}`}
                           {p.nhc && ` · NHC: ${p.nhc}`}
                           {p.cipna && ` · CIPNA: ${p.cipna}`}
@@ -464,7 +464,7 @@ export default function NuevoIngreso() {
             )}
 
             {resultados.length === 0 && busqueda && !buscando && !errorBusqueda && (
-              <p className="text-sm text-slate-400 mt-3">No se encontraron resultados para "{busqueda}".</p>
+              <p className="text-sm text-slate-500 mt-3">No se encontraron resultados para "{busqueda}".</p>
             )}
             {errorBusqueda && (
               <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-3 py-2 mt-3 flex items-center justify-between gap-3">
@@ -476,7 +476,7 @@ export default function NuevoIngreso() {
 
           <div className="flex items-center gap-3">
             <div className="flex-1 border-t border-slate-200" />
-            <span className="text-xs text-slate-400 shrink-0">o si es un paciente nuevo</span>
+            <span className="text-xs text-slate-500 shrink-0">o si es un paciente nuevo</span>
             <div className="flex-1 border-t border-slate-200" />
           </div>
 
@@ -495,7 +495,7 @@ export default function NuevoIngreso() {
 
       {/* PASO 2a: Reingreso */}
       {paso === 'reingreso' && cargandoPacienteParam && (
-        <div className="text-slate-400 text-center py-10">Cargando paciente…</div>
+        <div className="text-slate-500 text-center py-10">Cargando paciente…</div>
       )}
       {paso === 'reingreso' && !cargandoPacienteParam && pacienteSeleccionado && (
         <div>
@@ -545,7 +545,7 @@ export default function NuevoIngreso() {
           <div className="card p-6 mb-5">
             <p className="section-title">Datos del paciente</p>
 
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Identidad</p>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Identidad</p>
             <div className="grid grid-cols-2 gap-4 mb-5">
               <div>
                 <label className="label">Nombre *</label>
@@ -595,7 +595,7 @@ export default function NuevoIngreso() {
               </div>
             </div>
 
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2 pt-4 border-t">Identificación</p>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2 pt-4 border-t">Identificación</p>
             <div className="grid grid-cols-2 gap-4 mb-5">
               <div>
                 <label className="label">CIPNA</label>
@@ -631,7 +631,7 @@ export default function NuevoIngreso() {
               </div>
             </div>
 
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2 pt-4 border-t">Contacto</p>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2 pt-4 border-t">Contacto</p>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="label">Médico de cabecera</label>
@@ -698,7 +698,7 @@ export default function NuevoIngreso() {
                   >
                     No, es otra persona — crear de todas formas
                   </button>
-                  <button onClick={() => setDuplicadoDetectado(null)} className="text-xs text-slate-400 hover:text-slate-600 mt-1">
+                  <button onClick={() => setDuplicadoDetectado(null)} className="text-xs text-slate-500 hover:text-slate-600 mt-1">
                     Cancelar
                   </button>
                 </div>

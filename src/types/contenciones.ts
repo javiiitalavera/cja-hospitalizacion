@@ -112,7 +112,7 @@ export function severidadNoche(noche: ContencionNoche[] | null | undefined): Sev
 export const SEVERIDAD_ESTILO: Record<SeveridadContencion, {
   bg: string; text: string; border: string; label: string
 }> = {
-  sin_revisar: { bg: 'bg-slate-100', text: 'text-slate-400', border: 'border-slate-200', label: 'Sin revisar' },
+  sin_revisar: { bg: 'bg-slate-100', text: 'text-slate-500', border: 'border-slate-200', label: 'Sin revisar' },
   ninguna: { bg: 'bg-emerald-50', text: 'text-emerald-600', border: 'border-emerald-200', label: 'Ninguna' },
   seguridad: { bg: 'bg-blue-50', text: 'text-blue-600', border: 'border-blue-200', label: 'Medida de seguridad' },
   si_precisa: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', label: 'Si precisa' },

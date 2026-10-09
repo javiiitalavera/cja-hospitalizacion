@@ -40,7 +40,7 @@ export default function Login() {
             <Activity className="w-6 h-6 text-white" />
           </div>
           <h1 className="text-lg font-bold text-slate-800">CJA Hospital</h1>
-          <p className="text-xs text-slate-400">Clínica Josefina Arregui · Alsasua</p>
+          <p className="text-xs text-slate-500">Clínica Josefina Arregui · Alsasua</p>
         </div>
 
         <div className="card p-6 space-y-4">
@@ -81,7 +81,7 @@ export default function Login() {
           </button>
         </div>
 
-        <p className="text-center text-[11px] text-slate-400 mt-4">
+        <p className="text-center text-xs text-slate-500 mt-4">
           Acceso restringido al personal de la unidad.
         </p>
       </div>

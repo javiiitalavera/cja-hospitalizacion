@@ -51,7 +51,7 @@ export default function Layout() {
                 <p className="text-sm font-bold text-slate-800 leading-tight">CJA Hospital</p>
               </div>
               <button onClick={() => setCollapsed(true)}
-                className="text-slate-300 hover:text-slate-500 transition-colors p-1 rounded shrink-0">
+                className="text-slate-400 hover:text-slate-500 transition-colors p-1 rounded shrink-0">
                 <ChevronLeft className="w-4 h-4" />
               </button>
             </>
@@ -91,7 +91,7 @@ export default function Layout() {
                   <p className="text-xs font-semibold text-slate-700 leading-tight truncate">
                     {profesional.nombre} {profesional.apellidos}
                   </p>
-                  <p className="text-[10px] text-slate-400">{rol ? ROL_LABEL[rol] ?? rol : ''}</p>
+                  <p className="text-xs text-slate-500">{rol ? ROL_LABEL[rol] ?? rol : ''}</p>
                 </div>
               )}
               <button
@@ -101,14 +101,14 @@ export default function Layout() {
                 <LogOut className="w-3.5 h-3.5" />
                 Cerrar sesión
               </button>
-              <p className="text-[10px] text-slate-300 mt-2">Clínica Josefina Arregui · Alsasua · v1.0.0</p>
+              <p className="text-xs text-slate-400 mt-2">Clínica Josefina Arregui · Alsasua · v1.0.0</p>
             </div>
           ) : (
             <div className="py-3 flex justify-center">
               <button
                 onClick={signOut}
                 title="Cerrar sesión"
-                className="text-slate-400 hover:text-red-600 transition-colors p-1"
+                className="text-slate-500 hover:text-red-600 transition-colors p-1"
               >
                 <LogOut className="w-4 h-4" />
               </button>

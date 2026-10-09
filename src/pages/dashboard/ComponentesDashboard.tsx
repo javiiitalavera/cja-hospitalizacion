@@ -5,11 +5,11 @@ import { AlertCircle, RefreshCw } from 'lucide-react'
 // confunde con "no se pudo calcular".
 
 export function EstadoCargando() {
-  return <p className="text-slate-400 text-sm py-6 text-center">Cargando…</p>
+  return <p className="text-slate-500 text-sm py-6 text-center">Cargando…</p>
 }
 
 export function EstadoSinDatos({ mensaje = 'Sin datos para este periodo.' }: { mensaje?: string }) {
-  return <p className="text-slate-400 text-sm py-6 text-center">{mensaje}</p>
+  return <p className="text-slate-500 text-sm py-6 text-center">{mensaje}</p>
 }
 
 export function EstadoError({ mensaje, onReintentar }: { mensaje: string; onReintentar: () => void }) {
@@ -41,9 +41,9 @@ export function TarjetaMetrica({ etiqueta, valor, subvalor, comparacion, onClick
       onClick={onClick}
       className={`card p-4 text-left ${onClick ? 'hover:border-primary-300 hover:bg-primary-50/20 transition-colors cursor-pointer' : ''}`}
     >
-      <p className="text-xs text-slate-400 font-medium">{etiqueta}</p>
+      <p className="text-xs text-slate-500 font-medium">{etiqueta}</p>
       <p className="text-2xl font-bold text-slate-800 mt-1">{valor}</p>
-      {subvalor && <p className="text-xs text-slate-400 mt-0.5">{subvalor}</p>}
+      {subvalor && <p className="text-xs text-slate-500 mt-0.5">{subvalor}</p>}
       {comparacion && <p className="text-xs text-slate-500 mt-1.5">{comparacion}</p>}
     </Contenedor>
   )

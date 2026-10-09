@@ -129,7 +129,7 @@ export function Dashboard() {
   return (
     <div className="p-6 md:p-8 space-y-6 max-w-6xl">
       <div className="flex items-center gap-2">
-        <LayoutDashboard className="w-5 h-5 text-slate-400" />
+        <LayoutDashboard className="w-5 h-5 text-slate-500" />
         <h1 className="text-2xl font-bold text-slate-800">Dashboard</h1>
       </div>
 
@@ -143,7 +143,7 @@ export function Dashboard() {
             className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
               vista === v.valor ? 'border-primary-600 text-primary-700'
               : v.disponible ? 'border-transparent text-slate-500 hover:text-slate-700'
-              : 'border-transparent text-slate-300 cursor-not-allowed'
+              : 'border-transparent text-slate-400 cursor-not-allowed'
             }`}
           >
             {v.etiqueta}
@@ -171,7 +171,7 @@ export function Dashboard() {
       )}
       {vista === 'explorador' && <ExploradorEpisodios />}
       {vista !== 'resumen' && vista !== 'actividad' && vista !== 'explorador' && vista !== 'seguridad' && (
-        <div className="card p-10 text-center text-slate-400 text-sm">
+        <div className="card p-10 text-center text-slate-500 text-sm">
           Esta vista se construye en una ronda posterior.
         </div>
       )}

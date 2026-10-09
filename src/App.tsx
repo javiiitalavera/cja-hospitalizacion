@@ -23,7 +23,7 @@ const Informes = lazy(() => import('./pages/Informes').then((m) => ({ default: m
 // (solo se ve un instante, y solo la primera vez que se visita cada
 // pantalla en la sesión: el navegador la guarda en caché después).
 function CargandoPagina() {
-  return <div className="p-8 text-slate-400 text-sm">Cargando…</div>
+  return <div className="p-8 text-slate-500 text-sm">Cargando…</div>
 }
 
 // La ficha se vuelve a montar entera al cambiar de paciente (flechas y
@@ -40,7 +40,7 @@ function RequireAuth() {
 
   // Mientras comprobamos si hay sesión, pantalla de espera sobria.
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center text-slate-400">Cargando…</div>
+    return <div className="min-h-screen flex items-center justify-center text-slate-500">Cargando…</div>
   }
 
   // Sin sesión → al login.

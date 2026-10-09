@@ -5,8 +5,32 @@
 @tailwind utilities;
 
 @layer base {
+  /* Tamaño base un 10 % mayor (equivale a un zoom del navegador del 110 %,
+     pero fijo): toda la app está en rem, así que todo crece a la vez.
+     En los monitores antiguos de 1080p a zoom 100 % el texto de 12-14 px
+     quedaba demasiado pequeño. */
+  html {
+    font-size: 110%;
+  }
   body {
     @apply bg-slate-50 text-slate-800 font-sans;
+  }
+  /* El gris por defecto de los placeholders es demasiado claro. */
+  input::placeholder,
+  textarea::placeholder {
+    color: #64748b; /* slate-500 */
+    opacity: 1;
+  }
+}
+
+/* Pantallas de baja densidad (monitores antiguos, ~1x): ahí IBM Plex Sans
+   se ve fina y borrosa; se usa la fuente propia del sistema (Segoe UI en
+   Windows), que viene optimizada para esas pantallas. En Mac/Retina
+   (2x) no se aplica y se sigue viendo IBM Plex Sans.
+   Para volver atrás basta con borrar este bloque. */
+@media (max-resolution: 1.25dppx) {
+  body {
+    font-family: system-ui, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   }
 }
 

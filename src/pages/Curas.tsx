@@ -151,7 +151,7 @@ export default function Curas() {
       {errorAccion && <p className="mb-4 text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{errorAccion}</p>}
 
       {!loading && !error && pacientes.length === 0 && (
-        <div className="card p-8 text-center text-sm text-slate-400">
+        <div className="card p-8 text-center text-sm text-slate-500">
           No hay pacientes con curas activas. Las lesiones y cuidados se añaden en la ficha de cada paciente, pestaña Plan de cuidados → Curas.
         </div>
       )}
@@ -217,7 +217,7 @@ export default function Curas() {
                 ))}
               </tbody>
             </table>
-            <p className="px-4 py-2 text-xs text-slate-400 border-t">
+            <p className="px-4 py-2 text-xs text-slate-500 border-t">
               Verde: cura hecha · ámbar: tocaba según la pauta y no está marcada · borde discontinuo: toca ese día.
             </p>
           </div>

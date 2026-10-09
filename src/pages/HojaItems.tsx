@@ -238,15 +238,15 @@ export default function HojaItems() {
     [esMedico, navigate]
   )
 
-  if (loading) return <div className="p-8 text-slate-400">Cargando…</div>
+  if (loading) return <div className="p-8 text-slate-500">Cargando…</div>
 
   return (
     <div className={`p-4 transition-all duration-200 ${selected ? 'mr-80' : ''}`}>
       <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Hoja de ítems</h1>
-          <p className="text-sm text-slate-400 capitalize">{today}</p>
-          {!selected && <p className="text-xs text-slate-400 mt-0.5">Click en un paciente para editar sus ítems</p>}
+          <p className="text-sm text-slate-500 capitalize">{today}</p>
+          {!selected && <p className="text-xs text-slate-500 mt-0.5">Click en un paciente para editar sus ítems</p>}
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 text-xs text-slate-500">
@@ -323,7 +323,7 @@ export default function HojaItems() {
           {/* MODO FECHA */}
           {modoHistorico === 'fecha' &&
             (fechasSnapshot.length === 0 ? (
-              <div className="card p-10 text-center text-slate-400 text-sm">No hay snapshots guardados aún.</div>
+              <div className="card p-10 text-center text-slate-500 text-sm">No hay snapshots guardados aún.</div>
             ) : (
               <>
                 <div className="flex items-center gap-3">
@@ -336,7 +336,7 @@ export default function HojaItems() {
                       if (e.target.value) cargarSnapshot(e.target.value)
                     }}
                   />
-                  <span className="text-sm text-slate-400">
+                  <span className="text-sm text-slate-500">
                     {fechaSeleccionada &&
                       new Date(fechaSeleccionada).toLocaleDateString('es-ES', {
                         weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
@@ -358,9 +358,9 @@ export default function HojaItems() {
                   )}
                 </div>
                 {loadingSnapshot ? (
-                  <div className="text-slate-400 text-sm py-8 text-center">Cargando…</div>
+                  <div className="text-slate-500 text-sm py-8 text-center">Cargando…</div>
                 ) : snapshotData.length === 0 ? (
-                  <div className="card p-8 text-center text-slate-400 text-sm">Sin datos para esta fecha.</div>
+                  <div className="card p-8 text-center text-slate-500 text-sm">Sin datos para esta fecha.</div>
                 ) : (
                   (() => {
                     const converted = snapshotToIngresos(snapshotData)
@@ -395,22 +395,22 @@ export default function HojaItems() {
                   ))}
                 </select>
                 {pacientesConHistorial.length === 0 && (
-                  <p className="text-xs text-slate-400 mt-1">Ningún paciente tiene todavía histórico registrado.</p>
+                  <p className="text-xs text-slate-500 mt-1">Ningún paciente tiene todavía histórico registrado.</p>
                 )}
               </div>
 
               {pacienteSeleccionadoHist &&
                 (loadingHistorial ? (
-                  <div className="text-slate-400 text-sm py-8 text-center">Cargando historial…</div>
+                  <div className="text-slate-500 text-sm py-8 text-center">Cargando historial…</div>
                 ) : historialPaciente.length === 0 ? (
-                  <div className="card p-8 text-center text-slate-400 text-sm">
+                  <div className="card p-8 text-center text-slate-500 text-sm">
                     Sin histórico de ítems para {pacienteSeleccionadoHist.primer_apellido}, {pacienteSeleccionadoHist.nombre}.
                   </div>
                 ) : (
                   <div className="space-y-3">
                     <p className="text-sm font-semibold text-slate-700">
                       {pacienteSeleccionadoHist.primer_apellido}, {pacienteSeleccionadoHist.nombre}
-                      <span className="font-normal text-slate-400 ml-2">· {historialPaciente.length} registros</span>
+                      <span className="font-normal text-slate-500 ml-2">· {historialPaciente.length} registros</span>
                     </p>
                     {/* Antes solo se mostraban 8 de más de 25 campos
                         registrados. Con tantas columnas, hace falta
@@ -458,7 +458,7 @@ export default function HojaItems() {
                                   const cambio = !esUltimo && JSON.stringify(it[f.key]) !== JSON.stringify(prev[f.key])
                                   return (
                                     <td key={f.key} className={`px-3 py-2 whitespace-nowrap ${
-                                      noDisponible ? 'text-slate-300 italic' : cambio ? 'font-semibold text-primary-700' : 'text-slate-600'
+                                      noDisponible ? 'text-slate-400 italic' : cambio ? 'font-semibold text-primary-700' : 'text-slate-600'
                                     }`}>
                                       {valor}
                                     </td>

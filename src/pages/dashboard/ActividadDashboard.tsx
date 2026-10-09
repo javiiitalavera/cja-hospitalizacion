@@ -95,8 +95,8 @@ export function ActividadDashboard({ filtros, desde, hasta, onExplorar }: {
             <ResponsiveContainer width="100%" height={260}>
               <LineChart data={series.ocupacion_diaria}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="fecha" tick={{ fontSize: 10 }} />
-                <YAxis tick={{ fontSize: 10 }} />
+                <XAxis dataKey="fecha" tick={{ fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 12 }} />
                 <Tooltip />
                 <Line type="monotone" dataKey="camas" stroke="#2563eb" strokeWidth={2} dot={false} name="Camas ocupadas" />
               </LineChart>
@@ -123,8 +123,8 @@ export function ActividadDashboard({ filtros, desde, hasta, onExplorar }: {
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={series.movimientos}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="inicio" tick={{ fontSize: 10 }} />
-                <YAxis tick={{ fontSize: 10 }} />
+                <XAxis dataKey="inicio" tick={{ fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 12 }} />
                 <Tooltip />
                 <Bar dataKey="ingresos" fill="#2563eb" name="Ingresos" />
                 <Bar dataKey="salidas" fill="#94a3b8" name="Salidas" />
@@ -182,7 +182,7 @@ export function ActividadDashboard({ filtros, desde, hasta, onExplorar }: {
       {/* ── Reparto por médico responsable ───────────────────── */}
       <section>
         <p className="section-title">Ingresos por médico responsable</p>
-        <p className="text-xs text-slate-400 -mt-3 mb-2">
+        <p className="text-xs text-slate-500 -mt-3 mb-2">
           Un recuento, no una medida de productividad — y no refleja cambios de médico responsable durante el ingreso, que la aplicación no registra.
         </p>
         <div className="card overflow-hidden">
@@ -213,7 +213,7 @@ export function ActividadDashboard({ filtros, desde, hasta, onExplorar }: {
       {/* ── Edad y sexo: información secundaria ──────────────── */}
       <section>
         <p className="section-title">Edad y sexo · información secundaria</p>
-        <p className="text-xs text-slate-400 -mt-3 mb-2">
+        <p className="text-xs text-slate-500 -mt-3 mb-2">
           Cuenta pacientes distintos con algún ingreso en el periodo (no episodios), con la edad de su primer ingreso del periodo.
         </p>
         {estadoDetalle === 'listo' && detalle && (

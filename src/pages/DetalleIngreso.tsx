@@ -163,7 +163,7 @@ export default function DetalleIngreso() {
     setModalAlta(false)
   }
 
-  if (loading) return <div className="p-8 text-slate-400">Cargando…</div>
+  if (loading) return <div className="p-8 text-slate-500">Cargando…</div>
   if (errorCarga) {
     return (
       <div className="p-8">
@@ -175,7 +175,7 @@ export default function DetalleIngreso() {
       </div>
     )
   }
-  if (!ingreso) return <div className="p-8 text-slate-400">Ingreso no encontrado</div>
+  if (!ingreso) return <div className="p-8 text-slate-500">Ingreso no encontrado</div>
 
   // Un episodio ya cerrado (alta, traslado o éxitus) pasa a ser solo lectura
   // para todo el mundo, médico incluido. Corregir algo después del cierre
@@ -223,7 +223,7 @@ export default function DetalleIngreso() {
       <div className="border-b bg-white px-8 py-4">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <button onClick={() => navigate(-1)} className="text-slate-400 hover:text-slate-600 mt-1">
+            <button onClick={() => navigate(-1)} className="text-slate-500 hover:text-slate-600 mt-1">
               <ChevronLeft className="w-5 h-5" />
             </button>
             <div>
@@ -320,7 +320,7 @@ export default function DetalleIngreso() {
               <Icon className="w-3.5 h-3.5" />
               {label}
               {enConstruccion && (
-                <span className="ml-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                <span className="ml-1 text-xs font-medium px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
                   en construcción
                 </span>
               )}
@@ -396,7 +396,7 @@ export default function DetalleIngreso() {
               >
                 {s.label}
                 {s.enConstruccion && (
-                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                  <span className="text-xs font-medium px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
                     en construcción
                   </span>
                 )}

@@ -193,13 +193,13 @@ export default function FormularioEvento({ ingresoId, eventoExistente, onClose, 
               {eventoExistente ? 'Editar incidencia' : 'Registrar incidencia'}
             </h2>
             {pacienteInfo && (
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-500 mt-0.5">
                 {pacienteInfo.nombre}
                 {pacienteInfo.habitacion != null && ` · Hab. ${pacienteInfo.habitacion}`}
               </p>
             )}
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+          <button onClick={onClose} className="text-slate-500 hover:text-slate-600">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -284,11 +284,11 @@ export default function FormularioEvento({ ingresoId, eventoExistente, onClose, 
             <span className="text-xs font-medium text-slate-500">Estado de la incidencia</span>
             <div className="flex gap-1 ml-auto">
               <button type="button" onClick={() => setEstado('completa')}
-                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${estado === 'completa' ? 'bg-emerald-100 text-emerald-700' : 'text-slate-400 hover:bg-slate-100'}`}>
+                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${estado === 'completa' ? 'bg-emerald-100 text-emerald-700' : 'text-slate-500 hover:bg-slate-100'}`}>
                 Completa
               </button>
               <button type="button" onClick={() => setEstado('pendiente')}
-                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${estado === 'pendiente' ? 'bg-amber-100 text-amber-700' : 'text-slate-400 hover:bg-slate-100'}`}>
+                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${estado === 'pendiente' ? 'bg-amber-100 text-amber-700' : 'text-slate-500 hover:bg-slate-100'}`}>
                 Pendiente de completar
               </button>
             </div>

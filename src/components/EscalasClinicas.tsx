@@ -26,7 +26,7 @@ export function TarjetaEscala({ titulo, resultado, incompleta, onAbrir, soloLect
       <span className="text-sm font-medium text-slate-700">{titulo}</span>
       <span className="flex items-center gap-3">
         <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
-          incompleta ? 'bg-slate-100 text-slate-400' : 'bg-primary-50 text-primary-700'
+          incompleta ? 'bg-slate-100 text-slate-500' : 'bg-primary-50 text-primary-700'
         }`}>
           {resultado}
         </span>
@@ -51,7 +51,7 @@ export function ModalEscala({ titulo, onCerrar, children }: {
       >
         <div className="flex items-center justify-between px-6 py-4 border-b shrink-0">
           <h3 className="font-bold text-slate-800">{titulo}</h3>
-          <button onClick={onCerrar} className="text-slate-400 hover:text-slate-600">
+          <button onClick={onCerrar} className="text-slate-500 hover:text-slate-600">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -69,7 +69,7 @@ export function ModalEscala({ titulo, onCerrar, children }: {
 function Resultado({ valor, max, etiqueta }: { valor: number | null; max: string; etiqueta?: string }) {
   return (
     <span className={`text-sm font-semibold px-2.5 py-1 rounded-full ${
-      valor == null ? 'bg-slate-100 text-slate-400' : 'bg-primary-50 text-primary-700'
+      valor == null ? 'bg-slate-100 text-slate-500' : 'bg-primary-50 text-primary-700'
     }`}>
       {valor == null ? 'Incompleta' : `${etiqueta ?? ''}${valor}/${max}`}
     </span>
@@ -87,7 +87,7 @@ function ItemRadio({ item, valor, onChange, disabled }: {
       <p className="text-sm font-medium text-slate-700 mb-1.5">{item.label}</p>
       <div className="space-y-1">
         {item.opciones.map((o) => (
-          <label key={o.valor} className={`flex items-center gap-2 text-sm ${disabled ? 'text-slate-400' : 'text-slate-600 cursor-pointer'}`}>
+          <label key={o.valor} className={`flex items-center gap-2 text-sm ${disabled ? 'text-slate-500' : 'text-slate-600 cursor-pointer'}`}>
             <input
               type="radio"
               name={item.key}
@@ -183,13 +183,13 @@ export function EscalaNPIQ({ value, onChange, disabled }: {
             <div key={dominio.key} className="py-2.5 border-b last:border-0">
               <p className="text-sm font-medium text-slate-700 mb-1.5">{dominio.label}</p>
               <div className="flex items-center gap-4 flex-wrap">
-                <label className={`flex items-center gap-1.5 text-sm ${disabled ? 'text-slate-400' : 'text-slate-600 cursor-pointer'}`}>
+                <label className={`flex items-center gap-1.5 text-sm ${disabled ? 'text-slate-500' : 'text-slate-600 cursor-pointer'}`}>
                   <input type="radio" name={`${dominio.key}-nivel`} checked={valorActual === 'ausente'} disabled={disabled}
                     onChange={() => marcar(dominio.key, 'ausente')} />
                   Ausente
                 </label>
                 {NPI_GRAVEDAD_OPCIONES.map((o) => (
-                  <label key={o.valor} className={`flex items-center gap-1.5 text-sm ${disabled ? 'text-slate-400' : 'text-slate-600 cursor-pointer'}`}>
+                  <label key={o.valor} className={`flex items-center gap-1.5 text-sm ${disabled ? 'text-slate-500' : 'text-slate-600 cursor-pointer'}`}>
                     <input type="radio" name={`${dominio.key}-nivel`} checked={valorActual === o.valor} disabled={disabled}
                       onChange={() => marcar(dominio.key, o.valor)} />
                     {o.etiqueta}
@@ -239,7 +239,7 @@ export function EscalaGDSFAST({ gds, fast, onCambiarGds, onChangeFast, disabled 
       </div>
       <div className="bg-white rounded-lg border divide-y">
         {GDS_ESTADIOS.map((e) => (
-          <label key={e.estadio} className={`flex items-center gap-2.5 px-3 py-2.5 text-sm ${disabled ? 'text-slate-400' : 'text-slate-600 cursor-pointer hover:bg-slate-50'}`}>
+          <label key={e.estadio} className={`flex items-center gap-2.5 px-3 py-2.5 text-sm ${disabled ? 'text-slate-500' : 'text-slate-600 cursor-pointer hover:bg-slate-50'}`}>
             <input type="radio" name="gds" checked={gds === e.estadio} disabled={disabled}
               onChange={() => elegirGds(e.estadio)} className="shrink-0" />
             <span><span className="font-semibold">{e.estadio}.</span> {e.corto}</span>
@@ -253,7 +253,7 @@ export function EscalaGDSFAST({ gds, fast, onCambiarGds, onChangeFast, disabled 
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Subestadio FAST {gds}</p>
           <div className="bg-white rounded-lg border divide-y">
             {subestadios.map((e) => (
-              <label key={e.estadio} className={`flex items-center gap-2.5 px-3 py-2 text-sm ${disabled ? 'text-slate-400' : 'text-slate-600 cursor-pointer hover:bg-slate-50'}`}>
+              <label key={e.estadio} className={`flex items-center gap-2.5 px-3 py-2 text-sm ${disabled ? 'text-slate-500' : 'text-slate-600 cursor-pointer hover:bg-slate-50'}`}>
                 <input type="radio" name="fast-sub" checked={fast === e.estadio} disabled={disabled}
                   onChange={() => onChangeFast(e.estadio)} className="shrink-0" />
                 <span><span className="font-semibold">{e.estadio}.</span> {e.corto}</span>

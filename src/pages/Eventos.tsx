@@ -360,7 +360,7 @@ export function Eventos() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Incidencias</h1>
-          <p className="text-sm text-slate-400 mt-0.5">Estado de seguridad de la planta</p>
+          <p className="text-sm text-slate-500 mt-0.5">Estado de seguridad de la planta</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -391,7 +391,7 @@ export function Eventos() {
             />
             <div className="max-h-64 overflow-y-auto -mx-1 px-1">
               {pacientesFiltrados.length === 0 ? (
-                <p className="text-sm text-slate-400 text-center py-6">Sin resultados.</p>
+                <p className="text-sm text-slate-500 text-center py-6">Sin resultados.</p>
               ) : (
                 pacientesFiltrados.map((i) => (
                   <button
@@ -400,12 +400,12 @@ export function Eventos() {
                     className="w-full flex items-center justify-between text-left px-3 py-2 rounded-lg hover:bg-slate-50 text-sm"
                   >
                     <span className="font-medium text-slate-700">{nombreCompleto(i.paciente)}</span>
-                    <span className="text-slate-400 text-xs">Hab. {i.habitacion ?? '—'}</span>
+                    <span className="text-slate-500 text-xs">Hab. {i.habitacion ?? '—'}</span>
                   </button>
                 ))
               )}
             </div>
-            <button onClick={() => setSelectorPaciente(false)} className="text-xs text-slate-400 hover:text-slate-600">
+            <button onClick={() => setSelectorPaciente(false)} className="text-xs text-slate-500 hover:text-slate-600">
               Cancelar
             </button>
           </div>
@@ -446,9 +446,9 @@ export function Eventos() {
                         {TIPO_EVENTO_LABEL[ev.tipo]}
                       </span>
                       <span className="font-medium text-slate-700">{nombreCompleto(ev.ingreso.paciente)}</span>
-                      <span className="text-slate-400">Hab. {ev.ingreso.habitacion ?? '—'}</span>
+                      <span className="text-slate-500">Hab. {ev.ingreso.habitacion ?? '—'}</span>
                     </span>
-                    <span className="text-xs text-slate-400">{new Date(ev.fecha).toLocaleDateString('es-ES')}</span>
+                    <span className="text-xs text-slate-500">{new Date(ev.fecha).toLocaleDateString('es-ES')}</span>
                   </button>
                 ))}
               </div>
@@ -462,11 +462,11 @@ export function Eventos() {
         <p className="section-title">Contenciones activas · ingresos activos</p>
         <div className="card overflow-hidden">
           {loadingContenciones ? (
-            <p className="px-4 py-8 text-center text-slate-400 text-sm">Cargando…</p>
+            <p className="px-4 py-8 text-center text-slate-500 text-sm">Cargando…</p>
           ) : errorContenciones ? (
             <p className="px-4 py-8 text-center text-red-600 text-sm">{errorContenciones}</p>
           ) : contenciones.length === 0 ? (
-            <p className="px-4 py-8 text-center text-slate-400 text-sm">Ningún paciente ingresado tiene contención pautada ahora mismo.</p>
+            <p className="px-4 py-8 text-center text-slate-500 text-sm">Ningún paciente ingresado tiene contención pautada ahora mismo.</p>
           ) : (
             <table className="w-full text-sm">
               <thead>
@@ -492,16 +492,16 @@ export function Eventos() {
                           <span className={`px-2 py-0.5 rounded text-xs font-medium ${SEVERIDAD_ESTILO[sevDia].bg} ${SEVERIDAD_ESTILO[sevDia].text}`}>
                             {CONTENCION_DIA_LABEL[c.dia as ContencionDia]}
                           </span>
-                        ) : <span className="text-slate-300">—</span>}
+                        ) : <span className="text-slate-400">—</span>}
                       </td>
                       <td className="px-4 py-2.5">
                         {nocheReal.length > 0 ? (
                           <span className={`px-2 py-0.5 rounded text-xs font-medium ${SEVERIDAD_ESTILO[sevNoche].bg} ${SEVERIDAD_ESTILO[sevNoche].text}`}>
                             {nocheReal.map((n) => CONTENCION_NOCHE_LABEL[n]).join(', ')}
                           </span>
-                        ) : <span className="text-slate-300">—</span>}
+                        ) : <span className="text-slate-400">—</span>}
                       </td>
-                      <td className="px-4 py-2.5 text-slate-400 text-xs">
+                      <td className="px-4 py-2.5 text-slate-500 text-xs">
                         {c.actualizado_en ? new Date(c.actualizado_en).toLocaleDateString('es-ES') : '—'}
                       </td>
                     </tr>
@@ -542,7 +542,7 @@ export function Eventos() {
             </thead>
             <tbody className="divide-y">
               {loadingEstado ? (
-                <tr><td colSpan={4} className="px-4 py-8 text-center text-slate-400">Cargando…</td></tr>
+                <tr><td colSpan={4} className="px-4 py-8 text-center text-slate-500">Cargando…</td></tr>
               ) : errorEstado ? (
                 <tr><td colSpan={4} className="px-4 py-8 text-center">
                   <p className="text-red-600 text-sm mb-2">{errorEstado}</p>
@@ -661,7 +661,7 @@ export function Eventos() {
               )}
             </div>
             {resultados.length === 0 ? (
-              <p className="px-4 py-8 text-center text-slate-400 text-sm">Sin incidencias con estos filtros.</p>
+              <p className="px-4 py-8 text-center text-slate-500 text-sm">Sin incidencias con estos filtros.</p>
             ) : (
               <table className="w-full text-sm">
                 <thead>
@@ -693,7 +693,7 @@ export function Eventos() {
                         {ev.estado === 'pendiente' ? (
                           <span className="text-amber-600 text-xs font-medium">Pendiente</span>
                         ) : (
-                          <span className="text-slate-400 text-xs">Completa</span>
+                          <span className="text-slate-500 text-xs">Completa</span>
                         )}
                       </td>
                       <td className="px-4 py-2 font-medium text-slate-700">
@@ -703,7 +703,7 @@ export function Eventos() {
                         {ev.ingreso?.estado === 'activo' ? (
                           <span className="text-emerald-600">Activo</span>
                         ) : (
-                          <span className="text-slate-400">Cerrado</span>
+                          <span className="text-slate-500">Cerrado</span>
                         )}
                       </td>
                     </tr>
@@ -731,17 +731,17 @@ function FilaTipo({ resumen, filas, abierto, onToggle, onClickPaciente }: {
   return (
     <>
       <tr className="hover:bg-slate-50 transition-colors cursor-pointer" onClick={onToggle}>
-        <td className="px-4 py-2.5 text-slate-400">
+        <td className="px-4 py-2.5 text-slate-500">
           {resumen.totalIncidencias > 0 && (abierto ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRightIcon className="w-3.5 h-3.5" />)}
         </td>
         <td className="px-4 py-2.5 font-medium text-slate-700">{TIPO_EVENTO_LABEL[resumen.tipo]}</td>
         <td className="px-4 py-2.5 text-right tabular-nums">
           {resumen.pacientesAfectados === 0
-            ? <span className="text-slate-300">—</span>
+            ? <span className="text-slate-400">—</span>
             : <span className="font-semibold text-slate-800">{resumen.pacientesAfectados}</span>}
         </td>
         <td className="px-4 py-2.5 text-right tabular-nums text-slate-500">
-          {resumen.totalIncidencias || <span className="text-slate-300">—</span>}
+          {resumen.totalIncidencias || <span className="text-slate-400">—</span>}
         </td>
       </tr>
       {abierto && filas.length > 0 && (
@@ -750,7 +750,7 @@ function FilaTipo({ resumen, filas, abierto, onToggle, onClickPaciente }: {
             <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
               <table className="w-full text-xs">
                 <thead>
-                  <tr className="border-b bg-slate-100 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wide">
+                  <tr className="border-b bg-slate-100 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
                     <th className="px-3 py-2">Fecha</th>
                     <th className="px-3 py-2">Turno</th>
                     <th className="px-3 py-2">Paciente</th>

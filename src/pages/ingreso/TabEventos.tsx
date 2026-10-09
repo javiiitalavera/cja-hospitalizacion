@@ -90,14 +90,14 @@ function TabEventos({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteIn
       </div>
 
       {loading ? (
-        <div className="text-slate-400 text-sm py-8 text-center">Cargando…</div>
+        <div className="text-slate-500 text-sm py-8 text-center">Cargando…</div>
       ) : errorCarga ? (
         <div className="card p-10 text-center space-y-2">
           <p className="text-red-600 text-sm">{errorCarga}</p>
           <button onClick={fetchEventos} className="btn-secondary text-xs">Reintentar</button>
         </div>
       ) : eventos.length === 0 ? (
-        <div className="card p-10 text-center text-slate-400 text-sm">
+        <div className="card p-10 text-center text-slate-500 text-sm">
           No hay incidencias registradas en este ingreso.
         </div>
       ) : (
@@ -132,7 +132,7 @@ function TabEventos({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteIn
                             clave técnica ("con lesion", sin tilde) — con
                             las etiquetas reales de CAMPOS_POR_TIPO se ve
                             igual de cuidado que el resto de la app. */}
-                        <span className="text-slate-400">
+                        <span className="text-slate-500">
                           {CAMPOS_POR_TIPO[ev.tipo]?.find((c) => c.key === k)?.label ?? k.replace(/_/g, ' ')}:{' '}
                         </span>
                         <span className="text-slate-700 font-medium">{v}</span>
@@ -148,7 +148,7 @@ function TabEventos({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteIn
 
                   {/* Firma */}
                   {ev.registrado_por && (
-                    <p className="text-xs text-slate-400 mt-2">
+                    <p className="text-xs text-slate-500 mt-2">
                       Registrado por {ev.registrado_por.nombre} {ev.registrado_por.apellidos}
                       {' · '}<span className="capitalize">{ev.registrado_por.rol}</span>
                     </p>
@@ -163,13 +163,13 @@ function TabEventos({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteIn
                   <div className="flex gap-1 shrink-0">
                     {puedeEditar() && (
                       <button onClick={() => abrirEditar(ev)}
-                        className="p-1.5 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors">
+                        className="p-1.5 text-slate-500 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors">
                         <Pencil className="w-3.5 h-3.5" />
                       </button>
                     )}
                     {puedeBorrar(ev) && (
                       <button onClick={() => eliminar(ev.id)}
-                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                        className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     )}

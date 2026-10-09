@@ -142,7 +142,7 @@ export function Informes() {
     <div className="p-6 md:p-8">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-slate-800">Informes</h1>
-        <p className="text-sm text-slate-400 mt-0.5">
+        <p className="text-sm text-slate-500 mt-0.5">
           {loading ? '…' : `${lista.length} informe${lista.length !== 1 ? 's' : ''}`} · historial de informes de ingreso y alta
         </p>
         {posibleTruncado && (
@@ -154,7 +154,7 @@ export function Informes() {
 
       <div className="flex gap-3 mb-5 flex-wrap items-center">
         <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
           <input
             className="input pl-9"
             placeholder="Buscar por paciente o NHC…"
@@ -203,9 +203,9 @@ export function Informes() {
           </thead>
           <tbody className="divide-y">
             {loading ? (
-              <tr><td colSpan={7} className="px-4 py-12 text-center text-slate-400">Cargando…</td></tr>
+              <tr><td colSpan={7} className="px-4 py-12 text-center text-slate-500">Cargando…</td></tr>
             ) : lista.length === 0 ? (
-              <tr><td colSpan={7} className="px-4 py-12 text-center text-slate-400">No hay informes con estos filtros.</td></tr>
+              <tr><td colSpan={7} className="px-4 py-12 text-center text-slate-500">No hay informes con estos filtros.</td></tr>
             ) : lista.map(r => (
               <tr key={`${r.tipo}-${r.id}`}
                 className="hover:bg-slate-50 transition-colors cursor-pointer"
@@ -226,7 +226,7 @@ export function Informes() {
                       informe vacío no se distinguía de uno normal a
                       medio rellenar. */}
                   <span className={`text-xs font-medium ${
-                    r.estadoInforme === 'sin_iniciar' ? 'text-slate-400 italic'
+                    r.estadoInforme === 'sin_iniciar' ? 'text-slate-500 italic'
                     : r.estadoInforme === 'en_elaboracion' ? 'text-amber-600'
                     : r.estadoInforme === 'cerrado' ? 'text-emerald-600'
                     : 'text-red-600 font-semibold'
@@ -238,7 +238,7 @@ export function Informes() {
                   </span>
                 </td>
                 <td className="px-4 py-3 font-medium text-slate-800">{r.paciente}</td>
-                <td className="px-4 py-3 text-slate-500 text-xs font-mono">{r.nhc || <span className="text-slate-300">—</span>}</td>
+                <td className="px-4 py-3 text-slate-500 text-xs font-mono">{r.nhc || <span className="text-slate-400">—</span>}</td>
                 <td className="px-4 py-3 text-slate-500 text-xs">
                   {r.fecha ? new Date(r.fecha).toLocaleDateString('es-ES') : '—'}
                 </td>

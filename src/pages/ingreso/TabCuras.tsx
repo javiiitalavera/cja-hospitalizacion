@@ -22,7 +22,7 @@ function Modal({ titulo, onClose, children }: { titulo: string; onClose: () => v
       >
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-base font-bold text-slate-800">{titulo}</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600" aria-label="Cerrar">
+          <button onClick={onClose} className="text-slate-500 hover:text-slate-600" aria-label="Cerrar">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -396,15 +396,15 @@ function TarjetaLesion({
         {puedeEditar && (
           <div className="flex items-center gap-1 shrink-0">
             {!curada && <button onClick={onNuevaValoracion} className="btn-secondary !px-3 !py-1.5 text-xs"><Plus className="w-3.5 h-3.5" />Valoración</button>}
-            <button onClick={onEditarLesion} title="Editar" className="p-1.5 text-slate-400 hover:text-slate-600"><Pencil className="w-4 h-4" /></button>
-            {puedeBorrar && <button onClick={onEliminarLesion} title="Eliminar" className="p-1.5 text-slate-400 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>}
+            <button onClick={onEditarLesion} title="Editar" className="p-1.5 text-slate-500 hover:text-slate-600"><Pencil className="w-4 h-4" /></button>
+            {puedeBorrar && <button onClick={onEliminarLesion} title="Eliminar" className="p-1.5 text-slate-500 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>}
           </div>
         )}
       </div>
 
       {!curada && (
         <div className="mt-3 rounded-lg bg-primary-50/60 border border-primary-100 px-3 py-2">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-primary-700">Pauta actual</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-primary-700">Pauta actual</p>
           <p className="text-sm text-slate-800">{textoPauta(vigente)}</p>
         </div>
       )}
@@ -435,7 +435,7 @@ function TarjetaLesion({
 
       {abierta && (
         vals.length === 0 ? (
-          <p className="text-xs text-slate-400 mt-2">Todavía no hay valoraciones.</p>
+          <p className="text-xs text-slate-500 mt-2">Todavía no hay valoraciones.</p>
         ) : (
           <div className="mt-2 overflow-x-auto">
             <table className="w-full text-xs">
@@ -463,8 +463,8 @@ function TarjetaLesion({
                     <td className="py-1.5 pr-3">{v.emina ?? '—'}</td>
                     <td className="py-1.5 pr-3 max-w-[14rem]">{v.notas ?? ''}</td>
                     <td className="py-1.5 whitespace-nowrap">
-                      {puedeEditar && <button onClick={() => onEditarValoracion(v)} title="Editar" className="p-1 text-slate-400 hover:text-slate-600"><Pencil className="w-3.5 h-3.5" /></button>}
-                      {puedeBorrarValoracion(v) && <button onClick={() => onEliminarValoracion(v)} title="Eliminar" className="p-1 text-slate-400 hover:text-red-600"><Trash2 className="w-3.5 h-3.5" /></button>}
+                      {puedeEditar && <button onClick={() => onEditarValoracion(v)} title="Editar" className="p-1 text-slate-500 hover:text-slate-600"><Pencil className="w-3.5 h-3.5" /></button>}
+                      {puedeBorrarValoracion(v) && <button onClick={() => onEliminarValoracion(v)} title="Eliminar" className="p-1 text-slate-500 hover:text-red-600"><Trash2 className="w-3.5 h-3.5" /></button>}
                     </td>
                   </tr>
                 ))}
@@ -543,7 +543,7 @@ export function TabCuras({ ingresoId, episodioActivo }: { ingresoId: string; epi
     await cargar()
   }
 
-  if (loading) return <p className="text-slate-400 text-sm">Cargando curas…</p>
+  if (loading) return <p className="text-slate-500 text-sm">Cargando curas…</p>
   if (errorCarga) {
     return (
       <div className="card p-6 max-w-md">
@@ -589,7 +589,7 @@ export function TabCuras({ ingresoId, episodioActivo }: { ingresoId: string; epi
       {errorAccion && <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{errorAccion}</p>}
 
       {lesiones.length === 0 ? (
-        <div className="card p-8 text-center text-sm text-slate-400">Este ingreso no tiene lesiones ni cuidados de piel registrados.</div>
+        <div className="card p-8 text-center text-sm text-slate-500">Este ingreso no tiene lesiones ni cuidados de piel registrados.</div>
       ) : (
         <>
           <div className="space-y-3">

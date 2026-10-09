@@ -230,7 +230,7 @@ export function Personal() {
       </div>
 
       {cargando ? (
-        <p className="text-slate-400">Cargando…</p>
+        <p className="text-slate-500">Cargando…</p>
       ) : (
         <div className="card overflow-hidden">
           <table className="w-full text-sm">
@@ -247,7 +247,7 @@ export function Personal() {
             </thead>
             <tbody>
               {listaFiltrada.length === 0 ? (
-                <tr><td colSpan={7} className="px-4 py-8 text-center text-slate-400">Nadie coincide con este filtro.</td></tr>
+                <tr><td colSpan={7} className="px-4 py-8 text-center text-slate-500">Nadie coincide con este filtro.</td></tr>
               ) : listaFiltrada.map((p) => {
                 const ocupada = busyId === p.id
                 const esYo = p.id === yo?.id
@@ -255,7 +255,7 @@ export function Personal() {
                 <tr key={p.id} className={`border-t border-slate-100 ${!p.activo ? 'opacity-50' : ''}`}>
                   <td className="px-4 py-2 text-slate-800">
                     {p.nombre} {p.apellidos}
-                    {!p.activo && <span className="ml-2 text-xs text-slate-400">(inactivo)</span>}
+                    {!p.activo && <span className="ml-2 text-xs text-slate-500">(inactivo)</span>}
                   </td>
                   <td className="px-4 py-2">
                     <select
@@ -281,7 +281,7 @@ export function Personal() {
                       </button>
                     )}
                   </td>
-                  <td className="px-4 py-2 text-slate-400 text-xs">
+                  <td className="px-4 py-2 text-slate-500 text-xs">
                     {p.user_id
                       ? accesos[p.user_id]?.ultimo_acceso
                         ? new Date(accesos[p.user_id]!.ultimo_acceso!).toLocaleDateString('es-ES')
@@ -309,14 +309,14 @@ export function Personal() {
                   <td className="px-4 py-2">
                     {ocupada ? (
                       <div className="flex justify-center">
-                        <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
+                        <Loader2 className="w-4 h-4 animate-spin text-slate-500" />
                       </div>
                     ) : (
                       <div className="flex items-center justify-center gap-3">
                         <button
                           onClick={() => setEditTarget(p)}
                           title="Editar datos"
-                          className="text-slate-400 hover:text-primary-600 transition-colors"
+                          className="text-slate-500 hover:text-primary-600 transition-colors"
                         >
                           <Pencil className="w-4 h-4" />
                         </button>
@@ -324,7 +324,7 @@ export function Personal() {
                           <button
                             onClick={() => setResetTarget(p)}
                             title="Restablecer contraseña"
-                            className="text-slate-400 hover:text-primary-600 transition-colors"
+                            className="text-slate-500 hover:text-primary-600 transition-colors"
                           >
                             <KeyRound className="w-4 h-4" />
                           </button>
@@ -333,7 +333,7 @@ export function Personal() {
                           <button
                             onClick={() => pedirEliminar(p)}
                             title="Eliminar por completo"
-                            className="text-slate-400 hover:text-red-600 transition-colors"
+                            className="text-slate-500 hover:text-red-600 transition-colors"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -349,7 +349,7 @@ export function Personal() {
         </div>
       )}
 
-      <p className="text-xs text-slate-400 mt-3 flex items-center gap-1">
+      <p className="text-xs text-slate-500 mt-3 flex items-center gap-1">
         <Shield className="w-3 h-3" />
         Crear un profesional genera su cuenta de acceso. Comunícale su contraseña de forma segura.
       </p>
@@ -469,7 +469,7 @@ function ModalPassword({ profesional, onCerrar }: { profesional: Profesional; on
       <div className="card p-6 w-full max-w-sm">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-semibold text-slate-800">Restablecer contraseña</h2>
-          <button onClick={onCerrar} className="text-slate-400 hover:text-slate-600">
+          <button onClick={onCerrar} className="text-slate-500 hover:text-slate-600">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -497,7 +497,7 @@ function ModalPassword({ profesional, onCerrar }: { profesional: Profesional; on
             <div>
               <label className="label">Nueva contraseña</label>
               <CampoContrasena value={password} onChange={setPassword} onEnter={guardar} />
-              <p className="text-[11px] text-slate-400 mt-1">Mínimo 8 caracteres.</p>
+              <p className="text-xs text-slate-500 mt-1">Mínimo 8 caracteres.</p>
             </div>
 
             {error && (
@@ -561,7 +561,7 @@ function FormularioNuevo({ onCerrar, onCreado }: { onCerrar: () => void; onCread
       <div className="card p-6 w-full max-w-md">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-semibold text-slate-800">Nuevo profesional</h2>
-          <button onClick={onCerrar} className="text-slate-400 hover:text-slate-600">
+          <button onClick={onCerrar} className="text-slate-500 hover:text-slate-600">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -604,7 +604,7 @@ function FormularioNuevo({ onCerrar, onCreado }: { onCerrar: () => void; onCread
           <div>
             <label className="label">Contraseña inicial</label>
             <CampoContrasena value={password} onChange={setPassword} />
-            <p className="text-[11px] text-slate-400 mt-1">Mínimo 8 caracteres. Comunícasela a la persona de forma segura.</p>
+            <p className="text-xs text-slate-500 mt-1">Mínimo 8 caracteres. Comunícasela a la persona de forma segura.</p>
           </div>
 
           {error && (
@@ -724,7 +724,7 @@ function ModalEditar({ profesional, emailActual, onCerrar, onGuardado }: {
       <div className="card p-6 w-full max-w-md">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-semibold text-slate-800">Editar profesional</h2>
-          <button onClick={onCerrar} className="text-slate-400 hover:text-slate-600">
+          <button onClick={onCerrar} className="text-slate-500 hover:text-slate-600">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -768,7 +768,7 @@ function ModalEditar({ profesional, emailActual, onCerrar, onGuardado }: {
         {sinCuenta && (
           <div className="mt-5 pt-4 border-t">
             <p className="text-sm font-semibold text-slate-700 mb-1">Dar acceso</p>
-            <p className="text-xs text-slate-400 mb-3">
+            <p className="text-xs text-slate-500 mb-3">
               Esta persona no tiene cuenta. Créale una para que pueda entrar.
             </p>
             <div className="space-y-3">
@@ -779,7 +779,7 @@ function ModalEditar({ profesional, emailActual, onCerrar, onGuardado }: {
               <div>
                 <label className="label">Contraseña inicial</label>
                 <CampoContrasena value={password} onChange={setPassword} />
-                <p className="text-[11px] text-slate-400 mt-1">Mínimo 8 caracteres. Comunícasela de forma segura.</p>
+                <p className="text-xs text-slate-500 mt-1">Mínimo 8 caracteres. Comunícasela de forma segura.</p>
               </div>
 
               {errorCuenta && (
@@ -801,7 +801,7 @@ function ModalEditar({ profesional, emailActual, onCerrar, onGuardado }: {
         {!sinCuenta && (
           <div className="mt-5 pt-4 border-t">
             <p className="text-sm font-semibold text-slate-700 mb-1">Correo de acceso</p>
-            <p className="text-xs text-slate-400 mb-3">
+            <p className="text-xs text-slate-500 mb-3">
               Con qué correo entra esta persona. Cámbialo si hay una errata o ha cambiado de correo institucional.
             </p>
             <div className="space-y-3">
@@ -847,7 +847,7 @@ function CampoContrasena({ value, onChange, onEnter }: {
       <button
         type="button"
         onClick={() => setVisible((v) => !v)}
-        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-600"
         tabIndex={-1}
       >
         {visible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}

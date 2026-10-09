@@ -178,7 +178,7 @@ function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
         <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-xs text-blue-700">
           Los antecedentes e informe de ingreso se heredan al exportar. La medicación al alta se pre-rellena desde el tratamiento al ingreso.
         </div>
-        <div className="text-xs text-slate-400 shrink-0 ml-3 flex items-center gap-1">
+        <div className="text-xs text-slate-500 shrink-0 ml-3 flex items-center gap-1">
           {estado === 'pendiente' && <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-slate-400 inline-block" /> Cambios pendientes</span>}
           {estado === 'guardando' && <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse inline-block" /> Guardando…</span>}
           {estado === 'guardado' && <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" /> Guardado</span>}
@@ -209,7 +209,7 @@ function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
       <div className="card p-6 space-y-6">
         <div className="flex items-center justify-between">
           <p className="section-title mb-0">Escalas clínicas al alta</p>
-          <span className="text-xs text-slate-400">
+          <span className="text-xs text-slate-500">
             {estadoEscalas === 'pendiente' && '● Cambios pendientes'}
             {estadoEscalas === 'guardando' && '● Guardando…'}
             {estadoEscalas === 'guardado' && <span className="text-emerald-600">✓ Guardado</span>}
@@ -359,7 +359,7 @@ function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
         {field('cuidados_enfermeria', 'Cuidados de enfermería')}
         <div>
           <span className="label">Medicación al alta</span>
-          <p className="text-xs text-slate-400 mb-2">Pre-rellenada desde el tratamiento al ingreso. Edita lo que necesites.</p>
+          <p className="text-xs text-slate-500 mb-2">Pre-rellenada desde el tratamiento al ingreso. Edita lo que necesites.</p>
           <TablaMedicacion filas={filasMed}
             onChange={v => update('medicacion_estructurada', v)} />
         </div>

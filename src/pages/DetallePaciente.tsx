@@ -157,7 +157,7 @@ export default function DetallePaciente() {
     setEditando(false)
   }
 
-  if (loading) return <div className="p-8 text-slate-400">Cargando…</div>
+  if (loading) return <div className="p-8 text-slate-500">Cargando…</div>
   if (errorCarga) {
     return (
       <div className="p-8">
@@ -169,7 +169,7 @@ export default function DetallePaciente() {
       </div>
     )
   }
-  if (!paciente) return <div className="p-8 text-slate-400">Paciente no encontrado</div>
+  if (!paciente) return <div className="p-8 text-slate-500">Paciente no encontrado</div>
 
   const nombreDelPaciente = nombreCompleto(paciente)
   const e = edad(paciente.fecha_nacimiento)
@@ -186,7 +186,7 @@ export default function DetallePaciente() {
       <div className="border-b bg-white px-8 py-4">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <button onClick={() => navigate(-1)} className="text-slate-400 hover:text-slate-600 mt-1">
+            <button onClick={() => navigate(-1)} className="text-slate-500 hover:text-slate-600 mt-1">
               <ChevronLeft className="w-5 h-5" />
             </button>
             <div>
@@ -251,7 +251,7 @@ export default function DetallePaciente() {
         {tab === 'ingresos' && (
           <div className="max-w-3xl space-y-3">
             {ingresos.length === 0 ? (
-              <div className="card p-10 text-center text-slate-400 text-sm">Sin ingresos registrados.</div>
+              <div className="card p-10 text-center text-slate-500 text-sm">Sin ingresos registrados.</div>
             ) : ingresos.map((ing, idx) => {
               const dias = diasEntre(ing.fecha_ingreso, ing.fecha_alta)
               const evCount = eventos.filter(ev => ev.ingreso_id === ing.id).length
@@ -271,32 +271,32 @@ export default function DetallePaciente() {
                           {ESTADO_LABEL[ing.estado] ?? ing.estado}
                         </span>
                         {idx === 0 && ingresos.length > 1 && (
-                          <span className="text-xs text-slate-400">Más reciente</span>
+                          <span className="text-xs text-slate-500">Más reciente</span>
                         )}
                         {ing.habitacion && (
-                          <span className="text-xs text-slate-400">Hab. {ing.habitacion}</span>
+                          <span className="text-xs text-slate-500">Hab. {ing.habitacion}</span>
                         )}
                       </div>
                       <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-xs text-slate-600">
                         <div>
-                          <span className="text-slate-400">Ingreso: </span>
+                          <span className="text-slate-500">Ingreso: </span>
                           {new Date(ing.fecha_ingreso).toLocaleDateString('es-ES')}
                         </div>
                         <div>
-                          <span className="text-slate-400">Alta: </span>
+                          <span className="text-slate-500">Alta: </span>
                           {ing.fecha_alta ? new Date(ing.fecha_alta).toLocaleDateString('es-ES') : '—'}
                         </div>
                         <div>
-                          <span className="text-slate-400">Duración: </span>
+                          <span className="text-slate-500">Duración: </span>
                           {dias} días
                         </div>
                         <div>
-                          <span className="text-slate-400">Médico: </span>
+                          <span className="text-slate-500">Médico: </span>
                           {medicoNombre}
                         </div>
                       </div>
                       {ing.motivo_ingreso && (
-                        <p className="text-xs text-slate-400 mt-2 truncate">{ing.motivo_ingreso}</p>
+                        <p className="text-xs text-slate-500 mt-2 truncate">{ing.motivo_ingreso}</p>
                       )}
                     </div>
                     <div className="text-right shrink-0">
@@ -387,7 +387,7 @@ export default function DetallePaciente() {
                 const opciones = (rest as any).opciones as string[] | undefined
                 return (
                   <div key={key} className="flex items-center px-5 py-3 text-sm border-b last:border-0">
-                    <span className="w-44 text-slate-400 shrink-0">{label}</span>
+                    <span className="w-44 text-slate-500 shrink-0">{label}</span>
                     {editando ? (
                       opciones ? (
                         <select className="input py-1 text-sm"
@@ -408,7 +408,7 @@ export default function DetallePaciente() {
                       <span className="text-slate-800">
                         {type === 'date' && val
                           ? new Date(val).toLocaleDateString('es-ES')
-                          : val || <span className="text-slate-300">—</span>}
+                          : val || <span className="text-slate-400">—</span>}
                       </span>
                     )}
                   </div>

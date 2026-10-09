@@ -52,7 +52,7 @@ export function DashboardFiltros({ filtros, onCambiar, mostrarComparar }: {
       {filtros.periodo === 'personalizado' && (
         <div className="flex items-center gap-2">
           <input type="date" className="input py-1.5" value={filtros.desde} onChange={(e) => set({ desde: e.target.value })} />
-          <span className="text-slate-400 text-sm">a</span>
+          <span className="text-slate-500 text-sm">a</span>
           <input type="date" className="input py-1.5" value={filtros.hasta} onChange={(e) => set({ hasta: e.target.value })} />
         </div>
       )}
@@ -74,14 +74,14 @@ export function DashboardFiltros({ filtros, onCambiar, mostrarComparar }: {
                 precisamente cuando SÍ había comparación disponible,
                 y se callaba cuando de verdad no la había. */}
             {filtros.periodo === 'todo' && filtros.comparar && (
-              <span className="text-[11px] text-slate-400 italic">
+              <span className="text-xs text-slate-500 italic">
                 (sin comparación disponible en "Todo el historial")
               </span>
             )}
           </>
         )}
 
-        <button onClick={restablecer} className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600 ml-auto">
+        <button onClick={restablecer} className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-600 ml-auto">
           <RotateCcw className="w-3.5 h-3.5" /> Restablecer filtros
         </button>
       </div>

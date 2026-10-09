@@ -245,7 +245,7 @@ export default function Home() {
       <div className="flex items-start justify-between mb-5">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Unidad de Hospitalización</h1>
-          <p className="text-sm text-slate-400 capitalize mt-0.5">{today}</p>
+          <p className="text-sm text-slate-500 capitalize mt-0.5">{today}</p>
         </div>
         <div className="flex items-center gap-2 text-sm">
           <span className="px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full font-medium">
@@ -313,7 +313,7 @@ export default function Home() {
 
       {/* Tabla de habitaciones */}
       {loading ? (
-        <div className="text-slate-400 py-12 text-center">Cargando…</div>
+        <div className="text-slate-500 py-12 text-center">Cargando…</div>
       ) : error ? (
         <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-6 text-center space-y-2">
           <p>{error}</p>
@@ -328,7 +328,7 @@ export default function Home() {
           )}
           {/* Cabecera */}
           <div
-            className="grid gap-x-3 text-xs font-semibold text-slate-400 uppercase tracking-wide px-3 pb-1"
+            className="grid gap-x-3 text-xs font-semibold text-slate-500 uppercase tracking-wide px-3 pb-1"
             style={{ gridTemplateColumns: COLUMNAS_TABLA }}
           >
             <div>Hab.</div>
@@ -417,7 +417,7 @@ export default function Home() {
                   <div className="min-w-0 pr-2">
                     <p className="font-semibold text-slate-800 text-sm leading-tight truncate">{nombreDelPaciente}</p>
                     {diagnosticoCorto && (
-                      <p className="text-xs text-slate-400 truncate leading-tight">{diagnosticoCorto}</p>
+                      <p className="text-xs text-slate-500 truncate leading-tight">{diagnosticoCorto}</p>
                     )}
                   </div>
                   {/* Edad */}
@@ -431,7 +431,7 @@ export default function Home() {
                             ? 'bg-amber-100 text-amber-700'
                             : dias > 30
                               ? 'bg-yellow-50 text-yellow-600'
-                              : 'text-slate-400'
+                              : 'text-slate-500'
                         }`}
                       >
                         {dias}d
@@ -439,7 +439,7 @@ export default function Home() {
                     )}
                   </div>
                   {/* F. ingreso */}
-                  <div className="text-slate-400 text-xs">{fingreso}</div>
+                  <div className="text-slate-500 text-xs">{fingreso}</div>
                   {/* Médico */}
                   <div className="text-slate-500 text-xs truncate">{medico}</div>
                   {/* Contención física: día y noche, acceso rápido sin salir de Inicio */}
@@ -472,7 +472,7 @@ export default function Home() {
                           >
                             <Icono className="w-3.5 h-3.5" />
                             {sev === 'sin_revisar' && (
-                              <AlertCircle className="w-2.5 h-2.5 text-slate-400 absolute -top-1 -right-1 bg-white rounded-full" />
+                              <AlertCircle className="w-2.5 h-2.5 text-slate-500 absolute -top-1 -right-1 bg-white rounded-full" />
                             )}
                             {pendienteConfirmar && (
                               <span className="w-2 h-2 rounded-full bg-amber-500 absolute -top-0.5 -right-0.5 animate-ping" />
@@ -531,7 +531,7 @@ export default function Home() {
                                 (TIPO_EVENTO_COLOR[tipo as TipoEvento] ?? '').split(' ').find(c => c.startsWith('bg-')) ?? 'bg-slate-400'
                               }`} />
                               <span className="text-slate-100">{TIPO_EVENTO_LABEL[tipo as TipoEvento] ?? tipo}</span>
-                              <span className="text-slate-400 ml-auto">×{n}</span>
+                              <span className="text-slate-500 ml-auto">×{n}</span>
                             </div>
                           ))}
                         </Tooltip>
@@ -540,7 +540,7 @@ export default function Home() {
                   })()}
                   {/* Arrow */}
                   <div className="flex justify-end">
-                    <ChevronRight className="w-4 h-4 text-slate-200 group-hover:text-slate-400 transition-colors" />
+                    <ChevronRight className="w-4 h-4 text-slate-200 group-hover:text-slate-500 transition-colors" />
                   </div>
                 </div>
               </div>

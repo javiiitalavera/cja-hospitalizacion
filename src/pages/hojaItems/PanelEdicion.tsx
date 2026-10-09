@@ -217,14 +217,14 @@ export default function PanelEdicion({
         <div className="flex-1 min-w-0 mr-2">
           <p className="font-bold text-sm text-slate-800 truncate">{nombre}</p>
           <div className="flex items-center gap-1.5 mt-1">
-            <span className="text-xs text-slate-400">Hab.</span>
+            <span className="text-xs text-slate-500">Hab.</span>
             <input
               type="number"
               min={1}
               max={33}
               disabled={!esMedico}
               title={esMedico ? '' : 'Solo un médico puede cambiar la habitación'}
-              className="w-14 text-xs border border-slate-200 rounded px-1.5 py-0.5 text-slate-700 font-medium disabled:bg-slate-50 disabled:text-slate-400"
+              className="w-14 text-xs border border-slate-200 rounded px-1.5 py-0.5 text-slate-700 font-medium disabled:bg-slate-50 disabled:text-slate-500"
               value={habEdit}
               onChange={(e) => {
                 setHabEdit(e.target.value)
@@ -233,7 +233,7 @@ export default function PanelEdicion({
               onBlur={cambiarHabitacion}
               onKeyDown={(e) => e.key === 'Enter' && cambiarHabitacion()}
             />
-            {savingHab && <span className="text-xs text-slate-400">…</span>}
+            {savingHab && <span className="text-xs text-slate-500">…</span>}
             {habError && <span className="text-xs text-red-500">{habError}</span>}
           </div>
         </div>
@@ -258,7 +258,7 @@ export default function PanelEdicion({
               ✗ Error al guardar, inténtalo de nuevo
             </span>
           )}
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 ml-1">
+          <button onClick={onClose} className="text-slate-500 hover:text-slate-600 ml-1">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -295,17 +295,17 @@ export default function PanelEdicion({
 
         <p className="section-title mt-3">Seguridad y conducta</p>
         {errorContencion && (
-          <p className="text-[10px] text-red-600 bg-red-50 border border-red-100 rounded px-2 py-1 mb-1.5">{errorContencion}</p>
+          <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded px-2 py-1 mb-1.5">{errorContencion}</p>
         )}
         {estadoContencion === 'cargando' ? (
-          <p className="text-xs text-slate-400">Cargando…</p>
+          <p className="text-xs text-slate-500">Cargando…</p>
         ) : (
           <div className="flex items-center gap-2 mb-2">
             {(['dia', 'noche'] as const).map((eje) => {
               const sev = eje === 'dia' ? severidadDia(estadoContencion.dia as any) : severidadNoche(estadoContencion.noche as any)
               const estilo = SEVERIDAD_ESTILO[sev]
               return (
-                <span key={eje} className={`px-2 py-1 rounded text-[10px] font-medium border ${estilo.bg} ${estilo.text} ${estilo.border}`}>
+                <span key={eje} className={`px-2 py-1 rounded text-xs font-medium border ${estilo.bg} ${estilo.text} ${estilo.border}`}>
                   {eje === 'dia' ? 'Día' : 'Noche'}: {estilo.label}
                 </span>
               )
@@ -349,7 +349,7 @@ export default function PanelEdicion({
                   key={opt.v}
                   type="button"
                   onClick={() => update('alerta_conducta' as any, activo ? actual.filter((x) => x !== opt.v) : [...actual, opt.v])}
-                  className={`px-2 py-1 rounded text-[10px] font-medium border transition-colors ${
+                  className={`px-2 py-1 rounded text-xs font-medium border transition-colors ${
                     activo ? 'bg-red-50 text-red-700 border-red-200' : 'bg-white text-slate-500 border-slate-300'
                   }`}
                 >
@@ -481,7 +481,7 @@ export default function PanelEdicion({
         {!confirmLimpiar ? (
           <button
             onClick={() => setConfirmLimpiar(true)}
-            className="w-full text-xs text-slate-400 hover:text-red-500 transition-colors py-1 text-center"
+            className="w-full text-xs text-slate-500 hover:text-red-500 transition-colors py-1 text-center"
           >
             Borrar todos los ítems
           </button>

@@ -143,7 +143,7 @@ export default function Pacientes() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Pacientes</h1>
-          <p className="text-sm text-slate-400 mt-0.5">
+          <p className="text-sm text-slate-500 mt-0.5">
             {loading ? '…' : `${total} resultado${total !== 1 ? 's' : ''}`}
           </p>
         </div>
@@ -156,7 +156,7 @@ export default function Pacientes() {
 
       <div className="flex gap-3 mb-5 flex-wrap items-center">
         <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
           <input
             className="input pl-9 pr-9"
             placeholder="Apellido, nombre, NHC…"
@@ -186,7 +186,7 @@ export default function Pacientes() {
             }}
           />
           {(escribiendo || loading) && (
-            <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 animate-spin" />
+            <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 animate-spin" />
           )}
         </div>
         {(['activo', 'alta', 'todos'] as const).map(e => (
@@ -199,7 +199,7 @@ export default function Pacientes() {
           </button>
         ))}
         <div className="flex items-center gap-1.5 ml-auto">
-          <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
+          <ArrowUpDown className="w-3.5 h-3.5 text-slate-500" />
           <select className="input py-1.5 text-sm w-auto" value={orden} onChange={e => { setOrden(e.target.value as OrdenValor); setPagina(0) }}>
             {ORDEN_OPCIONES.map(o => (
               <option key={o.valor} value={o.valor}>Ordenar por {o.etiqueta.toLowerCase()}</option>
@@ -222,14 +222,14 @@ export default function Pacientes() {
           </thead>
           <tbody className="divide-y">
             {loading ? (
-              <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-400">Cargando…</td></tr>
+              <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-500">Cargando…</td></tr>
             ) : error ? (
               <tr><td colSpan={6} className="px-4 py-12 text-center">
                 <p className="text-red-600 text-sm mb-2">{error}</p>
                 <button onClick={fetchPacientes} className="btn-secondary text-xs">Reintentar</button>
               </td></tr>
             ) : pacientes.length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-400">No hay resultados</td></tr>
+              <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-500">No hay resultados</td></tr>
             ) : pacientes.map(p => {
               const e = edad(p.fecha_nacimiento)
               const estado = p.ultimo_ingreso?.estado
@@ -249,26 +249,26 @@ export default function Pacientes() {
                     {identificador ? (
                       <>
                         <span className="font-mono text-slate-700">{identificador}</span>
-                        {esCipna && <span className="text-slate-400 ml-1 text-[10px]">CIPNA</span>}
+                        {esCipna && <span className="text-slate-500 ml-1 text-xs">CIPNA</span>}
                       </>
-                    ) : <span className="text-slate-300">—</span>}
+                    ) : <span className="text-slate-400">—</span>}
                   </td>
                   <td className="px-4 py-3 text-slate-500 text-xs">
                     {p.ultimo_ingreso ? (
                       <>
                         {new Date(p.ultimo_ingreso.fecha_ingreso).toLocaleDateString('es-ES')}
                         {p.ultimo_ingreso.habitacion && (
-                          <span className="text-slate-400"> · Hab. {p.ultimo_ingreso.habitacion}</span>
+                          <span className="text-slate-500"> · Hab. {p.ultimo_ingreso.habitacion}</span>
                         )}
                       </>
-                    ) : <span className="text-slate-300">—</span>}
+                    ) : <span className="text-slate-400">—</span>}
                   </td>
                   <td className="px-4 py-3">
                     {estado ? (
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${ESTADO_COLOR[estado] ?? 'bg-slate-100 text-slate-500'}`}>
                         {ESTADO_LABEL[estado] ?? estado}
                       </span>
-                    ) : <span className="text-slate-300 text-xs">Sin ingresos</span>}
+                    ) : <span className="text-slate-400 text-xs">Sin ingresos</span>}
                   </td>
                   <td className="px-4 py-3 text-right">
                     {esMedico && (estado === 'alta' || estado === 'alta_traslado') ? (
@@ -279,7 +279,7 @@ export default function Pacientes() {
                         Reingreso →
                       </button>
                     ) : (
-                      <span className="text-primary-600 text-xs font-medium">Ver →</span>
+                      <span className="text-primary-600 text-xs font-medium whitespace-nowrap">Ver →</span>
                     )}
                   </td>
                 </tr>
@@ -290,7 +290,7 @@ export default function Pacientes() {
 
         {totalPaginas > 1 && (
           <div className="px-4 py-3 border-t bg-slate-50 flex items-center justify-between">
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-500">
               Página {pagina + 1} de {totalPaginas} · {total} pacientes
             </p>
             <div className="flex gap-2">

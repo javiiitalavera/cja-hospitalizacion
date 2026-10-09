@@ -203,13 +203,13 @@ export default function ModalContencion({ ingresoId, onClose, onGuardado, pacien
           <div>
             <h2 className="text-base font-bold text-slate-800">Contención física</h2>
             {pacienteInfo && (
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-500 mt-0.5">
                 {pacienteInfo.nombre}
                 {pacienteInfo.habitacion != null && ` · Hab. ${pacienteInfo.habitacion}`}
               </p>
             )}
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+          <button onClick={onClose} className="text-slate-500 hover:text-slate-600">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -217,7 +217,7 @@ export default function ModalContencion({ ingresoId, onClose, onGuardado, pacien
         {/* Body */}
         <div className="overflow-y-auto flex-1 px-6 py-5 space-y-5">
           {loading ? (
-            <p className="text-sm text-slate-400 text-center py-8">Cargando…</p>
+            <p className="text-sm text-slate-500 text-center py-8">Cargando…</p>
           ) : loadError ? (
             <div className="text-center py-8 space-y-3">
               <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{loadError}</p>
@@ -234,7 +234,7 @@ export default function ModalContencion({ ingresoId, onClose, onGuardado, pacien
             <>
               {nuncaRevisado && (
                 <div className="flex items-start gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5">
-                  <AlertCircle className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+                  <AlertCircle className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
                   <p className="text-xs text-slate-500">
                     Todavía no se ha revisado la contención de este paciente. Al guardar, quedará registrado.
                   </p>
@@ -255,7 +255,7 @@ export default function ModalContencion({ ingresoId, onClose, onGuardado, pacien
                       </p>
                     </div>
                     {esMedico && (
-                      <button onClick={retirar} disabled={confirmando} className="text-[11px] text-emerald-700 hover:underline shrink-0">
+                      <button onClick={retirar} disabled={confirmando} className="text-xs text-emerald-700 hover:underline shrink-0">
                         Retirar
                       </button>
                     )}
@@ -268,7 +268,7 @@ export default function ModalContencion({ ingresoId, onClose, onGuardado, pacien
                         {confirmando ? 'Confirmando…' : 'Confirmar'}
                       </button>
                     ) : (
-                      <span className="text-[11px] text-amber-600">Solo un médico puede confirmarla</span>
+                      <span className="text-xs text-amber-600">Solo un médico puede confirmarla</span>
                     )}
                   </div>
                 )
@@ -296,7 +296,7 @@ export default function ModalContencion({ ingresoId, onClose, onGuardado, pacien
                         <span className={`text-sm font-medium shrink-0 whitespace-nowrap ${activo ? estilo.text : 'text-slate-700'}`}>
                           {CONTENCION_DIA_LABEL[opt]}
                         </span>
-                        {desc && <span className="text-xs text-slate-400 truncate">— {desc}</span>}
+                        {desc && <span className="text-xs text-slate-500 truncate">— {desc}</span>}
                       </button>
                     )
                   })}
@@ -306,7 +306,7 @@ export default function ModalContencion({ ingresoId, onClose, onGuardado, pacien
               {/* NOCHE */}
               <div>
                 <p className="text-xs font-bold text-primary-600 uppercase tracking-widest mb-2">Noche</p>
-                <p className="text-xs text-slate-400 mb-2">Se pueden marcar varias a la vez.</p>
+                <p className="text-xs text-slate-500 mb-2">Se pueden marcar varias a la vez.</p>
                 <div className="flex flex-wrap gap-1.5">
                   {/* "Normal" es excluyente: lo mismo que dejar todo lo demás sin marcar */}
                   <button
@@ -342,7 +342,7 @@ export default function ModalContencion({ ingresoId, onClose, onGuardado, pacien
 
               {/* Último cambio conocido */}
               {ultimo?.actualizado_en && (
-                <p className="text-xs text-slate-400 border-t pt-3">
+                <p className="text-xs text-slate-500 border-t pt-3">
                   Última revisión: {new Date(ultimo.actualizado_en).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })}
                   {ultimo.actualizado_por && ` · ${ultimo.actualizado_por.nombre} ${ultimo.actualizado_por.apellidos}`}
                 </p>
@@ -362,17 +362,17 @@ export default function ModalContencion({ ingresoId, onClose, onGuardado, pacien
                 {mostrarHistorial && (
                   <div className="mt-2 space-y-1.5 max-h-48 overflow-y-auto border-t pt-2">
                     {historial && historial.length === 0 ? (
-                      <p className="text-xs text-slate-400 italic">Sin cambios registrados todavía.</p>
+                      <p className="text-xs text-slate-500 italic">Sin cambios registrados todavía.</p>
                     ) : (
                       historial?.map((h) => (
                         <div key={h.id} className="text-xs bg-slate-50 rounded px-2.5 py-1.5">
                           <div className="flex items-center justify-between gap-2 mb-1">
                             {h.tipo_accion && (
-                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${TIPO_ACCION_HISTORIAL_COLOR[h.tipo_accion] ?? 'bg-slate-100 text-slate-600'}`}>
+                              <span className={`px-1.5 py-0.5 rounded text-xs font-semibold ${TIPO_ACCION_HISTORIAL_COLOR[h.tipo_accion] ?? 'bg-slate-100 text-slate-600'}`}>
                                 {TIPO_ACCION_HISTORIAL_LABEL[h.tipo_accion] ?? h.tipo_accion}
                               </span>
                             )}
-                            <span className="text-slate-400">
+                            <span className="text-slate-500">
                               {new Date(h.cambiado_en).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })}
                             </span>
                           </div>
@@ -387,7 +387,7 @@ export default function ModalContencion({ ingresoId, onClose, onGuardado, pacien
                               confirmación, es una persona distinta de
                               quien había editado la pauta antes. */}
                           {h.actor && (
-                            <p className="text-slate-400 mt-0.5">{h.actor.nombre} {h.actor.apellidos}</p>
+                            <p className="text-slate-500 mt-0.5">{h.actor.nombre} {h.actor.apellidos}</p>
                           )}
                         </div>
                       ))
