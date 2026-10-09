@@ -32,7 +32,24 @@ function hace7dias(): string {
 // Definida una sola vez: antes esta misma plantilla de columnas
 // estaba copiada a mano en tres sitios (cabecera, fila libre, fila
 // ocupada) — cualquier ajuste futuro solo hace falta tocarlo aquí.
-const COLUMNAS_TABLA = '2.5rem minmax(0,1.4fr) 3rem 3.5rem 5.5rem minmax(0,0.9fr) 6rem 7rem 3rem 2rem'
+// Lo mínimo de cada incidencia para la insignia y su tooltip.
+interface EventoResumen {
+  id: string
+  tipo: string
+  fecha: string
+  hora?: string | null
+  estado?: string | null
+}
+
+// 'YYYY-MM-DD' -> 'dd/mm/aa', sin pasar por Date (evita desfases de zona horaria).
+function fechaCorta(f: string): string {
+  const [y, m, d] = f.split('-')
+  return y && m && d ? `${d}/${m}/${y.slice(2)}` : f
+}
+
+const MAX_LINEAS_TOOLTIP = 6
+
+const COLUMNAS_TABLA = '2.5rem minmax(0,1.4fr) 3rem 3.5rem 5.5rem minmax(0,0.9fr) 6rem 10.5rem 2rem'
 
 type IngresoConPaciente = Ingreso & {
   paciente: {
@@ -51,7 +68,7 @@ export default function Home() {
   const [informes, setInformes] = useState<Record<string, { impresion_diagnostica?: string; motivo_ingreso?: string }>>(
     {}
   )
-  const [eventosPorIngreso, setEventosPorIngreso] = useState<Record<string, string[]>>({})
+  const [eventosPorIngreso, setEventosPorIngreso] = useState<Record<string, EventoResumen[]>>({})
   const [contencionesPorIngreso, setContencionesPorIngreso] = useState<Record<string, { dia: ContencionDia | null; noche: ContencionNoche[] | null; confirmado_por_id: string | null }>>({})
   // Todo lo que alimenta el recuadro "Pendiente". Hasta que no se ha
   // cargado entero (null), el recuadro no se muestra: antes de tener los
@@ -117,11 +134,10 @@ export default function Home() {
         ] = await Promise.all([
           supabase.from('items_paciente').select('ingreso_id,semaforo_caidas').in('ingreso_id', ids),
           supabase.from('informe_ingreso').select('ingreso_id,impresion_diagnostica').in('ingreso_id', ids),
-          // Solo los últimos 7 días — antes contaba todo el historial
-          // del ingreso, así que con el tiempo el aviso dejaba de
-          // decir "algo nuevo" para convertirse en "esto tiene
-          // historial", que no es lo mismo de un vistazo.
-          supabase.from('eventos').select('ingreso_id,tipo').in('ingreso_id', ids).neq('tipo', 'ulcera').gte('fecha', hace7dias()),
+          // Todas las incidencias del ingreso (el mismo número que ve
+          // quien abre la ficha). Lo reciente se distingue por el color
+          // de la insignia, no recortando la lista.
+          supabase.from('eventos').select('id,ingreso_id,tipo,fecha,hora,estado').in('ingreso_id', ids).neq('tipo', 'ulcera').order('fecha', { ascending: false }),
           fetchContencionesPorIngreso(ids),
           // Sin límite de fecha, a propósito — una incidencia puede
           // llevar pendiente de completar más de 7 días y no por eso
@@ -150,10 +166,10 @@ export default function Home() {
         setInformes(informesMap)
 
         // Tipos de incidencia por ingreso, para el aviso rápido en la tabla.
-        const eventosMap: Record<string, string[]> = {}
-        ;(eventosData ?? []).forEach((ev: any) => {
+        const eventosMap: Record<string, EventoResumen[]> = {}
+        ;((eventosData ?? []) as (EventoResumen & { ingreso_id: string })[]).forEach((ev) => {
           if (!eventosMap[ev.ingreso_id]) eventosMap[ev.ingreso_id] = []
-          eventosMap[ev.ingreso_id].push(ev.tipo)
+          eventosMap[ev.ingreso_id].push(ev)
         })
         setEventosPorIngreso(eventosMap)
 
@@ -342,7 +358,6 @@ export default function Home() {
             <div>Contención</div>
             <div>Incidencias</div>
             <div></div>
-            <div></div>
           </div>
 
           {slots.map((ingreso, idx) => {
@@ -364,7 +379,6 @@ export default function Home() {
                 >
                   <span className="text-xs font-bold text-slate-200">{n}</span>
                   <span className="text-xs text-slate-200">— libre —</span>
-                  <span />
                   <span />
                   <span />
                   <span />
@@ -490,77 +504,81 @@ export default function Home() {
                       )
                     })}
                   </div>
-                  {/* Incidencias del paciente: no hay botón si no hay nada
-                      que contar (antes eran 32 botones idénticos). Con
-                      pendientes se ve en rojo; si solo hay recientes, en
-                      ámbar. Al pulsar, la lista de ese paciente. */}
+                  {/* Incidencias del paciente: la insignia solo aparece si
+                      hay algo (antes eran 32 botones idénticos) y cuenta
+                      todas las del ingreso, como la ficha. Rojo = hay
+                      alguna pendiente de completar; ámbar = alguna de los
+                      últimos 7 días; gris = solo antiguas. El «+» está
+                      pegado a ella y registra una nueva sin salir de
+                      Inicio (el formulario ya avisa de duplicados). */}
                   {(() => {
-                    const tipos = eventosPorIngreso[ingreso.id] ?? []
-                    const pendientes = (datosPendientes?.eventosPendientes ?? []).filter((e) => e.ingreso_id === ingreso.id).length
-                    if (tipos.length === 0 && pendientes === 0) return <div />
-                    // Contar por tipo, de más a menos frecuentes
-                    const conteo: Record<string, number> = {}
-                    tipos.forEach((t) => { conteo[t] = (conteo[t] ?? 0) + 1 })
-                    const entradas = Object.entries(conteo).sort((a, b) => b[1] - a[1])
-                    const hayPendientes = pendientes > 0
+                    const lista = eventosPorIngreso[ingreso.id] ?? []
+                    const pendientes = lista.filter((e) => e.estado === 'pendiente').length
+                    const hayReciente = lista.some((e) => e.fecha >= hace7dias())
+                    const color = pendientes > 0
+                      ? 'bg-red-50 border-red-200 text-red-700 hover:bg-red-100'
+                      : hayReciente
+                        ? 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100'
+                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                    const visibles = lista.slice(0, MAX_LINEAS_TOOLTIP)
                     return (
-                      <div className="relative group/tt">
-                        <button
-                          type="button"
-                          data-incidencias={ingreso.id}
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            navigate(`/ingresos/${ingreso.id}?tab=eventos`)
-                          }}
-                          className={`flex items-center gap-1 px-2 py-1 rounded-lg border text-xs font-medium transition-colors ${
-                            hayPendientes
-                              ? 'bg-red-50 border-red-200 text-red-700 hover:bg-red-100'
-                              : 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100'
-                          }`}
-                        >
-                          <AlertTriangle className="w-3 h-3 shrink-0" />
-                          {hayPendientes ? `${pendientes} pendiente${pendientes > 1 ? 's' : ''}` : tipos.length}
-                        </button>
-                        <Tooltip titulo={hayPendientes ? 'Incidencias pendientes de completar' : 'Incidencias · últimos 7 días'}>
-                          {hayPendientes && (
-                            <p className="text-xs text-slate-100 mb-1">
-                              {pendientes} sin completar · pulsa para verlas
-                            </p>
-                          )}
-                          {entradas.map(([tipo, n]) => (
-                            <div key={tipo} className="flex items-center gap-1.5 text-xs">
-                              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                                (TIPO_EVENTO_COLOR[tipo as TipoEvento] ?? '').split(' ').find(c => c.startsWith('bg-')) ?? 'bg-slate-400'
-                              }`} />
-                              <span className="text-slate-100">{TIPO_EVENTO_LABEL[tipo as TipoEvento] ?? tipo}</span>
-                              <span className="text-slate-500 ml-auto">×{n}</span>
+                      <div className="flex items-center gap-2">
+                        <div className="relative group/tt">
+                          <button
+                            type="button"
+                            aria-label="Registrar incidencia"
+                            data-registrar={ingreso.id}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setModalEvento(ingreso.id)
+                            }}
+                            className="p-1 rounded-md border border-slate-200 text-slate-500 hover:bg-amber-50 hover:border-amber-200 hover:text-amber-700 transition-colors"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                          </button>
+                          <Tooltip titulo="Registrar incidencia">
+                            <p className="text-xs text-slate-100">Caída, fuga, agresividad…</p>
+                          </Tooltip>
+                        </div>
+                        <div>
+                          {lista.length > 0 && (
+                            <div className="relative group/tt w-fit">
+                              <button
+                                type="button"
+                                data-incidencias={ingreso.id}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  navigate(`/ingresos/${ingreso.id}?tab=eventos`)
+                                }}
+                                className={`flex items-center gap-1 px-2 py-1 rounded-lg border text-xs font-medium whitespace-nowrap transition-colors ${color}`}
+                              >
+                                <AlertTriangle className="w-3 h-3 shrink-0" />
+                                {lista.length}
+                                {pendientes > 0 && ` · ${pendientes} pendiente${pendientes > 1 ? 's' : ''}`}
+                              </button>
+                              <Tooltip titulo={`Incidencias del ingreso (${lista.length})`} ancho="max-w-[360px]">
+                                {visibles.map((ev) => (
+                                  <div key={ev.id} className="flex items-center gap-1.5 text-xs">
+                                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                                      (TIPO_EVENTO_COLOR[ev.tipo as TipoEvento] ?? '').split(' ').find(c => c.startsWith('bg-')) ?? 'bg-slate-400'
+                                    }`} />
+                                    <span className="text-slate-100 whitespace-nowrap">{TIPO_EVENTO_LABEL[ev.tipo as TipoEvento] ?? ev.tipo}</span>
+                                    <span className="text-slate-300 ml-auto pl-2 whitespace-nowrap">
+                                      {fechaCorta(ev.fecha)}{ev.hora ? ` ${ev.hora.slice(0, 5)}` : ''}
+                                    </span>
+                                    {ev.estado === 'pendiente' && <span className="text-amber-300 whitespace-nowrap">pendiente</span>}
+                                  </div>
+                                ))}
+                                {lista.length > visibles.length && (
+                                  <p className="text-xs text-slate-300">y {lista.length - visibles.length} más antigua{lista.length - visibles.length > 1 ? 's' : ''} · pulsa para verlas</p>
+                                )}
+                              </Tooltip>
                             </div>
-                          ))}
-                        </Tooltip>
+                          )}
+                        </div>
                       </div>
                     )
                   })()}
-                  {/* Registrar una incidencia directamente (un solo paso).
-                      El formulario ya avisa si hay una del mismo tipo en
-                      las últimas 24 h, así que no se pierde la protección
-                      contra duplicados. */}
-                  <div className="relative group/tt">
-                    <button
-                      type="button"
-                      aria-label="Registrar incidencia"
-                      data-registrar={ingreso.id}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setModalEvento(ingreso.id)
-                      }}
-                      className="p-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-amber-50 hover:border-amber-200 hover:text-amber-700 transition-colors"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                    </button>
-                    <Tooltip titulo="Registrar incidencia">
-                      <p className="text-xs text-slate-100">Caída, fuga, agresividad…</p>
-                    </Tooltip>
-                  </div>
                   {/* Arrow */}
                   <div className="flex justify-end">
                     <ChevronRight className="w-4 h-4 text-slate-200 group-hover:text-slate-500 transition-colors" />

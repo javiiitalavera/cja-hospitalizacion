@@ -6,12 +6,12 @@
 // entera ya usa "group" para el efecto de la flecha, y con el nombre
 // genérico el tooltip se activaba con solo pasar el ratón por
 // cualquier parte de la fila, no por el icono en concreto.
-export default function Tooltip({ titulo, children }: { titulo?: string; children: React.ReactNode }) {
+export default function Tooltip({ titulo, children, ancho = 'max-w-[220px]' }: { titulo?: string; children: React.ReactNode; ancho?: string }) {
   return (
-    <div className="hidden group-hover/tt:block absolute z-20 left-1/2 -translate-x-1/2 bottom-full mb-1.5 w-max max-w-[220px]">
+    <div className={`hidden group-hover/tt:block absolute z-20 left-1/2 -translate-x-1/2 bottom-full mb-1.5 w-max ${ancho}`}>
       <div className="bg-slate-800 text-white rounded-lg shadow-lg py-2 px-3 space-y-1">
         {titulo && (
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-0.5">{titulo}</p>
+          <p className="text-xs font-semibold text-slate-300 uppercase tracking-wide mb-0.5">{titulo}</p>
         )}
         {children}
       </div>
