@@ -450,7 +450,7 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
           <span className="text-xs text-slate-500">Botón "Al ingreso" = POAD</span>
         </div>
 
-        <FilaDx label="Principal" required
+        <FilaDx label="Principal" required principal
           codigo={data.diagnostico_principal ?? ''}
           desc={data.diagnostico_principal_desc ?? ''}
           poad={data.diagnostico_principal_poad ?? null}

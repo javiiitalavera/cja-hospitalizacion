@@ -7,14 +7,15 @@ import { useEffect, useRef, useState } from 'react'
 import { AlertTriangle, Plus } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
-import { avisoCodigoCIE10, buscarCIE10, descripcionCIE10 } from '../lib/cie10'
+import { avisoCodigoCIE10, buscarCIE10, cargarCatalogoCIE10, infoCIE10, normalizarCodigo, useCatalogoCIE10 } from '../lib/cie10'
 
 // ─── Buscador de códigos ─────────────────────────────────────
 
-export function BuscadorCIE({ value, onChange, disabled }: {
+export function BuscadorCIE({ value, onChange, disabled, principal }: {
   value: string
   onChange: (code: string, desc: string) => void
   disabled?: boolean
+  principal?: boolean   // es el diagnóstico principal: se señalan los códigos que no pueden serlo
 }) {
   const [q, setQ] = useState(value)
   const [open, setOpen] = useState(false)
@@ -26,6 +27,7 @@ export function BuscadorCIE({ value, onChange, disabled }: {
 
   useEffect(() => { setQ(value) }, [value])
 
+  const cargado = useCatalogoCIE10(false)   // solo para repintar cuando termine de cargar el catálogo
   const resultados = q.trim().length >= 1 ? buscarCIE10(q, 10) : []
 
   useEffect(() => {
@@ -42,33 +44,51 @@ export function BuscadorCIE({ value, onChange, disabled }: {
         value={q}
         disabled={disabled}
         onChange={e => { setQ(e.target.value); setOpen(true) }}
-        onFocus={() => resultados.length > 0 && setOpen(true)}
+        onFocus={() => {
+          // Al usar el buscador se descarga (una vez) el catálogo completo de la CIE-10-ES.
+          cargarCatalogoCIE10().catch(() => { /* se sigue con los códigos frecuentes */ })
+          if (resultados.length > 0) setOpen(true)
+        }}
         onBlur={() => {
           // Confirma el texto al perder el foco, aunque no se haya hecho clic en una sugerencia:
           // si coincide con un código conocido, completa su descripción.
-          setTimeout(() => {
+          setTimeout(async () => {
             setOpen(false)
             if (seleccionadaRef.current) { seleccionadaRef.current = false; return }
             const texto = q.trim()
             if (!texto) { onChange('', ''); return }
-            const desc = descripcionCIE10(texto)
-            const codigo = desc ? buscarCIE10(texto, 1)[0]?.code ?? texto : texto
+            let info = infoCIE10(texto)
+            if (!info) {
+              // un código que no es de los frecuentes: espera al catálogo para poder completar su descripción
+              await cargarCatalogoCIE10().catch(() => {})
+              info = infoCIE10(texto)
+            }
+            const codigo = info ? info.code : normalizarCodigo(texto)
             if (codigo === value) { setQ(value); return }
-            onChange(codigo, desc ?? '')
+            onChange(codigo, info?.desc ?? '')
           }, 150) // margen para que un clic en una sugerencia se procese primero
         }}
       />
       {open && resultados.length > 0 && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-xl shadow-lg z-30 overflow-hidden max-h-72 overflow-y-auto">
-          {resultados.map(r => (
-            <button type="button" key={r.code}
-              className="w-full text-left px-3 py-2 text-xs hover:bg-slate-50 border-b last:border-0 flex gap-3"
-              onMouseDown={() => { seleccionadaRef.current = true }}
-              onClick={() => { onChange(r.code, r.desc); setQ(r.code); setOpen(false) }}>
-              <span className="font-mono font-bold text-primary-700 shrink-0 w-20">{r.code}</span>
-              <span className="text-slate-600">{r.desc}</span>
-            </button>
-          ))}
+          {resultados.map(r => {
+            const noPrincipal = principal && (r.marcas?.includes('M') || r.marcas?.includes('N'))
+            return (
+              <button type="button" key={r.code}
+                className={`w-full text-left px-3 py-2 text-xs hover:bg-slate-50 border-b last:border-0 flex gap-3 ${noPrincipal ? 'opacity-60' : ''}`}
+                onMouseDown={() => { seleccionadaRef.current = true }}
+                onClick={() => { onChange(r.code, r.desc); setQ(r.code); setOpen(false) }}>
+                <span className="font-mono font-bold text-primary-700 shrink-0 w-20">{r.code}</span>
+                <span className="text-slate-600">
+                  {r.desc}
+                  {noPrincipal && <span className="ml-2 text-amber-700 font-medium">· no puede ser principal</span>}
+                </span>
+              </button>
+            )
+          })}
+          {!cargado && (
+            <p className="px-3 py-1.5 text-[11px] text-slate-400 bg-slate-50">Cargando el catálogo completo de la CIE-10-ES…</p>
+          )}
         </div>
       )}
     </div>
@@ -77,19 +97,22 @@ export function BuscadorCIE({ value, onChange, disabled }: {
 
 // ─── Fila de un diagnóstico ──────────────────────────────────
 
-export function FilaDx({ label, codigo, desc, poad, onCodigoYDesc, onDesc, onPoad, required, disabled }: {
+export function FilaDx({ label, codigo, desc, poad, onCodigoYDesc, onDesc, onPoad, required, disabled, principal }: {
   label: string; codigo: string; desc: string; poad: boolean | null
   onCodigoYDesc: (codigo: string, desc: string) => void; onDesc: (v: string) => void
-  onPoad: (v: boolean) => void; required?: boolean; disabled?: boolean
+  onPoad: (v: boolean) => void; required?: boolean; disabled?: boolean; principal?: boolean
 }) {
-  const aviso = avisoCodigoCIE10(codigo)
+  // Un código que no es de los frecuentes necesita el catálogo completo para poder validarse.
+  useCatalogoCIE10(!!codigo && !infoCIE10(codigo))
+  const aviso = avisoCodigoCIE10(codigo, { principal })
+  const exento = !!codigo && !!infoCIE10(codigo)?.marcas?.includes('E')
   return (
     <div className="grid grid-cols-[9rem_1fr_auto] gap-3 items-start">
       <span className="text-xs text-slate-500 pt-2.5 shrink-0">
         {label}{required && <span className="text-red-400 ml-0.5">*</span>}
       </span>
       <div className="space-y-1.5">
-        <BuscadorCIE value={codigo} onChange={(c, d) => onCodigoYDesc(c, d)} disabled={disabled} />
+        <BuscadorCIE value={codigo} onChange={(c, d) => onCodigoYDesc(c, d)} disabled={disabled} principal={principal} />
         {(codigo || desc) && (
           <input className="input text-xs text-slate-500" placeholder="Descripción" disabled={disabled}
             value={desc} onChange={e => onDesc(e.target.value)} />
@@ -112,6 +135,7 @@ export function FilaDx({ label, codigo, desc, poad, onCodigoYDesc, onDesc, onPoa
               }`}>
               {poad === true ? 'SÍ' : 'NO'}
             </button>
+            {exento && <span className="text-[10px] text-slate-400 leading-none" title="Este código está exento de indicar POAD según la tabla oficial">Exento</span>}
           </div>
         )}
       </div>
@@ -210,7 +234,7 @@ export function BloqueDiagnosticosCMBD({ ingresoId }: { ingresoId: string }) {
   function fila(n: number, label: string, required = false) {
     const k = clave(n)
     return (
-      <FilaDx key={k} label={label} required={required} disabled={soloLectura}
+      <FilaDx key={k} label={label} required={required} disabled={soloLectura} principal={n === 0}
         codigo={data[k] ?? ''} desc={data[`${k}_desc`] ?? ''} poad={data[`${k}_poad`] ?? null}
         onCodigoYDesc={(c, d) => cambiar({ [k]: c, [`${k}_desc`]: d })}
         onDesc={(v) => cambiar({ [`${k}_desc`]: v })}
