@@ -116,6 +116,53 @@ export function textoPauta(v: Valoracion | null): string {
   return partes.filter(Boolean).join(' · ')
 }
 
+// Días de historial de marcas necesarios para saber en qué punto del ciclo
+// va una pauta por frecuencia (la máxima es 720 h = 30 días).
+export const DIAS_HISTORIAL_CURAS = 45
+
+// Días, entre `desde` y `hasta` (incluidos), en los que toca cura según una
+// pauta:
+//  · si la pauta indica días de la semana, esos días;
+//  · si solo indica frecuencia (p. ej. "cada 48 h"), un día de cada
+//    horas/24 (redondeado a días, mínimo 1) contados desde la última vez que se hizo: la cura que
+//    toca y no se marca sigue tocando cada día hasta que se marca; al
+//    marcarla, la siguiente toca pasados los días de la frecuencia.
+//    Los días futuros se proyectan suponiendo que se hará el día que toca.
+// `hechas` son las fechas con la cura marcada (al menos DIAS_HISTORIAL_CURAS
+// días antes de `desde`).
+export function fechasQueToca(
+  pauta: Pick<Valoracion, 'fecha' | 'frecuencia_horas' | 'dias_semana'> | null,
+  desde: string,
+  hasta: string,
+  hechas: ReadonlySet<string>,
+  hoy: string
+): Set<string> {
+  const toca = new Set<string>()
+  if (!pauta || pauta.fecha > hasta) return toca
+
+  if (pauta.dias_semana?.length) {
+    for (let d = desde; d <= hasta; d = sumarDias(d, 1)) {
+      if (pauta.dias_semana.includes(diaSemanaISO(d))) toca.add(d)
+    }
+    return toca
+  }
+
+  if (!pauta.frecuencia_horas) return toca
+  const paso = Math.max(1, Math.round(pauta.frecuencia_horas / 24))
+  const inicioHistorial = sumarDias(desde, -DIAS_HISTORIAL_CURAS)
+  let proxima = pauta.fecha > inicioHistorial ? pauta.fecha : inicioHistorial
+  for (let d = proxima; d <= hasta; d = sumarDias(d, 1)) {
+    const hecha = hechas.has(d)
+    if (d >= proxima) {
+      if (d >= desde) toca.add(d)
+      if (hecha || d > hoy) proxima = sumarDias(d, paso)
+    } else if (hecha) {
+      proxima = sumarDias(d, paso)
+    }
+  }
+  return toca
+}
+
 // ── Fechas (AAAA-MM-DD, siempre con componentes locales: nunca por UTC) ──
 
 function aFecha(s: string): Date {

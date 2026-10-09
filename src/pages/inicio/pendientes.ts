@@ -7,7 +7,7 @@ import { supabase } from '../../lib/supabase'
 import { estaVacio } from '../../lib/informesEstado'
 import { necesitaConfirmacion } from '../../types/contenciones'
 import type { ContencionDia, ContencionNoche } from '../../types/contenciones'
-import { diaSemanaISO, ordenarValoraciones, pautaVigente, sumarDias } from '../curas/tipos'
+import { DIAS_HISTORIAL_CURAS, fechasQueToca, ordenarValoraciones, pautaVigente, sumarDias } from '../curas/tipos'
 import type { Valoracion } from '../curas/tipos'
 
 // Umbrales (días). Cambiar aquí cambia los avisos.
@@ -24,7 +24,7 @@ export interface IngresoPendientes {
 export interface LesionPendientes {
   ingreso_id: string
   fecha_inicio: string
-  valoraciones: Pick<Valoracion, 'fecha' | 'created_at' | 'tipo_cura' | 'dias_semana'>[]
+  valoraciones: Pick<Valoracion, 'fecha' | 'created_at' | 'tipo_cura' | 'frecuencia_horas' | 'dias_semana'>[]
 }
 
 export interface AltaReciente {
@@ -39,6 +39,9 @@ export interface ExtrasPendientes {
   // ingresos con la cura de hoy ya marcada; null = no se pudo saber
   // (sin esto, un fallo de red haría parecer que ninguna cura está hecha)
   curasHoy: string[] | null
+  // marcas de cura de los últimos días (para las pautas "cada X h"); si falta,
+  // solo se cuenta la de hoy
+  curasRecientes?: { ingreso_id: string; fecha: string }[]
   // ingresos activos con más de DIAS_INFORME_INGRESO días y el informe de ingreso vacío
   informesIngresoVacios: string[]
   altasRecientes: AltaReciente[]
@@ -158,12 +161,21 @@ export function calcularPendientes(e: EntradaPendientes): LineaPendiente[] {
   // ── Curas (solo quien las hace) ───────────────────────────────
   const lesionesActivas = e.extras.lesiones.filter((l) => activos.has(l.ingreso_id))
   if (!e.esMedico && e.extras.curasHoy) {
-    const dow = diaSemanaISO(e.hoy)
     const hechas = new Set(e.extras.curasHoy)
+    const fechasHechas = new Map<string, Set<string>>()
+    for (const r of e.extras.curasRecientes ?? []) {
+      if (!fechasHechas.has(r.ingreso_id)) fechasHechas.set(r.ingreso_id, new Set())
+      fechasHechas.get(r.ingreso_id)!.add(r.fecha)
+    }
+    for (const id of hechas) {
+      if (!fechasHechas.has(id)) fechasHechas.set(id, new Set())
+      fechasHechas.get(id)!.add(e.hoy)
+    }
     const tocan = new Set<string>()
     for (const l of lesionesActivas) {
       const pauta = pautaVigente(l.valoraciones as Valoracion[])
-      if (pauta?.dias_semana?.includes(dow)) tocan.add(l.ingreso_id)
+      const marcas = fechasHechas.get(l.ingreso_id) ?? new Set<string>()
+      if (fechasQueToca(pauta as Valoracion | null, e.hoy, e.hoy, marcas, e.hoy).has(e.hoy)) tocan.add(l.ingreso_id)
     }
     const sinHacer = porHab([...tocan].filter((id) => !hechas.has(id)))
     if (sinHacer.length > 0) {
@@ -259,12 +271,12 @@ export async function cargarExtrasPendientes(
     ids.length > 0
       ? supabase
           .from('curas_lesiones')
-          .select('ingreso_id, fecha_inicio, valoraciones:curas_valoraciones(fecha, created_at, tipo_cura, dias_semana)')
+          .select('ingreso_id, fecha_inicio, valoraciones:curas_valoraciones(fecha, created_at, tipo_cura, frecuencia_horas, dias_semana)')
           .in('ingreso_id', ids)
           .is('fecha_fin', null)
       : Promise.resolve({ data: [], error: null }),
     !esMedico && ids.length > 0
-      ? supabase.from('curas_registro').select('ingreso_id').in('ingreso_id', ids).eq('fecha', hoy)
+      ? supabase.from('curas_registro').select('ingreso_id, fecha').in('ingreso_id', ids).gte('fecha', sumarDias(hoy, -DIAS_HISTORIAL_CURAS)).lte('fecha', hoy).order('fecha', { ascending: false })
       : Promise.resolve({ data: [], error: null }),
     esMedico && idsAntiguos.length > 0
       ? supabase.from('informe_ingreso').select('*').in('ingreso_id', idsAntiguos)
@@ -282,7 +294,11 @@ export async function cargarExtrasPendientes(
   else extras.lesiones = (lesiones.data ?? []) as unknown as LesionPendientes[]
 
   if (registros.error) errores.push(registros.error.message)
-  else if (!esMedico) extras.curasHoy = ((registros.data ?? []) as { ingreso_id: string }[]).map((r) => r.ingreso_id)
+  else if (!esMedico) {
+    const filas = (registros.data ?? []) as { ingreso_id: string; fecha: string }[]
+    extras.curasHoy = filas.filter((r) => r.fecha === hoy).map((r) => r.ingreso_id)
+    extras.curasRecientes = filas
+  }
 
   if (informesIngreso.error) errores.push(informesIngreso.error.message)
   else {

@@ -8,7 +8,7 @@ import { nombreCompleto } from '../types'
 import { escapeHtml } from '../lib/imprimir'
 import {
   CARACTERISTICA_LABEL, DIAS_CORTO, DIAS_LARGO,
-  lunesDe, sumarDias, fechaCorta, fechaLarga, pautaVigente, textoPauta,
+  lunesDe, sumarDias, fechaCorta, fechaLarga, pautaVigente, textoPauta, fechasQueToca, DIAS_HISTORIAL_CURAS,
   type Lesion, type RegistroCura,
 } from './curas/tipos'
 import { ModalCura } from './curas/ModalCura'
@@ -63,6 +63,9 @@ export default function Curas() {
   const [lunes, setLunes] = useState(lunesDe(hoy))
   const [pacientes, setPacientes] = useState<PacienteConCuras[]>([])
   const [registros, setRegistros] = useState<Map<string, RegistroCura>>(new Map())
+  // Días anteriores a la semana con la cura marcada ("ingreso|fecha"): hacen falta
+  // para saber cuándo toca la siguiente de una pauta por frecuencia.
+  const [historial, setHistorial] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [errorAccion, setErrorAccion] = useState('')
@@ -99,6 +102,21 @@ export default function Curas() {
     const mapa = new Map<string, RegistroCura>()
     ;((resR.data ?? []) as unknown as RegistroCura[]).forEach((r) => mapa.set(`${r.ingreso_id}|${r.fecha}`, r))
     setRegistros(mapa)
+    // Historial previo a la semana (solo para pautas por frecuencia). Si falla,
+    // se sigue sin él: solo afecta a qué días se resaltan como "toca".
+    const ids = conCuras.map((p) => p.id)
+    const previos = new Set<string>()
+    if (ids.length > 0) {
+      const { data: hist } = await supabase
+        .from('curas_registro')
+        .select('ingreso_id, fecha')
+        .in('ingreso_id', ids)
+        .gte('fecha', sumarDias(semana[0], -DIAS_HISTORIAL_CURAS))
+        .lt('fecha', semana[0])
+        .order('fecha', { ascending: false })
+      ;((hist ?? []) as { ingreso_id: string; fecha: string }[]).forEach((r) => previos.add(`${r.ingreso_id}|${r.fecha}`))
+    }
+    setHistorial(previos)
     setLoading(false)
   }
   useEffect(() => { setLoading(true); cargar() }, [lunes]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -117,10 +135,24 @@ export default function Curas() {
     setOcupado(null)
   }
 
-  // ¿Toca cura ese día según alguna pauta activa del paciente?
+  // Días de la semana en que toca cura a cada paciente (según la pauta vigente
+  // de cualquiera de sus lesiones: días de la semana o frecuencia en horas).
+  const tocaPorPaciente = useMemo(() => {
+    const mapa = new Map<string, Set<string>>()
+    for (const p of pacientes) {
+      const hechas = new Set<string>()
+      for (const k of historial) if (k.startsWith(p.id + '|')) hechas.add(k.slice(p.id.length + 1))
+      for (const d of semana) if (registros.has(`${p.id}|${d}`)) hechas.add(d)
+      const dias = new Set<string>()
+      for (const l of p.lesiones) {
+        fechasQueToca(pautaVigente(l.valoraciones), semana[0], semana[6], hechas, hoy).forEach((d) => dias.add(d))
+      }
+      mapa.set(p.id, dias)
+    }
+    return mapa
+  }, [pacientes, historial, registros, semana, hoy])
   function tocaEse(p: PacienteConCuras, fecha: string): boolean {
-    const dow = (() => { const d = new Date(fecha + 'T00:00:00').getDay(); return d === 0 ? 7 : d })()
-    return p.lesiones.some((l) => pautaVigente(l.valoraciones)?.dias_semana?.includes(dow))
+    return tocaPorPaciente.get(p.id)?.has(fecha) ?? false
   }
 
   const esSemanaActual = lunes === lunesDe(hoy)
@@ -222,7 +254,7 @@ export default function Curas() {
               </tbody>
             </table>
             <p className="px-4 py-2 text-xs text-slate-500 border-t">
-              Verde: cura hecha · ámbar: tocaba según la pauta y no está marcada · borde discontinuo: toca ese día.
+              Verde: cura hecha · ámbar: tocaba según la pauta y no está marcada · borde discontinuo: toca ese día (en las pautas «cada X h», se calcula desde la última cura marcada).
             </p>
           </div>
 
