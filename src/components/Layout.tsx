@@ -2,9 +2,10 @@ import { useState } from 'react'
 import { NavLink, Outlet } from "react-router-dom"
 import {
   Users, ClipboardList, AlertTriangle,
-  BarChart2, Activity, Home, ChevronLeft, LogOut, UserCog, History, FileText, Bandage
+  BarChart2, Home, ChevronLeft, LogOut, UserCog, History, FileText, Bandage
 } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext'
+import logo from '../assets/logo.png'
 
 const ROL_LABEL: Record<string, string> = {
   medico: 'Médico/a',
@@ -35,13 +36,14 @@ export default function Layout() {
       <aside className={`bg-white border-r flex flex-col shrink-0 transition-all duration-200 ${collapsed ? 'w-14' : 'w-56'}`}>
         {/* Cabecera */}
         <div className="border-b px-3 py-4 flex items-center justify-between gap-2">
-          {/* Icono — siempre visible, expande si colapsado */}
+          {/* Logo — siempre visible, expande si colapsado */}
           <button
             onClick={() => collapsed && setCollapsed(false)}
-            className={`w-7 h-7 bg-primary-600 rounded-lg flex items-center justify-center shrink-0 ${collapsed ? 'hover:bg-primary-700 cursor-pointer' : 'cursor-default'} transition-colors`}
+            className={`shrink-0 rounded-lg ${collapsed ? 'hover:opacity-80 cursor-pointer' : 'cursor-default'} transition-opacity`}
             title={collapsed ? 'Expandir menú' : undefined}
+            aria-label={collapsed ? 'Expandir menú' : 'CJA Hospital'}
           >
-            <Activity className="w-4 h-4 text-white" />
+            <img src={logo} alt="" className="w-8 h-8 block" />
           </button>
 
           {/* Texto + botón colapsar — solo cuando expandido */}

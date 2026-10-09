@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
-import { Activity, LogIn, Loader2 } from 'lucide-react'
+import { LogIn, Loader2 } from 'lucide-react'
+import logo from '../assets/logo.png'
 
 export default function Login() {
   const { session } = useAuth()
@@ -36,9 +37,7 @@ export default function Login() {
       <div className="w-full max-w-sm">
         {/* Cabecera con el mismo logo que la barra lateral */}
         <div className="flex flex-col items-center mb-6">
-          <div className="w-11 h-11 bg-primary-600 rounded-xl flex items-center justify-center mb-3">
-            <Activity className="w-6 h-6 text-white" />
-          </div>
+          <img src={logo} alt="" className="w-16 h-16 mb-3" />
           <h1 className="text-lg font-bold text-slate-800">CJA Hospital</h1>
           <p className="text-xs text-slate-500">Clínica Josefina Arregui · Alsasua</p>
         </div>

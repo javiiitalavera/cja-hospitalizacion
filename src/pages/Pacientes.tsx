@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { escaparBusquedaIlike, quitarTildes } from '../lib/busqueda'
 import { edad } from '../lib/fechas'
 import { useAuth } from '../lib/AuthContext'
-import { Plus, Search, Loader2, ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-react'
+import { Plus, Search, Loader2, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react'
 import { ESTADO_INGRESO_LABEL as ESTADO_LABEL, ESTADO_INGRESO_COLOR as ESTADO_COLOR } from '../types'
 
 interface PacienteRow {
@@ -24,13 +24,30 @@ interface PacienteRow {
   }
 }
 
-const ORDEN_OPCIONES = [
-  { valor: 'apellido', etiqueta: 'Apellidos', columna: 'primer_apellido', asc: true },
-  { valor: 'nhc', etiqueta: 'Nº historia clínica', columna: 'nhc', asc: true },
-  { valor: 'ultimo_ingreso', etiqueta: 'Fecha de último ingreso', columna: 'ingreso_fecha_ingreso', asc: false },
-  { valor: 'estado', etiqueta: 'Estado actual', columna: 'ingreso_estado', asc: true },
+// Columnas por las que se puede ordenar (se pulsa su cabecera). El orden se
+// aplica en la propia consulta, antes de paginar. "ascInicial" es el sentido
+// al pulsar la columna por primera vez: la fecha empieza por lo más reciente.
+// "invertir": la edad crece al revés que la fecha de nacimiento.
+const COLUMNAS = [
+  { clave: 'paciente', titulo: 'Paciente', db: 'primer_apellido', ascInicial: true, invertir: false },
+  { clave: 'edad', titulo: 'Edad', db: 'fecha_nacimiento', ascInicial: true, invertir: true },
+  { clave: 'nhc', titulo: 'NHC', db: 'nhc', ascInicial: true, invertir: false },
+  { clave: 'ingreso', titulo: 'Último ingreso', db: 'ingreso_fecha_ingreso', ascInicial: false, invertir: false },
+  { clave: 'estado', titulo: 'Estado', db: 'ingreso_estado', ascInicial: true, invertir: false },
 ] as const
-type OrdenValor = typeof ORDEN_OPCIONES[number]['valor']
+type ColumnaOrden = typeof COLUMNAS[number]['clave']
+interface Orden { columna: ColumnaOrden; asc: boolean }
+
+// Enlaces guardados de antes, cuando el orden era un desplegable.
+const ORDEN_ANTIGUO: Record<string, ColumnaOrden> = { apellido: 'paciente', ultimo_ingreso: 'ingreso' }
+
+function ordenDeUrl(params: URLSearchParams): Orden {
+  const crudo = params.get('orden') ?? ''
+  const clave = ORDEN_ANTIGUO[crudo] ?? crudo
+  const col = COLUMNAS.find((c) => c.clave === clave) ?? COLUMNAS[0]
+  const dir = params.get('dir')
+  return { columna: col.clave, asc: dir === 'asc' ? true : dir === 'desc' ? false : col.ascInicial }
+}
 
 const PAGE_SIZE = 50
 
@@ -51,14 +68,14 @@ export default function Pacientes() {
   const [filtroEstado, setFiltroEstado] = useState<'activo' | 'alta' | 'todos'>(
     (searchParams.get('estado') as 'activo' | 'alta' | 'todos') ?? 'activo'
   )
-  const [orden, setOrden] = useState<OrdenValor>((searchParams.get('orden') as OrdenValor) ?? 'apellido')
+  const [orden, setOrden] = useState<Orden>(() => ordenDeUrl(searchParams))
   const [pagina, setPagina] = useState(Number(searchParams.get('pagina') ?? 0))
   const navigate = useNavigate()
 
   // Refleja el estado actual en la URL, sin llenar el historial del
   // navegador con una entrada por cada tecla o clic de filtro.
   useEffect(() => {
-    const params: Record<string, string> = { estado: filtroEstado, orden, pagina: String(pagina) }
+    const params: Record<string, string> = { estado: filtroEstado, orden: orden.columna, dir: orden.asc ? 'asc' : 'desc', pagina: String(pagina) }
     if (busquedaActiva.trim()) params.q = busquedaActiva
     setSearchParams(params, { replace: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -95,8 +112,13 @@ export default function Pacientes() {
         query = query.or(`primer_apellido_normalizado.ilike.${q},segundo_apellido_normalizado.ilike.${q},nombre_normalizado.ilike.${q},nhc.ilike.${q},cipna.ilike.${q}`)
       }
 
-      const opcion = ORDEN_OPCIONES.find(o => o.valor === orden)!
-      query = query.order(opcion.columna, { ascending: opcion.asc, nullsFirst: false })
+      // Los pacientes sin dato en la columna (sin NHC, sin ingresos…) salen
+      // siempre al final. Después, por apellido, nombre e id, para que el
+      // orden sea estable al cambiar de página.
+      const col = COLUMNAS.find(c => c.clave === orden.columna)!
+      query = query.order(col.db, { ascending: col.invertir ? !orden.asc : orden.asc, nullsFirst: false })
+      if (col.db !== 'primer_apellido') query = query.order('primer_apellido', { ascending: true })
+      query = query.order('nombre', { ascending: true }).order('id', { ascending: true })
       query = query.range(pagina * PAGE_SIZE, (pagina + 1) * PAGE_SIZE - 1)
 
       const { data, count, error: err } = await query
@@ -137,6 +159,14 @@ export default function Pacientes() {
   }
 
   const totalPaginas = Math.ceil(total / PAGE_SIZE)
+
+  function ordenarPor(columna: ColumnaOrden) {
+    // Al pulsar otra columna empieza en su sentido natural (la fecha, lo más
+    // reciente primero); al pulsar la misma, se invierte.
+    const col = COLUMNAS.find(c => c.clave === columna)!
+    setOrden(o => o.columna === columna ? { columna, asc: !o.asc } : { columna, asc: col.ascInicial })
+    setPagina(0)
+  }
 
   return (
     <div className="p-6 md:p-8">
@@ -198,25 +228,33 @@ export default function Pacientes() {
             {e === 'activo' ? 'Ingresados' : e === 'alta' ? 'Altas / Éxitus' : 'Todos'}
           </button>
         ))}
-        <div className="flex items-center gap-1.5 ml-auto">
-          <ArrowUpDown className="w-3.5 h-3.5 text-slate-500" />
-          <select className="input py-1.5 text-sm w-auto" value={orden} onChange={e => { setOrden(e.target.value as OrdenValor); setPagina(0) }}>
-            {ORDEN_OPCIONES.map(o => (
-              <option key={o.valor} value={o.valor}>Ordenar por {o.etiqueta.toLowerCase()}</option>
-            ))}
-          </select>
-        </div>
       </div>
 
       <div className="card overflow-hidden">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b bg-slate-50">
-              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Paciente</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Edad</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">NHC</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Último ingreso</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Estado</th>
+              {COLUMNAS.map(({ clave, titulo }) => {
+                const activa = orden.columna === clave
+                const Flecha = !activa ? ArrowUpDown : orden.asc ? ArrowUp : ArrowDown
+                return (
+                  <th
+                    key={clave}
+                    aria-sort={activa ? (orden.asc ? 'ascending' : 'descending') : 'none'}
+                    className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide"
+                  >
+                    <button
+                      type="button"
+                      data-orden={clave}
+                      onClick={() => ordenarPor(clave)}
+                      className={`inline-flex items-center gap-1 uppercase tracking-wide hover:text-slate-800 ${activa ? 'text-slate-800' : 'text-slate-500'}`}
+                    >
+                      {titulo}
+                      <Flecha className={`w-3 h-3 ${activa ? '' : 'opacity-40'}`} />
+                    </button>
+                  </th>
+                )
+              })}
               <th className="px-4 py-3 w-10"></th>
             </tr>
           </thead>

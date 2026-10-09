@@ -16,6 +16,7 @@ import { TabCuras } from './ingreso/TabCuras'
 import { TabOtrosInformes } from './ingreso/TabOtrosInformes'
 import { TabInformeEnfermeria } from './ingreso/TabInformeEnfermeria'
 import { NavegadorPacientes } from './ingreso/NavegadorPacientes'
+import { BadgeHabitacion } from './ingreso/BadgeHabitacion'
 import { TIPALT_LABEL } from '../lib/alta'
 
 // Estructura de la ficha: pestañas principales y, dentro de algunas,
@@ -134,6 +135,21 @@ export default function DetalleIngreso() {
 
   useEffect(() => { cargar() }, [id])
 
+  // Semáforo de caídas del paciente (lo rellena enfermería en la hoja de
+  // ítems). Se vuelve a leer al cambiar de pestaña por si ha cambiado.
+  const [semaforo, setSemaforo] = useState<string | null>(null)
+  useEffect(() => {
+    if (!id) return
+    let vigente = true
+    supabase
+      .from('items_paciente')
+      .select('semaforo_caidas')
+      .eq('ingreso_id', id)
+      .maybeSingle()
+      .then(({ data }) => { if (vigente) setSemaforo((data as { semaforo_caidas?: string | null } | null)?.semaforo_caidas ?? null) })
+    return () => { vigente = false }
+  }, [id, tabActual.id, subActual?.id])
+
   async function darAlta() {
     if (!id) return
     if (altaForm.fecha_alta < ingreso!.fecha_ingreso) {
@@ -228,14 +244,16 @@ export default function DetalleIngreso() {
             <button onClick={() => navigate(-1)} className="text-slate-500 hover:text-slate-600 mt-1">
               <ChevronLeft className="w-5 h-5" />
             </button>
+            {ingreso.habitacion && (
+              <BadgeHabitacion habitacion={ingreso.habitacion} semaforo={semaforo} cerrado={episodioCerrado} />
+            )}
             <div>
               <h1 className="text-xl font-bold text-slate-800">{nombreDelPaciente}</h1>
               <div className="flex items-center gap-3 mt-0.5 text-xs text-slate-500 flex-wrap">
                 {edadPaciente != null && <span>{edadPaciente} años</span>}
-                {ingreso.habitacion && <span>· Hab. {ingreso.habitacion}</span>}
                 {ingreso.medico_responsable && (
                   <span>
-                    · {ingreso.medico_responsable.nombre} {ingreso.medico_responsable.apellidos}
+                    {edadPaciente != null ? '· ' : ''}{ingreso.medico_responsable.nombre} {ingreso.medico_responsable.apellidos}
                   </span>
                 )}
                 {episodioCerrado ? (
