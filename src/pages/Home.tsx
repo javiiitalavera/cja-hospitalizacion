@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import type { Ingreso } from '../types'
 import { SEMAFORO_CAIDAS_COLOR as SEMAFORO, nombreCompleto } from '../types'
 import { edad, diasEntre, formatFechaLocal, hoyLocal } from '../lib/fechas'
-import { Plus, ClipboardList, ChevronRight, AlertTriangle, AlertCircle, Sun, Moon, RefreshCw, Printer } from 'lucide-react'
+import { Plus, ChevronRight, AlertTriangle, AlertCircle, Sun, Moon, RefreshCw, Printer, LayoutList, LayoutGrid } from 'lucide-react'
 import ModalContencion from '../components/ModalContencion'
 import FormularioEvento from '../components/FormularioEvento'
 import Tooltip from '../components/Tooltip'
@@ -62,6 +62,12 @@ type IngresoConPaciente = Ingreso & {
   medico_responsable: { nombre: string; apellidos: string } | null
 }
 
+type VistaInicio = 'filas' | 'tarjetas'
+const CLAVE_VISTA = 'cja_inicio_vista'
+function vistaGuardada(): VistaInicio {
+  try { return localStorage.getItem(CLAVE_VISTA) === 'tarjetas' ? 'tarjetas' : 'filas' } catch { return 'filas' }
+}
+
 export default function Home() {
   const [ingresos, setIngresos] = useState<IngresoConPaciente[]>([])
   const [items, setItems] = useState<Record<string, { semaforo_caidas?: string }>>({})
@@ -85,6 +91,7 @@ export default function Home() {
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState('')
   const [errorAuxiliar, setErrorAuxiliar] = useState('')
+  const [vista, setVista] = useState<VistaInicio>(vistaGuardada)
   const navigate = useNavigate()
   const { rol } = useAuth()
   const esMedico = rol === 'medico'
@@ -247,9 +254,201 @@ export default function Home() {
       })
     : []
 
+  function cambiarVista(v: VistaInicio) {
+    setVista(v)
+    try { localStorage.setItem(CLAVE_VISTA, v) } catch { /* sin almacenamiento: solo no se recuerda */ }
+  }
+
   function abrirPendiente(l: LineaPendiente) {
     if (l.accion.tipo === 'contencion') setModalContencion(l.accion.ingresoId)
     else navigate(l.accion.ruta)
+  }
+
+  // Contención física (día y noche), con acceso rápido: igual en la vista de filas y en la de tarjetas.
+  function celdaContencion(ingreso: IngresoConPaciente) {
+    return (
+        <div className="flex items-center gap-1">
+          {(['dia', 'noche'] as const).map((eje) => {
+            const estado = contencionesPorIngreso[ingreso.id]
+            const valor = eje === 'dia' ? estado?.dia : estado?.noche
+            const sev = eje === 'dia' ? severidadDia(estado?.dia) : severidadNoche(estado?.noche)
+            const estilo = SEVERIDAD_ESTILO[sev]
+            const Icono = eje === 'dia' ? Sun : Moon
+            const etiqueta =
+              sev === 'sin_revisar' ? 'Sin revisar todavía'
+              : eje === 'dia' ? CONTENCION_DIA_LABEL[(valor as ContencionDia) ?? 'ninguna']
+              : (valor as ContencionNoche[] | undefined)?.length
+                ? (valor as ContencionNoche[]).map((v) => CONTENCION_NOCHE_LABEL[v]).join(', ')
+                : 'Ninguna'
+            // Pendiente de confirmar: severidad activa/si
+            // precisa, y todavía sin firma de un médico —
+            // se avisa con un parpadeo suave, no solo un
+            // color, para que no pase desapercibido en un
+            // vistazo rápido a la lista.
+            const pendienteConfirmar = eje === 'dia'
+              ? necesitaConfirmacion(estado?.dia, null) && !estado?.confirmado_por_id
+              : necesitaConfirmacion(null, estado?.noche) && !estado?.confirmado_por_id
+            return (
+              <div key={eje} className="relative group/tt">
+                <button
+                  onClick={(e) => { e.stopPropagation(); setModalContencion(ingreso.id) }}
+                  className={`relative flex items-center justify-center w-6 h-6 rounded-md border transition-colors ${estilo.bg} ${estilo.border} ${estilo.text} hover:opacity-80 ${pendienteConfirmar ? 'animate-pulse ring-2 ring-amber-400' : ''}`}
+                >
+                  <Icono className="w-3.5 h-3.5" />
+                  {sev === 'sin_revisar' && (
+                    <AlertCircle className="w-2.5 h-2.5 text-slate-500 absolute -top-1 -right-1 bg-white rounded-full" />
+                  )}
+                  {pendienteConfirmar && (
+                    <span className="w-2 h-2 rounded-full bg-amber-500 absolute -top-0.5 -right-0.5 animate-ping" />
+                  )}
+                </button>
+                <Tooltip titulo={eje === 'dia' ? 'Día' : 'Noche'}>
+                  <p className="text-xs text-slate-100">{etiqueta}</p>
+                  {pendienteConfirmar && (
+                    <p className="text-xs text-amber-300 font-medium mt-0.5">Pendiente de confirmación médica</p>
+                  )}
+                </Tooltip>
+              </div>
+            )
+          })}
+        </div>
+    )
+  }
+
+  // Incidencias del paciente (insignia + «+» para registrar una nueva), común a las dos vistas.
+  function celdaIncidencias(ingreso: IngresoConPaciente) {
+    const lista = eventosPorIngreso[ingreso.id] ?? []
+    const pendientes = lista.filter((e) => e.estado === 'pendiente').length
+    const hayReciente = lista.some((e) => e.fecha >= hace7dias())
+    const color = pendientes > 0
+      ? 'bg-red-50 border-red-200 text-red-700 hover:bg-red-100'
+      : hayReciente
+        ? 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100'
+        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+    const visibles = lista.slice(0, MAX_LINEAS_TOOLTIP)
+    return (
+      <div className="flex items-center gap-2">
+        <div className="relative group/tt">
+          <button
+            type="button"
+            aria-label="Registrar incidencia"
+            data-registrar={ingreso.id}
+            onClick={(e) => {
+              e.stopPropagation()
+              setModalEvento(ingreso.id)
+            }}
+            className="p-1 rounded-md border border-slate-200 text-slate-500 hover:bg-amber-50 hover:border-amber-200 hover:text-amber-700 transition-colors"
+          >
+            <Plus className="w-3.5 h-3.5" />
+          </button>
+          <Tooltip titulo="Registrar incidencia">
+            <p className="text-xs text-slate-100">Caída, fuga, agresividad…</p>
+          </Tooltip>
+        </div>
+        <div>
+          {lista.length > 0 && (
+            <div className="relative group/tt w-fit">
+              <button
+                type="button"
+                data-incidencias={ingreso.id}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  navigate(`/ingresos/${ingreso.id}?tab=eventos`)
+                }}
+                className={`flex items-center gap-1 px-2 py-1 rounded-lg border text-xs font-medium whitespace-nowrap transition-colors ${color}`}
+              >
+                <AlertTriangle className="w-3 h-3 shrink-0" />
+                {lista.length}
+                {pendientes > 0 && ` · ${pendientes} pendiente${pendientes > 1 ? 's' : ''}`}
+              </button>
+              <Tooltip titulo={`Incidencias del ingreso (${lista.length})`} ancho="max-w-[360px]">
+                {visibles.map((ev) => (
+                  <div key={ev.id} className="flex items-center gap-1.5 text-xs">
+                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                      (TIPO_EVENTO_COLOR[ev.tipo as TipoEvento] ?? '').split(' ').find(c => c.startsWith('bg-')) ?? 'bg-slate-400'
+                    }`} />
+                    <span className="text-slate-100 whitespace-nowrap">{TIPO_EVENTO_LABEL[ev.tipo as TipoEvento] ?? ev.tipo}</span>
+                    <span className="text-slate-300 ml-auto pl-2 whitespace-nowrap">
+                      {fechaCorta(ev.fecha)}{ev.hora ? ` ${ev.hora.slice(0, 5)}` : ''}
+                    </span>
+                    {ev.estado === 'pendiente' && <span className="text-amber-300 whitespace-nowrap">pendiente</span>}
+                  </div>
+                ))}
+                {lista.length > visibles.length && (
+                  <p className="text-xs text-slate-300">y {lista.length - visibles.length} más antigua{lista.length - visibles.length > 1 ? 's' : ''} · pulsa para verlas</p>
+                )}
+              </Tooltip>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // Vista de tarjetas: una por habitación, con lo mismo que la fila pero más cómodo de leer de un vistazo.
+  function vistaTarjetas() {
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3">
+        {slots.map((ingreso, idx) => {
+          const n = idx + 1
+          if (!ingreso) {
+            return (
+              <div key={n}
+                className={`flex items-center gap-3 border border-dashed border-slate-300 rounded-xl px-4 py-3 min-h-[5.5rem] transition-colors ${esMedico ? 'cursor-pointer hover:border-primary-300 hover:bg-primary-50/30' : ''}`}
+                onClick={esMedico ? () => navigate(`/pacientes/nuevo?habitacion=${n}`) : undefined}
+                title={esMedico ? `Ingresar en habitación ${n}` : `Habitación ${n} libre`}>
+                <span className="w-9 h-9 rounded-lg bg-slate-50 text-slate-300 flex items-center justify-center font-bold text-sm shrink-0">{n}</span>
+                <span className="text-sm text-slate-400">Libre{esMedico ? ' · ingresar' : ''}</span>
+              </div>
+            )
+          }
+          const p = ingreso.paciente
+          const sem = items[ingreso.id]?.semaforo_caidas
+          const semColor = sem ? SEMAFORO[sem] : null
+          const e = edad(p?.fecha_nacimiento ?? undefined)
+          const dias = diasEntre(ingreso.fecha_ingreso)
+          const fingreso = ingreso.fecha_ingreso
+            ? new Date(ingreso.fecha_ingreso).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: '2-digit' })
+            : '—'
+          const medico = ingreso.medico_responsable
+            ? `${ingreso.medico_responsable.nombre} ${ingreso.medico_responsable.apellidos}`.trim()
+            : '—'
+          const diagnostico = informes[ingreso.id]?.impresion_diagnostica ?? ingreso.motivo_ingreso ?? ''
+          return (
+            <div key={n}
+              className="group bg-white border border-slate-200 rounded-xl p-4 hover:shadow-sm hover:border-primary-200 transition-all cursor-pointer flex flex-col gap-2.5"
+              onClick={() => navigate(`/ingresos/${ingreso.id}`)}>
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-lg flex items-center justify-center font-bold text-sm shrink-0"
+                  style={semColor ? { backgroundColor: semColor, color: sem === 'rojo' ? '#fff' : '#000' } : { backgroundColor: '#f1f5f9', color: '#475569' }}>
+                  {n}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-slate-800 text-sm leading-tight">{p ? nombreCompleto(p) : '—'}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {e != null ? `${e} años` : '—'} · ingreso {fingreso}
+                    {dias != null && (
+                      <span className={`ml-1.5 font-medium px-1.5 py-0.5 rounded-full ${
+                        dias > 60 ? 'bg-amber-100 text-amber-700' : dias > 30 ? 'bg-yellow-50 text-yellow-600' : 'text-slate-500'
+                      }`}>{dias}d</span>
+                    )}
+                  </p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-200 group-hover:text-slate-500 transition-colors shrink-0 mt-1" />
+              </div>
+              <p className="text-xs text-slate-600 leading-snug line-clamp-2 min-h-[2rem]">{diagnostico || <span className="text-slate-300">Sin diagnóstico</span>}</p>
+              <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
+                <span className="text-xs text-slate-500 truncate min-w-0" title={medico}>{medico}</span>
+                <div className="flex items-center gap-3 shrink-0">
+                  {celdaContencion(ingreso)}
+                  {celdaIncidencias(ingreso)}
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    )
   }
 
   return (
@@ -270,6 +469,14 @@ export default function Home() {
             {ocupadas} ingresados
           </span>
           <span className="px-3 py-1 bg-slate-100 text-slate-500 rounded-full font-medium">{libres} libres</span>
+          <div className="flex rounded-full border border-slate-200 overflow-hidden" role="group" aria-label="Vista">
+            {([['filas', 'Filas', LayoutList], ['tarjetas', 'Tarjetas', LayoutGrid]] as const).map(([v, et, Icono]) => (
+              <button key={v} type="button" onClick={() => cambiarVista(v)} aria-pressed={vista === v} title={`Vista de ${et.toLowerCase()}`}
+                className={`flex items-center gap-1.5 px-3 py-1 font-medium transition-colors ${vista === v ? 'bg-primary-50 text-primary-700' : 'text-slate-500 hover:bg-slate-50'}`}>
+                <Icono className="w-3.5 h-3.5" />{et}
+              </button>
+            ))}
+          </div>
           <button
             onClick={fetchData}
             disabled={refreshing}
@@ -288,18 +495,6 @@ export default function Home() {
             Imprimir
           </button>
         </div>
-      </div>
-
-      {/* Acciones rápidas */}
-      <div className="flex gap-2 mb-5">
-        {esMedico && (
-          <Link to="/pacientes/nuevo" className="btn-primary">
-            <Plus className="w-4 h-4" /> Nuevo ingreso
-          </Link>
-        )}
-        <Link to="/items" className="btn-secondary">
-          <ClipboardList className="w-4 h-4" /> Hoja de ítems
-        </Link>
       </div>
 
       {/* Aviso: pacientes ingresados sin habitación asignada. Sin esto,
@@ -338,12 +533,14 @@ export default function Home() {
           <button onClick={fetchData} className="btn-secondary text-xs">Reintentar</button>
         </div>
       ) : (
+        <>
+        {errorAuxiliar && (
+          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 mb-2">
+            {errorAuxiliar}
+          </p>
+        )}
+        {vista === 'tarjetas' ? vistaTarjetas() : (
         <div className="grid grid-cols-1 gap-1">
-          {errorAuxiliar && (
-            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 mb-1">
-              {errorAuxiliar}
-            </p>
-          )}
           {/* Cabecera */}
           <div
             className="grid gap-x-3 text-xs font-semibold text-slate-500 uppercase tracking-wide px-3 pb-1"
@@ -459,51 +656,7 @@ export default function Home() {
                   {/* Médico */}
                   <div className="text-slate-500 text-xs truncate">{medico}</div>
                   {/* Contención física: día y noche, acceso rápido sin salir de Inicio */}
-                  <div className="flex items-center gap-1">
-                    {(['dia', 'noche'] as const).map((eje) => {
-                      const estado = contencionesPorIngreso[ingreso.id]
-                      const valor = eje === 'dia' ? estado?.dia : estado?.noche
-                      const sev = eje === 'dia' ? severidadDia(estado?.dia) : severidadNoche(estado?.noche)
-                      const estilo = SEVERIDAD_ESTILO[sev]
-                      const Icono = eje === 'dia' ? Sun : Moon
-                      const etiqueta =
-                        sev === 'sin_revisar' ? 'Sin revisar todavía'
-                        : eje === 'dia' ? CONTENCION_DIA_LABEL[(valor as ContencionDia) ?? 'ninguna']
-                        : (valor as ContencionNoche[] | undefined)?.length
-                          ? (valor as ContencionNoche[]).map((v) => CONTENCION_NOCHE_LABEL[v]).join(', ')
-                          : 'Ninguna'
-                      // Pendiente de confirmar: severidad activa/si
-                      // precisa, y todavía sin firma de un médico —
-                      // se avisa con un parpadeo suave, no solo un
-                      // color, para que no pase desapercibido en un
-                      // vistazo rápido a la lista.
-                      const pendienteConfirmar = eje === 'dia'
-                        ? necesitaConfirmacion(estado?.dia, null) && !estado?.confirmado_por_id
-                        : necesitaConfirmacion(null, estado?.noche) && !estado?.confirmado_por_id
-                      return (
-                        <div key={eje} className="relative group/tt">
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setModalContencion(ingreso.id) }}
-                            className={`relative flex items-center justify-center w-6 h-6 rounded-md border transition-colors ${estilo.bg} ${estilo.border} ${estilo.text} hover:opacity-80 ${pendienteConfirmar ? 'animate-pulse ring-2 ring-amber-400' : ''}`}
-                          >
-                            <Icono className="w-3.5 h-3.5" />
-                            {sev === 'sin_revisar' && (
-                              <AlertCircle className="w-2.5 h-2.5 text-slate-500 absolute -top-1 -right-1 bg-white rounded-full" />
-                            )}
-                            {pendienteConfirmar && (
-                              <span className="w-2 h-2 rounded-full bg-amber-500 absolute -top-0.5 -right-0.5 animate-ping" />
-                            )}
-                          </button>
-                          <Tooltip titulo={eje === 'dia' ? 'Día' : 'Noche'}>
-                            <p className="text-xs text-slate-100">{etiqueta}</p>
-                            {pendienteConfirmar && (
-                              <p className="text-xs text-amber-300 font-medium mt-0.5">Pendiente de confirmación médica</p>
-                            )}
-                          </Tooltip>
-                        </div>
-                      )
-                    })}
-                  </div>
+                  {celdaContencion(ingreso)}
                   {/* Incidencias del paciente: la insignia solo aparece si
                       hay algo (antes eran 32 botones idénticos) y cuenta
                       todas las del ingreso, como la ficha. Rojo = hay
@@ -511,74 +664,7 @@ export default function Home() {
                       últimos 7 días; gris = solo antiguas. El «+» está
                       pegado a ella y registra una nueva sin salir de
                       Inicio (el formulario ya avisa de duplicados). */}
-                  {(() => {
-                    const lista = eventosPorIngreso[ingreso.id] ?? []
-                    const pendientes = lista.filter((e) => e.estado === 'pendiente').length
-                    const hayReciente = lista.some((e) => e.fecha >= hace7dias())
-                    const color = pendientes > 0
-                      ? 'bg-red-50 border-red-200 text-red-700 hover:bg-red-100'
-                      : hayReciente
-                        ? 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100'
-                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
-                    const visibles = lista.slice(0, MAX_LINEAS_TOOLTIP)
-                    return (
-                      <div className="flex items-center gap-2">
-                        <div className="relative group/tt">
-                          <button
-                            type="button"
-                            aria-label="Registrar incidencia"
-                            data-registrar={ingreso.id}
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setModalEvento(ingreso.id)
-                            }}
-                            className="p-1 rounded-md border border-slate-200 text-slate-500 hover:bg-amber-50 hover:border-amber-200 hover:text-amber-700 transition-colors"
-                          >
-                            <Plus className="w-3.5 h-3.5" />
-                          </button>
-                          <Tooltip titulo="Registrar incidencia">
-                            <p className="text-xs text-slate-100">Caída, fuga, agresividad…</p>
-                          </Tooltip>
-                        </div>
-                        <div>
-                          {lista.length > 0 && (
-                            <div className="relative group/tt w-fit">
-                              <button
-                                type="button"
-                                data-incidencias={ingreso.id}
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  navigate(`/ingresos/${ingreso.id}?tab=eventos`)
-                                }}
-                                className={`flex items-center gap-1 px-2 py-1 rounded-lg border text-xs font-medium whitespace-nowrap transition-colors ${color}`}
-                              >
-                                <AlertTriangle className="w-3 h-3 shrink-0" />
-                                {lista.length}
-                                {pendientes > 0 && ` · ${pendientes} pendiente${pendientes > 1 ? 's' : ''}`}
-                              </button>
-                              <Tooltip titulo={`Incidencias del ingreso (${lista.length})`} ancho="max-w-[360px]">
-                                {visibles.map((ev) => (
-                                  <div key={ev.id} className="flex items-center gap-1.5 text-xs">
-                                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                                      (TIPO_EVENTO_COLOR[ev.tipo as TipoEvento] ?? '').split(' ').find(c => c.startsWith('bg-')) ?? 'bg-slate-400'
-                                    }`} />
-                                    <span className="text-slate-100 whitespace-nowrap">{TIPO_EVENTO_LABEL[ev.tipo as TipoEvento] ?? ev.tipo}</span>
-                                    <span className="text-slate-300 ml-auto pl-2 whitespace-nowrap">
-                                      {fechaCorta(ev.fecha)}{ev.hora ? ` ${ev.hora.slice(0, 5)}` : ''}
-                                    </span>
-                                    {ev.estado === 'pendiente' && <span className="text-amber-300 whitespace-nowrap">pendiente</span>}
-                                  </div>
-                                ))}
-                                {lista.length > visibles.length && (
-                                  <p className="text-xs text-slate-300">y {lista.length - visibles.length} más antigua{lista.length - visibles.length > 1 ? 's' : ''} · pulsa para verlas</p>
-                                )}
-                              </Tooltip>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )
-                  })()}
+                  {celdaIncidencias(ingreso)}
                   {/* Arrow */}
                   <div className="flex justify-end">
                     <ChevronRight className="w-4 h-4 text-slate-200 group-hover:text-slate-500 transition-colors" />
@@ -588,6 +674,8 @@ export default function Home() {
             )
           })}
         </div>
+        )}
+        </>
       )}
 
       {/* Modal contención física: pautar o ver, sin salir de Inicio */}
