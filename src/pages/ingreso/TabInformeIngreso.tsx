@@ -11,6 +11,7 @@ import { totalBarthel, totalLawton, totalNPI } from '../../types/escalas'
 import { CAMPOS_REVISAR } from '../../lib/reingreso'
 import { añadirResumen, textoEscalasCognitivo, textoEscalasFuncional } from '../../lib/resumenEscalas'
 import type { EscalaClinica } from '../../types/escalas'
+import { AvisoGuardado } from '../../components/AvisoGuardado'
 
 // Apartados que no se rellenan siempre: salen plegados ("+ añadir") salvo que ya tengan texto.
 const OPCIONALES_VGI: [keyof InformeIngreso, string][] = [
@@ -20,7 +21,10 @@ const OPCIONALES_SITUACION: [keyof InformeIngreso, string][] = [
   ['situacion_cognitivo', 'Cognitiva'], ['situacion_conductual', 'Conductual'], ['situacion_animico', 'Anímica'],
   ['situacion_funcional', 'Funcional'], ['situacion_social', 'Social'],
 ]
-const CAMPOS_OPCIONALES = [...OPCIONALES_VGI, ...OPCIONALES_SITUACION].map(([k]) => k as string)
+// Cada uno sale en su sitio, con su propio "+ añadir" mientras está vacío.
+const OPCIONAL_FAMILIARES: [keyof InformeIngreso, string][] = [['antecedentes_familiares', 'Antecedentes familiares']]
+const OPCIONAL_PERSONALIDAD: [keyof InformeIngreso, string][] = [['personalidad_previa', 'Personalidad previa']]
+const CAMPOS_OPCIONALES = [...OPCIONAL_FAMILIARES, ...OPCIONALES_VGI, ...OPCIONAL_PERSONALIDAD, ...OPCIONALES_SITUACION].map(([k]) => k as string)
 
 type EstadoGuardado = 'inactivo' | 'pendiente' | 'guardando' | 'guardado' | 'error' | 'conflicto'
 
@@ -48,6 +52,8 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
   const escalasRef = useRef(escalas)
   escalasRef.current = escalas
   const saveEscalasSeqRef = useRef(0)
+  const escalasEnCursoRef = useRef<Promise<boolean> | null>(null)   // guardado de escalas en vuelo
+  const escalasSuciasRef = useRef(false)                             // hay cambios sin guardar
 
   // El informe de alta se apoya en los antecedentes, alergias,
   // exploraciones y tratamiento de este informe — si se detecta un
@@ -76,12 +82,32 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
     const next = { ...escalasRef.current, ...cambios }
     setEscalas(next)
     setEstadoEscalas('pendiente')
+    escalasSuciasRef.current = true
     if (debounceEscalasRef.current) clearTimeout(debounceEscalasRef.current)
     debounceEscalasRef.current = setTimeout(() => saveEscalas(next), 1500)
   }
 
-  async function saveEscalas(next = escalasRef.current): Promise<void> {
+  function saveEscalas(next = escalasRef.current): Promise<boolean> {
+    const p = hacerGuardadoEscalas(next)
+    escalasEnCursoRef.current = p
+    return p
+  }
+
+  // «Guardar» del modal de una escala: guarda ya, sin esperar al guardado automático, y avisa.
+  async function guardarEscalasDesdeModal(): Promise<boolean> {
+    if (estadoEscalas === 'conflicto') return false
+    if (debounceEscalasRef.current) { clearTimeout(debounceEscalasRef.current); debounceEscalasRef.current = null }
+    if (escalasEnCursoRef.current) await escalasEnCursoRef.current
+    if (escalasSuciasRef.current) return saveEscalas()
+    // Nada pendiente: ya estaba guardado; se confirma igualmente.
+    setEstadoEscalas('guardado')
+    setTimeout(() => setEstadoEscalas((e) => (e === 'guardado' ? 'inactivo' : e)), 2500)
+    return true
+  }
+
+  async function hacerGuardadoEscalas(next: Partial<EscalaClinica>): Promise<boolean> {
     const miSecuencia = ++saveEscalasSeqRef.current
+    escalasSuciasRef.current = false
     setEstadoEscalas('guardando')
     const campos = {
       barthel_respuestas: next.barthel_respuestas ?? null,
@@ -103,9 +129,9 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
         .eq('version', next.version ?? 1)
         .select()
         .maybeSingle()
-      if (miSecuencia !== saveEscalasSeqRef.current) return
-      if (error) { setEstadoEscalas('error'); return }
-      if (!guardado) { setEstadoEscalas('conflicto'); return }
+      if (miSecuencia !== saveEscalasSeqRef.current) return true
+      if (error) { escalasSuciasRef.current = true; setEstadoEscalas('error'); return false }
+      if (!guardado) { escalasSuciasRef.current = true; setEstadoEscalas('conflicto'); return false }
       setEscalas(guardado)
     } else {
       // Primer guardado: todavía no existe la fila.
@@ -114,12 +140,13 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
         .insert({ ingreso_id: ingresoId, momento: 'ingreso', ...campos })
         .select()
         .maybeSingle()
-      if (miSecuencia !== saveEscalasSeqRef.current) return
-      if (error) { setEstadoEscalas('error'); return }
+      if (miSecuencia !== saveEscalasSeqRef.current) return true
+      if (error) { escalasSuciasRef.current = true; setEstadoEscalas('error'); return false }
       setEscalas(creado ?? next)
     }
     setEstadoEscalas('guardado')
     setTimeout(() => setEstadoEscalas((e) => (e === 'guardado' ? 'inactivo' : e)), 2500)
+    return true
   }
 
   async function recargarEscalasTrasConflicto() {
@@ -129,6 +156,9 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
   }
 
   async function save(d = dataRef.current): Promise<boolean> {
+    // Un guardado manual cancela el automático pendiente: si no, este saldría después con la
+    // versión vieja y chocaría con el que acaba de hacerse (falso «alguien más ha guardado»).
+    if (debounceRef.current) { clearTimeout(debounceRef.current); debounceRef.current = null }
     const miSecuencia = ++saveSeqRef.current
     setEstado('guardando')
     const { data: guardado, error } = await supabase
@@ -148,7 +178,8 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
       setEstado('conflicto')
       return false
     }
-    setData(guardado)
+    // Solo se toma la versión nueva: lo que se haya tecleado mientras se guardaba se queda como está.
+    setData((prev) => ({ ...prev, version: guardado.version, updated_at: guardado.updated_at }))
     setEstado('guardado')
     setTimeout(() => setEstado((e) => (e === 'guardado' ? 'inactivo' : e)), 2500)
     return true
@@ -236,6 +267,10 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
 
   return (
     <div className="max-w-3xl space-y-6">
+      <AvisoGuardado avisos={[
+        { estado, etiqueta: 'Informe' },
+        { estado: estadoEscalas, etiqueta: 'Escalas', texto: 'Escalas guardadas' },
+      ]} />
       <div className="flex items-center justify-between gap-3">
         {soloLectura ? (
           <span className="flex items-center gap-1.5 text-xs text-slate-500">
@@ -266,7 +301,7 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
         {field('alergias', 'Alergias')}
         {field('antecedentes_medicos', 'Antecedentes médicos')}
         {field('antecedentes_quirurgicos', 'Intervenciones quirúrgicas')}
-        {field('antecedentes_familiares', 'Antecedentes familiares')}
+        {opcionales(OPCIONAL_FAMILIARES)}
         <div>
           <span className="label">Tratamiento al ingreso</span>
           {avisoRevisar('tratamiento_ingreso_estructurado')}
@@ -285,7 +320,7 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
 
       <div className="card p-6 space-y-4">
         <p className="section-title">Enfermedad actual</p>
-        {field('personalidad_previa', 'Personalidad previa')}
+        {opcionales(OPCIONAL_PERSONALIDAD)}
         {field('evolucion', 'Evolución')}
         <p className="text-sm font-semibold text-slate-600 pt-1">Situación actual</p>
         {opcionales(OPCIONALES_SITUACION)}
@@ -334,25 +369,29 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
         </div>
 
         {modalEscala === 'barthel' && (
-          <ModalEscala titulo="Índice de Barthel" onCerrar={() => setModalEscala(null)}>
+          <ModalEscala titulo="Índice de Barthel" onCerrar={() => setModalEscala(null)} estado={estadoEscalas}
+            onGuardar={soloLectura ? undefined : guardarEscalasDesdeModal} completa={escalas.barthel_total != null} faltaTexto="faltan apartados por marcar">
             <EscalaBarthel value={escalas.barthel_respuestas} disabled={soloLectura}
               onChange={(v) => updateEscala({ barthel_respuestas: v, barthel_total: totalBarthel(v) })} />
           </ModalEscala>
         )}
         {modalEscala === 'lawton' && (
-          <ModalEscala titulo="Índice de Lawton" onCerrar={() => setModalEscala(null)}>
+          <ModalEscala titulo="Índice de Lawton" onCerrar={() => setModalEscala(null)} estado={estadoEscalas}
+            onGuardar={soloLectura ? undefined : guardarEscalasDesdeModal} completa={escalas.lawton_total != null} faltaTexto="faltan apartados por marcar">
             <EscalaLawton value={escalas.lawton_respuestas} disabled={soloLectura}
               onChange={(v) => updateEscala({ lawton_respuestas: v, lawton_total: totalLawton(v) })} />
           </ModalEscala>
         )}
         {modalEscala === 'npi' && (
-          <ModalEscala titulo="NPI-Q (gravedad)" onCerrar={() => setModalEscala(null)}>
+          <ModalEscala titulo="NPI-Q (gravedad)" onCerrar={() => setModalEscala(null)} estado={estadoEscalas}
+            onGuardar={soloLectura ? undefined : guardarEscalasDesdeModal} completa={escalas.npi_gravedad_total != null} faltaTexto="faltan dominios por responder">
             <EscalaNPIQ value={escalas.npi_respuestas} disabled={soloLectura}
               onChange={(v) => updateEscala({ npi_respuestas: v, npi_gravedad_total: totalNPI(v) })} />
           </ModalEscala>
         )}
         {modalEscala === 'gdsfast' && (
-          <ModalEscala titulo="GDS (Reisberg) y FAST" onCerrar={() => setModalEscala(null)}>
+          <ModalEscala titulo="GDS (Reisberg) y FAST" onCerrar={() => setModalEscala(null)} estado={estadoEscalas}
+            onGuardar={soloLectura ? undefined : guardarEscalasDesdeModal} completa={!!escalas.gds_estadio && !!escalas.fast_estadio} faltaTexto="falta el GDS o el FAST">
             <EscalaGDSFAST gds={escalas.gds_estadio} fast={escalas.fast_estadio} disabled={soloLectura}
               onCambiarGds={(gds, fastDirecto) => updateEscala({ gds_estadio: gds, fast_estadio: fastDirecto ?? '' })}
               onChangeFast={(v) => updateEscala({ fast_estadio: v })} />
@@ -386,8 +425,8 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
           Exportar Word
         </button>
         {!soloLectura && (
-          <button type="button" onClick={() => save()} className="btn-primary">
-            Guardar ahora
+          <button type="button" onClick={() => save()} disabled={estado === 'guardando'} className="btn-primary disabled:opacity-60">
+            {estado === 'guardando' ? 'Guardando…' : estado === 'guardado' ? '✓ Guardado' : 'Guardar ahora'}
           </button>
         )}
       </div>

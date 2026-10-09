@@ -6,6 +6,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Download, Lock } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { AvisoGuardado } from '../../components/AvisoGuardado'
 import { useAuth } from '../../lib/AuthContext'
 import { exportarInformeEnfermeria } from '../../lib/exportWord'
 import type { Ingreso } from '../../types'
@@ -182,6 +183,7 @@ export function TabInformeEnfermeria({ ingresoId, ingreso }: { ingresoId: string
 
   return (
     <div className="max-w-3xl space-y-6">
+      <AvisoGuardado avisos={[{ estado, etiqueta: 'Informe', error: errorGuardado }]} />
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-base font-bold text-slate-800">Informe de enfermería</h2>

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Download, FileText, Lock, Plus, Trash2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { AvisoGuardado } from '../../components/AvisoGuardado'
 import { useAuth } from '../../lib/AuthContext'
 import { exportarInformePuntual } from '../../lib/exportWord'
 import type { Ingreso } from '../../types'
@@ -293,6 +294,7 @@ function EditorInforme({
 
   return (
     <div className="max-w-3xl space-y-6">
+      <AvisoGuardado avisos={[{ estado, etiqueta: 'Informe', error: errorGuardado }]} />
       <div className="flex items-center justify-between gap-3">
         <button onClick={volver} className="text-sm text-slate-500 hover:text-slate-700 flex items-center gap-1">
           <ArrowLeft className="w-4 h-4" /> Volver a la lista

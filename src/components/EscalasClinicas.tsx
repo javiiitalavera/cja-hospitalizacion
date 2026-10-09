@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { X } from 'lucide-react'
 import {
   BARTHEL_ITEMS, LAWTON_ITEMS, NPI_DOMINIOS, NPI_GRAVEDAD_OPCIONES,
@@ -38,11 +39,31 @@ export function TarjetaEscala({ titulo, resultado, incompleta, onAbrir, soloLect
   )
 }
 
-export function ModalEscala({ titulo, onCerrar, children }: {
+// Modal de una escala. Con `onGuardar` (escalas editables) lleva un botón «Guardar» que guarda
+// ya (sin esperar al guardado automático) y, si la escala está completa, cierra el modal. Si
+// está incompleta, guarda lo marcado y se queda abierto avisando de que falta algo.
+export function ModalEscala({ titulo, onCerrar, children, onGuardar, completa, faltaTexto, estado }: {
   titulo: string
   onCerrar: () => void
   children: React.ReactNode
+  onGuardar?: () => Promise<boolean>   // true si se guardó bien
+  completa?: boolean
+  faltaTexto?: string                  // qué falta, p. ej. «Faltan ítems por responder»
+  estado?: 'inactivo' | 'pendiente' | 'guardando' | 'guardado' | 'error' | 'conflicto'
 }) {
+  const [guardando, setGuardando] = useState(false)
+  const [avisoIncompleta, setAvisoIncompleta] = useState(false)
+
+  async function guardar() {
+    if (!onGuardar || guardando) return
+    setGuardando(true)
+    const ok = await onGuardar()
+    setGuardando(false)
+    if (!ok) return                       // el motivo (error o conflicto) se ve en el pie del modal
+    if (completa) onCerrar()
+    else setAvisoIncompleta(true)
+  }
+
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={onCerrar}>
       <div
@@ -51,12 +72,31 @@ export function ModalEscala({ titulo, onCerrar, children }: {
       >
         <div className="flex items-center justify-between px-6 py-4 border-b shrink-0">
           <h3 className="font-bold text-slate-800">{titulo}</h3>
-          <button onClick={onCerrar} className="text-slate-500 hover:text-slate-600">
+          <button onClick={onCerrar} className="text-slate-500 hover:text-slate-600" aria-label="Cerrar">
             <X className="w-5 h-5" />
           </button>
         </div>
-        <div className="p-6 overflow-y-auto">
+        <div className="p-6 overflow-y-auto" onChange={() => setAvisoIncompleta(false)} onClick={() => setAvisoIncompleta(false)}>
           {children}
+        </div>
+        <div className="px-6 py-3 border-t shrink-0 flex items-center justify-between gap-3">
+          <p className="text-xs min-w-0">
+            {estado === 'conflicto' ? <span className="text-amber-700">Alguien más ha guardado estas escalas: cierra y pulsa «Ver la versión más reciente».</span>
+              : estado === 'error' ? <span className="text-red-600 font-semibold">No se ha podido guardar — comprueba la conexión.</span>
+              : avisoIncompleta ? <span className="text-amber-700">Guardado, pero la escala está incompleta{faltaTexto ? `: ${faltaTexto}` : ''}.</span>
+              : estado === 'guardando' || guardando ? <span className="text-slate-500">Guardando…</span>
+              : estado === 'pendiente' ? <span className="text-slate-500">Cambios pendientes de guardar</span>
+              : estado === 'guardado' ? <span className="text-emerald-600">✓ Guardado</span>
+              : null}
+          </p>
+          <div className="flex items-center gap-2 shrink-0">
+            <button type="button" onClick={onCerrar} className="btn-secondary text-sm">Cerrar</button>
+            {onGuardar && (
+              <button type="button" onClick={guardar} disabled={guardando} className="btn-primary text-sm disabled:opacity-60">
+                {guardando ? 'Guardando…' : completa ? 'Guardar y cerrar' : 'Guardar'}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

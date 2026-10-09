@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { AvisoGuardado } from '../../components/AvisoGuardado'
 import type { Ingreso } from '../../types'
 import { nombreCompleto } from '../../types'
 import { edad } from '../../lib/fechas'
@@ -357,6 +358,7 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
 
   return (
     <div className="max-w-2xl space-y-6">
+      <AvisoGuardado avisos={[{ estado, etiqueta: 'CMBD' }]} />
 
       {/* Header */}
       <div className="flex items-center justify-between">
