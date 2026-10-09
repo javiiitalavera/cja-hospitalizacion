@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, Check, Printer } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Check, Printer, Pencil } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import { hoyLocal } from '../lib/fechas'
@@ -11,6 +11,7 @@ import {
   lunesDe, sumarDias, fechaCorta, fechaLarga, pautaVigente, textoPauta,
   type Lesion, type RegistroCura,
 } from './curas/tipos'
+import { ModalCura } from './curas/ModalCura'
 
 interface PacienteConCuras {
   id: string            // id del ingreso
@@ -66,6 +67,9 @@ export default function Curas() {
   const [error, setError] = useState('')
   const [errorAccion, setErrorAccion] = useState('')
   const [ocupado, setOcupado] = useState<string | null>(null)
+  // Cura abierta desde la tabla de cuidados (se guarda el id y se busca en la
+  // lista cargada, para que la ventana siempre muestre lo último guardado).
+  const [abierta, setAbierta] = useState<{ ingresoId: string; lesionId: string } | null>(null)
 
   const semana = useMemo(() => Array.from({ length: 7 }, (_, i) => sumarDias(lunes, i)), [lunes])
 
@@ -74,7 +78,7 @@ export default function Curas() {
     const [resP, resR] = await Promise.all([
       supabase
         .from('ingresos')
-        .select('id, habitacion, paciente:pacientes(nombre, primer_apellido, segundo_apellido), lesiones:curas_lesiones(id, ingreso_id, caracteristicas, localizacion, fecha_inicio, fecha_fin, valoraciones:curas_valoraciones(*))')
+        .select('id, habitacion, paciente:pacientes(nombre, primer_apellido, segundo_apellido), lesiones:curas_lesiones(*, valoraciones:curas_valoraciones(*), registrado_por:profesionales!registrado_por_id(nombre, apellidos))')
         .eq('estado', 'activo')
         .order('habitacion', { ascending: true }),
       supabase
@@ -237,13 +241,22 @@ export default function Curas() {
                     <td className="px-4 py-2 font-medium text-slate-800">
                       {nombreCompleto(p.paciente)}<span className="text-xs text-slate-500 font-normal"> · Hab. {p.habitacion ?? '—'}</span>
                     </td>
-                    <td className="px-4 py-2 space-y-1">
+                    <td className="px-2 py-1.5">
                       {p.lesiones.map((l) => (
-                        <div key={l.id}>
-                          <span className="font-semibold">{l.localizacion}</span>
-                          <span className="text-xs text-slate-500"> ({CARACTERISTICA_LABEL[l.caracteristicas]})</span>
-                          <span>: {textoPauta(pautaVigente(l.valoraciones))}</span>
-                        </div>
+                        <button
+                          key={l.id}
+                          type="button"
+                          onClick={() => setAbierta({ ingresoId: p.id, lesionId: l.id })}
+                          title="Abrir y editar esta cura"
+                          className="group flex w-full items-start justify-between gap-3 rounded-md px-2 py-1 text-left hover:bg-primary-50 focus-visible:bg-primary-50"
+                        >
+                          <span>
+                            <span className="font-semibold">{l.localizacion}</span>
+                            <span className="text-xs text-slate-500"> ({CARACTERISTICA_LABEL[l.caracteristicas]})</span>
+                            <span>: {textoPauta(pautaVigente(l.valoraciones))}</span>
+                          </span>
+                          <Pencil className="w-3.5 h-3.5 mt-0.5 shrink-0 text-slate-400 group-hover:text-primary-600" />
+                        </button>
                       ))}
                     </td>
                   </tr>
@@ -253,6 +266,20 @@ export default function Curas() {
           </div>
         </>
       )}
+
+      {abierta && (() => {
+        const pac = pacientes.find((x) => x.id === abierta.ingresoId)
+        const lesion = pac?.lesiones.find((x) => x.id === abierta.lesionId)
+        if (!pac || !lesion) return null
+        return (
+          <ModalCura
+            titulo={`${nombreCompleto(pac.paciente)} · Hab. ${pac.habitacion ?? '—'}`}
+            lesion={lesion}
+            onCerrar={() => setAbierta(null)}
+            onCambio={cargar}
+          />
+        )
+      })()}
     </div>
   )
 }

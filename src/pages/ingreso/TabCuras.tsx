@@ -13,11 +13,11 @@ const SELECT_LESIONES =
   '*, valoraciones:curas_valoraciones(*), registrado_por:profesionales!registrado_por_id(nombre, apellidos)'
 
 // ── Marco de ventana ─────────────────────────────────────────
-function Modal({ titulo, onClose, children }: { titulo: string; onClose: () => void; children: React.ReactNode }) {
+export function Modal({ titulo, onClose, children, ancho = 'max-w-xl' }: { titulo: string; onClose: () => void; children: React.ReactNode; ancho?: string }) {
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={onClose}>
       <div
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto p-6"
+        className={`bg-white rounded-2xl shadow-2xl w-full ${ancho} max-h-[90vh] overflow-y-auto p-6`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
@@ -117,7 +117,7 @@ function aEntero(s: string): number | null {
 }
 
 // ── Formulario de lesión (crear / editar) ────────────────────
-function FormularioLesion({
+export function FormularioLesion({
   ingresoId, editando, onClose, onGuardado,
 }: { ingresoId: string; editando: Lesion | null; onClose: () => void; onGuardado: () => void }) {
   const { profesional } = useAuth()
@@ -244,7 +244,7 @@ function FormularioLesion({
 }
 
 // ── Formulario de valoración (evolución) ─────────────────────
-function FormularioValoracion({
+export function FormularioValoracion({
   lesion, editando, onClose, onGuardado,
 }: { lesion: Lesion; editando: Valoracion | null; onClose: () => void; onGuardado: () => void }) {
   const { profesional } = useAuth()
@@ -358,14 +358,16 @@ function FormularioValoracion({
 }
 
 // ── Tarjeta de una lesión ────────────────────────────────────
-function TarjetaLesion({
-  lesion, puedeEditar, puedeBorrar, puedeBorrarValoracion,
+export function TarjetaLesion({
+  lesion, puedeEditar, puedeBorrar, puedeBorrarValoracion, evolucionAbierta = false,
   onNuevaValoracion, onEditarLesion, onEditarValoracion, onCambioEstado, onEliminarLesion, onEliminarValoracion,
 }: {
   lesion: Lesion
   puedeEditar: boolean
   puedeBorrar: boolean
   puedeBorrarValoracion: (v: Valoracion) => boolean
+  // Abre la evolución desde el principio (en la ventana de la tabla de cuidados).
+  evolucionAbierta?: boolean
   onNuevaValoracion: () => void
   onEditarLesion: () => void
   onEditarValoracion: (v: Valoracion) => void
@@ -373,7 +375,7 @@ function TarjetaLesion({
   onEliminarLesion: () => void
   onEliminarValoracion: (v: Valoracion) => void
 }) {
-  const [abierta, setAbierta] = useState(false)
+  const [abierta, setAbierta] = useState(evolucionAbierta)
   const vals = ordenarValoraciones(lesion.valoraciones)
   const vigente = pautaVigente(lesion.valoraciones)
   const ultima = vals[0]
