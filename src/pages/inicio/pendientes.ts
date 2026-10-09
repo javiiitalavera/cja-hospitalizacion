@@ -7,7 +7,7 @@ import { supabase } from '../../lib/supabase'
 import { estaVacio } from '../../lib/informesEstado'
 import { necesitaConfirmacion } from '../../types/contenciones'
 import type { ContencionDia, ContencionNoche } from '../../types/contenciones'
-import { DIAS_HISTORIAL_CURAS, fechasQueToca, ordenarValoraciones, pautaVigente, sumarDias } from '../curas/tipos'
+import { DIAS_HISTORIAL_CURAS, fechasQueTocaLesion, ordenarValoraciones, sumarDias } from '../curas/tipos'
 import type { Valoracion } from '../curas/tipos'
 
 // Umbrales (días). Cambiar aquí cambia los avisos.
@@ -173,9 +173,8 @@ export function calcularPendientes(e: EntradaPendientes): LineaPendiente[] {
     }
     const tocan = new Set<string>()
     for (const l of lesionesActivas) {
-      const pauta = pautaVigente(l.valoraciones as Valoracion[])
       const marcas = fechasHechas.get(l.ingreso_id) ?? new Set<string>()
-      if (fechasQueToca(pauta as Valoracion | null, e.hoy, e.hoy, marcas, e.hoy).has(e.hoy)) tocan.add(l.ingreso_id)
+      if (fechasQueTocaLesion(l.valoraciones as Valoracion[], e.hoy, e.hoy, marcas, e.hoy).has(e.hoy)) tocan.add(l.ingreso_id)
     }
     const sinHacer = porHab([...tocan].filter((id) => !hechas.has(id)))
     if (sinHacer.length > 0) {

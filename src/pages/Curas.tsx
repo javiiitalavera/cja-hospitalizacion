@@ -8,7 +8,7 @@ import { nombreCompleto } from '../types'
 import { escapeHtml } from '../lib/imprimir'
 import {
   CARACTERISTICA_LABEL, DIAS_CORTO, DIAS_LARGO,
-  lunesDe, sumarDias, fechaCorta, fechaLarga, pautaVigente, textoPauta, fechasQueToca, DIAS_HISTORIAL_CURAS,
+  lunesDe, sumarDias, fechaCorta, fechaLarga, pautaVigente, textoPauta, fechasQueTocaLesion, DIAS_HISTORIAL_CURAS,
   type Lesion, type RegistroCura,
 } from './curas/tipos'
 import { ModalCura } from './curas/ModalCura'
@@ -145,7 +145,7 @@ export default function Curas() {
       for (const d of semana) if (registros.has(`${p.id}|${d}`)) hechas.add(d)
       const dias = new Set<string>()
       for (const l of p.lesiones) {
-        fechasQueToca(pautaVigente(l.valoraciones), semana[0], semana[6], hechas, hoy).forEach((d) => dias.add(d))
+        fechasQueTocaLesion(l.valoraciones, semana[0], semana[6], hechas, hoy).forEach((d) => dias.add(d))
       }
       mapa.set(p.id, dias)
     }

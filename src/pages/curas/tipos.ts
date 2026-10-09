@@ -141,7 +141,7 @@ export function fechasQueToca(
   if (!pauta || pauta.fecha > hasta) return toca
 
   if (pauta.dias_semana?.length) {
-    for (let d = desde; d <= hasta; d = sumarDias(d, 1)) {
+    for (let d = desde > pauta.fecha ? desde : pauta.fecha; d <= hasta; d = sumarDias(d, 1)) {
       if (pauta.dias_semana.includes(diaSemanaISO(d))) toca.add(d)
     }
     return toca
@@ -160,6 +160,32 @@ export function fechasQueToca(
       proxima = sumarDias(d, paso)
     }
   }
+  return toca
+}
+
+// Lo mismo para una lesión entera: cada pauta rige desde el día en que se
+// pautó hasta el día anterior a la siguiente pauta (una valoración solo de
+// medidas no cambia la pauta). Antes del primer día pautado no toca nada.
+export function fechasQueTocaLesion(
+  valoraciones: Valoracion[] | undefined,
+  desde: string,
+  hasta: string,
+  hechas: ReadonlySet<string>,
+  hoy: string
+): Set<string> {
+  const toca = new Set<string>()
+  // una pauta por día (la última registrada ese día), de la más antigua a la más reciente
+  const porDia = new Map<string, Valoracion>()
+  for (const v of ordenarValoraciones(valoraciones).reverse()) {
+    if (v.tipo_cura && v.tipo_cura.trim() !== '') porDia.set(v.fecha, v)
+  }
+  const pautas = [...porDia.values()].sort((a, b) => (a.fecha < b.fecha ? -1 : 1))
+  pautas.forEach((pauta, i) => {
+    const fin = i + 1 < pautas.length ? sumarDias(pautas[i + 1].fecha, -1) : hasta
+    const tope = fin < hasta ? fin : hasta
+    if (tope < desde) return
+    fechasQueToca(pauta, desde, tope, hechas, hoy).forEach((d) => toca.add(d))
+  })
   return toca
 }
 
