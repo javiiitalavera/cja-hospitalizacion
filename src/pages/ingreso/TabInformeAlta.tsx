@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import type { FilaMedicacion, Ingreso, InformeAlta, InformeIngreso } from '../../types'
 import { Download } from 'lucide-react'
+import { BloqueDiagnosticosCMBD } from '../../components/DiagnosticosCIE'
 import { AutoTextarea, FILAS_CAMPO } from './AutoTextarea'
 import { TablaMedicacion } from './TablaMedicacion'
 import { exportarInformeAlta } from '../../lib/exportWord'
@@ -351,6 +352,7 @@ function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
       <div className="card p-6 space-y-4">
         <p className="section-title">Diagnósticos</p>
         {field('juicios_clinicos', 'Juicios clínicos')}
+        <BloqueDiagnosticosCMBD ingresoId={ingresoId} />
       </div>
 
       <div className="card p-6 space-y-4">
