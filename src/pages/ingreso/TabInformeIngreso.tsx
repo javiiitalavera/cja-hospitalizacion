@@ -24,7 +24,10 @@ const OPCIONALES_SITUACION: [keyof InformeIngreso, string][] = [
 // Cada uno sale en su sitio, con su propio "+ añadir" mientras está vacío.
 const OPCIONAL_FAMILIARES: [keyof InformeIngreso, string][] = [['antecedentes_familiares', 'Antecedentes familiares']]
 const OPCIONAL_PERSONALIDAD: [keyof InformeIngreso, string][] = [['personalidad_previa', 'Personalidad previa']]
-const CAMPOS_OPCIONALES = [...OPCIONAL_FAMILIARES, ...OPCIONALES_VGI, ...OPCIONAL_PERSONALIDAD, ...OPCIONALES_SITUACION].map(([k]) => k as string)
+const OPCIONALES_EXPLORACION: [keyof InformeIngreso, string][] = [
+  ['exploracion_neurologica', 'Exploración neurológica al ingreso'], ['exploracion_psicopatologica', 'Exploración psicopatológica al ingreso'],
+]
+const CAMPOS_OPCIONALES = [...OPCIONAL_FAMILIARES, ...OPCIONALES_EXPLORACION, ...OPCIONALES_VGI, ...OPCIONAL_PERSONALIDAD, ...OPCIONALES_SITUACION].map(([k]) => k as string)
 
 type EstadoGuardado = 'inactivo' | 'pendiente' | 'guardando' | 'guardado' | 'error' | 'conflicto'
 
@@ -329,8 +332,7 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
       <div className="card p-6 space-y-4">
         <p className="section-title">Exploraciones</p>
         {field('exploracion_fisica', 'Exploración física al ingreso')}
-        {field('exploracion_neurologica', 'Exploración neurológica al ingreso')}
-        {field('exploracion_psicopatologica', 'Exploración psicopatológica al ingreso')}
+        {opcionales(OPCIONALES_EXPLORACION)}
         {field('exploraciones_complementarias', 'Exploraciones complementarias')}
       </div>
 

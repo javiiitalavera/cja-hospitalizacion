@@ -337,10 +337,8 @@ function parteIngresoXml(ii: InformeIngreso, escalaIngreso: EscalaClinica | null
     ...opcional(ii.situacion_social, () => campoXml('Social: ', ii.situacion_social, font)),
     seccionXml('EXPLORACIÓN FÍSICA al ingreso:', font),
     lineasXml(ii.exploracion_fisica, font),
-    seccionXml('EXPLORACIÓN NEUROLÓGICA al ingreso:', font),
-    lineasXml(ii.exploracion_neurologica, font),
-    seccionXml('EXPLORACIÓN PSICOPATOLÓGICA al ingreso:', font),
-    lineasXml(ii.exploracion_psicopatologica, font),
+    ...opcional(ii.exploracion_neurologica, () => seccionXml('EXPLORACIÓN NEUROLÓGICA al ingreso:', font) + lineasXml(ii.exploracion_neurologica, font)),
+    ...opcional(ii.exploracion_psicopatologica, () => seccionXml('EXPLORACIÓN PSICOPATOLÓGICA al ingreso:', font) + lineasXml(ii.exploracion_psicopatologica, font)),
     seccionXml('EXPLORACIONES COMPLEMENTARIAS:', font),
     // En el informe de alta se distingue lo del ingreso de lo del ingreso en curso.
     ...(enAlta ? [campoXml('Al ingreso: ', ii.exploraciones_complementarias, font)] : [lineasXml(ii.exploraciones_complementarias, font)]),
@@ -398,6 +396,8 @@ export async function exportarInformeAlta(ingreso: Ingreso, ii: InformeIngreso, 
   const font = 'Calibri'
   const fingreso = fechaCorta(ingreso.fecha_ingreso)
   const falta = fechaCorta(ingreso.fecha_alta)
+  let apartado = 0
+  const num = () => ++apartado   // numeración de «Tratamiento y recomendaciones»
 
   const cuerpo = unir([
     // La edad que sale es la de la fecha de alta (o de ingreso si aún no hay alta).
@@ -415,13 +415,12 @@ export async function exportarInformeAlta(ingreso: Ingreso, ii: InformeIngreso, 
     seccionXml('JUICIOS CLÍNICOS:', font),
     lineasXml(ia.juicios_clinicos, font),
     seccionXml('TRATAMIENTO Y RECOMENDACIONES:', font),
-    parrafoBoldXml('1. Recomendaciones de manejo conductual: ', '', font),
-    lineasXml(ia.recomendaciones_conductuales, font),
-    // Los cuidados de enfermería son opcionales: si faltan, la numeración sigue sin huecos.
-    ...opcional(ia.cuidados_enfermeria, () => parrafoBoldXml('2. Cuidados de enfermería: ', '', font, { antes: 100 }) + lineasXml(ia.cuidados_enfermeria, font)),
-    parrafoBoldXml(`${hayTexto(ia.cuidados_enfermeria) ? 3 : 2}. Medicación:`, '', font, { antes: 100 }),
+    // Manejo conductual y cuidados de enfermería son opcionales: la numeración sigue sin huecos.
+    ...opcional(ia.recomendaciones_conductuales, () => parrafoBoldXml(`${num()}. Recomendaciones de manejo conductual: `, '', font) + lineasXml(ia.recomendaciones_conductuales, font)),
+    ...opcional(ia.cuidados_enfermeria, () => parrafoBoldXml(`${num()}. Cuidados de enfermería: `, '', font, { antes: 100 }) + lineasXml(ia.cuidados_enfermeria, font)),
+    parrafoBoldXml(`${num()}. Medicación:`, '', font, { antes: 100 }),
     tablaMedicacionXml(ia.medicacion_estructurada ?? [], font),
-    parrafoBoldXml(`${hayTexto(ia.cuidados_enfermeria) ? 4 : 3}. Otras recomendaciones: `, '', font, { antes: 160 }),
+    parrafoBoldXml(`${num()}. Otras recomendaciones: `, '', font, { antes: 160 }),
     lineasXml(ia.otras_recomendaciones, font),
     parrafoXml('- Se recomienda seguimiento por médico de cabecera y especialista de zona.', font),
     parrafoXml(
@@ -503,7 +502,7 @@ export async function exportarInformePuntual(ingreso: Ingreso, inf: InformePuntu
       .replace(/(<w:t[^>]*>)INFORME DE ALTA(<\/w:t>)/g, `$1${esc(plantillaPorId(inf.plantilla).tituloCabecera)}$2`)
       .replace(/(<w:t[^>]*>)Fecha de alta: (<\/w:t>)/g, `$1Fecha del informe: ${new Date().toLocaleDateString('es-ES')}$2`)
   )
-  descargar(zip, `Informe_${inf.plantilla}_${p.primer_apellido ?? 'paciente'}_${hoyLocal()}.docx`)
+  descargar(zip, `Informe_${inf.plantilla === 'estado_actual' ? 'clinico' : inf.plantilla}_${p.primer_apellido ?? 'paciente'}_${hoyLocal()}.docx`)
 }
 
 // ─── INFORME DE ENFERMERÍA ────────────────────────────────────────────────────

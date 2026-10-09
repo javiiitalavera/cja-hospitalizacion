@@ -19,7 +19,7 @@ const TIPO_LABEL: Record<TipoInforme, string> = {
   alta: 'Alta',
   enfermeria: 'Enfermería',
   derivacion_urgencias: 'Derivación a urgencias',
-  estado_actual: 'Estado actual',
+  estado_actual: 'Informe clínico',
   libre: 'Informe libre',
 }
 

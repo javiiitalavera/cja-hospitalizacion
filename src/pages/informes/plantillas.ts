@@ -68,11 +68,9 @@ const HEREDADOS_INGRESO: CampoInforme[] = [
   { key: 'exploracion_neurologica', label: 'Exploración neurológica', grupo: 'EXPLORACIÓN' },
   { key: 'exploracion_psicopatologica', label: 'Exploración psicopatológica', grupo: 'EXPLORACIÓN' },
   { key: 'exploraciones_complementarias', label: 'Exploraciones complementarias', grupo: 'EXPLORACIÓN' },
-  { key: 'escalas', label: 'Escalas clínicas', grupo: 'ESCALAS Y DIAGNÓSTICO' },
-  { key: 'impresion_diagnostica', label: 'Impresión diagnóstica (al ingreso)', grupo: 'ESCALAS Y DIAGNÓSTICO' },
-  { key: 'plan_objetivos', label: 'Plan terapéutico: objetivos', grupo: 'PLAN TERAPÉUTICO AL INGRESO' },
-  { key: 'plan_medicacion', label: 'Plan terapéutico: cambios de medicación propuestos', grupo: 'PLAN TERAPÉUTICO AL INGRESO' },
-  { key: 'plan_otros_cuidados', label: 'Plan terapéutico: otros cuidados/intervenciones', grupo: 'PLAN TERAPÉUTICO AL INGRESO' },
+  { key: 'escalas', label: 'Escalas clínicas' },
+  // La impresión diagnóstica y el plan terapéutico del ingreso NO se heredan (igual que en el informe de alta):
+  // son de aquel momento, y aquí lo vigente va en «Diagnósticos» y «Plan».
 ]
 
 export const PLANTILLAS: Plantilla[] = [
@@ -90,10 +88,10 @@ export const PLANTILLAS: Plantilla[] = [
   },
   {
     id: 'estado_actual',
-    label: 'Estado actual',
-    subtitulo: 'Para la trabajadora social, la familia o una residencia que piden el estado actual.',
-    titulo: 'Informe de estado actual',
-    tituloCabecera: 'INFORME DE ESTADO ACTUAL',
+    label: 'Informe clínico',
+    subtitulo: 'Informe del estado clínico actual, para la trabajadora social, la familia o una residencia.',
+    titulo: 'Informe clínico',
+    tituloCabecera: 'INFORME CLÍNICO',
     campos: [
       { key: 'evolucion_clinica', label: 'Evolución clínica', filas: 8 },
       { key: 'diagnosticos', label: 'Diagnósticos', filas: 4 },

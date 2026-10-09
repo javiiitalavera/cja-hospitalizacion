@@ -18,8 +18,11 @@ const OPCIONALES_DURANTE_INGRESO: [keyof InformeAlta, string][] = [
   ['informe_fisioterapia', 'Informe de fisioterapia'],
   ['informe_terapia_ocupacional', 'Informe de terapia ocupacional'],
 ]
-const OPCIONAL_CUIDADOS: [keyof InformeAlta, string][] = [['cuidados_enfermeria', 'Cuidados de enfermería']]
-const CAMPOS_OPCIONALES = [...OPCIONALES_DURANTE_INGRESO, ...OPCIONAL_CUIDADOS].map(([k]) => k as string)
+const OPCIONALES_RECOMENDACIONES: [keyof InformeAlta, string][] = [
+  ['recomendaciones_conductuales', 'Recomendaciones de manejo conductual'],
+  ['cuidados_enfermeria', 'Cuidados de enfermería'],
+]
+const CAMPOS_OPCIONALES = [...OPCIONALES_DURANTE_INGRESO, ...OPCIONALES_RECOMENDACIONES].map(([k]) => k as string)
 
 type EstadoGuardado = 'inactivo' | 'pendiente' | 'guardando' | 'guardado' | 'error' | 'conflicto'
 
@@ -427,8 +430,7 @@ function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
 
       <div className="card p-6 space-y-4">
         <p className="section-title">Tratamiento y recomendaciones al alta</p>
-        {field('recomendaciones_conductuales', 'Recomendaciones de manejo conductual')}
-        {opcionales(OPCIONAL_CUIDADOS)}
+        {opcionales(OPCIONALES_RECOMENDACIONES)}
         <div>
           <span className="label">Medicación al alta</span>
           <p className="text-xs text-slate-500 mb-2">Pre-rellenada desde el tratamiento al ingreso. Edita lo que necesites.</p>
