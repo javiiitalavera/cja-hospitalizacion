@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, Check, Printer, Pencil } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Check, X, Printer, Pencil } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import { hoyLocal } from '../lib/fechas'
@@ -12,6 +12,7 @@ import {
   type Lesion, type RegistroCura,
 } from './curas/tipos'
 import { ModalCura } from './curas/ModalCura'
+import { MarcaCuraModal } from './curas/MarcaCuraModal'
 
 interface PacienteConCuras {
   id: string            // id del ingreso
@@ -24,7 +25,7 @@ interface PacienteConCuras {
 function imprimirHoja(pacientes: PacienteConCuras[], semana: string[], registros: Map<string, RegistroCura>) {
   const cab = semana.map((d, i) => `<th>${DIAS_LARGO[i]}<br><span class="f">${fechaCorta(d)}</span></th>`).join('')
   const filasSemana = pacientes.map((p) => {
-    const celdas = semana.map((d) => `<td class="c">${registros.has(`${p.id}|${d}`) ? '✓' : ''}</td>`).join('')
+    const celdas = semana.map((d) => `<td class="c">${(() => { const r = registros.get(`${p.id}|${d}`); return r ? (r.estado === 'no_realizada' ? '✗' : '✓') : '' })()}</td>`).join('')
     return `<tr><td class="n">${escapeHtml(nombreCompleto(p.paciente))} (hab. ${p.habitacion ?? '—'})</td>${celdas}</tr>`
   }).join('')
   const filasCuidados = pacientes.map((p) => {
@@ -68,10 +69,10 @@ export default function Curas() {
   const [historial, setHistorial] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [errorAccion, setErrorAccion] = useState('')
-  const [ocupado, setOcupado] = useState<string | null>(null)
   // Cura abierta desde la tabla de cuidados (se guarda el id y se busca en la
   // lista cargada, para que la ventana siempre muestre lo último guardado).
+  // Celda de la tabla semanal que se está registrando (paciente + día).
+  const [celda, setCelda] = useState<{ p: PacienteConCuras; fecha: string } | null>(null)
   const [abierta, setAbierta] = useState<{ ingresoId: string; lesionId: string } | null>(null)
 
   const semana = useMemo(() => Array.from({ length: 7 }, (_, i) => sumarDias(lunes, i)), [lunes])
@@ -86,7 +87,7 @@ export default function Curas() {
         .order('habitacion', { ascending: true }),
       supabase
         .from('curas_registro')
-        .select('id, ingreso_id, fecha, realizada_por_id, realizada_por:profesionales!realizada_por_id(nombre, apellidos)')
+        .select('id, ingreso_id, fecha, estado, motivo, realizada_por_id, realizada_por:profesionales!realizada_por_id(nombre, apellidos)')
         .gte('fecha', semana[0])
         .lte('fecha', semana[6]),
     ])
@@ -111,6 +112,7 @@ export default function Curas() {
         .from('curas_registro')
         .select('ingreso_id, fecha')
         .in('ingreso_id', ids)
+        .eq('estado', 'hecha')
         .gte('fecha', sumarDias(semana[0], -DIAS_HISTORIAL_CURAS))
         .lt('fecha', semana[0])
         .order('fecha', { ascending: false })
@@ -121,22 +123,6 @@ export default function Curas() {
   }
   useEffect(() => { setLoading(true); cargar() }, [lunes]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function alternar(p: PacienteConCuras, fecha: string) {
-    if (!profesional || fecha > hoy) return
-    const clave = `${p.id}|${fecha}`
-    // Solo se marca un día que toca según la pauta; una marca ya puesta siempre se puede quitar.
-    if (!registros.has(clave) && !tocaEse(p, fecha)) return
-    setOcupado(clave)
-    setErrorAccion('')
-    const marca = registros.get(clave)
-    const { error: err } = marca
-      ? await supabase.from('curas_registro').delete().eq('id', marca.id)
-      : await supabase.from('curas_registro').insert({ ingreso_id: p.id, fecha, realizada_por_id: profesional.id })
-    if (err) setErrorAccion('No se pudo guardar el cambio: ' + err.message)
-    await cargar()
-    setOcupado(null)
-  }
-
   // Días de la semana en que toca cura a cada paciente (según la pauta vigente
   // de cualquiera de sus lesiones: días de la semana o frecuencia en horas).
   const tocaPorPaciente = useMemo(() => {
@@ -144,7 +130,7 @@ export default function Curas() {
     for (const p of pacientes) {
       const hechas = new Set<string>()
       for (const k of historial) if (k.startsWith(p.id + '|')) hechas.add(k.slice(p.id.length + 1))
-      for (const d of semana) if (registros.has(`${p.id}|${d}`)) hechas.add(d)
+      for (const d of semana) if (registros.get(`${p.id}|${d}`)?.estado === 'hecha') hechas.add(d)
       const dias = new Set<string>()
       for (const l of p.lesiones) {
         fechasQueTocaLesion(l.valoraciones, semana[0], semana[6], hechas, hoy).forEach((d) => dias.add(d))
@@ -186,7 +172,6 @@ export default function Curas() {
           <button onClick={cargar} className="btn-secondary text-sm">Reintentar</button>
         </div>
       )}
-      {errorAccion && <p className="mb-4 text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{errorAccion}</p>}
 
       {!loading && !error && pacientes.length === 0 && (
         <div className="card p-8 text-center text-sm text-slate-500">
@@ -223,30 +208,29 @@ export default function Curas() {
                       const marca = registros.get(clave)
                       const futuro = d > hoy
                       const toca = tocaEse(p, d)
-                      const pendiente = toca && !marca && d <= hoy
+                      const noRealizada = marca?.estado === 'no_realizada'
+                      const quien = marca?.realizada_por ? ` por ${marca.realizada_por.nombre} ${marca.realizada_por.apellidos}` : ''
                       return (
                         <td key={d} className={`px-1 py-1 text-center ${d === hoy ? 'bg-primary-50/40' : ''}`}>
                           <button
-                            onClick={() => alternar(p, d)}
-                            disabled={futuro || !profesional || ocupado === clave || (!marca && !toca)}
+                            onClick={() => setCelda({ p, fecha: d })}
+                            disabled={futuro || !profesional || (!marca && !toca)}
                             title={
                               marca
-                                ? `Hecha${marca.realizada_por ? ' por ' + marca.realizada_por.nombre + ' ' + marca.realizada_por.apellidos : ''}`
-                                : toca ? (pendiente ? 'Toca cura: marcar como hecha' : 'Toca cura según la pauta') : futuro ? '' : 'No toca cura este día según la pauta'
+                                ? noRealizada ? `No realizada${quien}: ${marca.motivo ?? ''}` : `Hecha${quien}`
+                                : toca && !futuro ? 'Toca cura: registrar' : toca ? 'Toca cura' : ''
                             }
                             className={`w-10 h-9 rounded-md border text-sm flex items-center justify-center mx-auto transition-colors ${
                               marca
-                                ? 'bg-emerald-100 border-emerald-300 text-emerald-700'
-                                : pendiente
-                                  ? 'bg-amber-50 border-amber-300 hover:bg-amber-100'
-                                  : toca
-                                    ? 'border-dashed border-slate-300 hover:bg-slate-50'
-                                    : futuro
-                                      ? 'border-slate-100 bg-slate-50'
-                                      : 'border-slate-200 cursor-not-allowed'
+                                ? noRealizada
+                                  ? 'bg-rose-100 border-rose-300 text-rose-700'
+                                  : 'bg-emerald-100 border-emerald-300 text-emerald-700'
+                                : toca
+                                  ? `bg-amber-100 border-amber-300 ${futuro ? '' : 'hover:bg-amber-200'}`
+                                  : 'bg-slate-200 border-slate-300'
                             }`}
                           >
-                            {marca && <Check className="w-4 h-4" />}
+                            {marca && (noRealizada ? <X className="w-4 h-4" /> : <Check className="w-4 h-4" />)}
                           </button>
                         </td>
                       )
@@ -256,7 +240,7 @@ export default function Curas() {
               </tbody>
             </table>
             <p className="px-4 py-2 text-xs text-slate-500 border-t">
-              Verde: cura hecha · ámbar: tocaba según la pauta y no está marcada · borde discontinuo: toca ese día (en las pautas «cada X h», se calcula desde la última cura marcada).
+              Ámbar: toca cura ese día según la pauta (si es anterior a hoy y sigue en ámbar, está sin registrar) · verde: hecha · rojo: no realizada (con su motivo) · gris: no toca. En las pautas «cada X h» se cuenta desde la última cura hecha.
             </p>
           </div>
 
@@ -299,6 +283,17 @@ export default function Curas() {
             </table>
           </div>
         </>
+      )}
+
+      {celda && (
+        <MarcaCuraModal
+          titulo={`${nombreCompleto(celda.p.paciente)} · Hab. ${celda.p.habitacion ?? '—'}`}
+          ingresoId={celda.p.id}
+          fecha={celda.fecha}
+          marca={registros.get(`${celda.p.id}|${celda.fecha}`) ?? null}
+          onClose={() => setCelda(null)}
+          onCambio={cargar}
+        />
       )}
 
       {abierta && (() => {

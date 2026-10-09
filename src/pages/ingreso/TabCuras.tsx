@@ -2,36 +2,19 @@ import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/AuthContext'
 import { hoyLocal } from '../../lib/fechas'
-import { Plus, Pencil, Trash2, CheckCircle2, Circle, ChevronDown, ChevronRight, X, Lock } from 'lucide-react'
+import { Plus, Pencil, Trash2, CheckCircle2, Circle, ChevronDown, ChevronRight, XCircle, Lock } from 'lucide-react'
+import { Modal } from '../curas/Modal'
+import { MarcaCuraModal } from '../curas/MarcaCuraModal'
 import {
   CARACTERISTICA_LABEL, GRADO_LABEL, LOCALIZACIONES_SUGERIDAS, CURAS_SUGERIDAS, DIAS_CORTO,
-  ordenarValoraciones, pautaVigente, textoPauta, fechaLarga,
-  type Lesion, type Valoracion, type Caracteristica,
+  ordenarValoraciones, pautaVigente, textoPauta, fechaLarga, sumarDias, fechasQueTocaLesion, DIAS_HISTORIAL_CURAS,
+  type Lesion, type Valoracion, type Caracteristica, type RegistroCura,
 } from '../curas/tipos'
 
 const SELECT_LESIONES =
   '*, valoraciones:curas_valoraciones(*), registrado_por:profesionales!registrado_por_id(nombre, apellidos)'
 
 // ── Marco de ventana ─────────────────────────────────────────
-export function Modal({ titulo, onClose, children, ancho = 'max-w-xl' }: { titulo: string; onClose: () => void; children: React.ReactNode; ancho?: string }) {
-  return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div
-        className={`bg-white rounded-2xl shadow-2xl w-full ${ancho} max-h-[90vh] overflow-y-auto p-6`}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-base font-bold text-slate-800">{titulo}</h2>
-          <button onClick={onClose} className="text-slate-500 hover:text-slate-600" aria-label="Cerrar">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>
-  )
-}
-
 // ── Campos de la pauta de cura (compartidos por los dos formularios) ──
 interface PautaForm {
   tipo_cura: string
@@ -483,7 +466,10 @@ export function TarjetaLesion({
 export function TabCuras({ ingresoId, episodioActivo }: { ingresoId: string; episodioActivo: boolean }) {
   const { profesional, esAdmin } = useAuth()
   const [lesiones, setLesiones] = useState<Lesion[]>([])
-  const [marcaHoy, setMarcaHoy] = useState<{ id: string; realizada_por_id: string | null } | null>(null)
+  const [marcaHoy, setMarcaHoy] = useState<RegistroCura | null>(null)
+  // fechas con la cura hecha (últimos días): hacen falta para saber si hoy toca
+  const [hechas, setHechas] = useState<Set<string>>(new Set())
+  const [modalMarca, setModalMarca] = useState(false)
   const [loading, setLoading] = useState(true)
   const [errorCarga, setErrorCarga] = useState('')
   const [errorAccion, setErrorAccion] = useState('')
@@ -496,11 +482,17 @@ export function TabCuras({ ingresoId, episodioActivo }: { ingresoId: string; epi
     const [resL, resR] = await Promise.all([
       supabase.from('curas_lesiones').select(SELECT_LESIONES).eq('ingreso_id', ingresoId)
         .order('fecha_inicio', { ascending: false }).order('created_at', { ascending: false }),
-      supabase.from('curas_registro').select('id, realizada_por_id').eq('ingreso_id', ingresoId).eq('fecha', hoy).maybeSingle(),
+      supabase.from('curas_registro')
+        .select('id, ingreso_id, fecha, estado, motivo, realizada_por_id, realizada_por:profesionales!realizada_por_id(nombre, apellidos)')
+        .eq('ingreso_id', ingresoId)
+        .gte('fecha', sumarDias(hoy, -DIAS_HISTORIAL_CURAS))
+        .lte('fecha', hoy),
     ])
     if (resL.error) { setErrorCarga('No se pudieron cargar las curas: ' + resL.error.message); setLoading(false); return }
     setLesiones((resL.data ?? []) as unknown as Lesion[])
-    setMarcaHoy(resR.error ? null : (resR.data ?? null))
+    const regs = resR.error ? [] : ((resR.data ?? []) as unknown as RegistroCura[])
+    setMarcaHoy(regs.find((r) => r.fecha === hoy) ?? null)
+    setHechas(new Set(regs.filter((r) => r.estado === 'hecha').map((r) => r.fecha)))
     setLoading(false)
   }
   useEffect(() => { cargar() }, [ingresoId]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -510,15 +502,12 @@ export function TabCuras({ ingresoId, episodioActivo }: { ingresoId: string; epi
   const puedeEditar = episodioActivo && !!profesional
   const esMio = (autor: string | null) => !!profesional && autor === profesional.id
 
-  async function alternarMarcaHoy() {
-    if (!profesional) return
-    setErrorAccion('')
-    const { error } = marcaHoy
-      ? await supabase.from('curas_registro').delete().eq('id', marcaHoy.id)
-      : await supabase.from('curas_registro').insert({ ingreso_id: ingresoId, fecha: hoy, realizada_por_id: profesional.id })
-    if (error) setErrorAccion('No se pudo actualizar la marca de hoy: ' + error.message)
-    await cargar()
-  }
+  // ¿Toca cura hoy según la pauta de alguna lesión activa?
+  const tocaHoy = useMemo(
+    () => activas.some((l) => fechasQueTocaLesion(l.valoraciones, hoy, hoy, hechas, hoy).has(hoy)),
+    [activas, hechas, hoy]
+  )
+
 
   async function cambiarEstado(l: Lesion) {
     setErrorAccion('')
@@ -574,13 +563,25 @@ export function TabCuras({ ingresoId, episodioActivo }: { ingresoId: string; epi
           <div className="flex items-center gap-2">
             {activas.length > 0 && (
               <button
-                onClick={alternarMarcaHoy}
+                onClick={() => setModalMarca(true)}
+                disabled={!marcaHoy && !tocaHoy}
+                title={!marcaHoy && !tocaHoy ? 'Hoy no toca cura según la pauta' : undefined}
                 className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium ${
-                  marcaHoy ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-white border-slate-300 text-slate-600 hover:bg-slate-50'
+                  marcaHoy
+                    ? marcaHoy.estado === 'hecha'
+                      ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                      : 'bg-rose-50 border-rose-200 text-rose-700'
+                    : tocaHoy
+                      ? 'bg-amber-100 border-amber-300 text-amber-800 hover:bg-amber-200'
+                      : 'bg-slate-100 border-slate-200 text-slate-500'
                 }`}
               >
-                {marcaHoy ? <CheckCircle2 className="w-4 h-4" /> : <Circle className="w-4 h-4" />}
-                {marcaHoy ? 'Cura de hoy hecha' : 'Marcar cura de hoy'}
+                {marcaHoy
+                  ? marcaHoy.estado === 'hecha' ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />
+                  : <Circle className="w-4 h-4" />}
+                {marcaHoy
+                  ? marcaHoy.estado === 'hecha' ? 'Cura de hoy hecha' : 'Cura de hoy no realizada'
+                  : tocaHoy ? 'Registrar cura de hoy' : 'Hoy no toca cura'}
               </button>
             )}
             <button onClick={() => setFormLesion({ editando: null })} className="btn-primary"><Plus className="w-4 h-4" />Añadir lesión o cuidado</button>
@@ -634,6 +635,17 @@ export function TabCuras({ ingresoId, episodioActivo }: { ingresoId: string; epi
             </div>
           )}
         </>
+      )}
+
+      {modalMarca && (
+        <MarcaCuraModal
+          titulo="Cura de hoy"
+          ingresoId={ingresoId}
+          fecha={hoy}
+          marca={marcaHoy}
+          onClose={() => setModalMarca(false)}
+          onCambio={cargar}
+        />
       )}
 
       {formLesion && (

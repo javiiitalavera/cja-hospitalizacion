@@ -39,8 +39,9 @@ export interface ExtrasPendientes {
   // ingresos con la cura de hoy ya marcada; null = no se pudo saber
   // (sin esto, un fallo de red haría parecer que ninguna cura está hecha)
   curasHoy: string[] | null
-  // marcas de cura de los últimos días (para las pautas "cada X h"); si falta,
-  // solo se cuenta la de hoy
+  // marcas de cura HECHA de los últimos días (para las pautas "cada X h"); si
+  // falta, solo se cuenta la de hoy. (curasHoy incluye también las "no realizadas":
+  // ya están registradas y no cuentan como pendientes.)
   curasRecientes?: { ingreso_id: string; fecha: string }[]
   // ingresos activos con más de DIAS_INFORME_INGRESO días y el informe de ingreso vacío
   informesIngresoVacios: string[]
@@ -167,9 +168,11 @@ export function calcularPendientes(e: EntradaPendientes): LineaPendiente[] {
       if (!fechasHechas.has(r.ingreso_id)) fechasHechas.set(r.ingreso_id, new Set())
       fechasHechas.get(r.ingreso_id)!.add(r.fecha)
     }
-    for (const id of hechas) {
-      if (!fechasHechas.has(id)) fechasHechas.set(id, new Set())
-      fechasHechas.get(id)!.add(e.hoy)
+    if (!e.extras.curasRecientes) {
+      for (const id of hechas) {
+        if (!fechasHechas.has(id)) fechasHechas.set(id, new Set())
+        fechasHechas.get(id)!.add(e.hoy)
+      }
     }
     const tocan = new Set<string>()
     for (const l of lesionesActivas) {
@@ -275,7 +278,7 @@ export async function cargarExtrasPendientes(
           .is('fecha_fin', null)
       : Promise.resolve({ data: [], error: null }),
     !esMedico && ids.length > 0
-      ? supabase.from('curas_registro').select('ingreso_id, fecha').in('ingreso_id', ids).gte('fecha', sumarDias(hoy, -DIAS_HISTORIAL_CURAS)).lte('fecha', hoy).order('fecha', { ascending: false })
+      ? supabase.from('curas_registro').select('ingreso_id, fecha, estado').in('ingreso_id', ids).gte('fecha', sumarDias(hoy, -DIAS_HISTORIAL_CURAS)).lte('fecha', hoy).order('fecha', { ascending: false })
       : Promise.resolve({ data: [], error: null }),
     esMedico && idsAntiguos.length > 0
       ? supabase.from('informe_ingreso').select('*').in('ingreso_id', idsAntiguos)
@@ -294,9 +297,9 @@ export async function cargarExtrasPendientes(
 
   if (registros.error) errores.push(registros.error.message)
   else if (!esMedico) {
-    const filas = (registros.data ?? []) as { ingreso_id: string; fecha: string }[]
+    const filas = (registros.data ?? []) as { ingreso_id: string; fecha: string; estado: string }[]
     extras.curasHoy = filas.filter((r) => r.fecha === hoy).map((r) => r.ingreso_id)
-    extras.curasRecientes = filas
+    extras.curasRecientes = filas.filter((r) => r.estado === 'hecha').map(({ ingreso_id, fecha }) => ({ ingreso_id, fecha }))
   }
 
   if (informesIngreso.error) errores.push(informesIngreso.error.message)

@@ -83,10 +83,21 @@ export interface Lesion {
   registrado_por?: { nombre: string; apellidos: string } | null
 }
 
+export type EstadoRegistroCura = 'hecha' | 'no_realizada'
+
+export const MOTIVOS_NO_REALIZADA = [
+  'El paciente rechaza la cura',
+  'Paciente fuera de la unidad (hospital, salida…)',
+  'Por indicación médica',
+  'Falta de tiempo o de material',
+]
+
 export interface RegistroCura {
   id: string
   ingreso_id: string
   fecha: string
+  estado: EstadoRegistroCura
+  motivo: string | null
   realizada_por_id: string | null
   realizada_por?: { nombre: string; apellidos: string } | null
 }

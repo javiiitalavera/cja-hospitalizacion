@@ -6,7 +6,8 @@ import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/AuthContext'
 import { hoyLocal } from '../../lib/fechas'
-import { Modal, TarjetaLesion, FormularioLesion, FormularioValoracion } from '../ingreso/TabCuras'
+import { TarjetaLesion, FormularioLesion, FormularioValoracion } from '../ingreso/TabCuras'
+import { Modal } from './Modal'
 import type { Lesion, Valoracion } from './tipos'
 
 export function ModalCura({

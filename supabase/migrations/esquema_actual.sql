@@ -2393,6 +2393,10 @@ create table if not exists public.curas_registro (
     fecha date not null,
     realizada_por_id uuid references public.profesionales(id),
     created_at timestamptz not null default now(),
+    -- 'hecha' o 'no_realizada' (esta última exige un motivo)
+    estado text not null default 'hecha' check (estado in ('hecha', 'no_realizada')),
+    motivo text check (motivo is null or length(motivo) <= 500),
+    constraint curas_registro_motivo_check check (estado = 'hecha' or length(btrim(coalesce(motivo, ''))) > 0),
     unique (ingreso_id, fecha)
 );
 
