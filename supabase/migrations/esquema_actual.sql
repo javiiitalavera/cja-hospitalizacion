@@ -3040,6 +3040,7 @@ begin
       'habitacion', i.habitacion,
       'nombre', p.nombre,
       'primer_apellido', p.primer_apellido,
+      'semaforo', ip.semaforo_caidas,
       'via', (select v.via from public.pauta_via v where v.ingreso_id = i.id),
       'indicaciones', coalesce((
         select jsonb_agg(jsonb_build_object('texto', c.texto, 'turnos', c.turnos) order by c.created_at)

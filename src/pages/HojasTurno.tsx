@@ -36,7 +36,7 @@ export default function HojasTurno() {
     setAviso('')
     const { data, error: eIng } = await supabase
       .from('ingresos')
-      .select('id, habitacion, paciente:pacientes(nombre, primer_apellido), items:items_paciente(sonda_vesical, colector, alerta_conducta, objetos_calma)')
+      .select('id, habitacion, paciente:pacientes(nombre, primer_apellido), items:items_paciente(sonda_vesical, colector, alerta_conducta, objetos_calma, semaforo_caidas)')
       .eq('estado', 'activo')
       .order('habitacion', { ascending: true })
     if (eIng) { setError('No se pudieron cargar los pacientes: ' + eIng.message); setCargando(false); return }
@@ -70,6 +70,7 @@ export default function HojasTurno() {
       return {
         ingresoId: i.id,
         habitacion: i.habitacion,
+        semaforo: it?.semaforo_caidas ?? null,
         nombre: `${i.paciente.nombre} ${i.paciente.primer_apellido}`.trim(),
         sondaVesical: !!it?.sonda_vesical,
         colector: !!it?.colector,

@@ -8,7 +8,7 @@ import {
   MAX_TEXTO_PAUTA, TURNOS, VIA_LABEL,
   type Turno, type ViaPaciente,
 } from '../../types/pautaCuidados'
-import { avisosAutomaticos, textoDiuresis, type IndicacionHoja, type PacienteHoja } from './hoja'
+import { avisosAutomaticos, colorSemaforo, textoDiuresis, type IndicacionHoja, type PacienteHoja } from './hoja'
 
 export interface AccionesFila {
   cambiarVia: (ingresoId: string, via: ViaPaciente | null) => Promise<boolean>
@@ -37,7 +37,7 @@ export function FilaPaciente({ n, p, turno, acciones }: {
     return (
       <tr className="border-t">
         <td className="px-3 py-2 text-center font-bold text-slate-400 align-top">{n}</td>
-        <td colSpan={4} className="px-3 py-2 text-slate-400 italic align-top">Libre</td>
+        <td colSpan={3} className="px-3 py-2 text-slate-400 italic align-top">Libre</td>
       </tr>
     )
   }
@@ -47,6 +47,7 @@ export function FilaPaciente({ n, p, turno, acciones }: {
   const delTurno = p.indicaciones.filter((i) => i.turnos.includes(turno))
   const diuresis = textoDiuresis(p)
   const avisos = avisosAutomaticos(p, turno)
+  const sem = colorSemaforo(p)
 
   async function envolver(f: () => Promise<boolean>): Promise<boolean> {
     setOcupado(true)
@@ -85,38 +86,23 @@ export function FilaPaciente({ n, p, turno, acciones }: {
 
   return (
     <tr className="border-t align-top hover:bg-slate-50/60">
-      <td className="px-3 py-2 text-center font-bold text-slate-700">{n}</td>
+      <td className="px-3 py-2 text-center">
+        <span
+          className="inline-flex items-center justify-center w-8 h-8 rounded-lg font-bold text-slate-700"
+          style={sem ? { background: sem.fondo, color: sem.texto } : undefined}
+          title={p.semaforo ? `Semáforo de caídas: ${p.semaforo}` : undefined}
+        >{n}</span>
+      </td>
       <td className="px-3 py-2 font-semibold text-slate-800 whitespace-nowrap">{p.nombre}</td>
-      <td className="px-3 py-2">
-        {editable ? (
-          <select
-            aria-label={`Vía de ${p.nombre}`}
-            className={`input py-1 text-xs w-32 ${p.via ? '' : 'text-slate-400'}`}
-            value={p.via ?? ''}
-            disabled={ocupado}
-            onChange={(e) => {
-              const v = (e.target.value || null) as ViaPaciente | null
-              void envolver(() => acciones!.cambiarVia(ingresoId!, v))
-            }}
-          >
-            <option value="">Sin vía</option>
-            <option value="venosa">{VIA_LABEL.venosa}</option>
-            <option value="subcutanea">{VIA_LABEL.subcutanea}</option>
-          </select>
-        ) : (
-          <span className="text-xs text-slate-600">{p.via ? VIA_LABEL[p.via] : <span className="text-slate-300">—</span>}</span>
-        )}
-      </td>
-      <td className="px-3 py-2">
-        <div className="flex flex-wrap gap-1 max-w-[15rem]">
-          {diuresis && <span className="text-[11px] px-2 py-0.5 rounded-md bg-sky-50 text-sky-800 border border-sky-100 font-semibold">{diuresis}</span>}
-          {avisos.map((a) => (
-            <span key={a} className="text-[11px] px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-100">{a}</span>
-          ))}
-          {!diuresis && avisos.length === 0 && <span className="text-slate-300 text-xs">—</span>}
-        </div>
-      </td>
       <td className="px-3 py-2 min-w-[20rem]">
+        {(diuresis || avisos.length > 0) && (
+          <div className="flex flex-wrap gap-1 mb-2">
+            {diuresis && <span className="text-[11px] px-2 py-0.5 rounded-md bg-sky-50 text-sky-800 border border-sky-100 font-semibold">{diuresis}</span>}
+            {avisos.map((a) => (
+              <span key={a} className="text-[11px] px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-100 font-medium">{a}</span>
+            ))}
+          </div>
+        )}
         <div className="space-y-2">
           {delTurno.map((i, k) => {
             const key = i.id ?? `${k}-${i.texto}`
@@ -205,8 +191,28 @@ export function FilaPaciente({ n, p, turno, acciones }: {
             </button>
           ))}
 
-          {!editable && delTurno.length === 0 && <span className="text-slate-300 text-xs">—</span>}
+          {!editable && delTurno.length === 0 && !diuresis && avisos.length === 0 && <span className="text-slate-300 text-xs">—</span>}
         </div>
+      </td>
+      <td className="px-3 py-2">
+        {editable ? (
+          <select
+            aria-label={`Vía de ${p.nombre}`}
+            className={`input py-1 text-xs w-32 ${p.via ? '' : 'text-slate-400'}`}
+            value={p.via ?? ''}
+            disabled={ocupado}
+            onChange={(e) => {
+              const v = (e.target.value || null) as ViaPaciente | null
+              void envolver(() => acciones!.cambiarVia(ingresoId!, v))
+            }}
+          >
+            <option value="">Sin vía</option>
+            <option value="venosa">{VIA_LABEL.venosa}</option>
+            <option value="subcutanea">{VIA_LABEL.subcutanea}</option>
+          </select>
+        ) : (
+          <span className="text-xs text-slate-600">{p.via ? VIA_LABEL[p.via] : <span className="text-slate-300">—</span>}</span>
+        )}
       </td>
     </tr>
   )

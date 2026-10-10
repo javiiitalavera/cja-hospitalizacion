@@ -3,6 +3,7 @@
 // Todo en funciones puras: la página solo carga los datos y enseña el HTML que sale de aquí.
 
 import { escapeHtml } from '../../lib/imprimir'
+import { SEMAFORO_CAIDAS_COLOR } from '../../types'
 import {
   CONTENCION_DIA_LABEL, CONTENCION_NOCHE_LABEL, NOCHE_ES_CONTENCION,
   type ContencionDia, type ContencionNoche,
@@ -14,6 +15,7 @@ export interface IndicacionHoja { id?: string; texto: string; turnos: Turno[] }
 export interface PacienteHoja {
   ingresoId?: string                               // solo en la hoja de hoy (la del histórico no se edita)
   habitacion: number
+  semaforo: string | null                          // semáforo de caídas: verde, amarillo, naranja o rojo
   nombre: string                                   // «Merche Cambra»: nombre y primer apellido
   sondaVesical: boolean
   colector: boolean
@@ -46,6 +48,12 @@ export function avisosAutomaticos(p: PacienteHoja, turno: Turno): string[] {
     l.push(`Contención: ${CONTENCION_DIA_LABEL[p.contencionDia as ContencionDia] ?? p.contencionDia}`)
   }
   return l
+}
+
+// Color del semáforo de caídas (el mismo que en Inicio y en la Hoja de ítems) y color de texto legible encima.
+export function colorSemaforo(p: PacienteHoja | undefined): { fondo: string; texto: string } | null {
+  const fondo = p?.semaforo ? SEMAFORO_CAIDAS_COLOR[p.semaforo] : undefined
+  return fondo ? { fondo, texto: p!.semaforo === 'rojo' ? '#fff' : '#000' } : null
 }
 
 // Diuresis: sonda vesical o colector, si los lleva.
@@ -87,7 +95,7 @@ const ESTILO = `
   th { background: #e8edf3; font-size: 6.5pt; text-transform: uppercase; letter-spacing: -0.1px; padding: 1.5px 2px; }
   td { height: 7.6mm; }
   .noche td { height: 6.1mm; }   /* la noche lleva además la lista de reposición: tiene que caber en la misma hoja */
-  .c-hab { width: 6mm; text-align: center; font-weight: 700; }
+  .c-hab { width: 6mm; text-align: center; font-weight: 700; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .c-nom { width: 30mm; font-weight: 600; }
   .c-m { width: 14mm; }
   .c-via { font-size: 7pt; }
@@ -106,7 +114,7 @@ const ESTILO = `
 function filaHTML(n: number, p: PacienteHoja | undefined, turno: Turno): string {
   const cols = COLUMNAS[turno]
   if (!p) {
-    return `<tr class="libre"><td class="c-hab">${n}</td><td class="c-nom"></td>${cols.map((c) => `<td class="${c.clase}"></td>`).join('')}<td class="c-m c-via"></td><td class="c-cui"></td></tr>`
+    return `<tr class="libre"><td class="c-hab">${n}</td><td class="c-nom"></td>${cols.map((c) => `<td class="${c.clase}"></td>`).join('')}<td class="c-cui"></td><td class="c-m c-via"></td></tr>`
   }
   const auto = avisosAutomaticos(p, turno)
   const propias = p.indicaciones.filter((i) => i.turnos.includes(turno)).map((i) => i.texto.trim())
@@ -119,7 +127,9 @@ function filaHTML(n: number, p: PacienteHoja | undefined, turno: Turno): string 
     return `<td class="${c.clase}">${contenido}</td>`
   }).join('')
   const via = `<td class="c-m c-via">${p.via ? escapeHtml(VIA_CORTA[p.via]) : ''}</td>`
-  return `<tr><td class="c-hab">${n}</td><td class="c-nom">${escapeHtml(p.nombre)}</td>${celdas}${via}<td class="c-cui">${cuidados}</td></tr>`
+  const sem = colorSemaforo(p)
+  const estiloHab = sem ? ` style="background:${sem.fondo};color:${sem.texto}"` : ''
+  return `<tr><td class="c-hab"${estiloHab}>${n}</td><td class="c-nom">${escapeHtml(p.nombre)}</td>${celdas}<td class="c-cui">${cuidados}</td>${via}</tr>`
 }
 
 // Documento HTML completo de la hoja de un turno (sirve para vista previa y para imprimir).
@@ -129,7 +139,7 @@ export function construirHojaHTML(turno: Turno, pacientes: PacienteHoja[], fecha
   const filas = Array.from({ length: maxHab }, (_, k) => filaHTML(k + 1, porHab.get(k + 1), turno)).join('')
   const cols = COLUMNAS[turno]
   const tituloCuidados = turno === 'noche' ? 'Cuidados / incidencias' : 'Cuidados'
-  const thead = `<tr><th class="c-hab">Hb</th><th class="c-nom">Nombre</th>${cols.map((c) => `<th class="${c.clase}">${c.titulo}</th>`).join('')}<th class="c-m">Vía</th><th>${tituloCuidados}</th></tr>`
+  const thead = `<tr><th class="c-hab">Hb</th><th class="c-nom">Nombre</th>${cols.map((c) => `<th class="${c.clase}">${c.titulo}</th>`).join('')}<th>${tituloCuidados}</th><th class="c-m">Vía</th></tr>`
   const fechaTxt = fecha.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
   const horaTxt = ahora.toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
   const control = turno === 'noche' ? `
@@ -160,6 +170,7 @@ export function pacienteDesdeHistorico(f: FilaHistorico): PacienteHoja | null {
   if (d.habitacion == null) return null
   return {
     habitacion: d.habitacion,
+    semaforo: d.semaforo ?? null,
     nombre: `${d.nombre ?? ''} ${d.primer_apellido ?? ''}`.trim(),
     sondaVesical: !!d.sonda_vesical,
     colector: !!d.colector,

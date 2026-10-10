@@ -19,9 +19,8 @@ export function TablaHoja({ turno, pacientes, acciones }: {
           <tr className="bg-slate-50 text-left text-xs font-semibold text-slate-500">
             <th className="px-3 py-2 text-center w-12">Hab.</th>
             <th className="px-3 py-2 whitespace-nowrap">Paciente</th>
-            <th className="px-3 py-2">Vía</th>
-            <th className="px-3 py-2 min-w-[12rem]">Avisos de la app</th>
             <th className="px-3 py-2">Indicaciones · {TITULO_TURNO[turno].toLowerCase()}</th>
+            <th className="px-3 py-2">Vía</th>
           </tr>
         </thead>
         <tbody>
