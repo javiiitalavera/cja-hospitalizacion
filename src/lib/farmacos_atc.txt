@@ -1,0 +1,514 @@
+# Catálogo de principios activos con su código ATC (nivel 5), en español.
+# Formato: ATC|Nombre|sinónimos y marcas separados por coma|marcas   (marcas: * uso muy habitual · ? uso mixto: psicofármaco según para qué se use)
+# Lo mantiene el equipo médico. Para añadir un fármaco: una línea nueva y ejecutar scripts/generar_farmacos.py
+# --- N05A Antipsicóticos ---
+N05AA01|Clorpromazina|Largactil|*
+N05AA02|Levomepromazina|Sinogan,Nozinan|*
+N05AA06|Ciamemazina|Tercian|
+N05AB02|Flufenazina|Modecate|
+N05AB03|Perfenazina|Decentan|
+N05AB06|Trifluoperazina|Stelazine|
+N05AC01|Periciazina|Neuleptil|
+N05AC02|Tioridazina|Meleril|
+N05AC04|Pipotiazina|Lonseren|
+N05AD01|Haloperidol|Haldol,Haloperidol decanoato|*
+N05AD05|Pipamperona|Dipiperon|
+N05AD08|Droperidol|Droperidol|
+N05AE03|Sertindol|Serdolect|
+N05AE04|Ziprasidona|Zeldox,Geodon|
+N05AE05|Lurasidona|Latuda|
+N05AF01|Flupentixol|Fluanxol|
+N05AF05|Zuclopentixol|Clopixol,Cisordinol|*
+N05AG02|Pimozida|Orap|
+N05AH01|Loxapina|Adasuve|
+N05AH02|Clozapina|Leponex,Nemea|*
+N05AH03|Olanzapina|Zyprexa,Zyprexa Velotab,Olanzapina bucodispersable|*
+N05AH04|Quetiapina|Seroquel,Seroquel XR,Quetiapina retard|*
+N05AH05|Asenapina|Sycrest|
+N05AH06|Clotiapina|Etumina|
+N05AL01|Sulpirida|Dogmatil|*
+N05AL03|Tiaprida|Tiaprizal|*
+N05AL05|Amisulprida|Solian|
+N05AL07|Levosulpirida|Levogastrol|
+N05AN01|Litio|Plenur,Carbonato de litio|*
+N05AX08|Risperidona|Risperdal,Risperdal Consta,Arketin|*
+N05AX12|Aripiprazol|Abilify,Abilify Maintena|*
+N05AX13|Paliperidona|Invega,Xeplion,Trevicta|*
+N05AX15|Cariprazina|Reagila|
+N05AX16|Brexpiprazol|Rxulti|
+N05AX17|Pimavanserina|Nuplazid|
+# --- N05B Ansiolíticos ---
+N05BA01|Diazepam|Valium,Stesolid|*
+N05BA02|Clordiazepóxido|Huberplex,Librium|
+N05BA04|Oxazepam|Adumbran|
+N05BA05|Clorazepato dipotásico|Tranxilium,Clorazepato|
+N05BA06|Lorazepam|Orfidal,Idalprem,Lorazepam|*
+N05BA08|Bromazepam|Lexatin,Lexatin 1.5|*
+N05BA09|Clobazam|Noiafren|
+N05BA12|Alprazolam|Trankimazin,Xanax|*
+N05BA10|Ketazolam|Sedotime|
+N05BA13|Halazepam|Halazepam|
+N05BA21|Clotiazepam|Distensan|
+N05BB01|Hidroxizina|Atarax|*
+N05BE01|Buspirona|Buspar|*
+N05BC01|Meprobamato|Mepro|
+# --- N05C Hipnóticos y sedantes ---
+N05CD01|Flurazepam|Dormodor|
+N05CD02|Nitrazepam|Mogadon|
+N05CD05|Triazolam|Halcion|
+N05CD06|Lormetazepam|Noctamid,Loramet|*
+N05CD07|Temazepam|Temazepam|
+N05CD08|Midazolam|Dormicum,Buccolam|*
+N05CD11|Loprazolam|Somnovit|
+N05CF01|Zopiclona|Limovan,Datolan|
+N05CF02|Zolpidem|Stilnox,Zolpidem|*
+N05CF03|Zaleplon|Zaleplon|
+N05CF04|Eszopiclona|Lunesta|
+N05CH01|Melatonina|Circadin,Melatonina|*
+N05CM02|Clometiazol|Distraneurine|
+N05CM18|Dexmedetomidina|Dexdor|
+N05CM09|Valeriana|Valeriana|
+# --- N06A Antidepresivos ---
+N06AA09|Amitriptilina|Tryptizol,Deprelio|*
+N06AA10|Nortriptilina|Nortriptilina|
+N06AA04|Clomipramina|Anafranil|
+N06AA02|Imipramina|Tofranil|
+N06AA06|Trimipramina|Surmontil|
+N06AA12|Doxepina|Sinequan,Silenor|
+N06AA21|Maprotilina|Ludiomil|
+N06AA16|Dosulepina|Prothiaden|
+N06AB03|Fluoxetina|Prozac,Adofen,Fluoxetina|*
+N06AB04|Citalopram|Prisdal,Seropram|*
+N06AB05|Paroxetina|Seroxat,Motivan,Paroxetina|*
+N06AB06|Sertralina|Besitran,Aremis,Sertralina|*
+N06AB08|Fluvoxamina|Dumirox,Fevarin|
+N06AB10|Escitalopram|Cipralex,Escitalopram|*
+N06AF03|Fenelzina|Fenelzina|
+N06AG02|Moclobemida|Manerix|
+N06AX03|Mianserina|Lantanon|
+N06AX05|Trazodona|Deprax,Desyrel,Trazodona|*
+N06AX11|Mirtazapina|Rexer,Vastat,Mirtazapina,Rexer Flas|*
+N06AX12|Bupropión|Elontril,Zyntabac,Bupropion|*
+N06AX14|Tianeptina|Stablon|
+N06AX16|Venlafaxina|Vandral,Dobupal,Venlafaxina|*
+N06AX17|Milnaciprán|Ixel|
+N06AX18|Reboxetina|Norebox,Davedax|
+N06AX21|Duloxetina|Cymbalta,Xeristar,Duloxetina|*
+N06AX22|Agomelatina|Valdoxan,Thymanax|*
+N06AX23|Desvenlafaxina|Pristiq|
+N06AX26|Vortioxetina|Brintellix|*
+N06AX02|Triptófano|L-triptófano|
+N06AX25|Hipérico|Hierba de San Juan,Hypericum|
+# --- N06B Psicoestimulantes ---
+N06BA04|Metilfenidato|Concerta,Rubifen,Medikinet|
+N06BA07|Modafinilo|Modiodal|
+N06BA09|Atomoxetina|Strattera|
+N06BA12|Lisdexanfetamina|Elvanse|
+N06BC01|Cafeína|Cafeína|
+N06BX03|Piracetam|Nootropil|
+N06BX06|Citicolina|Somazina,Ceraxon|
+# --- N06D Antidemencia ---
+N06DA02|Donepezilo|Aricept,Donepezilo|*
+N06DA03|Rivastigmina|Exelon,Prometax,Rivastigmina parche|*
+N06DA04|Galantamina|Reminyl,Galantamina|*
+N06DX01|Memantina|Ebixa,Axura,Memantina|*
+N06DX02|Ginkgo biloba|Tebonin,Ginkgo|
+# --- N03 Antiepilépticos (no psicofármacos por ATC) ---
+N03AA02|Fenobarbital|Luminal,Gardenal|
+N03AA03|Primidona|Mysoline|
+N03AB02|Fenitoína|Epanutin,Sinergina|
+N03AE01|Clonazepam|Rivotril,Clonazepam|*?
+N03AF01|Carbamazepina|Tegretol,Carbamazepina|*?
+N03AF02|Oxcarbazepina|Trileptal|*?
+N03AF04|Eslicarbazepina|Zebinix|
+N03AG01|Ácido valproico|Depakine,Depakine Crono,Valproato,Valproato sódico,Valproico|*?
+N03AX09|Lamotrigina|Lamictal|*?
+N03AX11|Topiramato|Topamax|*?
+N02BF01|Gabapentina|Neurontin,Gabapentina|*?
+N03AX14|Levetiracetam|Keppra,Levetiracetam|*
+N03AX15|Zonisamida|Zonegran|
+N02BF02|Pregabalina|Lyrica,Pregabalina|*?
+N03AX18|Lacosamida|Vimpat|
+N03AX22|Perampanel|Fycompa|
+N03AX23|Brivaracetam|Briviact|
+# --- N04 Antiparkinsonianos ---
+N04AA02|Biperideno|Akineton|*
+N04AA01|Trihexifenidilo|Artane|
+N04BA02|Levodopa/carbidopa|Sinemet,Sinemet Plus,Levodopa carbidopa|*
+N04BA03|Levodopa/carbidopa/entacapona|Stalevo|
+N04BA01|Levodopa|Levodopa|
+N04BA02|Levodopa/benserazida|Madopar,Madopar Retard|*
+N04BB01|Amantadina|Amantadina,Amantadina Sulfato|
+N04BC04|Ropinirol|Requip|
+N04BC05|Pramipexol|Mirapexin,Sifrol|
+N04BC09|Rotigotina|Neupro|
+N04BC07|Apomorfina|Apo-go|
+N04BD01|Selegilina|Selegilina|
+N04BD02|Rasagilina|Azilect|
+N04BD03|Safinamida|Xadago|
+N04BX02|Entacapona|Comtan|
+# --- N07 Otros del sistema nervioso ---
+N07AA02|Piridostigmina|Mestinon|
+N07BB04|Naltrexona|Antaxone|
+N07BB01|Disulfiram|Antabus|
+N07BB03|Acamprosato|Campral|
+N07BA01|Nicotina|Nicorette|
+N07CA01|Betahistina|Serc|
+N07CA02|Cinarizina|Stugeron|
+N07CA03|Flunarizina|Sibelium|
+N07XX02|Riluzol|Rilutek|
+# --- N02 Analgésicos ---
+N02AA01|Morfina|Morfina,MST,Sevredol|
+N02AA05|Oxicodona|Oxycontin|
+N02AA03|Hidromorfona|Jurnista|
+N02AA55|Oxicodona/naloxona|Targin|
+N02AB03|Fentanilo|Durogesic,Fentanilo parche,Abstral,Actiq|
+N02AE01|Buprenorfina|Transtec,Norspan,Buprenorfina|
+N02AJ06|Codeína/paracetamol|Dolocatil,Cod-efferalgan|
+N02AJ13|Tramadol/paracetamol|Pazital,Zaldiar,Ultracet|
+N02AX02|Tramadol|Adolonta,Tramadol,Tradonal|*
+N02AX06|Tapentadol|Palexia|
+N02BA01|Ácido acetilsalicílico (analgésico)|AAS analgésico|
+N02BB02|Metamizol|Nolotil,Metamizol|*
+N02BE01|Paracetamol|Gelocatil,Efferalgan,Termalgin,Dolostop|*
+N02CC01|Sumatriptán|Imigran|
+N01BB02|Lidocaína|Versatis,Lidocaína|
+# --- M Musculoesquelético ---
+M01AB05|Diclofenaco|Voltaren,Diclofenaco|
+M01AB15|Ketorolaco|Droal,Toradol|
+M01AC06|Meloxicam|Movalis|
+M01AE01|Ibuprofeno|Espidifen,Neobrufen,Dalsy,Ibuprofeno|*
+M01AE02|Naproxeno|Naprosyn|
+M01AE17|Dexketoprofeno|Enantyum,Ketesse|
+M01AH01|Celecoxib|Celebrex|
+M01AH05|Etoricoxib|Arcoxia|
+M03BX01|Baclofeno|Lioresal,Baclofeno|
+M03BX02|Tizanidina|Sirdalud|
+M03BX08|Ciclobenzaprina|Yurelax Flexiban|
+M03BX07|Tetrazepam|Myolastan|
+M03AX01|Toxina botulínica|Botox,Dysport|
+M04AA01|Alopurinol|Zyloric,Alopurinol|
+M04AA03|Febuxostat|Adenuric|
+M04AC01|Colchicina|Colchimax|
+M05BA04|Alendronato|Fosamax,Alendronato|
+M05BA06|Ibandronato|Bonviva|
+M05BA07|Risedronato|Actonel|
+M05BA08|Ácido zoledrónico|Aclasta,Zometa|
+M05BX04|Denosumab|Prolia,Xgeva|
+M05BB03|Alendronato/colecalciferol|Fosavance|
+# --- A Digestivo y metabolismo ---
+A02AA04|Hidróxido de magnesio|Magnesia|
+A02AD03|Almagato|Almax|
+A02BA02|Ranitidina|Zantac|
+A02BA03|Famotidina|Pepcid|
+A02BC01|Omeprazol|Losec,Mopral,Omeprazol,Parizac|*
+A02BC02|Pantoprazol|Pantecta,Anagastra,Pantoprazol|*
+A02BC03|Lansoprazol|Opiren,Lansoprazol|
+A02BC04|Rabeprazol|Pariet|
+A02BC05|Esomeprazol|Nexium,Esomeprazol|
+A02BX02|Sucralfato|Urbal|
+A03AX13|Simeticona|Aero-red|
+A03BA01|Atropina|Atropina|
+A03BB01|Butilescopolamina|Buscapina|
+A03FA01|Metoclopramida|Primperan,Metoclopramida|
+A03FA03|Domperidona|Motilium,Domperidona|
+A04AA01|Ondansetrón|Zofran,Yatrox,Ondansetron|
+A05AA02|Ácido ursodesoxicólico|Ursochol,Ursobilane|
+A06AB02|Bisacodilo|Dulcolaxo,Bisacodilo|
+A06AB06|Senósidos|Puntual,Senósidos|
+A06AB08|Picosulfato sódico|Evacuol,Cremaffin|
+A06AC01|Plantago ovata|Plantaben,Metamucil|
+A06AD11|Lactulosa|Duphalac,Lactulosa|*
+A06AD12|Lactitol|Emportal|
+A06AD15|Macrogol|Movicol,Casenglicol,Polietilenglicol,Macrogol|*
+A06AG01|Fosfato sódico (enema)|Enema Casen|
+A06AX05|Prucaloprida|Resolor|
+A07AA02|Nistatina|Mycostatin|
+A07AA11|Rifaximina|Spiraxin,Normix|
+A07BA01|Carbón activado|Carbón activado|
+A07DA03|Loperamida|Fortasec,Loperamida|
+A07EA06|Budesonida (oral)|Entocord|
+A07EC02|Mesalazina|Claversal,Pentasa,Mesalazina|
+A09AA02|Pancreatina|Kreon,Creon|
+A10AB01|Insulina humana (regular)|Actrapid,Humulina regular|
+A10AB04|Insulina lispro|Humalog|
+A10AB05|Insulina aspart|Novorapid|
+A10AB06|Insulina glulisina|Apidra|
+A10AC01|Insulina NPH|Insulatard,Humulina NPH|
+A10AD04|Insulina lispro (mezcla)|Humalog Mix|
+A10AE04|Insulina glargina|Lantus,Toujeo,Abasaglar,Semglee|
+A10AE05|Insulina detemir|Levemir|
+A10AE06|Insulina degludec|Tresiba|
+A10BA02|Metformina|Dianben,Metformina,Glucophage|*
+A10BB01|Glibenclamida|Daonil,Euglucon|
+A10BB09|Gliclazida|Diamicron|
+A10BB12|Glimepirida|Amaryl,Glimepirida|
+A10BD07|Sitagliptina/metformina|Janumet,Velmetia|
+A10BD08|Vildagliptina/metformina|Eucreas|
+A10BD15|Dapagliflozina/metformina|Xigduo|
+A10BG03|Pioglitazona|Actos|
+A10BH01|Sitagliptina|Januvia,Xelevia|
+A10BH02|Vildagliptina|Galvus|
+A10BH03|Saxagliptina|Onglyza|
+A10BH05|Linagliptina|Trajenta|
+A10BJ02|Liraglutida|Victoza,Saxenda|
+A10BJ05|Dulaglutida|Trulicity|
+A10BJ06|Semaglutida|Ozempic,Rybelsus|
+A10BK01|Dapagliflozina|Forxiga,Edistride|
+A10BK02|Canagliflozina|Invokana|
+A10BK03|Empagliflozina|Jardiance|
+A10BX02|Repaglinida|Novonorm|
+A11CC04|Calcitriol|Rocaltrol|
+A11CC05|Colecalciferol|Vitamina D3,Vitamina D,Deltius,Vigantol|*
+A11CC06|Calcifediol|Hidroferol|*
+A11DA01|Tiamina|Benerva,Vitamina B1|
+A11HA02|Piridoxina|Benadon,Vitamina B6|
+A11GA01|Ácido ascórbico|Vitamina C,Redoxon|
+A11JB|Vitaminas y minerales|Multivitamínico|
+A12AA04|Carbonato cálcico|Calcio,Mastical,Carbonato cálcico|
+A12AX|Calcio y vitamina D|Mastical D,Calcio/colecalciferol,Osteomerck|
+A12BA01|Cloruro potásico|Potasion,Boi K|
+A12CC|Magnesio|Magnogene,Magnesio|
+A16AA01|Levocarnitina|Carnitor|
+# --- B Sangre ---
+B01AA03|Warfarina|Aldocumar|
+B01AA07|Acenocumarol|Sintrom|*
+B01AB01|Heparina|Heparina sódica|
+B01AB05|Enoxaparina|Clexane,Enoxaparina|
+B01AB06|Nadroparina|Fraxiparina|
+B01AB10|Tinzaparina|Innohep|
+B01AB12|Bemiparina|Hibor|
+B01AC04|Clopidogrel|Plavix,Iscover|
+B01AC06|Ácido acetilsalicílico (antiagregante)|AAS,Adiro,Aspirina,Aspirina 100,Ácido acetilsalicílico|*
+B01AC22|Prasugrel|Efient|
+B01AC24|Ticagrelor|Brilique|
+B01AC11|Iloprost|Ilomedin|
+B01AC23|Cilostazol|Ekistol|
+B01AC18|Trifusal|Disgren|
+B01AD02|Alteplasa|Actilyse|
+B01AE07|Dabigatrán|Pradaxa|
+B01AF01|Rivaroxabán|Xarelto|
+B01AF02|Apixabán|Eliquis|*
+B01AF03|Edoxabán|Lixiana|
+B02AA02|Ácido tranexámico|Amchafibrin|
+B02BA01|Fitomenadiona|Konakion,Vitamina K|
+B03AA07|Sulfato ferroso|Ferrogradumet,Tardyferon,Hierro|
+B03BA01|Cianocobalamina|Vitamina B12,Optovite B12,Cianocobalamina|
+B03BB01|Ácido fólico|Acfol,Folico|
+B03XA01|Eritropoyetina|Eprex,Aranesp|
+B05XA02|Bicarbonato sódico|Bicarbonato|
+# --- C Cardiovascular ---
+C01AA05|Digoxina|Lanacordin,Digoxina|
+C01BC04|Flecainida|Apocard|
+C01BD01|Amiodarona|Trangorex,Amiodarona|
+C01BD07|Dronedarona|Multaq|
+C01DA02|Nitroglicerina|Solinitrina,Cafinitrina,Trinispray|
+C01DA08|Dinitrato de isosorbida|Isordil|
+C01DA14|Mononitrato de isosorbida|Uniket,Coronur,Isosorbida mononitrato|*
+C01EB17|Ivabradina|Corlentor|
+C01EB18|Ranolazina|Ranexa|
+C01EB15|Trimetazidina|Idaptan|
+C02AC01|Clonidina|Catapresan|
+C02CA04|Doxazosina|Carduran|
+C02CA01|Prazosina|Minipres|
+C02DB02|Hidralazina|Hydrapres|
+C02KX01|Bosentán|Tracleer|
+C03AA03|Hidroclorotiazida|Hidrosaluretil|
+C03BA04|Clortalidona|Higrotona|
+C03BA11|Indapamida|Extur,Tertensif|
+C03CA01|Furosemida|Seguril,Furosemida|*
+C03CA04|Torasemida|Dilutol,Isodiur,Torasemida|
+C03DA01|Espironolactona|Aldactone,Aldactone 25|
+C03DA04|Eplerenona|Inspra|
+C03DB01|Amilorida|Midamor|
+C04AD03|Pentoxifilina|Hemovas|
+C05CA03|Diosmina|Daflon,Diosmina|
+C07AA05|Propranolol|Sumial|?
+C07AA07|Sotalol|Sotapor|
+C07AB02|Metoprolol|Lopresor|
+C07AB03|Atenolol|Tenormin,Atenolol|
+C07AB07|Bisoprolol|Emconcor,Euradal,Bisoprolol|
+C07AB12|Nebivolol|Lobivon,Nebilet|
+C07AG01|Labetalol|Trandate|
+C07AG02|Carvedilol|Coropres,Carvedilol|
+C08CA01|Amlodipino|Norvas,Astudal,Amlodipino|*
+C08CA05|Nifedipino|Adalat|
+C08CA13|Lercanidipino|Zanidip,Lercanidipino|
+C08DA01|Verapamilo|Manidon|
+C08DB01|Diltiazem|Masdil,Diltiazem|
+C09AA01|Captopril|Capoten|
+C09AA02|Enalapril|Renitec,Enalapril|*
+C09AA03|Lisinopril|Zestril,Prinivil|
+C09AA04|Perindopril|Coversyl|
+C09AA05|Ramipril|Cardiopril,Carasel,Ramipril|
+C09BA02|Enalapril/hidroclorotiazida|Renitec Plus|
+C09BA05|Ramipril/hidroclorotiazida|Cardiopril Plus|
+C09CA01|Losartán|Cozaar,Losartán|
+C09CA03|Valsartán|Diovan,Valsartán|
+C09CA04|Irbesartán|Aprovel,Karvea|
+C09CA06|Candesartán|Atacand,Candesartán|
+C09CA07|Telmisartán|Micardis,Pritor|
+C09CA08|Olmesartán|Openvas,Olmetec|
+C09DA01|Losartán/hidroclorotiazida|Cozaar Plus|
+C09DA03|Valsartán/hidroclorotiazida|Diovan Plus|
+C09DB01|Valsartán/amlodipino|Exforge|
+C09DX04|Sacubitrilo/valsartán|Entresto|
+C10AA01|Simvastatina|Zocor,Simvastatina|
+C10AA03|Pravastatina|Pravastatina|
+C10AA05|Atorvastatina|Cardyl,Lipitor,Atorvastatina|*
+C10AA07|Rosuvastatina|Crestor,Rosuvastatina|
+C10AA08|Pitavastatina|Livazo|
+C10AB05|Fenofibrato|Secalip,Fenofibrato|
+C10AB04|Gemfibrozilo|Lopid|
+C10AX06|Omega-3|Omacor,Omega 3|
+C10AX09|Ezetimiba|Ezetrol,Ezetimiba|
+C10BA02|Simvastatina/ezetimiba|Inegy|
+# --- D Dermatología ---
+D01AC01|Clotrimazol|Canesten|
+D01AC08|Ketoconazol (tópico)|Ketoisdin|
+D01BA02|Terbinafina|Lamisil|
+D02AE01|Urea|Nutraplus,Urea|
+D05AX02|Calcipotriol|Daivonex|
+D06AX01|Ácido fusídico|Fucidine|
+D06AX09|Mupirocina|Bactroban|
+D06BA01|Sulfadiazina argéntica|Silvederma,Flammazine|
+D07AA02|Hidrocortisona (tópica)|Lactisona,Hidrocortisona crema|
+D07AC01|Betametasona (tópica)|Diprosone,Celestoderm|
+D07AC13|Mometasona (tópica)|Elocom|
+D07AD01|Clobetasol|Dermovate|
+D08AC02|Clorhexidina|Cristalmina,Clorhexidina|
+D08AG02|Povidona yodada|Betadine|
+D08AX01|Peróxido de hidrógeno|Agua oxigenada|
+# --- G Genitourinario ---
+G03CA03|Estradiol|Estraderm,Evorel|
+G03CX01|Tibolona|Boltin|
+G03XC01|Raloxifeno|Evista|
+G04BD04|Oxibutinina|Ditropan,Kentera|
+G04BD07|Tolterodina|Detrusitol|
+G04BD08|Solifenacina|Vesicare,Solifenacina|
+G04BD09|Cloruro de trospio|Uraplex|
+G04BD11|Fesoterodina|Toviaz|
+G04BD12|Mirabegrón|Betmiga|
+G04BE03|Sildenafilo|Viagra,Sildenafilo|
+G04BE08|Tadalafilo|Cialis|
+G04CA02|Tamsulosina|Omnic,Urolosin,Tamsulosina|*
+G04CA04|Silodosina|Silodyx|
+G04CA53|Tamsulosina/solifenacina|Vesomni|
+G04CB01|Finasterida|Proscar,Finasterida|
+G04CB02|Dutasterida|Avodart|
+G04CA52|Dutasterida/tamsulosina|Combodart|
+# --- H Hormonas ---
+H01BA02|Desmopresina|Minurin,Desmopresina|
+H02AB02|Dexametasona|Fortecortin,Dexametasona|
+H02AB04|Metilprednisolona|Urbason,Solu-Moderin|
+H02AB06|Prednisolona|Estilsona|
+H02AB07|Prednisona|Dacortin,Prednisona|
+H02AB09|Hidrocortisona|Hidroaltesona,Actocortina|
+H02AB13|Deflazacort|Zamene,Dezacor|
+H02AA02|Fludrocortisona|Astonin|
+H03AA01|Levotiroxina|Eutirox,Levothroid,Levotiroxina,Dexnon|*
+H03BB02|Tiamazol|Tirodril|
+H04AA01|Glucagón|Glucagen|
+H05AA02|Teriparatida|Forsteo,Movymia|
+H05BX01|Cinacalcet|Mimpara|
+H05BX02|Paricalcitol|Zemplar|
+# --- J Antiinfecciosos ---
+J01AA02|Doxiciclina|Vibracina,Doxiciclina|
+J01CA04|Amoxicilina|Clamoxyl,Amoxicilina|
+J01CE01|Bencilpenicilina|Penicilina G|
+J01CF05|Flucloxacilina|Floxapen|
+J01CR02|Amoxicilina/ácido clavulánico|Augmentine,Amoxicilina clavulánico,Clavulánico|
+J01CR05|Piperacilina/tazobactam|Tazocel|
+J01DB01|Cefalexina|Kefloridina|
+J01DC02|Cefuroxima|Zinnat,Nivador|
+J01DD04|Ceftriaxona|Rocefalin,Ceftriaxona|
+J01DD08|Cefixima|Denvar|
+J01DD13|Cefpodoxima|Orelox|
+J01DH02|Meropenem|Meronem|
+J01DH03|Ertapenem|Invanz|
+J01EE01|Cotrimoxazol|Septrin,Trimetoprim sulfametoxazol,Cotrimoxazol|
+J01FA09|Claritromicina|Klacid|
+J01FA10|Azitromicina|Zitromax,Azitromicina|
+J01FF01|Clindamicina|Dalacin|
+J01GB03|Gentamicina|Gentamicina|
+J01MA02|Ciprofloxacino|Baycip,Ciprofloxacino|
+J01MA12|Levofloxacino|Tavanic,Levofloxacino|
+J01MA14|Moxifloxacino|Octegra|
+J01XA01|Vancomicina|Vancomicina|
+J01XD01|Metronidazol|Flagyl,Metronidazol|
+J01XE01|Nitrofurantoína|Furantoina|
+J01XX01|Fosfomicina|Monurol,Fosfomicina|
+J01XX08|Linezolid|Zyvox|
+J02AC01|Fluconazol|Diflucan|
+J05AB01|Aciclovir|Zovirax|
+J05AB11|Valaciclovir|Valtrex|
+J05AH02|Oseltamivir|Tamiflu|
+J07BB02|Vacuna antigripal|Gripe|
+P01BA02|Hidroxicloroquina|Dolquine|
+# --- L Inmunomoduladores / oncología ---
+L01XX05|Hidroxiurea|Hydrea|
+L02BA01|Tamoxifeno|Nolvadex|
+L02BB03|Bicalutamida|Casodex|
+L02BG03|Anastrozol|Arimidex|
+L02BG04|Letrozol|Femara|
+L02BX03|Abiraterona|Zytiga|
+L04AX01|Azatioprina|Imurel|
+L04AX03|Metotrexato|Metotrexato|
+L04AA06|Micofenolato|Cellcept|
+# --- R Respiratorio ---
+R01AD05|Budesonida (nasal)|Rhinocort|
+R01AD09|Mometasona (nasal)|Nasonex|
+R03AC02|Salbutamol|Ventolin,Salbutamol|
+R03AC03|Terbutalina|Terbasmin|
+R03AC13|Formoterol|Foradil|
+R03AK06|Salmeterol/fluticasona|Seretide,Anasma|
+R03AK07|Budesonida/formoterol|Symbicort,Rilast|
+R03AK08|Beclometasona/formoterol|Foster|
+R03AL02|Salbutamol/ipratropio|Combivent|
+R03BA01|Beclometasona|Becloforte|
+R03BA02|Budesonida (inhalada)|Pulmicort|
+R03BA05|Fluticasona|Flixotide|
+R03BB01|Ipratropio|Atrovent|
+R03BB04|Tiotropio|Spiriva|
+R03BB05|Aclidinio|Bretaris|
+R03BB06|Glicopirronio|Seebri|
+R03CC02|Salbutamol (oral)|Salbutamol oral|
+R03DA04|Teofilina|Theolair|
+R03DC03|Montelukast|Singulair,Montelukast|
+R05CB01|Acetilcisteína|Fluimucil,Flumil|
+R05CB03|Carbocisteína|Mucodrenol|
+R05CB06|Ambroxol|Mucosan|
+R05CB02|Bromhexina|Bisolvon|
+R05DA09|Dextrometorfano|Romilar|
+R05DA04|Codeína|Codeína|
+R06AA02|Difenhidramina|Benadryl|?
+R06AA09|Doxilamina|Dormidina|?
+R06AB02|Dexclorfeniramina|Polaramine|
+R06AE07|Cetirizina|Zyrtec,Cetirizina|
+R06AX13|Loratadina|Clarityne,Loratadina|
+R06AX22|Ebastina|Ebastel|
+R06AX27|Desloratadina|Aerius|
+R06AX29|Bilastina|Bilaxten|
+R06AA04|Clemastina|Tavegil|
+# --- S Órganos de los sentidos ---
+S01AA12|Tobramicina (oftálmica)|Tobrex|
+S01AE03|Ciprofloxacino (oftálmico)|Oftacilox|
+S01BA01|Dexametasona (oftálmica)|Maxidex|
+S01EA05|Brimonidina|Alphagan|
+S01EC01|Acetazolamida|Edemox,Diamox|
+S01EC03|Dorzolamida|Trusopt|
+S01ED01|Timolol|Timabak,Timolol|
+S01EE01|Latanoprost|Xalatan,Latanoprost|
+S01EE03|Bimatoprost|Lumigan|
+S01EE04|Travoprost|Travatan|
+S01FA06|Tropicamida|Tropicamida|
+S01XA20|Lágrimas artificiales|Lágrimas artificiales,Hipromelosa,Viscofresh,Systane|
+V03AB15|Naloxona|Naloxona|
+V03AB25|Flumazenilo|Anexate|
+V03AE01|Poliestirensulfonato|Resincalcio|
+V03AE02|Sevelámero|Renagel|
+V06DC01|Glucosa|Glucosmón|
+
+# --- añadidos tras validar ---
+A12BA05|Gluconato potásico|Boi K (gluconato)|
+B03AB05|Hierro polimaltosado|Maltofer,Hierro polimaltosa|

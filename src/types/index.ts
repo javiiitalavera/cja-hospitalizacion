@@ -120,6 +120,8 @@ export interface InformeIngreso {
 
 export interface FilaMedicacion {
   farmaco: string
+  atc?: string            // código ATC del fármaco elegido en el catálogo (si se reconoció)
+  psico?: 'si' | 'no'     // marca manual de «¿psicofármaco?» (para lo de uso mixto o no reconocido); manda sobre el catálogo
   dosis: string
   desayuno: string
   comida: string

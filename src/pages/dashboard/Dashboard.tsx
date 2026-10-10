@@ -11,8 +11,9 @@ import { ActividadDashboard } from './ActividadDashboard'
 import { ExploradorEpisodios } from './ExploradorEpisodios'
 import { SeguridadDashboard } from './SeguridadDashboard'
 import { DiagnosticosDashboard } from './DiagnosticosDashboard'
+import { MedicacionDashboard } from './MedicacionDashboard'
 
-type Vista = 'resumen' | 'actividad' | 'diagnosticos' | 'seguridad' | 'explorador'
+type Vista = 'resumen' | 'actividad' | 'diagnosticos' | 'medicacion' | 'seguridad' | 'explorador'
 
 // Los filtros se reflejan en la URL, para poder compartir o volver a
 // un mismo filtro sin tener que reconstruirlo a mano.
@@ -106,6 +107,7 @@ export function Dashboard() {
     { valor: 'resumen', etiqueta: 'Resumen', disponible: true },
     { valor: 'actividad', etiqueta: 'Actividad y ocupación', disponible: true },
     { valor: 'diagnosticos', etiqueta: 'Diagnósticos', disponible: true },
+    { valor: 'medicacion', etiqueta: 'Medicación', disponible: true },
     { valor: 'seguridad', etiqueta: 'Seguridad', disponible: true },
     { valor: 'explorador', etiqueta: 'Explorador de episodios', disponible: true },
   ]
@@ -171,11 +173,14 @@ export function Dashboard() {
       {vista === 'diagnosticos' && (
         <DiagnosticosDashboard filtros={filtros} desde={desde} hasta={hasta} />
       )}
+      {vista === 'medicacion' && (
+        <MedicacionDashboard filtros={filtros} desde={desde} hasta={hasta} />
+      )}
       {vista === 'seguridad' && (
         <SeguridadDashboard filtros={filtros} desde={desde} hasta={hasta} onExplorar={irAIncidencias} onExplorarEpisodios={irAExplorador} />
       )}
       {vista === 'explorador' && <ExploradorEpisodios />}
-      {vista !== 'resumen' && vista !== 'actividad' && vista !== 'diagnosticos' && vista !== 'explorador' && vista !== 'seguridad' && (
+      {vista !== 'resumen' && vista !== 'actividad' && vista !== 'diagnosticos' && vista !== 'medicacion' && vista !== 'explorador' && vista !== 'seguridad' && (
         <div className="card p-10 text-center text-slate-500 text-sm">
           Esta vista se construye en una ronda posterior.
         </div>
