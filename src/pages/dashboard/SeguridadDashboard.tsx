@@ -109,7 +109,7 @@ export function SeguridadDashboard({ filtros, desde, hasta, onExplorar, onExplor
           <section>
             <p className="section-title">Úlceras por presión</p>
             <p className="text-xs text-slate-500 mb-3">
-              Se registran en Plan de cuidados → Curas (no como incidencia). El periodo se cuenta por la fecha de inicio o detección.
+              Se registran en Plan de cuidados → Pauta de curas (no como incidencia). El periodo se cuenta por la fecha de inicio o detección.
               Al pulsar una tarjeta se abre el listado de episodios del periodo con alguna úlcera por presión.
             </p>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">

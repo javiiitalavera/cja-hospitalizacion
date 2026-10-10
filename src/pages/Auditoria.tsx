@@ -20,6 +20,8 @@ const TABLA_LABEL: Record<string, string> = {
   curas_lesiones: 'Cura (lesión)',
   curas_valoraciones: 'Cura (valoración)',
   curas_registro: 'Cura (marca diaria)',
+  pauta_cuidados: 'Pauta de cuidados',
+  pauta_via: 'Pauta de cuidados (vía)',
 }
 
 // Las claves van en mayúsculas a propósito — la búsqueda siempre

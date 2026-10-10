@@ -175,7 +175,7 @@ export default function Curas() {
 
       {!loading && !error && pacientes.length === 0 && (
         <div className="card p-8 text-center text-sm text-slate-500">
-          No hay pacientes con curas activas. Las lesiones y cuidados se añaden en la ficha de cada paciente, pestaña Plan de cuidados → Curas.
+          No hay pacientes con curas activas. Las lesiones y cuidados se añaden en la ficha de cada paciente, pestaña Plan de cuidados → Pauta de curas.
         </div>
       )}
 

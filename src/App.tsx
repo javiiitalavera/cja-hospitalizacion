@@ -13,6 +13,7 @@ const NuevoIngreso = lazy(() => import('./pages/NuevoIngreso'))
 const DetalleIngreso = lazy(() => import('./pages/DetalleIngreso'))
 const HojaItems = lazy(() => import('./pages/HojaItems'))
 const Curas = lazy(() => import('./pages/Curas'))
+const HojasTurno = lazy(() => import('./pages/HojasTurno'))
 const Eventos = lazy(() => import('./pages/Eventos').then((m) => ({ default: m.Eventos })))
 const Dashboard = lazy(() => import('./pages/Dashboard').then((m) => ({ default: m.Dashboard })))
 const Personal = lazy(() => import('./pages/Personal').then((m) => ({ default: m.Personal })))
@@ -82,6 +83,7 @@ export default function App() {
               <Route path="ingresos/:id" element={<Suspense fallback={<CargandoPagina />}><DetalleIngresoPorId /></Suspense>} />
               <Route path="items" element={<Suspense fallback={<CargandoPagina />}><HojaItems /></Suspense>} />
               <Route path="curas" element={<Suspense fallback={<CargandoPagina />}><Curas /></Suspense>} />
+              <Route path="hojas-turno" element={<Suspense fallback={<CargandoPagina />}><HojasTurno /></Suspense>} />
               <Route path="eventos" element={<Suspense fallback={<CargandoPagina />}><Eventos /></Suspense>} />
               <Route path="informes" element={<Suspense fallback={<CargandoPagina />}><Informes /></Suspense>} />
               <Route path="dashboard" element={<Suspense fallback={<CargandoPagina />}><Dashboard /></Suspense>} />

@@ -1,6 +1,6 @@
 // Una cura de la "Tabla de cuidados" abierta en una ventana: se ve la pauta,
 // la última valoración y la evolución, y se puede editar sin salir de la
-// pantalla Curas. Usa las mismas piezas que la pestaña Curas de la ficha.
+// pantalla Curas. Usa las mismas piezas que la pestaña Pauta de curas de la ficha.
 
 import { useState } from 'react'
 import { supabase } from '../../lib/supabase'

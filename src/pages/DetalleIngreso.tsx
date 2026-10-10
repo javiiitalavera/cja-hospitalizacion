@@ -13,6 +13,7 @@ import { TabItems } from './ingreso/TabItems'
 import { TabEventos } from './ingreso/TabEventos'
 import { TabCMBD } from './ingreso/TabCMBD'
 import { TabCuras } from './ingreso/TabCuras'
+import { TabPautaCuidados } from './ingreso/TabPautaCuidados'
 import { TabOtrosInformes } from './ingreso/TabOtrosInformes'
 import { TabInformeEnfermeria } from './ingreso/TabInformeEnfermeria'
 import { NavegadorPacientes } from './ingreso/NavegadorPacientes'
@@ -23,7 +24,7 @@ import { TIPALT_LABEL } from '../lib/alta'
 // subpestañas. Cada contenido tiene un identificador de "sección"
 // (datos, ingreso, alta, curas, items, incidencias, cmbd) que es el que
 // usan los permisos y el aviso de solo lectura más abajo.
-type Seccion = 'datos' | 'ingreso' | 'alta' | 'enfermeria' | 'otros' | 'curas' | 'items' | 'incidencias' | 'cmbd'
+type Seccion = 'datos' | 'ingreso' | 'alta' | 'enfermeria' | 'otros' | 'curas' | 'items' | 'cuidados' | 'incidencias' | 'cmbd'
 
 type Sub = { id: string; label: string; seccion: Seccion; enConstruccion?: boolean }
 type Tab = {
@@ -50,8 +51,9 @@ const TABS: Tab[] = [
   {
     id: 'plan', label: 'Plan de cuidados', icon: ClipboardList,
     subs: [
-      { id: 'curas', label: 'Curas', seccion: 'curas' },
-      { id: 'items', label: 'Ítems', seccion: 'items' },
+      { id: 'cuidados', label: 'Pauta de cuidados', seccion: 'cuidados' },
+      { id: 'curas', label: 'Pauta de curas', seccion: 'curas' },
+      { id: 'items', label: 'Hoja de ítems', seccion: 'items' },
     ],
     subPorDefecto: 'items',
   },
@@ -477,6 +479,7 @@ export default function DetalleIngreso() {
               propia pestaña (aviso de solo lectura incluido). */}
           {seccion === 'enfermeria' && id && <TabInformeEnfermeria ingresoId={id} ingreso={ingreso} />}
           {seccion === 'otros' && id && <TabOtrosInformes ingresoId={id} ingreso={ingreso} />}
+          {seccion === 'cuidados' && id && <TabPautaCuidados ingresoId={id} episodioActivo={!episodioCerrado} />}
           {seccion === 'curas' && id && <TabCuras ingresoId={id} episodioActivo={!episodioCerrado} />}
           {seccion === 'items' && id && (
             <TabItems
