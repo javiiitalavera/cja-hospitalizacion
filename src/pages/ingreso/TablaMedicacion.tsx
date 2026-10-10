@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import type { FilaMedicacion } from '../../types'
 import {
-  GRUPOS_PSICO, admiteMarcaPsico, atcDeFila, buscarFarmacos, clasificarTexto, estadoPsico, farmacoPorAtc, grupoDeFila, grupoPsico, resumirMedicacion,
+  GRUPOS_PSICO, atcDeFila, buscarFarmacos, clasificarTexto, estadoPsico, farmacoPorAtc, grupoDeFila, grupoPsico, resumirMedicacion,
   textoGrupos, useCatalogoFarmacos, type ResultadoFarmaco,
 } from '../../lib/farmacos'
 
@@ -25,7 +25,7 @@ function CeldaFarmaco({ fila, disabled, onCambio }: {
   disabled?: boolean
   onCambio: (cambio: Partial<FilaMedicacion>) => void
 }) {
-  const cargado = useCatalogoFarmacos(true)
+  useCatalogoFarmacos(true)
   const [abierto, setAbierto] = useState(false)
   const [activo, setActivo] = useState(0)
   const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null)
@@ -57,12 +57,11 @@ function CeldaFarmaco({ fila, disabled, onCambio }: {
 
   const atc = atcDeFila(fila)
   const conocido = atc ? farmacoPorAtc(atc) : null
-  const grupo = grupoDeFila(fila)
-  const estado = estadoPsico(fila)
-  const hayTexto = fila.farmaco.trim().length > 0
+  // Ficha del fármaco al pasar el ratón: nombre del principio activo y código ATC.
+  const ficha = conocido ? `${conocido.nombre} · ATC ${conocido.atc}` : undefined
 
   return (
-    <div>
+    <div title={ficha}>
       <input ref={inputRef} disabled={disabled} autoComplete="off"
         className="w-full bg-transparent px-1 py-0.5 focus:outline-none focus:bg-white focus:ring-1 focus:ring-primary-300 rounded text-slate-800 disabled:text-slate-500"
         value={fila.farmaco} placeholder="Nombre del fármaco o marca…"
@@ -85,63 +84,6 @@ function CeldaFarmaco({ fila, disabled, onCambio }: {
             }
           }, 150)
         }} />
-      {hayTexto && cargado && (
-        <>
-          {atc ? (
-            <p className="px-1 text-[10px] leading-tight mt-0.5 flex flex-wrap items-center gap-1">
-              {grupo
-                ? <span className="px-1.5 py-px rounded-full bg-violet-100 text-violet-800 font-semibold">
-                    {GRUPOS_PSICO.find(g => g.clave === grupo)?.etiqueta}
-                  </span>
-                : null}
-              <span className="font-mono text-slate-400" title={conocido ? `Principio activo: ${conocido.nombre}` : undefined}>{atc}</span>
-              {conocido && conocido.nombre.toLowerCase() !== fila.farmaco.trim().toLowerCase() && (
-                <span className="text-slate-400">· {conocido.nombre}</span>
-              )}
-            </p>
-          ) : (
-            <p className="px-1 text-[10px] leading-tight mt-0.5 flex flex-wrap items-center gap-1">
-              {fila.psico
-                ? grupo && <span className="px-1.5 py-px rounded-full bg-violet-100 text-violet-800 font-semibold">
-                    {GRUPOS_PSICO.find(g => g.clave === grupo)?.etiqueta}
-                  </span>
-                : <span className="px-1.5 py-px rounded-full bg-amber-100 text-amber-800 font-semibold"
-                    title="No está en el catálogo: se guarda tal cual. Puedes marcar a mano si es psicofármaco">
-                    sin clasificar
-                  </span>}
-            </p>
-          )}
-          {admiteMarcaPsico(fila) && (
-            <p className="px-1 text-[10px] leading-tight mt-0.5 flex flex-wrap items-center gap-1" data-marca-psico>
-              {fila.psico ? (
-                <>
-                  <span className={fila.psico === 'si' ? 'text-violet-700 font-semibold' : 'text-slate-500 font-semibold'}>
-                    {fila.psico === 'si' ? 'Marcado: psicofármaco' : 'Marcado: no es psicofármaco'}
-                  </span>
-                  {!disabled && (
-                    <button type="button" onClick={() => onCambio({ psico: undefined })}
-                      className="text-slate-400 hover:text-slate-700 underline">quitar marca</button>
-                  )}
-                </>
-              ) : (
-                <>
-                  <span className={estado === 'dudoso' ? 'text-amber-700 font-semibold' : 'text-slate-500'}>
-                    {estado === 'dudoso' ? 'Uso mixto: ¿psicofármaco aquí?' : '¿Psicofármaco?'}
-                  </span>
-                  {!disabled && (
-                    <>
-                      <button type="button" onClick={() => onCambio({ psico: 'si' })}
-                        className="px-1.5 py-px rounded border border-violet-300 text-violet-700 hover:bg-violet-50 font-semibold">Sí</button>
-                      <button type="button" onClick={() => onCambio({ psico: 'no' })}
-                        className="px-1.5 py-px rounded border border-slate-300 text-slate-600 hover:bg-slate-100 font-semibold">No</button>
-                    </>
-                  )}
-                </>
-              )}
-            </p>
-          )}
-        </>
-      )}
       {abierto && pos && resultados.length > 0 && (
         <div className="fixed z-50 bg-white border rounded-xl shadow-lg overflow-hidden max-h-72 overflow-y-auto"
           style={{ top: pos.top, left: pos.left, width: pos.width }}>
@@ -170,6 +112,73 @@ function CeldaFarmaco({ fila, disabled, onCambio }: {
   )
 }
 
+// Columna «Psicofármaco»: una sola línea por fármaco. Lo normal (omeprazol, adiro…) no muestra nada.
+// Solo pregunta en lo de uso mixto (valproato, pregabalina…); lo que no se reconoce no pregunta, pero
+// permite marcarlo con un botón.
+function CeldaClase({ fila, disabled, onCambio }: {
+  fila: FilaMedicacion
+  disabled?: boolean
+  onCambio: (cambio: Partial<FilaMedicacion>) => void
+}) {
+  if (!fila.farmaco.trim()) return null
+  const estado = estadoPsico(fila)
+  const grupo = grupoDeFila(fila)
+  const etiqueta = grupo === 'otro' ? 'Psicofármaco' : GRUPOS_PSICO.find(g => g.clave === grupo)?.etiqueta
+  const sinAtc = !atcDeFila(fila)
+  const quitar = !disabled && fila.psico && (
+    <button type="button" title="Quitar la marca" onClick={() => onCambio({ psico: undefined })}
+      className="text-slate-400 hover:text-slate-700 leading-none px-0.5">×</button>
+  )
+  const pill = 'inline-flex items-center gap-1 px-1.5 py-px rounded-full text-[10px] font-semibold whitespace-nowrap'
+
+  if (estado === 'psico') {
+    return (
+      <span className="inline-flex items-center gap-0.5">
+        <span className={`${pill} bg-violet-100 text-violet-800`}
+          title={fila.psico === 'si' ? 'Marcado a mano como psicofármaco' : 'Psicofármaco según el catálogo'}>
+          {etiqueta}{fila.psico === 'si' ? ' · manual' : ''}
+        </span>
+        {quitar}
+      </span>
+    )
+  }
+  if (fila.psico === 'no') {
+    return (
+      <span className="inline-flex items-center gap-0.5">
+        <span className={`${pill} bg-slate-100 text-slate-500`} title="Marcado a mano: no es psicofármaco">no psicofármaco</span>
+        {quitar}
+      </span>
+    )
+  }
+  if (estado === 'dudoso') {
+    return (
+      <span className="inline-flex items-center gap-1 whitespace-nowrap text-[10px]">
+        <span className="text-amber-700 font-semibold" title="Se usa tanto como estabilizador del ánimo como para la epilepsia, el dolor…">¿Psicofármaco?</span>
+        {!disabled && (
+          <>
+            <button type="button" onClick={() => onCambio({ psico: 'si' })}
+              className="px-1.5 py-px rounded border border-violet-300 text-violet-700 hover:bg-violet-50 font-semibold">Sí</button>
+            <button type="button" onClick={() => onCambio({ psico: 'no' })}
+              className="px-1.5 py-px rounded border border-slate-300 text-slate-600 hover:bg-slate-100 font-semibold">No</button>
+          </>
+        )}
+      </span>
+    )
+  }
+  if (sinAtc) {
+    return (
+      <span className="inline-flex items-center gap-1 whitespace-nowrap text-[10px]">
+        <span className={`${pill} bg-amber-100 text-amber-800`} title="No está en el catálogo: se guarda tal cual y no cuenta como psicofármaco salvo que lo marques">sin clasificar</span>
+        {!disabled && (
+          <button type="button" onClick={() => onCambio({ psico: 'si' })}
+            className="text-violet-700 hover:underline font-semibold">es psicofármaco</button>
+        )}
+      </span>
+    )
+  }
+  return null
+}
+
 export function TablaMedicacion({ filas, onChange, disabled }: {
   filas: FilaMedicacion[]
   onChange: (filas: FilaMedicacion[]) => void
@@ -190,7 +199,8 @@ export function TablaMedicacion({ filas, onChange, disabled }: {
         <table className="w-full text-xs border-collapse">
           <thead>
             <tr className="bg-slate-100">
-              <th className="border border-slate-200 px-2 py-2 text-left font-semibold text-slate-600 min-w-[160px]">Fármaco</th>
+              <th className="border border-slate-200 px-2 py-2 text-left font-semibold text-slate-600 min-w-[210px]">Fármaco</th>
+              <th className="border border-slate-200 px-2 py-2 text-left font-semibold text-slate-600 min-w-[150px]">Psicofármaco</th>
               <th className="border border-slate-200 px-2 py-2 text-left font-semibold text-slate-600 min-w-[80px]">Dosis</th>
               {TOMAS.map(t => (
                 <th key={t.key} className="border border-slate-200 px-2 py-2 text-center font-semibold text-slate-600 min-w-[70px]">
@@ -204,7 +214,7 @@ export function TablaMedicacion({ filas, onChange, disabled }: {
           <tbody>
             {filas.length === 0 ? (
               <tr>
-                <td colSpan={9} className="border border-slate-200 px-4 py-4 text-center text-slate-500 italic">
+                <td colSpan={10} className="border border-slate-200 px-4 py-4 text-center text-slate-500 italic">
                   Sin medicación añadida
                 </td>
               </tr>
@@ -212,6 +222,9 @@ export function TablaMedicacion({ filas, onChange, disabled }: {
               <tr key={i} className="hover:bg-slate-50">
                 <td className="border border-slate-200 p-1">
                   <CeldaFarmaco fila={f} disabled={disabled} onCambio={c => cambiar(i, c)} />
+                </td>
+                <td className="border border-slate-200 px-1.5 py-1">
+                  {cargado && <CeldaClase fila={f} disabled={disabled} onCambio={c => cambiar(i, c)} />}
                 </td>
                 <td className="border border-slate-200 p-1">
                   <input disabled={disabled} className="w-full bg-transparent px-1 py-0.5 focus:outline-none focus:bg-white focus:ring-1 focus:ring-primary-300 rounded text-slate-600 disabled:text-slate-500"
@@ -256,12 +269,12 @@ export function TablaMedicacion({ filas, onChange, disabled }: {
               {resumen.psicofarmacos > 0 && <span className="text-slate-500">({textoGrupos(resumen)})</span>}
               {resumen.dudosos.length > 0 && (
                 <span className="text-amber-700 font-medium">
-                  · {resumen.dudosos.length} pendiente{resumen.dudosos.length === 1 ? '' : 's'} de marcar ({resumen.dudosos.join(', ')}): ¿psicofármaco aquí? No entran en el recuento hasta que lo marques
+                  · Por marcar: {resumen.dudosos.join(', ')} (no cuentan como psicofármaco hasta que elijas Sí o No)
                 </span>
               )}
               {resumen.sinClasificar.length > 0 && (
                 <span className="text-amber-700" title={resumen.sinClasificar.join(', ')}>
-                  · {resumen.sinClasificar.length} sin clasificar (no entran en el recuento; puedes marcarlos a mano)
+                  · {resumen.sinClasificar.length} sin clasificar (no cuentan como psicofármaco)
                 </span>
               )}
             </>

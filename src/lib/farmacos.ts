@@ -198,14 +198,15 @@ export function atcDeFila(f: FilaConFarmaco): string | null {
   return clasificarTexto(f.farmaco)?.atc ?? null
 }
 
-// ¿Se puede (y tiene sentido) marcar a mano si es psicofármaco? Todo lo que el catálogo no da ya por
-// psicofármaco: lo que no se reconoce, lo de uso mixto y los antiepilépticos / gabapentinoides.
+// ¿Hay que (o se puede) marcar a mano? Solo en tres casos: fármacos de uso mixto (valproato…), fármacos
+// que el catálogo no reconoce, y los que ya llevan marca (para poder quitarla). Un omeprazol o un
+// adiro no preguntan nada.
 export function admiteMarcaPsico(f: FilaConFarmaco): boolean {
   if (!(f.farmaco ?? '').trim()) return false
+  if (f.psico) return true
   const atc = atcDeFila(f)
   if (!atc) return true
-  if (grupoPsico(atc)) return !!f.psico            // solo para poder quitar una marca "No"
-  return true
+  return !grupoPsico(atc) && !!farmacoPorAtc(atc)?.mixto
 }
 
 export type EstadoPsico = 'psico' | 'no_psico' | 'dudoso'
