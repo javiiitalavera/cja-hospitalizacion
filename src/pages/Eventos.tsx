@@ -93,10 +93,36 @@ export function Eventos() {
         return
       }
       const activas = (data ?? []).filter((c: any) => necesitaConfirmacion(c.dia, c.noche))
-      setContenciones(activas)
+      setContenciones(activas.sort((a: any, b: any) => (a.ingreso.habitacion ?? 999) - (b.ingreso.habitacion ?? 999)))
     } finally {
       setLoadingContenciones(false)
     }
+  }
+
+  // Lista en papel de las contenciones activas, por habitación. Es la misma que se ve en pantalla:
+  // solo cuenta como contención la fija y la «si precisa» (las barras, la cota cero y el sensor
+  // son medidas de seguridad y no salen).
+  function imprimirContenciones() {
+    const ordenadas = contenciones
+    const tbody = ordenadas.map((c) => {
+      const nocheReal = ((c.noche as ContencionNoche[]) ?? []).filter((n) => NOCHE_ES_CONTENCION.includes(n))
+      const dia = c.dia && c.dia !== 'ninguna' ? CONTENCION_DIA_LABEL[c.dia as ContencionDia] : '—'
+      const noche = nocheReal.length > 0 ? nocheReal.map((n) => CONTENCION_NOCHE_LABEL[n]).join(', ') : '—'
+      return `<tr>
+        <td>${c.ingreso.habitacion ?? '—'}</td>
+        <td>${escapeHtml(nombreCompleto(c.ingreso.paciente))}</td>
+        <td>${escapeHtml(dia)}</td>
+        <td>${escapeHtml(noche)}</td>
+        <td>${c.actualizado_en ? new Date(c.actualizado_en).toLocaleDateString('es-ES') : '—'}</td>
+      </tr>`
+    }).join('')
+    const ahora = new Date().toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    imprimirTablaHTML(
+      'Contenciones activas',
+      `${ordenadas.length} paciente${ordenadas.length === 1 ? '' : 's'} con contención pautada · ingresos activos · ${ahora}`,
+      '<tr><th>Hab.</th><th>Paciente</th><th>Día</th><th>Noche</th><th>Última revisión</th></tr>',
+      tbody,
+    )
   }
 
   // ── Incidencias de ingresos activos ─────────────────────────
@@ -459,7 +485,14 @@ export function Eventos() {
 
       {/* ══════════════ CONTENCIONES ACTIVAS ══════════════ */}
       <section>
-        <p className="section-title">Contenciones activas · ingresos activos</p>
+        <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+          <p className="section-title !mb-0">Contenciones activas · ingresos activos</p>
+          {!loadingContenciones && !errorContenciones && contenciones.length > 0 && (
+            <button onClick={imprimirContenciones} className="btn-secondary text-xs py-1 gap-1" title="Imprimir la lista de contenciones activas">
+              <Printer className="w-3.5 h-3.5" /> Imprimir
+            </button>
+          )}
+        </div>
         <div className="card overflow-hidden">
           {loadingContenciones ? (
             <p className="px-4 py-8 text-center text-slate-500 text-sm">Cargando…</p>

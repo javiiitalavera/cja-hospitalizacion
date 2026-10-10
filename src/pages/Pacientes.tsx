@@ -174,7 +174,7 @@ export default function Pacientes() {
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Pacientes</h1>
           <p className="text-sm text-slate-500 mt-0.5">
-            {loading ? '…' : `${total} resultado${total !== 1 ? 's' : ''}`}
+            {loading ? '…' : `${total} resultado${total !== 1 ? 's' : ''}`} · todos los pacientes de la clínica
           </p>
         </div>
         {esMedico && (
