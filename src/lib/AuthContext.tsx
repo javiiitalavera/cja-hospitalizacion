@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from './supabase'
+import { registrarAcceso } from './accesos'
 import type { Profesional, Rol } from '../types'
 
 // Lo que la app puede saber sobre quién ha iniciado sesión.
@@ -70,6 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .maybeSingle()
         if (cancelado) return
         setProfesional((data as Profesional) ?? null)
+        if (data) registrarAcceso('inicio_sesion')    // entrada a la aplicación (queda en Auditoría → Accesos)
       } catch {
         // Un fallo de red aquí no debe dejar la app entera atascada.
         // Sin ficha, RequireAuth mostrará el aviso de "cuenta sin

@@ -3,6 +3,12 @@
 // «Impreso el … · CJA Hospital») y la misma forma de imprimir (un marco oculto de esta misma
 // página: no abre pestañas ni ventanas, que el navegador puede bloquear).
 
+import { registrarAcceso } from './accesos'
+
+function desescapar(val: string): string {
+  return val.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&')
+}
+
 export function escapeHtml(val: string): string {
   return val
     .replace(/&/g, '&amp;')
@@ -13,7 +19,10 @@ export function escapeHtml(val: string): string {
 }
 
 // Imprime un documento HTML completo en un marco oculto. El marco se quita solo.
+// Cada impresión queda apuntada en el registro de accesos, con el título del documento.
 export function imprimirHTMLEnMarco(html: string): void {
+  const titulo = /<title>([^<]*)<\/title>/.exec(html)?.[1]
+  registrarAcceso('impresion', { detalle: titulo ? desescapar(titulo) : 'Documento' })
   const marco = document.createElement('iframe')
   marco.setAttribute('aria-hidden', 'true')
   marco.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0'

@@ -6,6 +6,7 @@ import { useAuth } from '../lib/AuthContext'
 import { edad, diasEntre } from '../lib/fechas'
 import { ChevronLeft, ChevronRight, Plus, FileText, AlertTriangle, History, Pencil, Save, X } from 'lucide-react'
 import { ESTADO_INGRESO_LABEL as ESTADO_LABEL, ESTADO_INGRESO_COLOR as ESTADO_COLOR, nombreCompleto } from '../types'
+import { registrarAcceso } from '../lib/accesos'
 
 interface Ingreso {
   id: string
@@ -122,6 +123,11 @@ export default function DetallePaciente() {
   }
 
   useEffect(() => { cargar() }, [id])
+
+  // Abrir la ficha de un paciente queda apuntado en el registro de accesos (Auditoría → Accesos).
+  useEffect(() => {
+    if (paciente?.id) registrarAcceso('ficha_paciente', { pacienteId: paciente.id })
+  }, [paciente?.id])
 
   async function guardarEdicion() {
     if (!paciente) return

@@ -7,6 +7,7 @@ import type { InformePuntual } from '../pages/informes/plantillas'
 import { nombreCompleto } from '../types'
 import { TOMAS } from '../pages/ingreso/TablaMedicacion'
 import { edad, hoyLocal } from './fechas'
+import { registrarAcceso } from './accesos'
 
 // ─── UTILIDADES ───────────────────────────────────────────────────────────────
 //
@@ -385,6 +386,7 @@ export async function exportarInformeIngreso(ingreso: Ingreso, inf: InformeIngre
 
   const headerRaw = await zip.file('word/header1.xml')!.async('string')
   await componerDocumento(zip, cuerpo, inyectarHeader(headerRaw, p, fingreso, ''))
+  registrarAcceso('exportacion_word', { ingresoId: ingreso.id, pacienteId: ingreso.paciente_id, detalle: 'Informe de ingreso' })
   descargar(zip, `Informe_Ingreso_${p.primer_apellido ?? 'paciente'}_${hoyLocal()}.docx`)
 }
 
@@ -432,6 +434,7 @@ export async function exportarInformeAlta(ingreso: Ingreso, ii: InformeIngreso, 
 
   const headerRaw = await zip.file('word/header1.xml')!.async('string')
   await componerDocumento(zip, cuerpo, inyectarHeader(headerRaw, p, fingreso, falta))
+  registrarAcceso('exportacion_word', { ingresoId: ingreso.id, pacienteId: ingreso.paciente_id, detalle: 'Informe de alta' })
   descargar(zip, `Informe_Alta_${p.primer_apellido ?? 'paciente'}_${hoyLocal()}.docx`)
 }
 
@@ -502,6 +505,7 @@ export async function exportarInformePuntual(ingreso: Ingreso, inf: InformePuntu
       .replace(/(<w:t[^>]*>)INFORME DE ALTA(<\/w:t>)/g, `$1${esc(plantillaPorId(inf.plantilla).tituloCabecera)}$2`)
       .replace(/(<w:t[^>]*>)Fecha de alta: (<\/w:t>)/g, `$1Fecha del informe: ${new Date().toLocaleDateString('es-ES')}$2`)
   )
+  registrarAcceso('exportacion_word', { ingresoId: ingreso.id, pacienteId: ingreso.paciente_id, detalle: `Otro informe: ${inf.plantilla}` })
   descargar(zip, `Informe_${inf.plantilla === 'estado_actual' ? 'clinico' : inf.plantilla}_${p.primer_apellido ?? 'paciente'}_${hoyLocal()}.docx`)
 }
 
@@ -561,5 +565,6 @@ export async function exportarInformeEnfermeria(
       .replace(/(<w:t[^>]*>)INFORME DE ALTA(<\/w:t>)/g, `$1INFORME DE ENFERMERÍA$2`)
       .replace(/(<w:t[^>]*>)Fecha de alta: (<\/w:t>)/g, `$1Fecha del informe: ${new Date().toLocaleDateString('es-ES')}$2`)
   )
+  registrarAcceso('exportacion_word', { ingresoId: ingreso.id, pacienteId: ingreso.paciente_id, detalle: 'Informe de enfermería' })
   descargar(zip, `Informe_Enfermeria_${p.primer_apellido ?? 'paciente'}_${hoyLocal()}.docx`)
 }

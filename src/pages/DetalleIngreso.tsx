@@ -20,6 +20,7 @@ import { TabInformeEnfermeria } from './ingreso/TabInformeEnfermeria'
 import { NavegadorPacientes } from './ingreso/NavegadorPacientes'
 import { BadgeHabitacion } from './ingreso/BadgeHabitacion'
 import { TIPALT_LABEL } from '../lib/alta'
+import { registrarAcceso } from '../lib/accesos'
 
 // Estructura de la ficha: pestañas principales y, dentro de algunas,
 // subpestañas. Cada contenido tiene un identificador de "sección"
@@ -136,6 +137,11 @@ export default function DetalleIngreso() {
   }
 
   useEffect(() => { cargar() }, [id])
+
+  // Abrir un expediente queda apuntado en el registro de accesos (Auditoría → Accesos).
+  useEffect(() => {
+    if (ingreso?.id) registrarAcceso('expediente', { ingresoId: ingreso.id, pacienteId: ingreso.paciente_id })
+  }, [ingreso?.id])
 
   // Semáforo de caídas del paciente (lo rellena enfermería en la hoja de
   // ítems). Se vuelve a leer al cambiar de pestaña por si ha cambiado.
