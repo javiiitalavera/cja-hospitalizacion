@@ -93,8 +93,7 @@ export default function DetalleIngreso() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const { rol, esAdmin } = useAuth()
-  const esMedico = rol === 'medico'
+  const { esMedico } = useAuth()
   // La pestaña y la subpestaña se leen siempre de la URL (?tab=…&sub=…),
   // sin estado propio: así, al navegar de un ingreso a otro sin recargar
   // la página, la pestaña nunca se queda "pegada" a la anterior.
@@ -293,7 +292,7 @@ export default function DetalleIngreso() {
               puede cerrar un episodio puede deshacerlo si fue un
               error, pero solo dentro de las 24h siguientes: pasado
               ese margen, ya no es "un despiste recién cometido". */}
-          {ingreso.estado !== 'activo' && (esMedico || esAdmin) && dentroDeVentanaReapertura && (
+          {ingreso.estado !== 'activo' && esMedico && dentroDeVentanaReapertura && (
             <button
               onClick={() => setConfirmarReabrir(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-medium transition-colors shrink-0"

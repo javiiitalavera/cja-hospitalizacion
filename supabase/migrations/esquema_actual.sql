@@ -523,6 +523,19 @@ $$;
 grant execute on function private.mi_rol() to authenticated;
 grant execute on function private.soy_admin() to authenticated;
 
+-- ¿Tiene este rol, o es administrador? Un administrador puede hacer todo lo de los
+-- demás roles. Las políticas y funciones que piden un rol concreto (médico,
+-- enfermería) usan esto en vez de comparar mi_rol() directamente.
+-- coalesce: sin sesión, mi_rol() es NULL y debe salir "false", no NULL.
+create function private.tengo_rol(p_rol text) returns boolean
+language sql stable
+set search_path to ''
+as $$
+  select coalesce(private.mi_rol() = p_rol, false) or private.soy_admin();
+$$;
+
+grant execute on function private.tengo_rol(text) to authenticated;
+
 -- "Hoy" según el reloj de la clínica (Madrid), no el de UTC. Entre las
 -- 00:00 y las 02:00 de Navarra, current_date de Supabase todavía marca
 -- el día anterior.
@@ -813,7 +826,7 @@ begin
   end if;
 
   if NEW.confirmado_por_id is not null then
-    if private.mi_rol() <> 'medico' then
+    if not private.tengo_rol('medico') then
       raise exception 'Solo un médico puede confirmar una pauta de contención.';
     end if;
     if NEW.confirmado_por_id <> v_actor_actual then
@@ -821,7 +834,7 @@ begin
     end if;
     NEW.confirmado_en := now();
   else
-    if private.mi_rol() <> 'medico' then
+    if not private.tengo_rol('medico') then
       raise exception 'Solo un médico puede retirar una confirmación.';
     end if;
     NEW.confirmado_en := null;
@@ -853,7 +866,7 @@ begin
   -- es verdadero ni falso — es NULL, y un "if" lo trata como falso,
   -- dejando pasar la comprobación sin querer. Confirmado que esto
   -- pasaba de verdad contra Supabase antes de este arreglo.
-  if coalesce(private.mi_rol(), '') <> 'medico' then
+  if not private.tengo_rol('medico') then
     raise exception 'Solo un médico puede confirmar una pauta de contención.';
   end if;
   select id into v_actor from public.profesionales where user_id = auth.uid() limit 1;
@@ -899,7 +912,7 @@ declare
   v_actor uuid;
   v_resultado public.contenciones;
 begin
-  if coalesce(private.mi_rol(), '') <> 'medico' then
+  if not private.tengo_rol('medico') then
     raise exception 'Solo un médico puede retirar una confirmación.';
   end if;
   select id into v_actor from public.profesionales where user_id = auth.uid() limit 1;
@@ -1191,7 +1204,7 @@ create policy auditoria_leer_admin on public.auditoria for select to authenticat
 
 -- pacientes: solo médico.
 create policy escribir_medico on public.pacientes to authenticated
-    using (private.mi_rol() = 'medico') with check (private.mi_rol() = 'medico');
+    using (private.tengo_rol('medico')) with check (private.tengo_rol('medico'));
 
 -- profesionales: solo administrador (crear/dar de baja/eliminar
 -- fichas pasa por las Edge Functions, que usan service_role, pero la
@@ -1205,10 +1218,10 @@ create policy escribir_admin on public.profesionales to authenticated
 -- son de solo lectura), pero el resultado puede ser cualquier estado
 -- — así funciona la propia transición de "dar de alta".
 create policy crear_ingreso on public.ingresos for insert to authenticated
-    with check (private.mi_rol() = 'medico' and estado = 'activo');
+    with check (private.tengo_rol('medico') and estado = 'activo');
 create policy editar_ingreso on public.ingresos for update to authenticated
-    using (private.mi_rol() = 'medico' and estado = 'activo')
-    with check (private.mi_rol() = 'medico');
+    using (private.tengo_rol('medico') and estado = 'activo')
+    with check (private.tengo_rol('medico'));
 -- Deliberadamente no existe una política de borrado para ingresos —
 -- borrar un episodio activo eliminaría en cascada informes, ítems,
 -- incidencias, escalas, CMBD y contenciones. Confirmado que antes sí
@@ -1220,17 +1233,17 @@ create policy editar_ingreso on public.ingresos for update to authenticated
 -- exploraciones y tratamiento; si se detecta un error después del
 -- alta, tiene que poder corregirse.
 create policy escribir_medico on public.informe_ingreso to authenticated
-    using (private.mi_rol() = 'medico')
-    with check (private.mi_rol() = 'medico');
+    using (private.tengo_rol('medico'))
+    with check (private.tengo_rol('medico'));
 
 -- informe_alta y cmbd: solo médico, SIN exigir que el episodio siga
 -- activo. A diferencia del informe de ingreso, estos se redactan en
 -- torno al propio momento del alta — a menudo después de confirmarla
 -- — así que deben poder terminarse tras cerrar el episodio.
 create policy escribir_medico on public.informe_alta to authenticated
-    using (private.mi_rol() = 'medico') with check (private.mi_rol() = 'medico');
+    using (private.tengo_rol('medico')) with check (private.tengo_rol('medico'));
 create policy escribir_medico on public.cmbd to authenticated
-    using (private.mi_rol() = 'medico') with check (private.mi_rol() = 'medico');
+    using (private.tengo_rol('medico')) with check (private.tengo_rol('medico'));
 
 -- escalas_clinicas: mismo criterio que informe_ingreso e
 -- informe_alta — solo médicos, sin restricción por estado del
@@ -1238,8 +1251,8 @@ create policy escribir_medico on public.cmbd to authenticated
 create policy leer_autenticado on public.escalas_clinicas
     for select to authenticated using (private.mi_rol() is not null);
 create policy escribir_medico on public.escalas_clinicas to authenticated
-    using (private.mi_rol() = 'medico')
-    with check (private.mi_rol() = 'medico');
+    using (private.tengo_rol('medico'))
+    with check (private.tengo_rol('medico'));
 
 -- items_paciente: todo el equipo asistencial, mientras el episodio
 -- siga activo.
@@ -1373,7 +1386,7 @@ declare
   v_estado text;
   v_actualizado public.ingresos;
 begin
-  if coalesce(private.mi_rol(), '') <> 'medico' then
+  if not private.tengo_rol('medico') then
     raise exception 'Solo un médico puede dar de alta.';
   end if;
 
@@ -1441,7 +1454,7 @@ as $$
 declare
   v_ingreso public.ingresos;
 begin
-  if coalesce(private.mi_rol(), '') <> 'medico' and not private.soy_admin() then
+  if not private.tengo_rol('medico') then
     raise exception 'Solo un médico o un administrador puede reabrir un episodio.';
   end if;
 
@@ -1557,6 +1570,9 @@ create index contenciones_historial_ingreso_idx on public.contenciones_historial
 
 -- Genera la foto diaria de items_paciente cada noche a las 23:00.
 select cron.schedule('snapshot-items-diario', '0 23 * * *', 'select generar_snapshot_items()');
+
+-- Y la de la pauta de cuidados, a la misma hora.
+select cron.schedule('snapshot-pauta-diario', '0 23 * * *', 'select generar_snapshot_pauta()');
 
 
 -- ────────────────────────────────────────────────────────────
@@ -2398,7 +2414,7 @@ create table if not exists public.curas_registro (
     created_at timestamptz not null default now(),
     -- 'hecha' o 'no_realizada' (esta última exige un motivo)
     estado text not null default 'hecha' check (estado in ('hecha', 'no_realizada')),
-    motivo text check (motivo is null or length(motivo) <= 500),
+    motivo text constraint curas_registro_motivo_largo_check check (motivo is null or length(motivo) <= 500),
     constraint curas_registro_motivo_check check (estado = 'hecha' or length(btrim(coalesce(motivo, ''))) > 0),
     unique (ingreso_id, fecha)
 );
@@ -2735,18 +2751,18 @@ create policy leer_autenticado on public.informes_puntuales
 drop policy if exists crear_informe_puntual on public.informes_puntuales;
 create policy crear_informe_puntual on public.informes_puntuales for insert to authenticated
     with check (
-        private.mi_rol() = 'medico'
+        private.tengo_rol('medico')
         and registrado_por_id = (select id from public.profesionales where user_id = auth.uid() limit 1)
     );
 
 -- Editar y borrar (p. ej. uno creado por error): cualquier médico.
 drop policy if exists editar_informe_puntual on public.informes_puntuales;
 create policy editar_informe_puntual on public.informes_puntuales for update to authenticated
-    using (private.mi_rol() = 'medico') with check (private.mi_rol() = 'medico');
+    using (private.tengo_rol('medico')) with check (private.tengo_rol('medico'));
 
 drop policy if exists borrar_informe_puntual on public.informes_puntuales;
 create policy borrar_informe_puntual on public.informes_puntuales for delete to authenticated
-    using (private.mi_rol() = 'medico');
+    using (private.tengo_rol('medico'));
 
 
 -- ────────────────────────────────────────────────────────────
@@ -2825,11 +2841,226 @@ create policy leer_autenticado on public.informe_enfermeria
 
 drop policy if exists crear_enfermeria on public.informe_enfermeria;
 create policy crear_enfermeria on public.informe_enfermeria for insert to authenticated
-    with check (private.mi_rol() = 'enfermeria');
+    with check (private.tengo_rol('enfermeria'));
 
 drop policy if exists editar_enfermeria on public.informe_enfermeria;
 create policy editar_enfermeria on public.informe_enfermeria for update to authenticated
-    using (private.mi_rol() = 'enfermeria') with check (private.mi_rol() = 'enfermeria');
+    using (private.tengo_rol('enfermeria')) with check (private.tengo_rol('enfermeria'));
+
+
+
+-- ────────────────────────────────────────────────────────────
+-- PAUTA DE CUIDADOS (2026-10-10)
+-- ────────────────────────────────────────────────────────────
+-- Indicaciones de enfermería por turno y vía de cada paciente: sustituyen la
+-- columna "CUIDADOS" de las hojas de trabajo de las auxiliares. Solo enfermería
+-- (o un administrador) escribe, con el episodio activo. Ver Hojas de turno.
+
+-- ────────────────────────────────────────────────────────────
+-- TABLAS
+-- ────────────────────────────────────────────────────────────
+
+create table if not exists public.pauta_cuidados (
+    id uuid primary key default gen_random_uuid(),
+    ingreso_id uuid not null references public.ingresos(id) on delete cascade,
+    texto text not null check (length(btrim(texto)) between 1 and 600),
+    -- Turnos en los que aparece la indicación. Al menos uno.
+    turnos text[] not null default array['manana', 'tarde', 'noche']
+        check (turnos <@ array['manana', 'tarde', 'noche']::text[] and cardinality(turnos) >= 1),
+    registrado_por_id uuid references public.profesionales(id),
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+);
+
+create index if not exists pauta_cuidados_ingreso_idx on public.pauta_cuidados (ingreso_id, created_at);
+
+create table if not exists public.pauta_via (
+    id uuid primary key default gen_random_uuid(),
+    ingreso_id uuid not null unique references public.ingresos(id) on delete cascade,
+    via text not null check (via in ('venosa', 'subcutanea')),
+    registrado_por_id uuid references public.profesionales(id),
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+);
+
+-- ────────────────────────────────────────────────────────────
+-- DISPARADORES
+-- ────────────────────────────────────────────────────────────
+
+-- Quién guarda queda registrado (se ignora lo que mande el cliente) y la
+-- indicación no se puede pasar a otro ingreso. Una función sirve para las
+-- dos tablas: solo usa campos que ambas tienen.
+create or replace function public.preparar_pauta_cuidados() returns trigger
+language plpgsql
+set search_path = ''
+as $$
+declare
+  yo uuid;
+begin
+  select p.id into yo from public.profesionales p where p.user_id = auth.uid() limit 1;
+  if TG_OP = 'UPDATE' then
+    if NEW.ingreso_id is distinct from OLD.ingreso_id then
+      raise exception 'Una indicación no se puede pasar a otro ingreso.';
+    end if;
+    NEW.registrado_por_id := coalesce(yo, OLD.registrado_por_id);
+  else
+    NEW.registrado_por_id := yo;
+  end if;
+  return NEW;
+end;
+$$;
+
+revoke execute on function public.preparar_pauta_cuidados() from public, anon, authenticated;
+
+drop trigger if exists preparar on public.pauta_cuidados;
+create trigger preparar before insert or update on public.pauta_cuidados
+    for each row execute function public.preparar_pauta_cuidados();
+drop trigger if exists preparar on public.pauta_via;
+create trigger preparar before insert or update on public.pauta_via
+    for each row execute function public.preparar_pauta_cuidados();
+
+drop trigger if exists trg_pauta_cuidados_updated on public.pauta_cuidados;
+create trigger trg_pauta_cuidados_updated before update on public.pauta_cuidados
+    for each row execute function public.update_updated_at();
+drop trigger if exists trg_pauta_via_updated on public.pauta_via;
+create trigger trg_pauta_via_updated before update on public.pauta_via
+    for each row execute function public.update_updated_at();
+
+drop trigger if exists aud_pauta_cuidados on public.pauta_cuidados;
+create trigger aud_pauta_cuidados
+    after insert or update or delete on public.pauta_cuidados
+    for each row execute function public.registrar_auditoria();
+drop trigger if exists aud_pauta_via on public.pauta_via;
+create trigger aud_pauta_via
+    after insert or update or delete on public.pauta_via
+    for each row execute function public.registrar_auditoria();
+
+-- ────────────────────────────────────────────────────────────
+-- PERMISOS (RLS)
+-- ────────────────────────────────────────────────────────────
+
+alter table public.pauta_cuidados enable row level security;
+alter table public.pauta_via enable row level security;
+
+revoke all on public.pauta_cuidados, public.pauta_via from public, anon;
+grant select, insert, update, delete on public.pauta_cuidados, public.pauta_via to authenticated;
+
+drop policy if exists leer_autenticado on public.pauta_cuidados;
+create policy leer_autenticado on public.pauta_cuidados
+    for select to authenticated using (private.mi_rol() is not null);
+drop policy if exists leer_autenticado on public.pauta_via;
+create policy leer_autenticado on public.pauta_via
+    for select to authenticated using (private.mi_rol() is not null);
+
+-- Solo enfermería, y solo con el episodio activo.
+drop policy if exists crear_enfermeria on public.pauta_cuidados;
+create policy crear_enfermeria on public.pauta_cuidados for insert to authenticated
+    with check (
+        private.tengo_rol('enfermeria')
+        and exists (select 1 from public.ingresos i where i.id = pauta_cuidados.ingreso_id and i.estado = 'activo')
+    );
+drop policy if exists editar_enfermeria on public.pauta_cuidados;
+create policy editar_enfermeria on public.pauta_cuidados for update to authenticated
+    using (
+        private.tengo_rol('enfermeria')
+        and exists (select 1 from public.ingresos i where i.id = pauta_cuidados.ingreso_id and i.estado = 'activo')
+    )
+    with check (
+        private.tengo_rol('enfermeria')
+        and exists (select 1 from public.ingresos i where i.id = pauta_cuidados.ingreso_id and i.estado = 'activo')
+    );
+drop policy if exists borrar_enfermeria on public.pauta_cuidados;
+create policy borrar_enfermeria on public.pauta_cuidados for delete to authenticated
+    using (
+        private.tengo_rol('enfermeria')
+        and exists (select 1 from public.ingresos i where i.id = pauta_cuidados.ingreso_id and i.estado = 'activo')
+    );
+
+drop policy if exists crear_enfermeria on public.pauta_via;
+create policy crear_enfermeria on public.pauta_via for insert to authenticated
+    with check (
+        private.tengo_rol('enfermeria')
+        and exists (select 1 from public.ingresos i where i.id = pauta_via.ingreso_id and i.estado = 'activo')
+    );
+drop policy if exists editar_enfermeria on public.pauta_via;
+create policy editar_enfermeria on public.pauta_via for update to authenticated
+    using (
+        private.tengo_rol('enfermeria')
+        and exists (select 1 from public.ingresos i where i.id = pauta_via.ingreso_id and i.estado = 'activo')
+    )
+    with check (
+        private.tengo_rol('enfermeria')
+        and exists (select 1 from public.ingresos i where i.id = pauta_via.ingreso_id and i.estado = 'activo')
+    );
+drop policy if exists borrar_enfermeria on public.pauta_via;
+create policy borrar_enfermeria on public.pauta_via for delete to authenticated
+    using (
+        private.tengo_rol('enfermeria')
+        and exists (select 1 from public.ingresos i where i.id = pauta_via.ingreso_id and i.estado = 'activo')
+    );
+
+
+-- ────────────────────────────────────────────────────────────
+-- HISTÓRICO DIARIO DE LA PAUTA DE CUIDADOS
+-- ────────────────────────────────────────────────────────────
+-- Igual que items_historico: una foto por ingreso y día, generada cada noche.
+-- Guarda lo necesario para reconstruir la hoja de trabajo tal como estaba ese
+-- día (pauta, vía, habitación, nombre y lo que sale de la Hoja de ítems y de
+-- la contención), aunque después cambie el paciente de habitación o se edite.
+
+create table if not exists public.pauta_historico (
+    id uuid primary key default gen_random_uuid(),
+    ingreso_id uuid not null references public.ingresos(id) on delete cascade,
+    fecha date not null default current_date,
+    datos jsonb not null default '{}',
+    created_at timestamptz default now(),
+    unique (ingreso_id, fecha)
+);
+
+create index if not exists pauta_historico_fecha_idx on public.pauta_historico (fecha);
+
+alter table public.pauta_historico enable row level security;
+revoke all on public.pauta_historico from public, anon;
+grant select on public.pauta_historico to authenticated;
+
+drop policy if exists leer_autenticado on public.pauta_historico;
+create policy leer_autenticado on public.pauta_historico
+    for select to authenticated using (private.mi_rol() is not null);
+
+create function public.generar_snapshot_pauta() returns void
+language plpgsql
+set search_path = ''
+as $$
+begin
+  insert into public.pauta_historico (ingreso_id, fecha, datos)
+  select
+    i.id,
+    current_date,
+    jsonb_build_object(
+      'habitacion', i.habitacion,
+      'nombre', p.nombre,
+      'primer_apellido', p.primer_apellido,
+      'via', (select v.via from public.pauta_via v where v.ingreso_id = i.id),
+      'indicaciones', coalesce((
+        select jsonb_agg(jsonb_build_object('texto', c.texto, 'turnos', c.turnos) order by c.created_at)
+        from public.pauta_cuidados c where c.ingreso_id = i.id
+      ), '[]'::jsonb),
+      'sonda_vesical', coalesce(ip.sonda_vesical, false),
+      'colector', coalesce(ip.colector, false),
+      'alerta_conducta', to_jsonb(coalesce(ip.alerta_conducta, '{}'::text[])),
+      'objetos_calma', ip.objetos_calma,
+      'contencion_dia', ct.dia,
+      'contencion_noche', to_jsonb(ct.noche)
+    )
+  from public.ingresos i
+  inner join public.pacientes p on p.id = i.paciente_id
+  left join public.items_paciente ip on ip.ingreso_id = i.id
+  left join public.contenciones ct on ct.ingreso_id = i.id
+  where i.estado = 'activo'
+  on conflict (ingreso_id, fecha)
+  do update set datos = excluded.datos;
+end;
+$$;
 
 
 commit;

@@ -68,3 +68,23 @@ export function imprimirListaHabitaciones(nombresPorHabitacion: (string | null)[
   win.focus()
   win.print()
 }
+
+// Imprime un documento HTML completo en un marco oculto de esta misma página: no abre ventanas ni
+// pestañas (que el navegador puede bloquear) y no deja nada a la vista. El marco se quita solo.
+export function imprimirHTMLEnMarco(html: string): void {
+  const marco = document.createElement('iframe')
+  marco.setAttribute('aria-hidden', 'true')
+  marco.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0'
+  const quitar = () => { if (marco.parentNode) marco.parentNode.removeChild(marco) }
+  marco.onload = () => {
+    const w = marco.contentWindow
+    if (!w) { quitar(); return }
+    w.onafterprint = quitar
+    w.focus()
+    w.print()
+    // Por si el navegador no avisa de que terminó la impresión.
+    setTimeout(quitar, 5 * 60 * 1000)
+  }
+  marco.srcdoc = html
+  document.body.appendChild(marco)
+}

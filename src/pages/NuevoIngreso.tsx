@@ -12,7 +12,7 @@ import { informeBaseReingreso } from '../lib/reingreso'
 
 export default function NuevoIngreso() {
   const navigate = useNavigate()
-  const { rol } = useAuth()
+  const { esMedico } = useAuth()
   const [searchParams] = useSearchParams()
   const habitacionParam = searchParams.get('habitacion') ?? ''
   const pacienteIdParam = searchParams.get('paciente_id') ?? ''
@@ -343,7 +343,7 @@ export default function NuevoIngreso() {
   )
 
   // Solo un médico puede crear ingresos (además, el candado de la BD lo exige).
-  if (rol !== 'medico') {
+  if (!esMedico) {
     return (
       <div className="p-8">
         <div className="card p-6 max-w-md flex items-start gap-3">

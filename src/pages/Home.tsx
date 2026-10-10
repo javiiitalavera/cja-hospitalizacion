@@ -90,8 +90,7 @@ export default function Home() {
   const [errorAuxiliar, setErrorAuxiliar] = useState('')
   const [vista, setVista] = useState<VistaInicio>(vistaGuardada)
   const navigate = useNavigate()
-  const { rol } = useAuth()
-  const esMedico = rol === 'medico'
+  const { esMedico } = useAuth()
 
   const today = new Date().toLocaleDateString('es-ES', {
     weekday: 'long',

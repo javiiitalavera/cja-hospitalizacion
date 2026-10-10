@@ -56,8 +56,7 @@ function datosEditables(p: Paciente): Partial<Paciente> {
 export default function DetallePaciente() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { rol } = useAuth()
-  const esMedico = rol === 'medico'
+  const { esMedico } = useAuth()
   const [paciente, setPaciente] = useState<Paciente | null>(null)
   const [ingresos, setIngresos] = useState<Ingreso[]>([])
   const [eventos, setEventos] = useState<any[]>([])

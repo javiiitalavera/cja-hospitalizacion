@@ -164,8 +164,8 @@ function soloDx(d: FilaCmbd): Record<string, any> {
 }
 
 export function BloqueDiagnosticosCMBD({ ingresoId }: { ingresoId: string }) {
-  const { rol } = useAuth()
-  const soloLectura = rol !== 'medico'
+  const { esMedico } = useAuth()
+  const soloLectura = !esMedico
   const [data, setData] = useState<FilaCmbd>({})
   const [cargado, setCargado] = useState(false)
   const [estado, setEstado] = useState<Estado>('inactivo')

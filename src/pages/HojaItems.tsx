@@ -39,8 +39,7 @@ function snapshotToIngresos(snaps: any[]): IngresoConItems[] {
 
 export default function HojaItems() {
   const navigate = useNavigate()
-  const { rol } = useAuth()
-  const esMedico = rol === 'medico'
+  const { esMedico } = useAuth()
   const [data, setData] = useState<IngresoConItems[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)

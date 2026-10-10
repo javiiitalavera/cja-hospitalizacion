@@ -52,8 +52,7 @@ function ordenDeUrl(params: URLSearchParams): Orden {
 const PAGE_SIZE = 50
 
 export default function Pacientes() {
-  const { rol } = useAuth()
-  const esMedico = rol === 'medico'
+  const { esMedico } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
   const [pacientes, setPacientes] = useState<PacienteRow[]>([])
   const [total, setTotal] = useState(0)

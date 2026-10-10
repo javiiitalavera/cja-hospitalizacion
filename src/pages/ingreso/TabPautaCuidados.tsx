@@ -6,44 +6,18 @@ import { useEffect, useState } from 'react'
 import { Lock, Pencil, Plus, Trash2, Check, X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/AuthContext'
+import { ChipsTurno } from '../../components/ChipsTurno'
 import {
-  MAX_TEXTO_PAUTA, TODOS_TURNOS, TURNOS, VIA_LABEL,
+  anadirIndicacion, borrarIndicacion, cambiarTextoIndicacion, cambiarTurnosIndicacion, guardarVia,
+} from '../hojasTurno/operaciones'
+import {
+  MAX_TEXTO_PAUTA, TODOS_TURNOS, VIA_LABEL,
   type IndicacionCuidado, type Turno, type ViaPaciente,
 } from '../../types/pautaCuidados'
 
-function ChipsTurno({ valor, onChange, deshabilitado }: {
-  valor: Turno[]
-  onChange?: (t: Turno[]) => void
-  deshabilitado?: boolean
-}) {
-  return (
-    <div className="flex flex-wrap gap-1.5">
-      {TURNOS.map((t) => {
-        const activo = valor.includes(t.clave)
-        const siguiente = activo ? valor.filter((x) => x !== t.clave) : [...valor, t.clave]
-        return (
-          <button
-            key={t.clave}
-            type="button"
-            disabled={deshabilitado || !onChange}
-            // Siempre debe quedar al menos un turno marcado.
-            onClick={() => siguiente.length > 0 && onChange?.(TODOS_TURNOS.filter((x) => siguiente.includes(x)))}
-            aria-pressed={activo}
-            className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
-              activo ? 'bg-primary-50 border-primary-300 text-primary-800 font-semibold' : 'bg-white border-slate-200 text-slate-400'
-            } ${deshabilitado || !onChange ? 'cursor-default' : 'hover:border-primary-300'}`}
-          >
-            {t.etiqueta}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
 export function TabPautaCuidados({ ingresoId, episodioActivo }: { ingresoId: string; episodioActivo: boolean }) {
-  const { rol } = useAuth()
-  const puedeEditar = rol === 'enfermeria' && episodioActivo
+  const { esEnfermeria } = useAuth()
+  const puedeEditar = esEnfermeria && episodioActivo
 
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')
@@ -83,27 +57,26 @@ export function TabPautaCuidados({ ingresoId, episodioActivo }: { ingresoId: str
     cargar()
   }, [ingresoId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function ejecutar(accion: () => PromiseLike<{ error: { message: string } | null }>): Promise<boolean> {
+  // Ejecuta una escritura (devuelve el mensaje de error, o null si fue bien).
+  async function ejecutar(accion: () => Promise<string | null>): Promise<boolean> {
     setOcupado(true)
     setErrorAccion('')
-    const { error: e } = await accion()
+    const e = await accion()
     setOcupado(false)
-    if (e) { setErrorAccion('No se pudo guardar: ' + e.message); return false }
+    if (e) { setErrorAccion('No se pudo guardar: ' + e); return false }
     return true
   }
 
   async function cambiarVia(nueva: ViaPaciente | null) {
     if (!puedeEditar || ocupado || nueva === via) return
-    const ok = await ejecutar(() => nueva
-      ? supabase.from('pauta_via').upsert({ ingreso_id: ingresoId, via: nueva }, { onConflict: 'ingreso_id' })
-      : supabase.from('pauta_via').delete().eq('ingreso_id', ingresoId))
+    const ok = await ejecutar(() => guardarVia(ingresoId, nueva))
     if (ok) setVia(nueva)
   }
 
   async function anadir() {
     const texto = nuevoTexto.trim()
     if (!puedeEditar || ocupado || !texto) return
-    const ok = await ejecutar(() => supabase.from('pauta_cuidados').insert({ ingreso_id: ingresoId, texto, turnos: nuevosTurnos }))
+    const ok = await ejecutar(() => anadirIndicacion(ingresoId, texto, nuevosTurnos).then((r) => r.error))
     if (ok) {
       setNuevoTexto('')
       setNuevosTurnos(TODOS_TURNOS)
@@ -114,7 +87,7 @@ export function TabPautaCuidados({ ingresoId, episodioActivo }: { ingresoId: str
   async function guardarEdicion(i: IndicacionCuidado) {
     const texto = textoEdicion.trim()
     if (!texto || ocupado) return
-    const ok = await ejecutar(() => supabase.from('pauta_cuidados').update({ texto }).eq('id', i.id))
+    const ok = await ejecutar(() => cambiarTextoIndicacion(i.id, texto))
     if (ok) {
       setIndicaciones((l) => l.map((x) => (x.id === i.id ? { ...x, texto } : x)))
       setEditando(null)
@@ -123,14 +96,14 @@ export function TabPautaCuidados({ ingresoId, episodioActivo }: { ingresoId: str
 
   async function cambiarTurnos(i: IndicacionCuidado, turnos: Turno[]) {
     if (!puedeEditar || ocupado) return
-    const ok = await ejecutar(() => supabase.from('pauta_cuidados').update({ turnos }).eq('id', i.id))
+    const ok = await ejecutar(() => cambiarTurnosIndicacion(i.id, turnos))
     if (ok) setIndicaciones((l) => l.map((x) => (x.id === i.id ? { ...x, turnos } : x)))
   }
 
   async function borrar(i: IndicacionCuidado) {
     if (!puedeEditar || ocupado) return
     if (!window.confirm('¿Quitar esta indicación de la pauta?')) return
-    const ok = await ejecutar(() => supabase.from('pauta_cuidados').delete().eq('id', i.id))
+    const ok = await ejecutar(() => borrarIndicacion(i.id))
     if (ok) setIndicaciones((l) => l.filter((x) => x.id !== i.id))
   }
 
@@ -147,8 +120,8 @@ export function TabPautaCuidados({ ingresoId, episodioActivo }: { ingresoId: str
       {!puedeEditar && (
         <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
           <Lock className="w-4 h-4 shrink-0" />
-          {rol !== 'enfermeria'
-            ? 'Solo lectura: esta pauta la escribe enfermería.'
+          {!esEnfermeria
+            ? 'Solo lectura: esta pauta la escribe enfermería (o un administrador).'
             : 'Episodio cerrado: la pauta queda en solo lectura.'}
         </div>
       )}

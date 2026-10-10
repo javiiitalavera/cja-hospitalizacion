@@ -26,8 +26,7 @@ export default function PanelEdicion({
   onHabitacionChange: (ingresoId: string, nuevaHab: number) => void
   onContencionChanged: (ingresoId: string, nueva: { dia: ContencionDia | null; noche: ContencionNoche[] | null }) => void
 }) {
-  const { rol } = useAuth()
-  const esMedico = rol === 'medico'
+  const { esMedico } = useAuth()
   const [data, setData] = useState<Partial<ItemsPaciente & { version: number }>>(ingreso.items ?? {})
   const [estado, setEstado] = useState<'inactivo' | 'pendiente' | 'guardando' | 'guardado' | 'error' | 'conflicto'>('inactivo')
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)

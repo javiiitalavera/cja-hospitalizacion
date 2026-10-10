@@ -22,8 +22,8 @@ const fechaHora = (iso: string) =>
   new Date(iso).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 
 export function TabInformeEnfermeria({ ingresoId, ingreso }: { ingresoId: string; ingreso: Ingreso }) {
-  const { rol, profesional } = useAuth()
-  const puedeEditar = rol === 'enfermeria'
+  const { esEnfermeria, profesional } = useAuth()
+  const puedeEditar = esEnfermeria
 
   const [cargando, setCargando] = useState(true)
   const [errorCarga, setErrorCarga] = useState('')
@@ -206,7 +206,7 @@ export function TabInformeEnfermeria({ ingresoId, ingreso }: { ingresoId: string
       {!puedeEditar && (
         <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
           <Lock className="w-4 h-4 shrink-0" />
-          Solo lectura: solo enfermería puede editar este informe.
+          Solo lectura: solo enfermería (o un administrador) puede editar este informe.
         </div>
       )}
 

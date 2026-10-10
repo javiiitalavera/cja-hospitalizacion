@@ -21,8 +21,7 @@ const fechaHora = (iso: string) =>
 // ═════════════════════════════════════════════════════════════
 
 export function TabOtrosInformes({ ingresoId, ingreso }: { ingresoId: string; ingreso: Ingreso }) {
-  const { rol, profesional } = useAuth()
-  const esMedico = rol === 'medico'
+  const { esMedico, profesional } = useAuth()
   const [searchParams] = useSearchParams()
 
   const [lista, setLista] = useState<InformePuntual[]>([])

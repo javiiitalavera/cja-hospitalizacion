@@ -32,8 +32,7 @@ const CAMPOS_OPCIONALES = [...OPCIONAL_FAMILIARES, ...OPCIONALES_EXPLORACION, ..
 type EstadoGuardado = 'inactivo' | 'pendiente' | 'guardando' | 'guardado' | 'error' | 'conflicto'
 
 function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso: Ingreso | null }) {
-  const { rol } = useAuth()
-  const esMedico = rol === 'medico'
+  const { esMedico } = useAuth()
   const [data, setData] = useState<Partial<InformeIngreso & { version: number }>>({})
   const [estado, setEstado] = useState<EstadoGuardado>('inactivo')
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)

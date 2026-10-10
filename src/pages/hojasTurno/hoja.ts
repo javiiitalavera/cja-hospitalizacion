@@ -9,7 +9,10 @@ import {
 } from '../../types/contenciones'
 import { type Turno, type ViaPaciente } from '../../types/pautaCuidados'
 
+export interface IndicacionHoja { id?: string; texto: string; turnos: Turno[] }
+
 export interface PacienteHoja {
+  ingresoId?: string                               // solo en la hoja de hoy (la del histórico no se edita)
   habitacion: number
   nombre: string                                   // «Merche Cambra»: nombre y primer apellido
   sondaVesical: boolean
@@ -19,7 +22,7 @@ export interface PacienteHoja {
   objetosCalma: string | null
   contencionDia: string | null
   contencionNoche: string[] | null
-  indicaciones: { texto: string; turnos: Turno[] }[]
+  indicaciones: IndicacionHoja[]
 }
 
 const VIA_CORTA: Record<ViaPaciente, string> = { venosa: 'Venosa', subcutanea: 'Subcut.' }
@@ -52,18 +55,13 @@ export function textoDiuresis(p: PacienteHoja): string {
 
 export interface ColumnaHoja { titulo: string; clase: string }
 
+// Todas las columnas de la hoja que no son Hb, Nombre ni Cuidados (Aseo, Diuresis, Depo, comidas y
+// Vía) miden lo mismo: así la hoja se ve ordenada y todas dejan el mismo hueco para escribir a mano.
+const MANUAL = 'c-m'
 const COLUMNAS: Record<Turno, ColumnaHoja[]> = {
-  manana: [
-    { titulo: 'Aseo', clase: 'c-aseo' }, { titulo: 'Diuresis', clase: 'c-diur' }, { titulo: 'Depo', clase: 'c-depo' },
-    { titulo: 'Desayuno', clase: 'c-com' }, { titulo: 'Comida', clase: 'c-com' },
-  ],
-  tarde: [
-    { titulo: 'Diuresis', clase: 'c-diur' }, { titulo: 'Depo', clase: 'c-depo' },
-    { titulo: 'Merienda', clase: 'c-com' }, { titulo: 'Cena', clase: 'c-com' },
-  ],
-  noche: [
-    { titulo: 'Orina', clase: 'c-diur' }, { titulo: 'Depo', clase: 'c-depo' },
-  ],
+  manana: ['Aseo', 'Diuresis', 'Depo', 'Desayuno', 'Comida'].map((titulo) => ({ titulo, clase: MANUAL })),
+  tarde: ['Diuresis', 'Depo', 'Merienda', 'Cena'].map((titulo) => ({ titulo, clase: MANUAL })),
+  noche: ['Orina', 'Depo'].map((titulo) => ({ titulo, clase: MANUAL })),
 }
 
 export const TITULO_TURNO: Record<Turno, string> = { manana: 'Mañana', tarde: 'Tarde', noche: 'Noche' }
@@ -91,7 +89,8 @@ const ESTILO = `
   .noche td { height: 6.1mm; }   /* la noche lleva además la lista de reposición: tiene que caber en la misma hoja */
   .c-hab { width: 6mm; text-align: center; font-weight: 700; }
   .c-nom { width: 30mm; font-weight: 600; }
-  .c-aseo { width: 11mm; } .c-diur { width: 15mm; } .c-depo { width: 11mm; } .c-com { width: 15mm; } .c-via { width: 13mm; font-size: 7pt; }
+  .c-m { width: 14mm; }
+  .c-via { font-size: 7pt; }
   .c-cui { font-size: 7.5pt; }
   .c-cui .auto { font-weight: 700; }
   tr.libre td { color: #999; }
@@ -107,7 +106,7 @@ const ESTILO = `
 function filaHTML(n: number, p: PacienteHoja | undefined, turno: Turno): string {
   const cols = COLUMNAS[turno]
   if (!p) {
-    return `<tr class="libre"><td class="c-hab">${n}</td><td class="c-nom"></td>${cols.map((c) => `<td class="${c.clase}"></td>`).join('')}${turno !== 'noche' ? '<td class="c-via"></td>' : ''}<td class="c-cui"></td></tr>`
+    return `<tr class="libre"><td class="c-hab">${n}</td><td class="c-nom"></td>${cols.map((c) => `<td class="${c.clase}"></td>`).join('')}<td class="c-m c-via"></td><td class="c-cui"></td></tr>`
   }
   const auto = avisosAutomaticos(p, turno)
   const propias = p.indicaciones.filter((i) => i.turnos.includes(turno)).map((i) => i.texto.trim())
@@ -119,7 +118,7 @@ function filaHTML(n: number, p: PacienteHoja | undefined, turno: Turno): string 
     const contenido = c.titulo === 'Diuresis' || c.titulo === 'Orina' ? escapeHtml(textoDiuresis(p)) : ''
     return `<td class="${c.clase}">${contenido}</td>`
   }).join('')
-  const via = turno !== 'noche' ? `<td class="c-via">${p.via ? escapeHtml(VIA_CORTA[p.via]) : ''}</td>` : ''
+  const via = `<td class="c-m c-via">${p.via ? escapeHtml(VIA_CORTA[p.via]) : ''}</td>`
   return `<tr><td class="c-hab">${n}</td><td class="c-nom">${escapeHtml(p.nombre)}</td>${celdas}${via}<td class="c-cui">${cuidados}</td></tr>`
 }
 
@@ -130,7 +129,7 @@ export function construirHojaHTML(turno: Turno, pacientes: PacienteHoja[], fecha
   const filas = Array.from({ length: maxHab }, (_, k) => filaHTML(k + 1, porHab.get(k + 1), turno)).join('')
   const cols = COLUMNAS[turno]
   const tituloCuidados = turno === 'noche' ? 'Cuidados / incidencias' : 'Cuidados'
-  const thead = `<tr><th class="c-hab">Hb</th><th class="c-nom">Nombre</th>${cols.map((c) => `<th class="${c.clase}">${c.titulo}</th>`).join('')}${turno !== 'noche' ? '<th class="c-via">Vía</th>' : ''}<th>${tituloCuidados}</th></tr>`
+  const thead = `<tr><th class="c-hab">Hb</th><th class="c-nom">Nombre</th>${cols.map((c) => `<th class="${c.clase}">${c.titulo}</th>`).join('')}<th class="c-m">Vía</th><th>${tituloCuidados}</th></tr>`
   const fechaTxt = fecha.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
   const horaTxt = ahora.toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
   const control = turno === 'noche' ? `
@@ -150,4 +149,31 @@ export function construirHojaHTML(turno: Turno, pacientes: PacienteHoja[], fecha
 export function turnoActual(ahora: Date = new Date()): Turno {
   const h = ahora.getHours()
   return h >= 7 && h < 15 ? 'manana' : h >= 15 && h < 22 ? 'tarde' : 'noche'
+}
+
+// Una fila de pauta_historico (la foto que se guarda cada noche) convertida a la misma forma que la hoja de hoy,
+// para enseñarla e imprimirla con el mismo código.
+export interface FilaHistorico { ingreso_id: string; fecha: string; datos: Record<string, any> }
+
+export function pacienteDesdeHistorico(f: FilaHistorico): PacienteHoja | null {
+  const d = f.datos ?? {}
+  if (d.habitacion == null) return null
+  return {
+    habitacion: d.habitacion,
+    nombre: `${d.nombre ?? ''} ${d.primer_apellido ?? ''}`.trim(),
+    sondaVesical: !!d.sonda_vesical,
+    colector: !!d.colector,
+    via: d.via ?? null,
+    alertas: Array.isArray(d.alerta_conducta) ? d.alerta_conducta : [],
+    objetosCalma: d.objetos_calma ?? null,
+    contencionDia: d.contencion_dia ?? null,
+    contencionNoche: Array.isArray(d.contencion_noche) ? d.contencion_noche : null,
+    indicaciones: Array.isArray(d.indicaciones) ? d.indicaciones.map((i: any) => ({ texto: i.texto, turnos: i.turnos })) : [],
+  }
+}
+
+// «AAAA-MM-DD» a fecha local (sin pasar por UTC, que en la madrugada daría el día anterior).
+export function fechaDesdeTexto(t: string): Date {
+  const [a, m, d] = t.split('-').map(Number)
+  return new Date(a, m - 1, d)
 }

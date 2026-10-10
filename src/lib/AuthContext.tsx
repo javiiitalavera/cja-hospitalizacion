@@ -10,6 +10,9 @@ interface AuthState {
   profesional: Profesional | null   // ficha enlazada del profesional
   rol: Rol | null                    // atajo cómodo para permisos por rol
   esAdmin: boolean                   // true si gestiona el personal
+  // Un administrador puede hacer todo lo de los demás roles (igual que en la base de datos).
+  esMedico: boolean                  // rol médico, o administrador
+  esEnfermeria: boolean              // rol enfermería, o administrador
   loading: boolean                   // true mientras aún no sabemos a dónde llevar al usuario
   signOut: () => Promise<void>
 }
@@ -93,6 +96,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         profesional,
         rol: profesional?.rol ?? null,
         esAdmin: profesional?.es_admin ?? false,
+        esMedico: profesional?.rol === 'medico' || (profesional?.es_admin ?? false),
+        esEnfermeria: profesional?.rol === 'enfermeria' || (profesional?.es_admin ?? false),
         loading,
         signOut,
       }}

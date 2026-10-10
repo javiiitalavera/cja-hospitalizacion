@@ -20,8 +20,7 @@ interface Props {
 }
 
 export default function ModalContencion({ ingresoId, onClose, onGuardado, pacienteInfo }: Props) {
-  const { profesional, rol } = useAuth()
-  const esMedico = rol === 'medico'
+  const { profesional, esMedico } = useAuth()
   const [confirmando, setConfirmando] = useState(false)
   const [conflicto, setConflicto] = useState(false)
   const [loading, setLoading] = useState(true)
