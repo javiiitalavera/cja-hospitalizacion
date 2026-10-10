@@ -137,7 +137,7 @@ export default function HojasTurno() {
       <CabeceraPagina
         className="!mb-0"
         titulo="Hojas de turno"
-        subtitulo={`Hojas de trabajo de las auxiliares con los pacientes y las indicaciones de enfermería${esEnfermeria ? ' · puedes editarlas aquí mismo' : ' · solo lectura: las escribe enfermería'}`}
+        subtitulo="Hojas de trabajo de las auxiliares"
       >
         {!verHistorico && <BotonActualizar onClick={cargar} cargando={cargando} />}
         <button onClick={() => setVerHistorico((v) => !v)} className={`btn-secondary ${verHistorico ? 'bg-slate-100' : ''}`}>
