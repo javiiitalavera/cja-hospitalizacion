@@ -35,11 +35,22 @@ export function edad(fechaNacimiento?: string | null, fechaReferencia?: string |
   return A - a - (M < m || (M === m && D < d) ? 1 : 0)
 }
 
-// Días entre dos fechas (por defecto, hasta hoy si no hay fecha de fin).
+// Días ENTRE DOS FECHAS DE CALENDARIO (por defecto, hasta hoy si no hay fecha de fin).
 // Un único sitio para esto: lo usan el tiempo de estancia del paciente
 // y los días transcurridos desde el ingreso, entre otros.
+//
+// Cuenta días civiles, no milisegundos: la versión anterior comparaba «ahora» con la medianoche UTC de
+// la fecha y redondeaba, así que el contador cambiaba a mediodía UTC (las 14:00 en verano, las 13:00 en
+// invierno, hora de Madrid) en vez de a medianoche. Ingresado el día 8: el día 10 a las 9:00 decía 1 día
+// y a las 15:00 decía 2. Ahora el 10 es «2» desde las 00:00.
+function fechaCivil(s: string): string {
+  // «AAAA-MM-DD» tal cual; un instante con hora se pasa a su fecha según el reloj LOCAL.
+  return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : (s.length > 10 ? formatFechaLocal(new Date(s)) : s.slice(0, 10))
+}
 export function diasEntre(desde?: string | null, hasta?: string | null): number | null {
   if (!desde) return null
-  const fin = hasta ? new Date(hasta) : new Date()
-  return Math.round((fin.getTime() - new Date(desde).getTime()) / 86400000)
+  const [a1, m1, d1] = fechaCivil(desde).split('-').map(Number)
+  const [a2, m2, d2] = (hasta ? fechaCivil(hasta) : hoyLocal()).split('-').map(Number)
+  // Date.UTC: sin cambios de hora de por medio, la diferencia es siempre un número entero de días.
+  return Math.round((Date.UTC(a2, m2 - 1, d2) - Date.UTC(a1, m1 - 1, d1)) / 86400000)
 }

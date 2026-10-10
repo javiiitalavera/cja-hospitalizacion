@@ -10,6 +10,7 @@ import { EscalaBarthel, EscalaLawton, EscalaNPIQ, EscalaGDSFAST, ModalEscala } f
 import { totalBarthel, totalLawton, totalNPI } from '../../types/escalas'
 import type { EscalaClinica } from '../../types/escalas'
 import { AvisoGuardado } from '../../components/AvisoGuardado'
+import { encadenar } from '../../lib/colaGuardado'
 
 // Apartados que no siempre existen: salen plegados («+ añadir») salvo que ya tengan texto.
 // Se muestran siempre en este orden, se abran cuando se abran.
@@ -35,6 +36,9 @@ function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
   const dataRef = useRef(data)
   dataRef.current = data
   const saveSeqRef = useRef(0)
+  // Guardados en cola + versión que dejó el último guardado propio (null = la que trae la carga).
+  const cadenaRef = useRef<Promise<boolean>>(Promise.resolve(true))
+  const versionGuardadaRef = useRef<number | null>(null)
   const [abiertos, setAbiertos] = useState<Set<string>>(new Set())
   const [recienAbierto, setRecienAbierto] = useState<string | null>(null)
 
@@ -55,6 +59,8 @@ function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
   const saveEscalasSeqRef = useRef(0)
   const escalasEnCursoRef = useRef<Promise<boolean> | null>(null)
   const escalasSuciasRef = useRef(false)
+  const cadenaEscalasRef = useRef<Promise<boolean>>(Promise.resolve(true))
+  const escalaGuardadaRef = useRef<{ id: string; version: number } | null>(null)
 
   useEffect(() => {
     // Se cargan las dos fuentes en paralelo y se espera a que ambas
@@ -77,6 +83,8 @@ function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
       setInformeIngreso(dIngreso ?? {})
       setEscalaIngreso((rEscalaIngreso.data as EscalaClinica) ?? {})
       setEscalaAlta((rEscalaAlta.data as EscalaClinica) ?? {})
+      escalaGuardadaRef.current = null
+      versionGuardadaRef.current = null
 
       let base: Partial<InformeAlta> = dAlta ?? {}
       // Solo se hereda la medicación del ingreso si la del alta NUNCA se ha tocado (null/ausente).
@@ -118,10 +126,14 @@ function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
     return true
   }
 
-  async function hacerGuardadoEscalaAlta(next: Partial<EscalaClinica>): Promise<boolean> {
+  function hacerGuardadoEscalaAlta(next: Partial<EscalaClinica>): Promise<boolean> {
     const miSecuencia = ++saveEscalasSeqRef.current
     escalasSuciasRef.current = false
     setEstadoEscalas('guardando')
+    return encadenar(cadenaEscalasRef, () => ejecutarGuardadoEscalaAlta(next, miSecuencia))
+  }
+
+  async function ejecutarGuardadoEscalaAlta(next: Partial<EscalaClinica>, miSecuencia: number): Promise<boolean> {
     const campos = {
       barthel_respuestas: next.barthel_respuestas ?? null,
       barthel_total: next.barthel_total ?? null,
@@ -132,28 +144,35 @@ function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
       gds_estadio: next.gds_estadio ?? null,
       fast_estadio: next.fast_estadio ?? null,
     }
+    // Id y versión que dejó el guardado anterior (si lo hubo): el formulario puede llevar los de antes.
+    const conocida = escalaGuardadaRef.current
+    const id = conocida?.id ?? next.id
+    const version = conocida?.version ?? next.version ?? 1
 
-    if (next.id) {
+    if (id) {
       const { data: guardado, error } = await supabase
         .from('escalas_clinicas')
         .update(campos)
-        .eq('id', next.id)
-        .eq('version', next.version ?? 1)
+        .eq('id', id)
+        .eq('version', version)
         .select()
         .maybeSingle()
+      if (guardado) escalaGuardadaRef.current = { id: guardado.id, version: guardado.version }
       if (miSecuencia !== saveEscalasSeqRef.current) return true
       if (error) { escalasSuciasRef.current = true; setEstadoEscalas('error'); return false }
       if (!guardado) { escalasSuciasRef.current = true; setEstadoEscalas('conflicto'); return false }
-      setEscalaAlta(guardado)
+      // Solo id y versión: lo que se haya cambiado mientras se guardaba no se pisa.
+      setEscalaAlta((prev) => ({ ...prev, id: guardado.id, version: guardado.version }))
     } else {
       const { data: creado, error } = await supabase
         .from('escalas_clinicas')
         .insert({ ingreso_id: ingresoId, momento: 'alta', ...campos })
         .select()
         .maybeSingle()
+      if (creado) escalaGuardadaRef.current = { id: creado.id, version: creado.version }
       if (miSecuencia !== saveEscalasSeqRef.current) return true
       if (error) { escalasSuciasRef.current = true; setEstadoEscalas('error'); return false }
-      setEscalaAlta(creado ?? next)
+      if (creado) setEscalaAlta((prev) => ({ ...prev, id: creado.id, version: creado.version }))
     }
     setEstadoEscalas('guardado')
     setTimeout(() => setEstadoEscalas((e) => (e === 'guardado' ? 'inactivo' : e)), 2500)
@@ -162,22 +181,30 @@ function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
 
   async function recargarEscalaAltaTrasConflicto() {
     const { data: d } = await supabase.from('escalas_clinicas').select('*').eq('ingreso_id', ingresoId).eq('momento', 'alta').maybeSingle()
+    escalaGuardadaRef.current = null
     setEscalaAlta(d ?? {})
     setEstadoEscalas('inactivo')
   }
 
-  async function save(d = dataRef.current): Promise<boolean> {
+  function save(d = dataRef.current): Promise<boolean> {
     // Un guardado manual cancela el automático pendiente (si no, saldría después con la versión vieja).
     if (debounceRef.current) { clearTimeout(debounceRef.current); debounceRef.current = null }
     const miSecuencia = ++saveSeqRef.current
     setEstado('guardando')
+    return encadenar(cadenaRef, () => ejecutarGuardado(d, miSecuencia))
+  }
+
+  async function ejecutarGuardado(d: Partial<InformeAlta & { version: number }>, miSecuencia: number): Promise<boolean> {
+    // La versión que dejó el guardado anterior, no la que llevaba el formulario al teclear.
+    const version = versionGuardadaRef.current ?? dataRef.current.version ?? d.version ?? 1
     const { data: guardado, error } = await supabase
       .from('informe_alta')
       .update(d)
       .eq('ingreso_id', ingresoId)
-      .eq('version', d.version ?? 1)
+      .eq('version', version)
       .select()
       .maybeSingle()
+    if (guardado) versionGuardadaRef.current = guardado.version
     if (miSecuencia !== saveSeqRef.current) return true
     if (error) { setEstado('error'); return false }
     if (!guardado) {
@@ -194,7 +221,9 @@ function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
   }
 
   async function recargarTrasConflicto() {
+    if (debounceRef.current) { clearTimeout(debounceRef.current); debounceRef.current = null }
     const { data: d } = await supabase.from('informe_alta').select('*').eq('ingreso_id', ingresoId).maybeSingle()
+    versionGuardadaRef.current = null
     setData(d ?? {})
     setAbiertos((prev) => new Set([...prev, ...CAMPOS_OPCIONALES.filter((k) => ((d as Record<string, unknown> | null)?.[k] as string | undefined)?.trim())]))
     setEstado('inactivo')

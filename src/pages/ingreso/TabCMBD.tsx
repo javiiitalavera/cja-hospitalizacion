@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Cargando } from '../../components/Cargando'
 import { supabase } from '../../lib/supabase'
 import { AvisoGuardado } from '../../components/AvisoGuardado'
+import { encadenar } from '../../lib/colaGuardado'
 import type { Ingreso } from '../../types'
 import { nombreCompleto } from '../../types'
 import { edad } from '../../lib/fechas'
@@ -191,11 +192,15 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
   )
   dataRef.current = data
   const saveSeqRef = useRef(0)
+  // Guardados en cola + id y versión que dejó el último guardado propio (null = los que trae la carga).
+  const cadenaRef = useRef<Promise<boolean>>(Promise.resolve(true))
+  const guardadaRef = useRef<{ id: string; version: number } | null>(null)
 
   useEffect(() => {
     async function cargar() {
       try {
         const { data: d } = await supabase.from('cmbd').select('*').eq('ingreso_id', ingresoId).maybeSingle()
+        guardadaRef.current = null
         if (d) setData(d as CMBDData)
       } finally {
         setLoading(false)
@@ -204,21 +209,31 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
     cargar()
   }, [ingresoId])
 
-  async function save(d = dataRef.current): Promise<boolean> {
+  function save(d = dataRef.current): Promise<boolean> {
     const miSecuencia = ++saveSeqRef.current
     setEstado('guardando')
+    return encadenar(cadenaRef, () => ejecutarGuardado(d, miSecuencia))
+  }
+
+  async function ejecutarGuardado(d: CMBDData, miSecuencia: number): Promise<boolean> {
+    // Id y versión que dejó el guardado anterior (si lo hubo): el formulario puede llevar los de antes
+    // (o, en el primer guardado, ninguno: sin esto, dos guardados seguidos intentaban crear la fila dos veces).
+    const conocida = guardadaRef.current
+    const id = conocida?.id ?? (d as any).id
+    const version = conocida?.version ?? (d as any).version ?? 1
 
     // Un ingreso recién creado todavía no tiene fila en cmbd — antes
     // esto se trataba siempre como un UPDATE, que sobre una fila
     // inexistente no actualiza nada y se veía como un falso conflicto
     // de concurrencia en el primer guardado de cada ingreso nuevo.
-    if (!d.id) {
-      const { id, version, ...campos } = d as any
+    if (!id) {
+      const { id: _id, version: _version, ...campos } = d as any
       const { data: creado, error } = await supabase
         .from('cmbd')
         .insert({ ingreso_id: ingresoId, ...campos })
         .select()
         .maybeSingle()
+      if (creado) guardadaRef.current = { id: creado.id, version: creado.version }
       if (miSecuencia !== saveSeqRef.current) return true
       if (error) {
         // Si otra sesión se adelantó de verdad (misma restricción
@@ -232,34 +247,38 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
         setEstado('error')
         return false
       }
-      setData(creado as CMBDData)
+      // Solo id y versión: lo que se haya tecleado mientras se guardaba no se pisa.
+      if (creado) setData((prev) => ({ ...prev, id: creado.id, version: creado.version, updated_at: creado.updated_at }) as CMBDData)
       setEstado('guardado')
       setTimeout(() => setEstado((e) => (e === 'guardado' ? 'inactivo' : e)), 2500)
       return true
     }
 
-    // Antes usaba upsert(); ahora es un update() con la versión que
-    // se leyó — si alguien más ha guardado mientras tanto, esta
-    // actualización no encuentra ninguna fila y avisa, en vez de
-    // pisar el cambio de la otra persona en silencio.
+    // Antes usaba upsert(); ahora es un update() con la versión más
+    // reciente que se conoce — si alguien más ha guardado mientras
+    // tanto, esta actualización no encuentra ninguna fila y avisa, en
+    // vez de pisar el cambio de la otra persona en silencio.
     const { data: guardado, error } = await supabase
       .from('cmbd')
       .update(d)
       .eq('ingreso_id', ingresoId)
-      .eq('version', (d as any).version ?? 1)
+      .eq('version', version)
       .select()
       .maybeSingle()
+    if (guardado) guardadaRef.current = { id: guardado.id, version: guardado.version }
     if (miSecuencia !== saveSeqRef.current) return true
     if (error) { setEstado('error'); return false }
     if (!guardado) { setEstado('conflicto'); return false }
-    setData(guardado as CMBDData)
+    setData((prev) => ({ ...prev, id: guardado.id, version: guardado.version, updated_at: guardado.updated_at }) as CMBDData)
     setEstado('guardado')
     setTimeout(() => setEstado((e) => (e === 'guardado' ? 'inactivo' : e)), 2500)
     return true
   }
 
   async function recargarTrasConflicto() {
+    if (debounceRef.current) { clearTimeout(debounceRef.current); debounceRef.current = null }
     const { data: d } = await supabase.from('cmbd').select('*').eq('ingreso_id', ingresoId).maybeSingle()
+    guardadaRef.current = null
     if (d) setData(d as CMBDData)
     setEstado('inactivo')
   }

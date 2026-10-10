@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/AuthContext'
+import { encadenar } from '../../lib/colaGuardado'
 import type { ItemsPaciente } from '../../types'
 import { nombreCompleto, SEMAFORO_CAIDAS_COLOR as SEMAFORO_COLOR } from '../../types'
 import { Save, X } from 'lucide-react'
@@ -32,6 +33,9 @@ export default function PanelEdicion({
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const dataRef = useRef(data)
   const saveSeqRef = useRef(0)
+  // Guardados en cola + versión que dejó el último guardado propio (null = la que trae la hoja).
+  const cadenaRef = useRef<Promise<boolean>>(Promise.resolve(true))
+  const versionGuardadaRef = useRef<number | null>(null)
   dataRef.current = data
 
   const [confirmLimpiar, setConfirmLimpiar] = useState(false)
@@ -89,44 +93,60 @@ export default function PanelEdicion({
     onHabitacionChange(ingreso.id, n)
   }
 
-  async function save(d = dataRef.current) {
+  function save(d = dataRef.current): Promise<boolean> {
     const miSecuencia = ++saveSeqRef.current
     setEstado('guardando')
+    return encadenar(cadenaRef, () => ejecutarGuardado(d, miSecuencia))
+  }
+
+  async function ejecutarGuardado(d: Partial<ItemsPaciente & { version: number }>, miSecuencia: number): Promise<boolean> {
+    // La versión que dejó el guardado anterior, no la que llevaba el panel al hacer el cambio.
+    const version = versionGuardadaRef.current ?? dataRef.current.version ?? d.version ?? 1
     const { data: updated, error } = await supabase
       .from('items_paciente')
       .update(d)
       .eq('ingreso_id', ingreso.id)
-      .eq('version', d.version ?? 1)
+      .eq('version', version)
       .select()
       .maybeSingle()
-    if (miSecuencia !== saveSeqRef.current) return
+    if (updated) versionGuardadaRef.current = updated.version
+    if (miSecuencia !== saveSeqRef.current) return true
     if (error) {
       setEstado('error')
       setTimeout(() => setEstado((e) => (e === 'error' ? 'inactivo' : e)), 4000)
-      return
+      return false
     }
     if (!updated) {
       // Alguien más ha guardado esta misma hoja mientras se editaba
       // aquí — se avisa en vez de propagar un valor obsoleto hacia
       // la rejilla principal.
       setEstado('conflicto')
-      return
+      return false
     }
-    setData(updated as ItemsPaciente)
+    // Solo la versión nueva: lo que se haya cambiado mientras se guardaba se queda como está.
+    setData((prev) => ({ ...prev, version: updated.version, updated_at: updated.updated_at }))
     onSaved(updated as ItemsPaciente)
     setEstado('guardado')
     setTimeout(() => setEstado((e) => (e === 'guardado' ? 'inactivo' : e)), 2800)
+    return true
   }
 
   async function recargarTrasConflicto() {
+    if (debounceRef.current) { clearTimeout(debounceRef.current); debounceRef.current = null }
     const { data: d } = await supabase.from('items_paciente').select('*').eq('ingreso_id', ingreso.id).maybeSingle()
+    versionGuardadaRef.current = null
     if (d) { setData(d as ItemsPaciente); onSaved(d as ItemsPaciente) }
     setEstado('inactivo')
   }
 
   async function limpiarItems() {
-    if (debounceRef.current) clearTimeout(debounceRef.current)
+    if (debounceRef.current) { clearTimeout(debounceRef.current); debounceRef.current = null }
+    const miSecuencia = ++saveSeqRef.current
     setEstado('guardando')
+    await encadenar(cadenaRef, () => ejecutarLimpieza(miSecuencia))
+  }
+
+  async function ejecutarLimpieza(miSecuencia: number): Promise<boolean> {
     // Vacío explícito de cada campo: un update que solo mande estos
     // campos no toca el resto de columnas si no se listan aquí.
     const vacio = {
@@ -149,19 +169,22 @@ export default function PanelEdicion({
       .from('items_paciente')
       .update(vacio)
       .eq('ingreso_id', ingreso.id)
-      .eq('version', dataRef.current.version ?? 1)
+      .eq('version', versionGuardadaRef.current ?? dataRef.current.version ?? 1)
       .select()
       .maybeSingle()
     setConfirmLimpiar(false)
+    if (updated) versionGuardadaRef.current = updated.version
+    if (miSecuencia !== saveSeqRef.current) return true
     if (error) {
       setEstado('error')
       setTimeout(() => setEstado((e) => (e === 'error' ? 'inactivo' : e)), 4000)
-      return
+      return false
     }
-    if (!updated) { setEstado('conflicto'); return }
+    if (!updated) { setEstado('conflicto'); return false }
     setData(updated as ItemsPaciente)
     setEstado('inactivo')
     onSaved(updated as ItemsPaciente)
+    return true
   }
 
   function update(key: keyof ItemsPaciente, val: any) {

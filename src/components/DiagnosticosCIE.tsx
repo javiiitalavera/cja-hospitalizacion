@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from 'react'
 import { AlertTriangle, Plus } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
+import { encadenar } from '../lib/colaGuardado'
 import { avisoCodigoCIE10, buscarCIE10, cargarCatalogoCIE10, infoCIE10, normalizarCodigo, useCatalogoCIE10 } from '../lib/cie10'
 
 // ─── Buscador de códigos ─────────────────────────────────────
@@ -185,6 +186,9 @@ export function BloqueDiagnosticosCMBD({ ingresoId }: { ingresoId: string }) {
   const dataRef = useRef(data)
   dataRef.current = data
   const seqRef = useRef(0)
+  // Guardados en cola + id y versión que dejó el último guardado propio (null = los que trae la carga).
+  const cadenaRef = useRef<Promise<boolean>>(Promise.resolve(true))
+  const guardadaRef = useRef<{ id: string; version: number } | null>(null)
 
   function secundariosConDatos(d: FilaCmbd): number {
     let max = 0
@@ -194,38 +198,53 @@ export function BloqueDiagnosticosCMBD({ ingresoId }: { ingresoId: string }) {
 
   useEffect(() => {
     supabase.from('cmbd').select('*').eq('ingreso_id', ingresoId).maybeSingle().then(({ data: d }) => {
+      guardadaRef.current = null
       if (d) { setData(d as FilaCmbd); setExtra(Math.max(1, secundariosConDatos(d as FilaCmbd))) }
       setCargado(true)
     })
   }, [ingresoId])
 
-  async function save(d: FilaCmbd = dataRef.current): Promise<void> {
+  function save(d: FilaCmbd = dataRef.current): Promise<boolean> {
     const mi = ++seqRef.current
     setEstado('guardando')
-    if (!d.id) {
+    return encadenar(cadenaRef, () => ejecutarGuardado(d, mi))
+  }
+
+  async function ejecutarGuardado(d: FilaCmbd, mi: number): Promise<boolean> {
+    // Id y versión que dejó el guardado anterior (si lo hubo), no los que llevaba el formulario al teclear.
+    const conocida = guardadaRef.current
+    const id = conocida?.id ?? d.id
+    const version = conocida?.version ?? d.version ?? 1
+    if (!id) {
       // Todavía no hay fila de CMBD: se crea (con el servicio habitual de la unidad).
       const { data: creado, error } = await supabase
         .from('cmbd').insert({ ingreso_id: ingresoId, servicio: 'GRT', ...soloDx(d) }).select().maybeSingle()
-      if (mi !== seqRef.current) return
+      if (creado) guardadaRef.current = { id: creado.id, version: creado.version }
+      if (mi !== seqRef.current) return true
       if (error) {
-        if (error.code === '23505') { await recargar(); setEstado('conflicto'); return }
-        setEstado('error'); return
+        if (error.code === '23505') { await recargar(); setEstado('conflicto'); return false }
+        setEstado('error'); return false
       }
-      if (creado) setData(creado as FilaCmbd)
+      // Solo id y versión: lo que se haya tecleado mientras se guardaba no se pisa.
+      if (creado) setData((prev) => ({ ...prev, id: creado.id, version: creado.version }) as FilaCmbd)
     } else {
       const { data: guardado, error } = await supabase
-        .from('cmbd').update(soloDx(d)).eq('ingreso_id', ingresoId).eq('version', d.version ?? 1).select().maybeSingle()
-      if (mi !== seqRef.current) return
-      if (error) { setEstado('error'); return }
-      if (!guardado) { setEstado('conflicto'); return }
-      setData(guardado as FilaCmbd)
+        .from('cmbd').update(soloDx(d)).eq('ingreso_id', ingresoId).eq('version', version).select().maybeSingle()
+      if (guardado) guardadaRef.current = { id: guardado.id, version: guardado.version }
+      if (mi !== seqRef.current) return true
+      if (error) { setEstado('error'); return false }
+      if (!guardado) { setEstado('conflicto'); return false }
+      setData((prev) => ({ ...prev, id: guardado.id, version: guardado.version }) as FilaCmbd)
     }
     setEstado('guardado')
     setTimeout(() => setEstado((e) => (e === 'guardado' ? 'inactivo' : e)), 2500)
+    return true
   }
 
   async function recargar() {
+    if (debounceRef.current) { clearTimeout(debounceRef.current); debounceRef.current = null }
     const { data: d } = await supabase.from('cmbd').select('*').eq('ingreso_id', ingresoId).maybeSingle()
+    guardadaRef.current = null
     if (d) { setData(d as FilaCmbd); setExtra((x) => Math.max(x, secundariosConDatos(d as FilaCmbd))) }
     setEstado('inactivo')
   }
