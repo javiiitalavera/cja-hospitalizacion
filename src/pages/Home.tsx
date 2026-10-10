@@ -71,9 +71,6 @@ function vistaGuardada(): VistaInicio {
 export default function Home() {
   const [ingresos, setIngresos] = useState<IngresoConPaciente[]>([])
   const [items, setItems] = useState<Record<string, { semaforo_caidas?: string }>>({})
-  const [informes, setInformes] = useState<Record<string, { impresion_diagnostica?: string; motivo_ingreso?: string }>>(
-    {}
-  )
   const [eventosPorIngreso, setEventosPorIngreso] = useState<Record<string, EventoResumen[]>>({})
   const [contencionesPorIngreso, setContencionesPorIngreso] = useState<Record<string, { dia: ContencionDia | null; noche: ContencionNoche[] | null; confirmado_por_id: string | null }>>({})
   // Todo lo que alimenta el recuadro "Pendiente". Hasta que no se ha
@@ -134,13 +131,11 @@ export default function Home() {
 
         const [
           { data: itemsData, error: errItems },
-          { data: informesData, error: errInformes },
           { data: eventosData, error: errEventos },
           { mapa: contencionesPorIngresoMapa, error: errPautas },
           { data: pendientesData, error: errPendientes },
         ] = await Promise.all([
           supabase.from('items_paciente').select('ingreso_id,semaforo_caidas').in('ingreso_id', ids),
-          supabase.from('informe_ingreso').select('ingreso_id,impresion_diagnostica').in('ingreso_id', ids),
           // Todas las incidencias del ingreso (el mismo número que ve
           // quien abre la ficha). Lo reciente se distingue por el color
           // de la insignia, no recortando la lista.
@@ -153,11 +148,11 @@ export default function Home() {
         ])
 
         // La lista de pacientes es lo esencial y ya se ha podido
-        // mostrar; si falla alguna de estas cinco consultas
+        // mostrar; si falla alguna de estas cuatro consultas
         // auxiliares, se avisa sin ocultar la lista — más útil que
         // "no hay incidencias" cuando en realidad no se sabe.
-        if (errItems || errInformes || errEventos || errPautas || errPendientes) {
-          setErrorAuxiliar('Algunos datos (diagnóstico, incidencias, contención) podrían no estar actualizados.')
+        if (errItems || errEventos || errPautas || errPendientes) {
+          setErrorAuxiliar('Algunos datos (incidencias, contención) podrían no estar actualizados.')
         }
 
         const itemsMap: Record<string, { semaforo_caidas?: string }> = {}
@@ -165,12 +160,6 @@ export default function Home() {
           itemsMap[it.ingreso_id] = it
         })
         setItems(itemsMap)
-
-        const informesMap: Record<string, { impresion_diagnostica?: string }> = {}
-        ;(informesData ?? []).forEach((inf: any) => {
-          informesMap[inf.ingreso_id] = inf
-        })
-        setInformes(informesMap)
 
         // Tipos de incidencia por ingreso, para el aviso rápido en la tabla.
         const eventosMap: Record<string, EventoResumen[]> = {}
@@ -189,7 +178,7 @@ export default function Home() {
           esMedico
         )
         if (errExtras) {
-          setErrorAuxiliar('Algunos datos (diagnóstico, incidencias, contención, pendientes) podrían no estar actualizados.')
+          setErrorAuxiliar('Algunos datos (incidencias, contención, pendientes) podrían no estar actualizados.')
         }
         setDatosPendientes({
           eventosPendientes: errPendientes ? [] : ((pendientesData ?? []) as { ingreso_id: string; tipo: string }[]),
@@ -413,7 +402,6 @@ export default function Home() {
           const medico = ingreso.medico_responsable
             ? `${ingreso.medico_responsable.nombre} ${ingreso.medico_responsable.apellidos}`.trim()
             : '—'
-          const diagnostico = informes[ingreso.id]?.impresion_diagnostica ?? ingreso.motivo_ingreso ?? ''
           return (
             <div key={n}
               className="group bg-white border border-slate-200 rounded-xl p-4 hover:shadow-sm hover:border-primary-200 transition-all cursor-pointer flex flex-col gap-2.5"
@@ -436,7 +424,6 @@ export default function Home() {
                 </div>
                 <ChevronRight className="w-4 h-4 text-slate-200 group-hover:text-slate-500 transition-colors shrink-0 mt-1" />
               </div>
-              <p className="text-xs text-slate-600 leading-snug line-clamp-2 min-h-[2rem]">{diagnostico || <span className="text-slate-300">Sin diagnóstico</span>}</p>
               <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
                 <span className="text-xs text-slate-500 truncate min-w-0" title={medico}>{medico}</span>
                 <div className="flex items-center gap-3 shrink-0">
@@ -603,9 +590,7 @@ export default function Home() {
             const medico = ingreso.medico_responsable
               ? `${ingreso.medico_responsable.nombre} ${ingreso.medico_responsable.apellidos}`.trim()
               : '—'
-            const diagnostico = informes[ingreso.id]?.impresion_diagnostica ?? ingreso.motivo_ingreso ?? ''
-            const diagnosticoCorto = diagnostico.length > 60 ? diagnostico.slice(0, 57) + '…' : diagnostico
-
+            
             return (
               <div key={n} className="group">
                 <div
@@ -626,12 +611,9 @@ export default function Home() {
                       {n}
                     </div>
                   </div>
-                  {/* Nombre + diagnóstico */}
+                  {/* Nombre */}
                   <div className="min-w-0 pr-2">
                     <p className="font-semibold text-slate-800 text-sm leading-tight truncate">{nombreDelPaciente}</p>
-                    {diagnosticoCorto && (
-                      <p className="text-xs text-slate-500 truncate leading-tight">{diagnosticoCorto}</p>
-                    )}
                   </div>
                   {/* Edad */}
                   <div className="text-slate-500 text-xs">{e != null ? `${e}a` : '—'}</div>

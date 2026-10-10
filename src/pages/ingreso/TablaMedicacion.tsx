@@ -200,7 +200,6 @@ export function TablaMedicacion({ filas, onChange, disabled }: {
           <thead>
             <tr className="bg-slate-100">
               <th className="border border-slate-200 px-2 py-2 text-left font-semibold text-slate-600 min-w-[210px]">Fármaco</th>
-              <th className="border border-slate-200 px-2 py-2 text-left font-semibold text-slate-600 min-w-[150px]">Psicofármaco</th>
               <th className="border border-slate-200 px-2 py-2 text-left font-semibold text-slate-600 min-w-[80px]">Dosis</th>
               {TOMAS.map(t => (
                 <th key={t.key} className="border border-slate-200 px-2 py-2 text-center font-semibold text-slate-600 min-w-[70px]">
@@ -208,6 +207,7 @@ export function TablaMedicacion({ filas, onChange, disabled }: {
                 </th>
               ))}
               <th className="border border-slate-200 px-2 py-2 text-left font-semibold text-slate-600 min-w-[120px]">Observaciones</th>
+              <th className="border border-slate-200 px-2 py-2 text-left font-semibold text-slate-600 min-w-[150px]">Psicofármaco</th>
               {!disabled && <th className="border border-slate-200 w-8"></th>}
             </tr>
           </thead>
@@ -222,9 +222,6 @@ export function TablaMedicacion({ filas, onChange, disabled }: {
               <tr key={i} className="hover:bg-slate-50">
                 <td className="border border-slate-200 p-1">
                   <CeldaFarmaco fila={f} disabled={disabled} onCambio={c => cambiar(i, c)} />
-                </td>
-                <td className="border border-slate-200 px-1.5 py-1">
-                  {cargado && <CeldaClase fila={f} disabled={disabled} onCambio={c => cambiar(i, c)} />}
                 </td>
                 <td className="border border-slate-200 p-1">
                   <input disabled={disabled} className="w-full bg-transparent px-1 py-0.5 focus:outline-none focus:bg-white focus:ring-1 focus:ring-primary-300 rounded text-slate-600 disabled:text-slate-500"
@@ -242,6 +239,9 @@ export function TablaMedicacion({ filas, onChange, disabled }: {
                   <input disabled={disabled} className="w-full bg-transparent px-1 py-0.5 focus:outline-none focus:bg-white focus:ring-1 focus:ring-primary-300 rounded text-slate-500"
                     value={f.observaciones} placeholder="Si precisa…"
                     onChange={e => update(i, 'observaciones', e.target.value)} />
+                </td>
+                <td className="border border-slate-200 px-1.5 py-1">
+                  {cargado && <CeldaClase fila={f} disabled={disabled} onCambio={c => cambiar(i, c)} />}
                 </td>
                 {!disabled && (
                   <td className="border border-slate-200 p-1 text-center">
