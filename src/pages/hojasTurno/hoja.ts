@@ -63,14 +63,17 @@ export function textoDiuresis(p: PacienteHoja): string {
 
 export interface ColumnaHoja { titulo: string; clase: string }
 
-// Todas las columnas de la hoja que no son Hb, Nombre ni Cuidados (Aseo, Diuresis, Depo, comidas y
+// Todas las columnas de la hoja que no son Hb, Nombre ni Cuidados (Aseo, Diuresis, Deposición, comidas y
 // Vía) miden lo mismo: así la hoja se ve ordenada y todas dejan el mismo hueco para escribir a mano.
 const MANUAL = 'c-m'
 const COLUMNAS: Record<Turno, ColumnaHoja[]> = {
-  manana: ['Aseo', 'Diuresis', 'Depo', 'Desayuno', 'Comida'].map((titulo) => ({ titulo, clase: MANUAL })),
-  tarde: ['Diuresis', 'Depo', 'Merienda', 'Cena'].map((titulo) => ({ titulo, clase: MANUAL })),
-  noche: ['Orina', 'Depo'].map((titulo) => ({ titulo, clase: MANUAL })),
+  manana: ['Aseo', 'Diuresis', 'Deposición', 'Desayuno', 'Comida'].map((titulo) => ({ titulo, clase: MANUAL })),
+  tarde: ['Diuresis', 'Deposición', 'Merienda', 'Cena'].map((titulo) => ({ titulo, clase: MANUAL })),
+  noche: ['Orina', 'Deposición'].map((titulo) => ({ titulo, clase: MANUAL })),
 }
+
+// Títulos de las columnas que las auxiliares rellenan a mano en el papel (Aseo, Diuresis, Deposición, comidas).
+export const columnasManuales = (turno: Turno): string[] => COLUMNAS[turno].map((c) => c.titulo)
 
 export const TITULO_TURNO: Record<Turno, string> = { manana: 'Mañana', tarde: 'Tarde', noche: 'Noche' }
 
@@ -92,12 +95,12 @@ const ESTILO = `
   thead { display: table-header-group; }
   tr { break-inside: avoid; }
   th, td { border: 1px solid #777; padding: 1.5px 3px; font-size: 8pt; text-align: left; vertical-align: top; overflow-wrap: anywhere; }
-  th { background: #e8edf3; font-size: 6.5pt; text-transform: uppercase; letter-spacing: -0.1px; padding: 1.5px 2px; }
+  th { background: #e8edf3; font-size: 6pt; text-transform: uppercase; letter-spacing: -0.1px; padding: 1.5px 1px; }
   td { height: 7.6mm; }
   .noche td { height: 6.1mm; }   /* la noche lleva además la lista de reposición: tiene que caber en la misma hoja */
   .c-hab { width: 6mm; text-align: center; font-weight: 700; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .c-nom { width: 30mm; font-weight: 600; }
-  .c-m { width: 14mm; }
+  .c-m { width: 15mm; }
   .c-via { font-size: 7pt; }
   .c-cui { font-size: 7.5pt; }
   .c-cui .auto { font-weight: 700; }
@@ -114,7 +117,7 @@ const ESTILO = `
 function filaHTML(n: number, p: PacienteHoja | undefined, turno: Turno): string {
   const cols = COLUMNAS[turno]
   if (!p) {
-    return `<tr class="libre"><td class="c-hab">${n}</td><td class="c-nom"></td>${cols.map((c) => `<td class="${c.clase}"></td>`).join('')}<td class="c-cui"></td><td class="c-m c-via"></td></tr>`
+    return `<tr class="libre"><td class="c-hab">${n}</td><td class="c-nom"></td>${cols.map((c) => `<td class="${c.clase}"></td>`).join('')}<td class="c-m c-via"></td><td class="c-cui"></td></tr>`
   }
   const auto = avisosAutomaticos(p, turno)
   const propias = p.indicaciones.filter((i) => i.turnos.includes(turno)).map((i) => i.texto.trim())
@@ -129,7 +132,7 @@ function filaHTML(n: number, p: PacienteHoja | undefined, turno: Turno): string 
   const via = `<td class="c-m c-via">${p.via ? escapeHtml(VIA_CORTA[p.via]) : ''}</td>`
   const sem = colorSemaforo(p)
   const estiloHab = sem ? ` style="background:${sem.fondo};color:${sem.texto}"` : ''
-  return `<tr><td class="c-hab"${estiloHab}>${n}</td><td class="c-nom">${escapeHtml(p.nombre)}</td>${celdas}<td class="c-cui">${cuidados}</td>${via}</tr>`
+  return `<tr><td class="c-hab"${estiloHab}>${n}</td><td class="c-nom">${escapeHtml(p.nombre)}</td>${celdas}${via}<td class="c-cui">${cuidados}</td></tr>`
 }
 
 // Documento HTML completo de la hoja de un turno (sirve para vista previa y para imprimir).
@@ -139,7 +142,7 @@ export function construirHojaHTML(turno: Turno, pacientes: PacienteHoja[], fecha
   const filas = Array.from({ length: maxHab }, (_, k) => filaHTML(k + 1, porHab.get(k + 1), turno)).join('')
   const cols = COLUMNAS[turno]
   const tituloCuidados = turno === 'noche' ? 'Cuidados / incidencias' : 'Cuidados'
-  const thead = `<tr><th class="c-hab">Hb</th><th class="c-nom">Nombre</th>${cols.map((c) => `<th class="${c.clase}">${c.titulo}</th>`).join('')}<th>${tituloCuidados}</th><th class="c-m">Vía</th></tr>`
+  const thead = `<tr><th class="c-hab">Hb</th><th class="c-nom">Nombre</th>${cols.map((c) => `<th class="${c.clase}">${c.titulo}</th>`).join('')}<th class="c-m">Vía</th><th>${tituloCuidados}</th></tr>`
   const fechaTxt = fecha.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
   const horaTxt = ahora.toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
   const control = turno === 'noche' ? `

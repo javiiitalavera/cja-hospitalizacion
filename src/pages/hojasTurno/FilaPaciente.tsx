@@ -19,10 +19,11 @@ export interface AccionesFila {
 
 const etiquetaTurno = (t: Turno) => TURNOS.find((x) => x.clave === t)?.etiqueta ?? t
 
-export function FilaPaciente({ n, p, turno, acciones }: {
+export function FilaPaciente({ n, p, turno, columnas, acciones }: {
   n: number
   p: PacienteHoja | undefined
   turno: Turno
+  columnas: string[]          // columnas de papel (Aseo, Diuresis…): se enseñan vacías
   acciones?: AccionesFila        // sin acciones, la fila es de solo lectura
 }) {
   const [editando, setEditando] = useState<string | null>(null)
@@ -37,7 +38,7 @@ export function FilaPaciente({ n, p, turno, acciones }: {
     return (
       <tr className="border-t">
         <td className="px-3 py-2 text-center font-bold text-slate-400 align-top">{n}</td>
-        <td colSpan={3} className="px-3 py-2 text-slate-400 italic align-top">Libre</td>
+        <td colSpan={columnas.length + 2} className="px-3 py-2 text-slate-400 italic align-top">Libre</td>
       </tr>
     )
   }
@@ -94,10 +95,34 @@ export function FilaPaciente({ n, p, turno, acciones }: {
         >{n}</span>
       </td>
       <td className="px-3 py-2 font-semibold text-slate-800 whitespace-nowrap">{p.nombre}</td>
-      <td className="px-3 py-2 min-w-[20rem]">
-        {(diuresis || avisos.length > 0) && (
+      {columnas.map((c) => (
+        <td key={c} className="px-0.5 py-2 text-center text-[10px] text-slate-500 bg-slate-50/70 border-l border-dashed border-slate-200">
+          {c === 'Diuresis' || c === 'Orina' ? diuresis : ''}
+        </td>
+      ))}
+      <td className="px-3 py-2">
+        {editable ? (
+          <select
+            aria-label={`Vía de ${p.nombre}`}
+            className={`input py-1 text-xs w-28 ${p.via ? '' : 'text-slate-400'}`}
+            value={p.via ?? ''}
+            disabled={ocupado}
+            onChange={(e) => {
+              const v = (e.target.value || null) as ViaPaciente | null
+              void envolver(() => acciones!.cambiarVia(ingresoId!, v))
+            }}
+          >
+            <option value="">Sin vía</option>
+            <option value="venosa">{VIA_LABEL.venosa}</option>
+            <option value="subcutanea">{VIA_LABEL.subcutanea}</option>
+          </select>
+        ) : (
+          <span className="text-xs text-slate-600">{p.via ? VIA_LABEL[p.via] : <span className="text-slate-300">—</span>}</span>
+        )}
+      </td>
+      <td className="px-3 py-2 min-w-[16rem]">
+        {avisos.length > 0 && (
           <div className="flex flex-wrap gap-1 mb-2">
-            {diuresis && <span className="text-[11px] px-2 py-0.5 rounded-md bg-sky-50 text-sky-800 border border-sky-100 font-semibold">{diuresis}</span>}
             {avisos.map((a) => (
               <span key={a} className="text-[11px] px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-100 font-medium">{a}</span>
             ))}
@@ -191,28 +216,8 @@ export function FilaPaciente({ n, p, turno, acciones }: {
             </button>
           ))}
 
-          {!editable && delTurno.length === 0 && !diuresis && avisos.length === 0 && <span className="text-slate-300 text-xs">—</span>}
+          {!editable && delTurno.length === 0 && avisos.length === 0 && <span className="text-slate-300 text-xs">—</span>}
         </div>
-      </td>
-      <td className="px-3 py-2">
-        {editable ? (
-          <select
-            aria-label={`Vía de ${p.nombre}`}
-            className={`input py-1 text-xs w-32 ${p.via ? '' : 'text-slate-400'}`}
-            value={p.via ?? ''}
-            disabled={ocupado}
-            onChange={(e) => {
-              const v = (e.target.value || null) as ViaPaciente | null
-              void envolver(() => acciones!.cambiarVia(ingresoId!, v))
-            }}
-          >
-            <option value="">Sin vía</option>
-            <option value="venosa">{VIA_LABEL.venosa}</option>
-            <option value="subcutanea">{VIA_LABEL.subcutanea}</option>
-          </select>
-        ) : (
-          <span className="text-xs text-slate-600">{p.via ? VIA_LABEL[p.via] : <span className="text-slate-300">—</span>}</span>
-        )}
       </td>
     </tr>
   )

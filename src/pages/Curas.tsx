@@ -34,7 +34,7 @@ function imprimirHoja(pacientes: PacienteConCuras[], semana: string[], registros
     ).join('')
     return `<tr><td class="n">${escapeHtml(nombreCompleto(p.paciente))} (hab. ${p.habitacion ?? '—'})</td><td>${l}</td></tr>`
   }).join('')
-  const html = `<html><head><title>Curas</title><style>
+  const html = `<html><head><title>Pauta de curas</title><style>
     @page { size: A4 portrait; margin: 12mm; }
     body { font-family: Arial, sans-serif; font-size: 10pt; }
     h1 { font-size: 13pt; margin: 0 0 3mm; } h2 { font-size: 11pt; margin: 6mm 0 2mm; }
@@ -44,7 +44,7 @@ function imprimirHoja(pacientes: PacienteConCuras[], semana: string[], registros
     td.c { text-align: center; width: 11%; height: 7mm; font-size: 12pt; } td.n { font-weight: 600; width: 30%; }
     .t { color: #555; font-size: 8.5pt; }
   </style></head><body>
-    <h1>Curas — semana del ${fechaLarga(semana[0])} al ${fechaLarga(semana[6])}</h1>
+    <h1>Pauta de curas — semana del ${fechaLarga(semana[0])} al ${fechaLarga(semana[6])}</h1>
     <table><thead><tr><th>Paciente</th>${cab}</tr></thead><tbody>${filasSemana}</tbody></table>
     <h2>Tabla de cuidados</h2>
     <table><thead><tr><th>Paciente</th><th>Localización y cura / cuidado / necesidad</th></tr></thead><tbody>${filasCuidados}</tbody></table>
@@ -149,7 +149,7 @@ export default function Curas() {
     <div className="p-8 max-w-6xl">
       <div className="flex items-start justify-between gap-4 flex-wrap mb-6">
         <div>
-          <h1 className="text-xl font-bold text-slate-800">Curas</h1>
+          <h1 className="text-xl font-bold text-slate-800">Pauta de curas</h1>
           <p className="text-sm text-slate-500">
             {loading ? 'Cargando…' : `${pacientes.length} paciente${pacientes.length === 1 ? '' : 's'} con curas activas`}
           </p>
