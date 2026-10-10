@@ -5,6 +5,8 @@ import { AvisoGuardado } from '../../components/AvisoGuardado'
 import type { Ingreso } from '../../types'
 import { nombreCompleto } from '../../types'
 import { edad } from '../../lib/fechas'
+import { estadoSegunCircunstancia } from '../../lib/alta'
+import { infoCIE10, useCatalogoCIE10 } from '../../lib/cie10'
 import { FilaDx } from '../../components/DiagnosticosCIE'
 import { CheckCircle, Circle, Download, Save } from 'lucide-react'
 
@@ -181,6 +183,12 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
   const [errorFaltantes, setErrorFaltantes] = useState<string[]>([])
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const dataRef = useRef(data)
+  // Si hay un código fuera de los frecuentes, hay que cargar el catálogo completo para saber si está
+  // exento de POAD; al terminar de cargar, este componente se repinta y el resumen de «falta» se corrige.
+  useCatalogoCIE10(
+    ['diagnostico_principal', ...Array.from({ length: N_SECUNDARIOS }, (_, i) => `diagnostico_secundario_${i + 1}`)]
+      .some((k) => { const c = (data as any)[k] as string | undefined; return !!c && !infoCIE10(c) }),
+  )
   dataRef.current = data
   const saveSeqRef = useRef(0)
 
@@ -258,6 +266,7 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
 
   function update<K extends keyof CMBDData>(key: K, value: CMBDData[K]) {
     if (estado === 'conflicto') return
+    setErrorFaltantes([])
     const next = { ...dataRef.current, [key]: value }
     setData(next)
     setEstado('pendiente')
@@ -274,6 +283,7 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
   // que uno se pierda.
   function updateFields(cambios: Partial<CMBDData>) {
     if (estado === 'conflicto') return
+    setErrorFaltantes([])
     const next = { ...dataRef.current, ...cambios }
     setData(next)
     setEstado('pendiente')
@@ -314,10 +324,29 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
 
   function camposFaltantes(fuente: Partial<CMBDData> = data): string[] {
     const faltan: string[] = []
+    const pac = ingreso?.paciente as any
+    // Datos del paciente que el fichero necesita y que salían en blanco sin avisar: antes el CMBD
+    // podía darse por «completo» con el sexo vacío (o «otro», que no tiene código) y sin fecha de nacimiento.
+    if (!pac?.fecha_nacimiento) faltan.push('Fecha de nacimiento del paciente')
+    if (pac?.sexo !== 'hombre' && pac?.sexo !== 'mujer') faltan.push('Sexo del paciente (el CMBD solo admite varón o mujer)')
     if (!ingreso?.fecha_alta) faltan.push('Fecha de alta')
     if (!fuente.procedencia) faltan.push('Procedencia')
     if (!fuente.circunstancia_alta) faltan.push('Motivo del alta')
+    else if (ingreso && ingreso.estado !== 'activo' && estadoSegunCircunstancia(fuente.circunstancia_alta) !== ingreso.estado) {
+      faltan.push('Motivo del alta (el guardado no corresponde al estado del episodio)')
+    }
     if (!fuente.diagnostico_principal) faltan.push('Diagnóstico principal')
+    // POAD: cada diagnóstico codificado tiene que tener respuesta explícita (SÍ/NO), salvo los
+    // códigos exentos. Sin esto, un diagnóstico sin contestar se exportaba como «No» (adquirido
+    // en el hospital) aunque nadie lo hubiera dicho.
+    const sinPoad: string[] = []
+    for (let n = 0; n <= N_SECUNDARIOS; n++) {
+      const k = n === 0 ? 'diagnostico_principal' : `diagnostico_secundario_${n}`
+      const codigo = (fuente as any)[k] as string | undefined
+      if (!codigo) continue
+      if ((fuente as any)[`${k}_poad`] == null && !infoCIE10(codigo)?.marcas?.includes('E')) sinPoad.push(codigo)
+    }
+    if (sinPoad.length > 0) faltan.push(`«Al ingreso» (SÍ/NO) sin contestar en: ${sinPoad.join(', ')}`)
     return faltan
   }
 
@@ -435,13 +464,31 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
           </div>
           <div>
             <label className="label">Motivo del alta *</label>
-            <select className="input" value={data.circunstancia_alta ?? ''}
-              onChange={e => update('circunstancia_alta', e.target.value)}>
-              <option value="">— Seleccionar —</option>
-              {Object.entries(TIPALT).map(([v, l]) => (
-                <option key={v} value={v}>{l}</option>
-              ))}
-            </select>
+            {/* El motivo tiene que cuadrar con el estado del episodio (lo comprueba también la base de
+                datos): se fija al dar de alta, y después solo se puede cambiar entre los motivos de ese
+                mismo estado (p. ej. de «Domicilio» a «Alta voluntaria», nunca a «Éxitus»). */}
+            {(() => {
+              const activo = !ingreso || ingreso.estado === 'activo'
+              const actual = data.circunstancia_alta ?? ''
+              const opciones = Object.entries(TIPALT).filter(([v]) => estadoSegunCircunstancia(v) === ingreso?.estado)
+              const incoherente = !activo && actual !== '' && !opciones.some(([v]) => v === actual)
+              return (
+                <>
+                  <select className="input" disabled={activo} value={actual}
+                    onChange={e => update('circunstancia_alta', e.target.value)}>
+                    <option value="">{activo ? '— Se fija al dar de alta —' : '— Seleccionar —'}</option>
+                    {incoherente && (
+                      <option value={actual}>{TIPALT[actual] ?? actual} · no corresponde al estado del episodio</option>
+                    )}
+                    {opciones.map(([v, l]) => (
+                      <option key={v} value={v}>{l}</option>
+                    ))}
+                  </select>
+                  {activo && <p className="text-xs text-slate-500 mt-1">Se registra al pulsar «Dar de alta» en el episodio.</p>}
+                  {incoherente && <p className="text-xs text-amber-700 mt-1">Este motivo no corresponde al estado del episodio. Elige uno de la lista.</p>}
+                </>
+              )
+            })()}
           </div>
         </div>
       </div>
@@ -522,6 +569,9 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
                     : `Falta: ${faltan.join(', ')}.`
                   }
                 </p>
+                {!p?.cipna && (
+                  <p className="text-xs text-amber-700 mt-1">El paciente no tiene CIPNA: el campo CIP saldrá vacío en el fichero.</p>
+                )}
               </div>
             </div>
           </div>

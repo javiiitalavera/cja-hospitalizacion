@@ -123,18 +123,29 @@ export function FilaDx({ label, codigo, desc, poad, onCodigoYDesc, onDesc, onPoa
           </p>
         )}
       </div>
-      {/* POAD (presente al ingreso) — solo si hay código */}
+      {/* POAD (presente al ingreso) — solo si hay código.
+          Tres estados: sin contestar («¿?», en ámbar), SÍ y NO. Antes, sin contestar se veía y se
+          exportaba como «NO», es decir, «no estaba al ingreso, se adquirió en el hospital». Los
+          códigos exentos de POAD no necesitan respuesta y conservan el botón de dos estados. */}
       <div className="pt-2 shrink-0">
         {codigo && (
           <div className="flex flex-col items-center gap-0.5">
             <span className="text-xs text-slate-500 leading-none">Al ingreso</span>
-            <button type="button" disabled={disabled}
-              onClick={() => onPoad(!(poad === true))}
-              className={`w-12 h-6 rounded-full text-xs font-bold transition-colors ${
-                poad === true ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-500'
-              }`}>
-              {poad === true ? 'SÍ' : 'NO'}
-            </button>
+            {(() => {
+              const sinContestar = poad == null && !exento
+              return (
+                <button type="button" disabled={disabled}
+                  onClick={() => onPoad(!(poad === true))}
+                  title={sinContestar ? 'Sin contestar: indica si este diagnóstico ya estaba presente al ingreso' : undefined}
+                  className={`w-12 h-6 rounded-full text-xs font-bold transition-colors ${
+                    poad === true ? 'bg-emerald-500 text-white'
+                    : sinContestar ? 'bg-amber-100 text-amber-700 ring-1 ring-amber-300'
+                    : 'bg-slate-200 text-slate-500'
+                  }`}>
+                  {poad === true ? 'SÍ' : sinContestar ? '¿?' : 'NO'}
+                </button>
+              )
+            })()}
             {exento && <span className="text-[10px] text-slate-400 leading-none" title="Este código está exento de indicar POAD según la tabla oficial">Exento</span>}
           </div>
         )}
