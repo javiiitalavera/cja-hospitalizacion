@@ -1,15 +1,18 @@
 import { useEffect, useState } from 'react'
+import { Cargando } from '../components/Cargando'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import type { Ingreso } from '../types'
-import { SEMAFORO_CAIDAS_COLOR as SEMAFORO, nombreCompleto } from '../types'
+import { SEMAFORO_CAIDAS_COLOR as SEMAFORO, nombreCompleto, nombreYApellido } from '../types'
 import { edad, diasEntre, formatFechaLocal, hoyLocal } from '../lib/fechas'
-import { Plus, ChevronRight, AlertTriangle, AlertCircle, Sun, Moon, RefreshCw, Printer, LayoutList, LayoutGrid } from 'lucide-react'
+import { Plus, ChevronRight, AlertTriangle, AlertCircle, Sun, Moon, Printer, LayoutList, LayoutGrid } from 'lucide-react'
 import ModalContencion from '../components/ModalContencion'
 import FormularioEvento from '../components/FormularioEvento'
 import Tooltip from '../components/Tooltip'
 import { fetchContencionesPorIngreso } from '../lib/contenciones'
+import { CabeceraPagina } from '../components/CabeceraPagina'
+import { BotonActualizar } from '../components/BotonActualizar'
 import { imprimirListaHabitaciones } from '../lib/imprimir'
 import {
   severidadDia, severidadNoche, SEVERIDAD_ESTILO, necesitaConfirmacion,
@@ -439,44 +442,29 @@ export default function Home() {
 
   return (
     <div className="p-6 md:p-8">
-      {/* Header */}
-      <div className="flex items-start justify-between mb-5">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800">Unidad de Hospitalización</h1>
-          <p className="text-sm text-slate-500 capitalize mt-0.5">{today}</p>
+      <CabeceraPagina titulo="Unidad de Hospitalización" subtitulo={<span className="inline-block first-letter:uppercase">{today}</span>}>
+        <span className="px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full text-sm font-medium">
+          {ocupadas} ingresados
+        </span>
+        <span className="px-3 py-1 bg-slate-100 text-slate-500 rounded-full text-sm font-medium">{libres} libres</span>
+        <div className="flex rounded-lg border bg-white overflow-hidden text-sm" role="group" aria-label="Vista">
+          {([['filas', 'Filas', LayoutList], ['tarjetas', 'Tarjetas', LayoutGrid]] as const).map(([v, et, Icono]) => (
+            <button key={v} type="button" onClick={() => cambiarVista(v)} aria-pressed={vista === v} title={`Vista de ${et.toLowerCase()}`}
+              className={`flex items-center gap-1.5 px-3 py-2 font-medium transition-colors ${vista === v ? 'bg-primary-50 text-primary-700' : 'text-slate-600 hover:bg-slate-50'}`}>
+              <Icono className="w-3.5 h-3.5" />{et}
+            </button>
+          ))}
         </div>
-        <div className="flex items-center gap-2 text-sm">
-          <span className="px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full font-medium">
-            {ocupadas} ingresados
-          </span>
-          <span className="px-3 py-1 bg-slate-100 text-slate-500 rounded-full font-medium">{libres} libres</span>
-          <div className="flex rounded-full border border-slate-200 overflow-hidden" role="group" aria-label="Vista">
-            {([['filas', 'Filas', LayoutList], ['tarjetas', 'Tarjetas', LayoutGrid]] as const).map(([v, et, Icono]) => (
-              <button key={v} type="button" onClick={() => cambiarVista(v)} aria-pressed={vista === v} title={`Vista de ${et.toLowerCase()}`}
-                className={`flex items-center gap-1.5 px-3 py-1 font-medium transition-colors ${vista === v ? 'bg-primary-50 text-primary-700' : 'text-slate-500 hover:bg-slate-50'}`}>
-                <Icono className="w-3.5 h-3.5" />{et}
-              </button>
-            ))}
-          </div>
-          <button
-            onClick={fetchData}
-            disabled={refreshing}
-            className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-slate-200 text-slate-500 hover:bg-slate-50 font-medium disabled:opacity-60"
-            title="Actualizar"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
-            Actualizar
-          </button>
-          <button
-            onClick={() => imprimirListaHabitaciones(slots.map((s) => s?.paciente ? nombreCompleto(s.paciente) : null))}
-            className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-slate-200 text-slate-500 hover:bg-slate-50 font-medium"
-            title="Imprimir lista de pacientes"
-          >
-            <Printer className="w-3.5 h-3.5" />
-            Imprimir
-          </button>
-        </div>
-      </div>
+        <BotonActualizar onClick={fetchData} cargando={refreshing} />
+        <button
+          onClick={() => imprimirListaHabitaciones(slots.map((s) => s?.paciente ? nombreYApellido(s.paciente) : null))}
+          className="btn-secondary"
+          title="Imprimir lista de pacientes"
+        >
+          <Printer className="w-4 h-4" />
+          Imprimir
+        </button>
+      </CabeceraPagina>
 
       {/* Pendiente — solo aparece si hay algo, solo cuenta ingresos
           activos, y cada perfil ve lo que le toca hacer. Cada línea
@@ -512,7 +500,7 @@ export default function Home() {
 
       {/* Tabla de habitaciones */}
       {loading ? (
-        <div className="text-slate-500 py-12 text-center">Cargando…</div>
+        <Cargando />
       ) : error ? (
         <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-6 text-center space-y-2">
           <p>{error}</p>

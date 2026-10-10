@@ -2,7 +2,7 @@
 // pacientes de hoy y sus indicaciones. Las columnas en blanco son para que las auxiliares anoten a mano.
 // Todo en funciones puras: la página solo carga los datos y enseña el HTML que sale de aquí.
 
-import { escapeHtml } from '../../lib/imprimir'
+import { documentoImpresion, escapeHtml } from '../../lib/imprimir'
 import { SEMAFORO_CAIDAS_COLOR } from '../../types'
 import {
   CONTENCION_DIA_LABEL, CONTENCION_NOCHE_LABEL, NOCHE_ES_CONTENCION,
@@ -84,18 +84,12 @@ export const CONTROL_NOCHE = [
 ]
 export const COMEDOR_NOCHE = ['Baberos', 'Toallitas húmedas', 'Espesante', 'Proteicos', 'Sabanitas']
 
+// Estilos propios de esta hoja (los comunes —márgenes, cabecera, pie— vienen de documentoImpresion).
 const ESTILO = `
-  @page { size: A4 portrait; margin: 8mm; }
-  * { box-sizing: border-box; }
-  body { font-family: Arial, sans-serif; margin: 0; padding: 10px; color: #111; }
-  .cab { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 3mm; }
-  h1 { font-size: 13pt; margin: 0; }
-  .cab span { font-size: 9pt; color: #444; }
-  table { border-collapse: collapse; width: 100%; table-layout: fixed; }
-  thead { display: table-header-group; }
-  tr { break-inside: avoid; }
-  th, td { border: 1px solid #777; padding: 1.5px 3px; font-size: 8pt; text-align: left; vertical-align: top; overflow-wrap: anywhere; }
-  th { background: #e8edf3; font-size: 6pt; text-transform: uppercase; letter-spacing: -0.1px; padding: 1.5px 1px; }
+  body { padding: 0; }
+  table { table-layout: fixed; }
+  th, td { padding: 1.5px 3px; font-size: 8pt; overflow-wrap: anywhere; }
+  th { font-size: 6pt; text-transform: uppercase; letter-spacing: -0.1px; padding: 1.5px 1px; }
   td { height: 7.6mm; }
   .noche td { height: 6.1mm; }   /* la noche lleva además la lista de reposición: tiene que caber en la misma hoja */
   .c-hab { width: 6mm; text-align: center; font-weight: 700; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -105,7 +99,6 @@ const ESTILO = `
   .c-cui { font-size: 7.5pt; }
   .c-cui .auto { font-weight: 700; }
   tr.libre td { color: #999; }
-  .pie { margin-top: 3mm; font-size: 7.5pt; color: #666; }
   .ctrl { display: flex; gap: 8mm; margin-top: 3mm; break-inside: avoid; }
   .ctrl > div { flex: 1; }
   .ctrl h2 { font-size: 9pt; margin: 0 0 1.5mm; text-transform: uppercase; }
@@ -135,8 +128,8 @@ function filaHTML(n: number, p: PacienteHoja | undefined, turno: Turno): string 
   return `<tr><td class="c-hab"${estiloHab}>${n}</td><td class="c-nom">${escapeHtml(p.nombre)}</td>${celdas}${via}<td class="c-cui">${cuidados}</td></tr>`
 }
 
-// Documento HTML completo de la hoja de un turno (sirve para vista previa y para imprimir).
-export function construirHojaHTML(turno: Turno, pacientes: PacienteHoja[], fecha: Date, ahora: Date = new Date()): string {
+// Documento HTML completo de la hoja de un turno (sirve para imprimir la de hoy y la del histórico).
+export function construirHojaHTML(turno: Turno, pacientes: PacienteHoja[], fecha: Date): string {
   const porHab = new Map(pacientes.map((p) => [p.habitacion, p]))
   const maxHab = Math.max(33, ...pacientes.map((p) => p.habitacion))
   const filas = Array.from({ length: maxHab }, (_, k) => filaHTML(k + 1, porHab.get(k + 1), turno)).join('')
@@ -144,18 +137,18 @@ export function construirHojaHTML(turno: Turno, pacientes: PacienteHoja[], fecha
   const tituloCuidados = turno === 'noche' ? 'Cuidados / incidencias' : 'Cuidados'
   const thead = `<tr><th class="c-hab">Hb</th><th class="c-nom">Nombre</th>${cols.map((c) => `<th class="${c.clase}">${c.titulo}</th>`).join('')}<th class="c-m">Vía</th><th>${tituloCuidados}</th></tr>`
   const fechaTxt = fecha.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
-  const horaTxt = ahora.toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
   const control = turno === 'noche' ? `
     <div class="ctrl">
       <div><h2>Control</h2><ul>${CONTROL_NOCHE.map((x) => `<li>${escapeHtml(x)}</li>`).join('')}</ul></div>
       <div style="max-width:45mm"><h2>Comedor</h2><ul style="columns:1">${COMEDOR_NOCHE.map((x) => `<li>${escapeHtml(x)}</li>`).join('')}</ul></div>
     </div>` : ''
-  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Hoja de trabajo — ${TITULO_TURNO[turno]}</title><style>${ESTILO}</style></head><body class="${turno}">
-    <div class="cab"><h1>Hoja de trabajo · ${TITULO_TURNO[turno]}</h1><span>${escapeHtml(fechaTxt)}</span></div>
-    <table><thead>${thead}</thead><tbody>${filas}</tbody></table>
-    ${control}
-    <p class="pie">Impreso el ${escapeHtml(horaTxt)} · CJA Hospital</p>
-  </body></html>`
+  return documentoImpresion({
+    titulo: `Hoja de trabajo · ${TITULO_TURNO[turno]}`,
+    derecha: fechaTxt,
+    css: ESTILO,
+    claseBody: turno,
+    cuerpo: `<table><thead>${thead}</thead><tbody>${filas}</tbody></table>${control}`,
+  })
 }
 
 // Turno que toca ahora (mañana hasta las 15 h, tarde hasta las 22 h, luego noche).

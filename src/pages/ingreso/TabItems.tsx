@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Cargando } from '../../components/Cargando'
 import { supabase } from '../../lib/supabase'
 import type { ItemsPaciente } from '../../types'
 import ModalContencion from '../../components/ModalContencion'
@@ -106,7 +107,7 @@ function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo
       <div className="card p-6 space-y-3">
         <p className="section-title">Seguridad y conducta</p>
         {estadoContencion === 'cargando' ? (
-          <p className="text-sm text-slate-500">Cargando…</p>
+          <Cargando />
         ) : (
           <div className="flex items-center gap-2">
             {(['dia', 'noche'] as const).map((eje) => {
@@ -314,10 +315,10 @@ function HistoricoItems({ ingresoId }: { ingresoId: string }) {
     return String(v)
   }
 
-  if (loading) return <div className="text-xs text-slate-500 py-4 text-center">Cargando histórico…</div>
+  if (loading) return <Cargando texto="Cargando histórico…" />
   if (snapshots.length === 0) return (
     <div className="card p-6 text-center text-sm text-slate-500">
-      No hay snapshots guardados. Usa el botón "Snapshot del día" en la Hoja de Ítems.
+      No hay snapshots guardados. Usa el botón "Snapshot del día" en la Hoja de ítems.
     </div>
   )
 

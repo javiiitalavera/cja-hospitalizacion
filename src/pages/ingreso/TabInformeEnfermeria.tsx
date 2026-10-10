@@ -4,6 +4,7 @@
 // El informe se crea al guardar por primera vez (no existe antes).
 
 import { useEffect, useRef, useState } from 'react'
+import { Cargando } from '../../components/Cargando'
 import { Download, Lock } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { AvisoGuardado } from '../../components/AvisoGuardado'
@@ -171,7 +172,7 @@ export function TabInformeEnfermeria({ ingresoId, ingreso }: { ingresoId: string
     }
   }
 
-  if (cargando) return <p className="text-sm text-slate-500">Cargando…</p>
+  if (cargando) return <Cargando />
   if (errorCarga) {
     return (
       <div className="card p-4 text-sm max-w-3xl">

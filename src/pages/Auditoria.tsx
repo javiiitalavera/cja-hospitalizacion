@@ -1,7 +1,8 @@
 import { Fragment, useEffect, useState } from 'react'
+import { CabeceraPagina } from '../components/CabeceraPagina'
+import { Cargando } from '../components/Cargando'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
-import { History } from 'lucide-react'
 import { TIPO_EVENTO_LABEL } from '../types/eventos'
 import { CONTENCION_DIA_LABEL, CONTENCION_NOCHE_LABEL, type ContencionDia, type ContencionNoche } from '../types/contenciones'
 
@@ -323,11 +324,7 @@ export function Auditoria() {
 
   return (
     <div className="p-6 md:p-8 max-w-6xl">
-      <div className="flex items-center gap-2 mb-1">
-        <History className="w-5 h-5 text-slate-500" />
-        <h1 className="text-2xl font-bold text-slate-800">Auditoría de cambios</h1>
-      </div>
-      <p className="text-sm text-slate-500 mb-6">Quién ha creado, editado o borrado, y cuándo.</p>
+      <CabeceraPagina titulo="Auditoría de cambios" subtitulo="Quién ha creado, editado o borrado, y cuándo." />
 
       {(errorCambios || errorContencion || errorNombres) && (
         <div className="mb-4 space-y-2">
@@ -363,7 +360,7 @@ export function Auditoria() {
       </div>
 
       {cargando ? (
-        <p className="text-slate-500">Cargando…</p>
+        <Cargando />
       ) : filasFiltradas.length === 0 ? (
         errorCambios || errorContencion ? null : (
           <div className="card p-10 text-center text-slate-500 text-sm">No hay cambios registrados.</div>

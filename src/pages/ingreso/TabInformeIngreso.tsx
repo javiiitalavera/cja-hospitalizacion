@@ -12,6 +12,7 @@ import { CAMPOS_REVISAR } from '../../lib/reingreso'
 import { añadirResumen, textoEscalasCognitivo, textoEscalasFuncional } from '../../lib/resumenEscalas'
 import type { EscalaClinica } from '../../types/escalas'
 import { AvisoGuardado } from '../../components/AvisoGuardado'
+import { useConfirmar } from '../../components/useConfirmar'
 
 // Apartados que no se rellenan siempre: salen plegados ("+ añadir") salvo que ya tengan texto.
 const OPCIONALES_VGI: [keyof InformeIngreso, string][] = [
@@ -32,6 +33,7 @@ const CAMPOS_OPCIONALES = [...OPCIONAL_FAMILIARES, ...OPCIONALES_EXPLORACION, ..
 type EstadoGuardado = 'inactivo' | 'pendiente' | 'guardando' | 'guardado' | 'error' | 'conflicto'
 
 function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso: Ingreso | null }) {
+  const { confirmar, dialogo } = useConfirmar()
   const { esMedico } = useAuth()
   const [data, setData] = useState<Partial<InformeIngreso & { version: number }>>({})
   const [estado, setEstado] = useState<EstadoGuardado>('inactivo')
@@ -269,6 +271,7 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
 
   return (
     <div className="max-w-3xl space-y-6">
+      {dialogo}
       <AvisoGuardado avisos={[
         { estado, etiqueta: 'Informe' },
         { estado: estadoEscalas, etiqueta: 'Escalas', texto: 'Escalas guardadas' },
@@ -412,9 +415,11 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
         <button type="button"
           onClick={async () => {
             if (!ingreso) return
-            if (porRevisar.length > 0 && !window.confirm(
-              `Hay apartados copiados del ingreso anterior que aún no has revisado:\n\n• ${porRevisar.map((k) => CAMPOS_REVISAR[k] ?? k).join('\n• ')}\n\n¿Exportar el Word igualmente?`
-            )) return
+            if (porRevisar.length > 0 && !(await confirmar({
+              titulo: 'Hay apartados sin revisar',
+              mensaje: `Estos apartados se copiaron del ingreso anterior y aún no los has revisado:\n\n• ${porRevisar.map((k) => CAMPOS_REVISAR[k] ?? k).join('\n• ')}\n\n¿Exportar el Word igualmente?`,
+              textoConfirmar: 'Exportar igualmente',
+            }))) return
             if (!soloLectura) {
               const ok = await save()
               if (!ok) return

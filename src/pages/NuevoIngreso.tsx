@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Cargando } from '../components/Cargando'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { hoyLocal } from '../lib/fechas'
@@ -474,7 +475,7 @@ export default function NuevoIngreso() {
 
       {/* PASO 2a: Reingreso */}
       {paso === 'reingreso' && cargandoPacienteParam && (
-        <div className="text-slate-500 text-center py-10">Cargando paciente…</div>
+        <Cargando texto="Cargando paciente…" />
       )}
       {paso === 'reingreso' && !cargandoPacienteParam && pacienteSeleccionado && (
         <div>

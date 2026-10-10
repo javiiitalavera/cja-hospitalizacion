@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react'
+import { CabeceraPagina } from '../components/CabeceraPagina'
+import { BotonActualizar } from '../components/BotonActualizar'
+import { Cargando } from '../components/Cargando'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { escapeHtml, imprimirTablaHTML } from '../lib/imprimir'
 import { supabase } from '../lib/supabase'
-import { nombreCompleto } from '../types'
-import { ChevronDown, ChevronRight as ChevronRightIcon, Download, Printer, RefreshCw, Search, Plus } from 'lucide-react'
+import { nombreCompleto, nombreYApellido } from '../types'
+import { ChevronDown, ChevronRight as ChevronRightIcon, Download, Printer, Search, Plus } from 'lucide-react'
 import { TIPO_EVENTO_LABEL, TIPO_EVENTO_COLOR, TURNO_LABEL, CAMPOS_POR_TIPO, type TipoEvento } from '../types/eventos'
 import {
   severidadDia, severidadNoche, SEVERIDAD_ESTILO, necesitaConfirmacion, NOCHE_ES_CONTENCION,
@@ -110,16 +113,15 @@ export function Eventos() {
       const noche = nocheReal.length > 0 ? nocheReal.map((n) => CONTENCION_NOCHE_LABEL[n]).join(', ') : '—'
       return `<tr>
         <td>${c.ingreso.habitacion ?? '—'}</td>
-        <td>${escapeHtml(nombreCompleto(c.ingreso.paciente))}</td>
+        <td>${escapeHtml(nombreYApellido(c.ingreso.paciente))}</td>
         <td>${escapeHtml(dia)}</td>
         <td>${escapeHtml(noche)}</td>
         <td>${c.actualizado_en ? new Date(c.actualizado_en).toLocaleDateString('es-ES') : '—'}</td>
       </tr>`
     }).join('')
-    const ahora = new Date().toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
     imprimirTablaHTML(
       'Contenciones activas',
-      `${ordenadas.length} paciente${ordenadas.length === 1 ? '' : 's'} con contención pautada · ingresos activos · ${ahora}`,
+      `${ordenadas.length} paciente${ordenadas.length === 1 ? '' : 's'} con contención pautada · ingresos activos`,
       '<tr><th>Hab.</th><th>Paciente</th><th>Día</th><th>Noche</th><th>Última revisión</th></tr>',
       tbody,
     )
@@ -368,7 +370,7 @@ export function Eventos() {
         <td>${ev.turno ? escapeHtml(TURNO_LABEL[ev.turno]) : 'Sin turno especificado'}</td>
         <td>${escapeHtml(TIPO_EVENTO_LABEL[ev.tipo as TipoEvento])}</td>
         <td>${ev.estado === 'pendiente' ? 'Pendiente' : 'Completa'}</td>
-        <td>${ev.ingreso?.paciente ? escapeHtml(nombreCompleto(ev.ingreso.paciente)) : ''}</td>
+        <td>${ev.ingreso?.paciente ? escapeHtml(nombreYApellido(ev.ingreso.paciente)) : ''}</td>
         <td>${ev.habitacion_evento ?? ev.ingreso?.habitacion ?? ''}</td>
         <td>${ev.ingreso?.estado === 'activo' ? 'Activo' : 'Cerrado'}</td>
         <td>${escapeHtml(ev.notas ?? '')}</td>
@@ -383,26 +385,13 @@ export function Eventos() {
     <div className="p-6 md:p-8 space-y-8">
 
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800">Incidencias</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Estado de seguridad de la planta</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={actualizarTodo}
-            disabled={refreshing}
-            title="Actualizar"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 text-sm font-medium disabled:opacity-60"
-          >
-            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-          </button>
-          <button onClick={() => setSelectorPaciente(true)} className="btn-primary">
-            <Plus className="w-4 h-4" />
-            Registrar incidencia
-          </button>
-        </div>
-      </div>
+      <CabeceraPagina className="!mb-0" titulo="Incidencias" subtitulo="Estado de seguridad de la planta">
+        <BotonActualizar onClick={actualizarTodo} cargando={refreshing} />
+        <button onClick={() => setSelectorPaciente(true)} className="btn-primary">
+          <Plus className="w-4 h-4" />
+          Registrar incidencia
+        </button>
+      </CabeceraPagina>
 
       {selectorPaciente && !ingresoParaIncidencia && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setSelectorPaciente(false)}>
@@ -495,7 +484,7 @@ export function Eventos() {
         </div>
         <div className="card overflow-hidden">
           {loadingContenciones ? (
-            <p className="px-4 py-8 text-center text-slate-500 text-sm">Cargando…</p>
+            <Cargando />
           ) : errorContenciones ? (
             <p className="px-4 py-8 text-center text-red-600 text-sm">{errorContenciones}</p>
           ) : contenciones.length === 0 ? (

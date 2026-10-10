@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react'
+import { Cargando } from '../../components/Cargando'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/AuthContext'
+import { useConfirmar } from '../../components/useConfirmar'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
 import FormularioEvento from '../../components/FormularioEvento'
 import { TIPO_EVENTO_LABEL, TIPO_EVENTO_COLOR, TURNO_LABEL, CAMPOS_POR_TIPO, type Evento } from '../../types/eventos'
 
 function TabEventos({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo?: { nombre: string; habitacion?: number | null } }) {
   const { profesional, esAdmin } = useAuth()
+  const { confirmar, dialogo } = useConfirmar()
   const [eventos, setEventos] = useState<Evento[]>([])
   const [loading, setLoading] = useState(true)
   const [modal, setModal] = useState(false)
@@ -53,7 +56,7 @@ function TabEventos({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteIn
   useEffect(() => { fetchEventos() }, [ingresoId])
 
   async function eliminar(id: string) {
-    if (!confirm('¿Eliminar esta incidencia?')) return
+    if (!(await confirmar({ titulo: '¿Eliminar esta incidencia?', mensaje: 'No se puede deshacer.', textoConfirmar: 'Eliminar', peligro: true }))) return
     setErrorBorrar('')
     const { error } = await supabase.from('eventos').delete().eq('id', id)
     if (error) {
@@ -78,6 +81,7 @@ function TabEventos({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteIn
 
   return (
     <div className="max-w-3xl space-y-4">
+      {dialogo}
       {errorBorrar && (
         <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-2.5">{errorBorrar}</div>
       )}
@@ -90,7 +94,7 @@ function TabEventos({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteIn
       </div>
 
       {loading ? (
-        <div className="text-slate-500 text-sm py-8 text-center">Cargando…</div>
+        <Cargando />
       ) : errorCarga ? (
         <div className="card p-10 text-center space-y-2">
           <p className="text-red-600 text-sm">{errorCarga}</p>

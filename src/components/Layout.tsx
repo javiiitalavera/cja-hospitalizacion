@@ -18,7 +18,7 @@ const navItems = [
   { to: '/', icon: Home, label: 'Inicio', end: true },
   { to: '/pacientes', icon: Users, label: 'Pacientes' },
   { to: '/informes', icon: FileText, label: 'Informes' },
-  { to: '/items', icon: ClipboardList, label: 'Hoja de Ítems' },
+  { to: '/items', icon: ClipboardList, label: 'Hoja de ítems' },
   { to: '/hojas-turno', icon: ClipboardCheck, label: 'Hojas de turno' },
   { to: '/curas', icon: Bandage, label: 'Pauta de curas' },
   { to: '/eventos', icon: AlertTriangle, label: 'Incidencias' },

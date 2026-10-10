@@ -3,6 +3,7 @@
 // paciente (cómo ha ido cambiando su pauta).
 
 import { useEffect, useMemo, useState } from 'react'
+import { Cargando } from '../../components/Cargando'
 import { Printer } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { imprimirHTMLEnMarco } from '../../lib/imprimir'
@@ -82,7 +83,7 @@ function PorFecha() {
     [filas],
   )
 
-  if (limites === undefined) return <p className="text-sm text-slate-500 py-8 text-center">Cargando…</p>
+  if (limites === undefined) return <Cargando />
   if (limites === null) {
     return (
       <div className="card p-10 text-center text-slate-500 text-sm">
@@ -105,7 +106,7 @@ function PorFecha() {
         <span className="text-sm text-slate-500">{fecha && fechaLarga(fecha)}</span>
         {pacientes.length > 0 && (
           <button
-            onClick={() => imprimirHTMLEnMarco(construirHojaHTML(turno, pacientes, fechaDesdeTexto(fecha), new Date()))}
+            onClick={() => imprimirHTMLEnMarco(construirHojaHTML(turno, pacientes, fechaDesdeTexto(fecha)))}
             className="btn-secondary ml-auto"
           >
             <Printer className="w-4 h-4" /> Imprimir este día ({TURNOS.find((t) => t.clave === turno)?.etiqueta.toLowerCase()})
@@ -115,7 +116,7 @@ function PorFecha() {
       <TabsTurno turno={turno} onChange={setTurno} />
       {error && <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</div>}
       {cargando ? (
-        <p className="text-sm text-slate-500 py-8 text-center">Cargando…</p>
+        <Cargando />
       ) : pacientes.length === 0 ? (
         <div className="card p-8 text-center text-slate-500 text-sm">No hay hoja guardada para esta fecha.</div>
       ) : (
@@ -200,7 +201,7 @@ function PorPaciente() {
       {error && <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</div>}
 
       {elegido && (cargando ? (
-        <p className="text-sm text-slate-500 py-8 text-center">Cargando historial…</p>
+        <Cargando texto="Cargando historial…" />
       ) : dias.length === 0 ? (
         <div className="card p-8 text-center text-slate-500 text-sm">
           Sin histórico de pauta para {sel ? `${sel.primer_apellido}, ${sel.nombre}` : 'este paciente'}.

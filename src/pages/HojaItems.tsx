@@ -1,11 +1,14 @@
 import { useEffect, useState, useMemo, useCallback } from 'react'
+import { CabeceraPagina } from '../components/CabeceraPagina'
+import { BotonActualizar } from '../components/BotonActualizar'
+import { Cargando } from '../components/Cargando'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { fetchContencionesPorIngreso } from '../lib/contenciones'
 import { useAuth } from '../lib/AuthContext'
 import type { ItemsPaciente } from '../types'
 import { SEMAFORO_CAIDAS_COLOR as SEMAFORO_COLOR } from '../types'
-import { Printer, History, RefreshCw } from 'lucide-react'
+import { Printer, History } from 'lucide-react'
 import type { ContencionDia, ContencionNoche } from '../types/contenciones'
 import type { IngresoConItems } from './hojaItems/tipos'
 import { FILAS_PLANAS } from './hojaItems/constantes'
@@ -157,7 +160,7 @@ export default function HojaItems() {
         // está pasando de verdad. No se toca "data": si ya había una
         // lista cargada de antes, se queda visible en vez de
         // borrarse, hasta que una recarga funcione de verdad.
-        setError('No se ha podido cargar la Hoja de Ítems: ' + errPrincipal.message)
+        setError('No se ha podido cargar la Hoja de ítems: ' + errPrincipal.message)
         return
       }
 
@@ -237,62 +240,51 @@ export default function HojaItems() {
     [esMedico, navigate]
   )
 
-  if (loading) return <div className="p-8 text-slate-500">Cargando…</div>
+  if (loading) return <Cargando pagina />
 
   return (
     <div className={`p-4 transition-all duration-200 ${selected ? 'mr-80' : ''}`}>
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800">Hoja de ítems</h1>
-          <p className="text-sm text-slate-500 capitalize">{today}</p>
-          {!selected && <p className="text-xs text-slate-500 mt-0.5">Click en un paciente para editar sus ítems</p>}
+      <CabeceraPagina
+        titulo="Hoja de ítems"
+        subtitulo={<><span className="inline-block first-letter:uppercase">{today}</span>{!selected && ' · haz clic en un paciente para editar sus ítems'}</>}
+      >
+        <div className="flex items-center gap-2 text-xs text-slate-500">
+          {['verde', 'amarillo', 'naranja', 'rojo'].map((c) => (
+            <span key={c} className="flex items-center gap-1">
+              <span
+                className="w-3 h-3 rounded-full inline-block border border-slate-300"
+                style={{ backgroundColor: SEMAFORO_COLOR[c] }}
+              />
+              {c}
+            </span>
+          ))}
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 text-xs text-slate-500">
-            {['verde', 'amarillo', 'naranja', 'rojo'].map((c) => (
-              <span key={c} className="flex items-center gap-1">
-                <span
-                  className="w-3 h-3 rounded-full inline-block border border-slate-300"
-                  style={{ backgroundColor: SEMAFORO_COLOR[c] }}
-                />
-                {c}
-              </span>
-            ))}
-          </div>
-          <button
-            onClick={fetchData}
-            disabled={refreshing}
-            title="Actualizar"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 text-sm font-medium disabled:opacity-60"
-          >
-            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+        <BotonActualizar onClick={fetchData} cargando={refreshing} />
+        <button
+          onClick={() => {
+            setVerHistorico((v) => !v)
+            if (!verHistorico) {
+              if (fechasSnapshot.length > 0) cargarSnapshot(fechasSnapshot[0])
+              if (pacientesConHistorial.length === 0) fetchPacientesConHistorial()
+            }
+          }}
+          className={`btn-secondary ${verHistorico ? 'bg-slate-100' : ''}`}
+        >
+          <History className="w-4 h-4" />
+          {verHistorico ? 'Ver hoy' : 'Histórico'}
+        </button>
+        {/* Antes este botón imprimía siempre la hoja de HOY, incluso
+            estando dentro de la vista de histórico — parecía que
+            imprimía lo que se estaba viendo, y no era así. Se
+            oculta mientras se consulta el histórico; cada modo
+            tiene ahora su propio botón de imprimir, sin ambigüedad. */}
+        {!verHistorico && (
+          <button onClick={() => printHoja(data, today)} className="btn-secondary">
+            <Printer className="w-4 h-4" />
+            Imprimir
           </button>
-          <button
-            onClick={() => {
-              setVerHistorico((v) => !v)
-              if (!verHistorico) {
-                if (fechasSnapshot.length > 0) cargarSnapshot(fechasSnapshot[0])
-                if (pacientesConHistorial.length === 0) fetchPacientesConHistorial()
-              }
-            }}
-            className={`btn-secondary ${verHistorico ? 'bg-slate-100' : ''}`}
-          >
-            <History className="w-4 h-4" />
-            {verHistorico ? 'Ver hoy' : 'Histórico'}
-          </button>
-          {/* Antes este botón imprimía siempre la hoja de HOY, incluso
-              estando dentro de la vista de histórico — parecía que
-              imprimía lo que se estaba viendo, y no era así. Se
-              oculta mientras se consulta el histórico; cada modo
-              tiene ahora su propio botón de imprimir, sin ambigüedad. */}
-          {!verHistorico && (
-            <button onClick={() => printHoja(data, today)} className="btn-secondary">
-              <Printer className="w-4 h-4" />
-              Imprimir
-            </button>
-          )}
-        </div>
-      </div>
+        )}
+      </CabeceraPagina>
 
       {error && (
         <div className="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 flex items-center justify-between gap-3">
@@ -357,7 +349,7 @@ export default function HojaItems() {
                   )}
                 </div>
                 {loadingSnapshot ? (
-                  <div className="text-slate-500 text-sm py-8 text-center">Cargando…</div>
+                  <Cargando />
                 ) : snapshotData.length === 0 ? (
                   <div className="card p-8 text-center text-slate-500 text-sm">Sin datos para esta fecha.</div>
                 ) : (
@@ -400,7 +392,7 @@ export default function HojaItems() {
 
               {pacienteSeleccionadoHist &&
                 (loadingHistorial ? (
-                  <div className="text-slate-500 text-sm py-8 text-center">Cargando historial…</div>
+                  <Cargando texto="Cargando historial…" />
                 ) : historialPaciente.length === 0 ? (
                   <div className="card p-8 text-center text-slate-500 text-sm">
                     Sin histórico de ítems para {pacienteSeleccionadoHist.primer_apellido}, {pacienteSeleccionadoHist.nombre}.

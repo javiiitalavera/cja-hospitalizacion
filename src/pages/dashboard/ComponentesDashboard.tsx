@@ -1,11 +1,12 @@
 import { AlertCircle, RefreshCw } from 'lucide-react'
+import { Cargando } from '../../components/Cargando'
 
 // Los cuatro estados que puede tener cualquier apartado — nunca se
 // convierte un fallo en un cero, ni un "sin datos todavía" se
 // confunde con "no se pudo calcular".
 
 export function EstadoCargando() {
-  return <p className="text-slate-500 text-sm py-6 text-center">Cargando…</p>
+  return <Cargando />
 }
 
 export function EstadoSinDatos({ mensaje = 'Sin datos para este periodo.' }: { mensaje?: string }) {

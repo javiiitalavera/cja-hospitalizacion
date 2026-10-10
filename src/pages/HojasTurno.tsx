@@ -4,9 +4,13 @@
 // las columnas en blanco se rellenan a mano.
 
 import { useEffect, useMemo, useState } from 'react'
-import { History, Printer, RefreshCw } from 'lucide-react'
+import { Cargando } from '../components/Cargando'
+import { History, Printer } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
+import { CabeceraPagina } from '../components/CabeceraPagina'
+import { BotonActualizar } from '../components/BotonActualizar'
+import { AvisoGuardado, useAvisoGuardado } from '../components/AvisoGuardado'
 import { fetchContencionesPorIngreso } from '../lib/contenciones'
 import { imprimirHTMLEnMarco } from '../lib/imprimir'
 import { TURNOS, type Turno, type ViaPaciente } from '../types/pautaCuidados'
@@ -27,8 +31,7 @@ export default function HojasTurno() {
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')
   const [aviso, setAviso] = useState('')
-  const [errorAccion, setErrorAccion] = useState('')
-  const [cargadoEn, setCargadoEn] = useState<Date>(new Date())
+  const { avisos, guardado, fallo } = useAvisoGuardado('Hoja de turno')
 
   async function cargar() {
     setCargando(true)
@@ -82,7 +85,6 @@ export default function HojasTurno() {
         indicaciones: indPorIngreso.get(i.id) ?? [],
       }
     }))
-    setCargadoEn(new Date())
     setCargando(false)
   }
 
@@ -93,8 +95,10 @@ export default function HojasTurno() {
     setPacientes((l) => l.map((p) => (p.ingresoId === ingresoId ? f(p) : p)))
   }
 
+  // Resultado de una escritura (mensaje de error, o null si fue bien): avisa en pantalla.
   async function ejecutar(error: string | null): Promise<boolean> {
-    setErrorAccion(error ? 'No se pudo guardar: ' + error : '')
+    if (error) fallo(error)
+    else guardado()
     return !error
   }
 
@@ -126,35 +130,27 @@ export default function HojasTurno() {
   } : undefined
 
   const etiquetaTurno = TURNOS.find((t) => t.clave === turno)?.etiqueta.toLowerCase()
-  const html = useMemo(() => construirHojaHTML(turno, pacientes, new Date(), cargadoEn), [turno, pacientes, cargadoEn])
+  const html = useMemo(() => construirHojaHTML(turno, pacientes, new Date()), [turno, pacientes])
 
   return (
     <div className="p-6 md:p-8 space-y-5">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800">Hojas de turno</h1>
-          <p className="text-sm text-slate-500 mt-0.5">
-            Hojas de trabajo de las auxiliares con los pacientes y las indicaciones de enfermería
-            {esEnfermeria ? ' · puedes editarlas aquí mismo' : ' · solo lectura: las escribe enfermería'}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {!verHistorico && (
-            <button onClick={cargar} disabled={cargando} title="Actualizar" aria-label="Actualizar"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 text-sm font-medium disabled:opacity-60">
-              <RefreshCw className={`w-4 h-4 ${cargando ? 'animate-spin' : ''}`} />
-            </button>
-          )}
-          <button onClick={() => setVerHistorico((v) => !v)} className={`btn-secondary ${verHistorico ? 'bg-slate-100' : ''}`}>
-            <History className="w-4 h-4" /> {verHistorico ? 'Ver hoy' : 'Histórico'}
+      <CabeceraPagina
+        className="!mb-0"
+        titulo="Hojas de turno"
+        subtitulo={`Hojas de trabajo de las auxiliares con los pacientes y las indicaciones de enfermería${esEnfermeria ? ' · puedes editarlas aquí mismo' : ' · solo lectura: las escribe enfermería'}`}
+      >
+        {!verHistorico && <BotonActualizar onClick={cargar} cargando={cargando} />}
+        <button onClick={() => setVerHistorico((v) => !v)} className={`btn-secondary ${verHistorico ? 'bg-slate-100' : ''}`}>
+          <History className="w-4 h-4" /> {verHistorico ? 'Ver hoy' : 'Histórico'}
+        </button>
+        {!verHistorico && (
+          <button onClick={() => imprimirHTMLEnMarco(html)} disabled={cargando || !!error} className="btn-primary">
+            <Printer className="w-4 h-4" /> Imprimir {etiquetaTurno}
           </button>
-          {!verHistorico && (
-            <button onClick={() => imprimirHTMLEnMarco(html)} disabled={cargando || !!error} className="btn-primary">
-              <Printer className="w-4 h-4" /> Imprimir {etiquetaTurno}
-            </button>
-          )}
-        </div>
-      </div>
+        )}
+      </CabeceraPagina>
+
+      <AvisoGuardado avisos={avisos} />
 
       {verHistorico ? (
         <HistoricoHojas />
@@ -162,11 +158,10 @@ export default function HojasTurno() {
         <>
           <TabsTurno turno={turno} onChange={setTurno} />
           {aviso && <div className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">{aviso}</div>}
-          {errorAccion && <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{errorAccion}</div>}
           {error ? (
             <p className="text-sm text-red-600 py-8 text-center">{error}</p>
           ) : cargando ? (
-            <p className="text-sm text-slate-500 py-8 text-center">Cargando…</p>
+            <Cargando />
           ) : (
             <>
               <p className="text-xs text-slate-500">

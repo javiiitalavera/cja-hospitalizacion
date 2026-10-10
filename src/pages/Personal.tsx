@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import { CabeceraPagina } from '../components/CabeceraPagina'
+import { Cargando } from '../components/Cargando'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import type { Profesional, Rol } from '../types'
@@ -182,15 +184,11 @@ export function Personal() {
 
   return (
     <div className="p-6 md:p-8 max-w-6xl">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800">Personal</h1>
-          <p className="text-sm text-slate-500">Gestión de cuentas, roles y permisos.</p>
-        </div>
+      <CabeceraPagina titulo="Personal" subtitulo="Gestión de cuentas, roles y permisos.">
         <button onClick={() => setMostrarForm(true)} className="btn-primary">
           <UserPlus className="w-4 h-4" /> Nuevo profesional
         </button>
-      </div>
+      </CabeceraPagina>
 
       {errorCarga && (
         <div className="mb-4 text-sm rounded-lg px-3 py-2 border bg-red-50 text-red-600 border-red-100 flex items-center justify-between gap-3">
@@ -230,7 +228,7 @@ export function Personal() {
       </div>
 
       {cargando ? (
-        <p className="text-slate-500">Cargando…</p>
+        <Cargando />
       ) : (
         <div className="card overflow-hidden">
           <table className="w-full text-sm">

@@ -5,6 +5,7 @@
 import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/AuthContext'
+import { useConfirmar } from '../../components/useConfirmar'
 import { hoyLocal } from '../../lib/fechas'
 import { TarjetaLesion, FormularioLesion, FormularioValoracion } from '../ingreso/TabCuras'
 import { Modal } from './Modal'
@@ -20,6 +21,7 @@ export function ModalCura({
   onCambio: () => Promise<void>
 }) {
   const { profesional, esAdmin } = useAuth()
+  const { confirmar, dialogo } = useConfirmar()
   const [formLesion, setFormLesion] = useState(false)
   const [formValoracion, setFormValoracion] = useState<{ editando: Valoracion | null } | null>(null)
   const [errorAccion, setErrorAccion] = useState('')
@@ -39,7 +41,7 @@ export function ModalCura({
   }
 
   async function eliminarLesion() {
-    if (!confirm(`¿Eliminar «${lesion.localizacion}» y todas sus valoraciones? No se puede deshacer.`)) return
+    if (!(await confirmar({ titulo: `¿Eliminar «${lesion.localizacion}»?`, mensaje: 'Se eliminará con todas sus valoraciones. No se puede deshacer.', textoConfirmar: 'Eliminar', peligro: true }))) return
     setErrorAccion('')
     const { error, count } = await supabase.from('curas_lesiones').delete({ count: 'exact' }).eq('id', lesion.id)
     if (error) { setErrorAccion('No se pudo eliminar: ' + error.message); return }
@@ -49,7 +51,7 @@ export function ModalCura({
   }
 
   async function eliminarValoracion(v: Valoracion) {
-    if (!confirm('¿Eliminar esta valoración?')) return
+    if (!(await confirmar({ titulo: '¿Eliminar esta valoración?', mensaje: 'No se puede deshacer.', textoConfirmar: 'Eliminar', peligro: true }))) return
     setErrorAccion('')
     const { error, count } = await supabase.from('curas_valoraciones').delete({ count: 'exact' }).eq('id', v.id)
     if (error) { setErrorAccion('No se pudo eliminar: ' + error.message); return }
@@ -59,6 +61,7 @@ export function ModalCura({
 
   return (
     <>
+      {dialogo}
       <Modal titulo={titulo} onClose={onCerrar} ancho="max-w-3xl">
         {errorAccion && (
           <p className="mb-3 text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{errorAccion}</p>

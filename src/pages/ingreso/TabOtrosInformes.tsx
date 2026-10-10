@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
+import { Cargando } from '../../components/Cargando'
 import { useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Download, FileText, Lock, Plus, Trash2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { AvisoGuardado } from '../../components/AvisoGuardado'
+import { useConfirmar } from '../../components/useConfirmar'
 import { useAuth } from '../../lib/AuthContext'
 import { exportarInformePuntual } from '../../lib/exportWord'
 import type { Ingreso } from '../../types'
@@ -134,7 +136,7 @@ export function TabOtrosInformes({ ingresoId, ingreso }: { ingresoId: string; in
         </div>
       )}
 
-      {loading && <p className="text-sm text-slate-500">Cargando…</p>}
+      {loading && <Cargando />}
       {errorCarga && (
         <div className="card p-4 text-sm">
           <p className="text-red-600">{errorCarga}</p>
@@ -181,6 +183,7 @@ function EditorInforme({
   esMedico: boolean
   onVolver: () => void
 }) {
+  const { confirmar, dialogo } = useConfirmar()
   const plantilla = plantillaPorId(informe.plantilla)
   const [campos, setCampos] = useState<Record<string, string>>(informe.campos ?? {})
   const [estado, setEstado] = useState<EstadoGuardado>('inactivo')
@@ -279,7 +282,7 @@ function EditorInforme({
   }
 
   async function eliminar() {
-    if (!window.confirm('¿Eliminar este informe? No se puede deshacer.')) return
+    if (!(await confirmar({ titulo: '¿Eliminar este informe?', mensaje: 'No se puede deshacer.', textoConfirmar: 'Eliminar', peligro: true }))) return
     setErrorAccion('')
     if (debounceRef.current) clearTimeout(debounceRef.current)
     sucioRef.current = false
@@ -293,6 +296,7 @@ function EditorInforme({
 
   return (
     <div className="max-w-3xl space-y-6">
+      {dialogo}
       <AvisoGuardado avisos={[{ estado, etiqueta: 'Informe', error: errorGuardado }]} />
       <div className="flex items-center justify-between gap-3">
         <button onClick={volver} className="text-sm text-slate-500 hover:text-slate-700 flex items-center gap-1">

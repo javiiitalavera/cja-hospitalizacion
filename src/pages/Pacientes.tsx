@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { CabeceraPagina } from '../components/CabeceraPagina'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { escaparBusquedaIlike, quitarTildes } from '../lib/busqueda'
@@ -169,19 +170,16 @@ export default function Pacientes() {
 
   return (
     <div className="p-6 md:p-8">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800">Pacientes</h1>
-          <p className="text-sm text-slate-500 mt-0.5">
-            {loading ? '…' : `${total} resultado${total !== 1 ? 's' : ''}`} · todos los pacientes de la clínica
-          </p>
-        </div>
+      <CabeceraPagina
+        titulo="Pacientes"
+        subtitulo={`${loading ? '…' : `${total} resultado${total !== 1 ? 's' : ''}`} · todos los pacientes de la clínica`}
+      >
         {esMedico && (
           <Link to="/pacientes/nuevo" className="btn-primary">
             <Plus className="w-4 h-4" /> Nuevo ingreso
           </Link>
         )}
-      </div>
+      </CabeceraPagina>
 
       <div className="flex gap-3 mb-5 flex-wrap items-center">
         <div className="relative flex-1 max-w-sm">

@@ -60,6 +60,11 @@ export interface Paciente {
 // "Apellidos, Nombre", con los dos apellidos si el paciente tiene
 // segundo apellido. Único sitio que da formato al nombre completo,
 // para que todas las pantallas lo muestren igual.
+// «Nombre Apellido» (nombre y primer apellido): como sale en las hojas impresas.
+export function nombreYApellido(p: { nombre: string; primer_apellido: string }): string {
+  return `${p.nombre} ${p.primer_apellido}`.trim()
+}
+
 export function nombreCompleto(p: { nombre: string; primer_apellido: string; segundo_apellido?: string | null }): string {
   const apellidos = p.segundo_apellido ? `${p.primer_apellido} ${p.segundo_apellido}` : p.primer_apellido
   return `${apellidos}, ${p.nombre}`

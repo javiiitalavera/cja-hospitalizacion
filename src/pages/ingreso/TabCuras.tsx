@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Cargando } from '../../components/Cargando'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/AuthContext'
+import { useConfirmar } from '../../components/useConfirmar'
 import { hoyLocal } from '../../lib/fechas'
 import { Plus, Pencil, Trash2, CheckCircle2, Circle, ChevronDown, ChevronRight, XCircle, Lock } from 'lucide-react'
 import { Modal } from '../curas/Modal'
@@ -465,6 +467,7 @@ export function TarjetaLesion({
 // ── Pestaña Curas de la ficha ────────────────────────────────
 export function TabCuras({ ingresoId, episodioActivo }: { ingresoId: string; episodioActivo: boolean }) {
   const { profesional, esAdmin } = useAuth()
+  const { confirmar, dialogo } = useConfirmar()
   const [lesiones, setLesiones] = useState<Lesion[]>([])
   const [marcaHoy, setMarcaHoy] = useState<RegistroCura | null>(null)
   // fechas con la cura hecha (últimos días): hacen falta para saber si hoy toca
@@ -517,7 +520,7 @@ export function TabCuras({ ingresoId, episodioActivo }: { ingresoId: string; epi
   }
 
   async function eliminarLesion(l: Lesion) {
-    if (!confirm(`¿Eliminar «${l.localizacion}» y todas sus valoraciones? No se puede deshacer.`)) return
+    if (!(await confirmar({ titulo: `¿Eliminar «${l.localizacion}»?`, mensaje: 'Se eliminará con todas sus valoraciones. No se puede deshacer.', textoConfirmar: 'Eliminar', peligro: true }))) return
     setErrorAccion('')
     const { error, count } = await supabase.from('curas_lesiones').delete({ count: 'exact' }).eq('id', l.id)
     if (error) setErrorAccion('No se pudo eliminar: ' + error.message)
@@ -526,7 +529,7 @@ export function TabCuras({ ingresoId, episodioActivo }: { ingresoId: string; epi
   }
 
   async function eliminarValoracion(v: Valoracion) {
-    if (!confirm('¿Eliminar esta valoración?')) return
+    if (!(await confirmar({ titulo: '¿Eliminar esta valoración?', mensaje: 'No se puede deshacer.', textoConfirmar: 'Eliminar', peligro: true }))) return
     setErrorAccion('')
     const { error, count } = await supabase.from('curas_valoraciones').delete({ count: 'exact' }).eq('id', v.id)
     if (error) setErrorAccion('No se pudo eliminar: ' + error.message)
@@ -534,7 +537,7 @@ export function TabCuras({ ingresoId, episodioActivo }: { ingresoId: string; epi
     await cargar()
   }
 
-  if (loading) return <p className="text-slate-500 text-sm">Cargando curas…</p>
+  if (loading) return <Cargando texto="Cargando curas…" />
   if (errorCarga) {
     return (
       <div className="card p-6 max-w-md">
@@ -547,6 +550,7 @@ export function TabCuras({ ingresoId, episodioActivo }: { ingresoId: string; epi
 
   return (
     <div className="max-w-4xl space-y-5">
+      {dialogo}
       {!episodioActivo && (
         <div className="flex items-center gap-2 text-sm text-slate-600 bg-slate-100 border border-slate-200 rounded-lg px-3 py-2">
           <Lock className="w-4 h-4 shrink-0" />

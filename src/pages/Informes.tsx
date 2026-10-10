@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { CabeceraPagina } from '../components/CabeceraPagina'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { Search, FileText, LogOut, HeartPulse, Ambulance, ClipboardList, FilePen, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react'
@@ -225,11 +226,12 @@ export function Informes() {
 
   return (
     <div className="p-6 md:p-8">
+      <CabeceraPagina
+        className="!mb-2"
+        titulo="Informes"
+        subtitulo={`${loading ? '…' : `${lista.length} informe${lista.length !== 1 ? 's' : ''}`} · historial de informes de ingreso, alta, enfermería y otros`}
+      />
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-800">Informes</h1>
-        <p className="text-sm text-slate-500 mt-0.5">
-          {loading ? '…' : `${lista.length} informe${lista.length !== 1 ? 's' : ''}`} · historial de informes de ingreso, alta, enfermería y otros
-        </p>
         {posibleTruncado && (
           <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-3 py-1.5 mt-2 inline-block">
             El historial es muy grande: puede que falten los informes más antiguos. Filtra por año para acotar la búsqueda.

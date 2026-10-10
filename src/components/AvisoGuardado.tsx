@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import { AlertCircle, Check } from 'lucide-react'
 
 // Aviso flotante de guardado. El indicador de arriba del informe se queda fuera de la pantalla
@@ -24,4 +25,22 @@ export function AvisoGuardado({ avisos }: {
       ))}
     </div>
   )
+}
+
+// Para las pantallas que guardan al instante (sin botón «Guardar»): da el aviso verde al terminar
+// y el rojo, con el motivo, si falla. Se pinta con <AvisoGuardado avisos={avisos} />.
+export function useAvisoGuardado(etiqueta: string, texto = 'Cambio guardado') {
+  const [aviso, setAviso] = useState<{ estado: EstadoAviso; error?: string }>({ estado: 'inactivo' })
+  const temporizador = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => { if (temporizador.current) clearTimeout(temporizador.current) }, [])
+  function mostrar(estado: EstadoAviso, error?: string) {
+    if (temporizador.current) clearTimeout(temporizador.current)
+    setAviso({ estado, error })
+    temporizador.current = setTimeout(() => setAviso({ estado: 'inactivo' }), estado === 'error' ? 7000 : 2500)
+  }
+  return {
+    avisos: [{ estado: aviso.estado, etiqueta, texto, error: aviso.error }],
+    guardado: () => mostrar('guardado'),
+    fallo: (mensaje: string) => mostrar('error', mensaje),
+  }
 }

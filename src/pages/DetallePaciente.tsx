@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Cargando } from '../components/Cargando'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
@@ -156,7 +157,7 @@ export default function DetallePaciente() {
     setEditando(false)
   }
 
-  if (loading) return <div className="p-8 text-slate-500">Cargando…</div>
+  if (loading) return <Cargando pagina />
   if (errorCarga) {
     return (
       <div className="p-8">

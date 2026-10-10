@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Cargando } from '../../components/Cargando'
 import { supabase } from '../../lib/supabase'
 import { AvisoGuardado } from '../../components/AvisoGuardado'
 import type { Ingreso } from '../../types'
@@ -354,7 +355,7 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
   const nombreDelPaciente = p ? nombreCompleto(p) : '—'
   const edadPaciente = edad(p?.fecha_nacimiento)
 
-  if (loading) return <div className="text-slate-500 text-center py-10">Cargando…</div>
+  if (loading) return <Cargando />
 
   return (
     <div className="max-w-2xl space-y-6">

@@ -4,6 +4,7 @@
 import { useState } from 'react'
 import { Check, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { ChipsTurno } from '../../components/ChipsTurno'
+import { useConfirmar } from '../../components/useConfirmar'
 import {
   MAX_TEXTO_PAUTA, TURNOS, VIA_LABEL,
   type Turno, type ViaPaciente,
@@ -33,6 +34,7 @@ export function FilaPaciente({ n, p, turno, columnas, acciones }: {
   const [nuevoTexto, setNuevoTexto] = useState('')
   const [nuevosTurnos, setNuevosTurnos] = useState<Turno[]>([turno])
   const [ocupado, setOcupado] = useState(false)
+  const { confirmar, dialogo } = useConfirmar()
 
   if (!p) {
     return (
@@ -73,7 +75,7 @@ export function FilaPaciente({ n, p, turno, columnas, acciones }: {
 
   async function quitar(i: IndicacionHoja) {
     if (!acciones || !ingresoId || !i.id) return
-    if (!window.confirm(`¿Quitar esta indicación de la pauta de ${p!.nombre}?`)) return
+    if (!(await confirmar({ titulo: '¿Quitar esta indicación?', mensaje: `Se quitará de la pauta de ${p!.nombre}.`, textoConfirmar: 'Quitar', peligro: true }))) return
     await envolver(() => acciones.borrar(ingresoId, i.id!))
   }
 
@@ -216,6 +218,7 @@ export function FilaPaciente({ n, p, turno, columnas, acciones }: {
             </button>
           ))}
 
+          {dialogo}
           {!editable && delTurno.length === 0 && avisos.length === 0 && <span className="text-slate-300 text-xs">—</span>}
         </div>
       </td>

@@ -3,10 +3,13 @@
 // el resto lee. Con el episodio cerrado todo queda en solo lectura.
 
 import { useEffect, useState } from 'react'
+import { Cargando } from '../../components/Cargando'
 import { Lock, Pencil, Plus, Trash2, Check, X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/AuthContext'
 import { ChipsTurno } from '../../components/ChipsTurno'
+import { AvisoGuardado, useAvisoGuardado } from '../../components/AvisoGuardado'
+import { useConfirmar } from '../../components/useConfirmar'
 import {
   anadirIndicacion, borrarIndicacion, cambiarTextoIndicacion, cambiarTurnosIndicacion, guardarVia,
 } from '../hojasTurno/operaciones'
@@ -21,7 +24,8 @@ export function TabPautaCuidados({ ingresoId, episodioActivo }: { ingresoId: str
 
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')
-  const [errorAccion, setErrorAccion] = useState('')
+  const { avisos, guardado, fallo } = useAvisoGuardado('Pauta de cuidados')
+  const { confirmar, dialogo } = useConfirmar()
   const [indicaciones, setIndicaciones] = useState<IndicacionCuidado[]>([])
   const [via, setVia] = useState<ViaPaciente | null>(null)
 
@@ -53,17 +57,16 @@ export function TabPautaCuidados({ ingresoId, episodioActivo }: { ingresoId: str
     setEditando(null)
     setNuevoTexto('')
     setNuevosTurnos(TODOS_TURNOS)
-    setErrorAccion('')
     cargar()
   }, [ingresoId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Ejecuta una escritura (devuelve el mensaje de error, o null si fue bien).
   async function ejecutar(accion: () => Promise<string | null>): Promise<boolean> {
     setOcupado(true)
-    setErrorAccion('')
     const e = await accion()
     setOcupado(false)
-    if (e) { setErrorAccion('No se pudo guardar: ' + e); return false }
+    if (e) { fallo(e); return false }
+    guardado()
     return true
   }
 
@@ -102,12 +105,12 @@ export function TabPautaCuidados({ ingresoId, episodioActivo }: { ingresoId: str
 
   async function borrar(i: IndicacionCuidado) {
     if (!puedeEditar || ocupado) return
-    if (!window.confirm('¿Quitar esta indicación de la pauta?')) return
+    if (!(await confirmar({ titulo: '¿Quitar esta indicación?', mensaje: 'Se quitará de la pauta de cuidados del paciente.', textoConfirmar: 'Quitar', peligro: true }))) return
     const ok = await ejecutar(() => borrarIndicacion(i.id))
     if (ok) setIndicaciones((l) => l.filter((x) => x.id !== i.id))
   }
 
-  if (cargando) return <p className="text-sm text-slate-500 py-8 text-center">Cargando…</p>
+  if (cargando) return <Cargando />
   if (error) return <p className="text-sm text-red-600 py-8 text-center">{error}</p>
 
   return (
@@ -125,9 +128,8 @@ export function TabPautaCuidados({ ingresoId, episodioActivo }: { ingresoId: str
             : 'Episodio cerrado: la pauta queda en solo lectura.'}
         </div>
       )}
-      {errorAccion && (
-        <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{errorAccion}</div>
-      )}
+      <AvisoGuardado avisos={avisos} />
+      {dialogo}
 
       {/* Vía */}
       <section>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Cargando } from '../components/Cargando'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { hoyLocal, edad } from '../lib/fechas'
@@ -182,7 +183,7 @@ export default function DetalleIngreso() {
     setModalAlta(false)
   }
 
-  if (loading) return <div className="p-8 text-slate-500">Cargando…</div>
+  if (loading) return <Cargando pagina />
   if (errorCarga) {
     return (
       <div className="p-8">

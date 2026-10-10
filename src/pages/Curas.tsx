@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
+import { CabeceraPagina } from '../components/CabeceraPagina'
 import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, Check, X, Printer, Pencil } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import { hoyLocal } from '../lib/fechas'
-import { nombreCompleto } from '../types'
-import { escapeHtml } from '../lib/imprimir'
+import { nombreCompleto, nombreYApellido } from '../types'
+import { documentoImpresion, escapeHtml, imprimirHTMLEnMarco } from '../lib/imprimir'
 import {
   CARACTERISTICA_LABEL, DIAS_CORTO, DIAS_LARGO,
   lunesDe, sumarDias, fechaCorta, fechaLarga, pautaVigente, textoPauta, fechasQueTocaLesion, DIAS_HISTORIAL_CURAS,
@@ -26,35 +27,28 @@ function imprimirHoja(pacientes: PacienteConCuras[], semana: string[], registros
   const cab = semana.map((d, i) => `<th>${DIAS_LARGO[i]}<br><span class="f">${fechaCorta(d)}</span></th>`).join('')
   const filasSemana = pacientes.map((p) => {
     const celdas = semana.map((d) => `<td class="c">${(() => { const r = registros.get(`${p.id}|${d}`); return r ? (r.estado === 'no_realizada' ? '✗' : '✓') : '' })()}</td>`).join('')
-    return `<tr><td class="n">${escapeHtml(nombreCompleto(p.paciente))} (hab. ${p.habitacion ?? '—'})</td>${celdas}</tr>`
+    return `<tr><td class="n">${escapeHtml(nombreYApellido(p.paciente))} (hab. ${p.habitacion ?? '—'})</td>${celdas}</tr>`
   }).join('')
   const filasCuidados = pacientes.map((p) => {
     const l = p.lesiones.map((x) =>
       `<div><b>${escapeHtml(x.localizacion)}</b> <span class="t">(${escapeHtml(CARACTERISTICA_LABEL[x.caracteristicas])})</span>: ${escapeHtml(textoPauta(pautaVigente(x.valoraciones)))}</div>`
     ).join('')
-    return `<tr><td class="n">${escapeHtml(nombreCompleto(p.paciente))} (hab. ${p.habitacion ?? '—'})</td><td>${l}</td></tr>`
+    return `<tr><td class="n">${escapeHtml(nombreYApellido(p.paciente))} (hab. ${p.habitacion ?? '—'})</td><td>${l}</td></tr>`
   }).join('')
-  const html = `<html><head><title>Pauta de curas</title><style>
-    @page { size: A4 portrait; margin: 12mm; }
-    body { font-family: Arial, sans-serif; font-size: 10pt; }
-    h1 { font-size: 13pt; margin: 0 0 3mm; } h2 { font-size: 11pt; margin: 6mm 0 2mm; }
-    table { border-collapse: collapse; width: 100%; }
-    th, td { border: 1px solid #777; padding: 3px 5px; vertical-align: top; }
-    th { background: #eee; font-size: 8.5pt; } .f { font-weight: normal; color: #555; }
-    td.c { text-align: center; width: 11%; height: 7mm; font-size: 12pt; } td.n { font-weight: 600; width: 30%; }
-    .t { color: #555; font-size: 8.5pt; }
-  </style></head><body>
-    <h1>Pauta de curas — semana del ${fechaLarga(semana[0])} al ${fechaLarga(semana[6])}</h1>
+  imprimirHTMLEnMarco(documentoImpresion({
+    titulo: `Pauta de curas — semana del ${fechaLarga(semana[0])} al ${fechaLarga(semana[6])}`,
+    css: `
+      h2 { font-size: 11pt; margin: 6mm 0 2mm; }
+      th { font-size: 8.5pt; } .f { font-weight: normal; color: #555; }
+      td, th { padding: 3px 5px; font-size: 10pt; }
+      td.c { text-align: center; width: 11%; height: 7mm; font-size: 12pt; } td.n { font-weight: 600; width: 30%; }
+      .t { color: #555; font-size: 8.5pt; }
+    `,
+    cuerpo: `
     <table><thead><tr><th>Paciente</th>${cab}</tr></thead><tbody>${filasSemana}</tbody></table>
     <h2>Tabla de cuidados</h2>
-    <table><thead><tr><th>Paciente</th><th>Localización y cura / cuidado / necesidad</th></tr></thead><tbody>${filasCuidados}</tbody></table>
-  </body></html>`
-  const win = window.open('', '_blank', 'width=900,height=1000')
-  if (!win) return
-  win.document.write(html)
-  win.document.close()
-  win.focus()
-  setTimeout(() => { win.print(); win.close() }, 400)
+    <table><thead><tr><th>Paciente</th><th>Localización y cura / cuidado / necesidad</th></tr></thead><tbody>${filasCuidados}</tbody></table>`,
+  }))
 }
 
 export default function Curas() {
@@ -146,15 +140,11 @@ export default function Curas() {
   const esSemanaActual = lunes === lunesDe(hoy)
 
   return (
-    <div className="p-8 max-w-6xl">
-      <div className="flex items-start justify-between gap-4 flex-wrap mb-6">
-        <div>
-          <h1 className="text-xl font-bold text-slate-800">Pauta de curas</h1>
-          <p className="text-sm text-slate-500">
-            {loading ? 'Cargando…' : `${pacientes.length} paciente${pacientes.length === 1 ? '' : 's'} con curas activas`}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+    <div className="p-6 md:p-8 max-w-6xl">
+      <CabeceraPagina
+        titulo="Pauta de curas"
+        subtitulo={`${loading ? '…' : `${pacientes.length} paciente${pacientes.length === 1 ? '' : 's'} con curas activas`} · registro semanal de curas`}
+      >
           <button onClick={() => setLunes(sumarDias(lunes, -7))} className="btn-secondary !px-2.5" aria-label="Semana anterior"><ChevronLeft className="w-4 h-4" /></button>
           <span className="text-sm font-medium text-slate-700 min-w-[11rem] text-center">{fechaCorta(semana[0])} – {fechaCorta(semana[6])}</span>
           <button onClick={() => setLunes(sumarDias(lunes, 7))} className="btn-secondary !px-2.5" aria-label="Semana siguiente"><ChevronRight className="w-4 h-4" /></button>
@@ -162,8 +152,7 @@ export default function Curas() {
           <button onClick={() => imprimirHoja(pacientes, semana, registros)} disabled={pacientes.length === 0} className="btn-secondary text-sm">
             <Printer className="w-4 h-4" />Imprimir
           </button>
-        </div>
-      </div>
+      </CabeceraPagina>
 
       {error && (
         <div className="card p-6 max-w-md mb-6">
