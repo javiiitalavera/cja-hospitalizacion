@@ -164,10 +164,6 @@ export default function HojasTurno() {
             <Cargando />
           ) : (
             <>
-              <p className="text-xs text-slate-500">
-                Esto es lo que saldrá impreso. Las columnas con borde discontinuo (aseo, diuresis, deposición, comidas) se rellenan a mano en el papel:
-                aquí solo se muestran (la sonda vesical o el colector salen solos en Diuresis). Cada noche se guarda una copia de la pauta en el histórico.
-              </p>
               <TablaHoja turno={turno} pacientes={pacientes} acciones={acciones} />
             </>
           )}
