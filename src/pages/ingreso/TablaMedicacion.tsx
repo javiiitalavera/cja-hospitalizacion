@@ -2,8 +2,8 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import type { FilaMedicacion } from '../../types'
 import {
-  GRUPOS_PSICO, atcDeFila, buscarFarmacos, clasificarTexto, estadoPsico, farmacoPorAtc, grupoDeFila, grupoPsico, resumirMedicacion,
-  textoGrupos, useCatalogoFarmacos, type ResultadoFarmaco,
+  GRUPOS_PSICO, atcDeFila, buscarFarmacos, clasificarTexto, estadoPsico, farmacoPorAtc, grupoDeFila, grupoPsico, recordarMarca,
+  resumirMedicacion, textoGrupos, useCatalogoFarmacos, type ResultadoFarmaco,
 } from '../../lib/farmacos'
 
 export const TOMAS: { key: keyof FilaMedicacion; label: string }[] = [
@@ -112,6 +112,77 @@ function CeldaFarmaco({ fila, disabled, onCambio }: {
   )
 }
 
+// «Asignar principio activo»: para un nombre que la app no conoce (una marca nueva), se elige a qué principio activo
+// corresponde. Queda en esa fila y, si quien lo hace es médico o administración, la app lo recuerda para todos.
+function AsignarPrincipio({ fila, onCambio }: {
+  fila: FilaMedicacion
+  onCambio: (cambio: Partial<FilaMedicacion>) => void
+}) {
+  const [abierto, setAbierto] = useState(false)
+  const [consulta, setConsulta] = useState('')
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
+  const botonRef = useRef<HTMLButtonElement>(null)
+  const resultados = abierto ? buscarFarmacos(consulta, 8) : []
+
+  // El panel es fijo: si la página se desplaza o cambia de tamaño se cierra. Se espera un instante antes de
+  // vigilar el desplazamiento, para que el que provoca el propio clic (el navegador centra el botón) no lo cierre.
+  useEffect(() => {
+    if (!abierto) return
+    const cerrar = () => setAbierto(false)
+    const t = setTimeout(() => window.addEventListener('scroll', cerrar, true), 300)
+    window.addEventListener('resize', cerrar)
+    return () => { clearTimeout(t); window.removeEventListener('scroll', cerrar, true); window.removeEventListener('resize', cerrar) }
+  }, [abierto])
+
+  function abrir() {
+    const r = botonRef.current?.getBoundingClientRect()
+    if (r) setPos({ top: r.bottom + 4, left: Math.max(8, Math.min(r.left, window.innerWidth - 340)) })
+    setConsulta('')
+    setAbierto(true)
+  }
+
+  async function elegir(r: ResultadoFarmaco) {
+    setAbierto(false)
+    onCambio({ atc: r.farmaco.atc, psico: undefined })
+    // Si no puede guardarse para todos (no es médico, o aún no existe la tabla), vale igualmente en esta fila.
+    await recordarMarca(fila.farmaco, r.farmaco.atc)
+  }
+
+  return (
+    <>
+      <button ref={botonRef} type="button" onClick={abrir} className="text-violet-700 hover:underline font-semibold">
+        asignar principio activo
+      </button>
+      {abierto && pos && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setAbierto(false)} />
+          <div className="fixed z-50 w-80 bg-white border rounded-xl shadow-lg p-2 space-y-1 whitespace-normal"
+            style={{ top: pos.top, left: pos.left }}>
+            <p className="text-[11px] text-slate-600">
+              ¿A qué principio activo corresponde «{fila.farmaco.trim()}»? La app lo recordará para la próxima vez.
+            </p>
+            <input autoFocus autoComplete="off" value={consulta} onChange={e => setConsulta(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Escape') setAbierto(false); if (e.key === 'Enter' && resultados[0]) { e.preventDefault(); elegir(resultados[0]) } }}
+              placeholder="Principio activo (p. ej. quetiapina)…"
+              className="w-full border border-slate-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary-300" />
+            {consulta.trim().length >= 2 && resultados.length === 0 && (
+              <p className="text-[11px] text-slate-500 px-1">No hay ningún fármaco con ese nombre en el catálogo.</p>
+            )}
+            {resultados.map(r => (
+              <button type="button" key={r.farmaco.atc + r.farmaco.nombre} onClick={() => elegir(r)}
+                className="w-full text-left px-2 py-1 rounded text-xs hover:bg-primary-50 flex items-center gap-2">
+                <span className="font-medium text-slate-800">{r.farmaco.nombre}</span>
+                {r.via && <span className="text-slate-400">({r.via})</span>}
+                <span className="ml-auto font-mono text-[10px] text-slate-400">{r.farmaco.atc}</span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </>
+  )
+}
+
 // Columna «Psicofármaco»: una sola línea por fármaco. Lo normal (omeprazol, adiro…) no muestra nada.
 // Solo pregunta en lo de uso mixto (valproato, pregabalina…); lo que no se reconoce no pregunta, pero
 // permite marcarlo con un botón.
@@ -168,10 +239,14 @@ function CeldaClase({ fila, disabled, onCambio }: {
   if (sinAtc) {
     return (
       <span className="inline-flex items-center gap-1 whitespace-nowrap text-[10px]">
-        <span className={`${pill} bg-amber-100 text-amber-800`} title="No está en el catálogo: se guarda tal cual y no cuenta como psicofármaco salvo que lo marques">sin clasificar</span>
+        <span className={`${pill} bg-amber-100 text-amber-800`} title="No está en el catálogo: se guarda tal cual y no cuenta como psicofármaco salvo que lo marques o le asignes su principio activo">sin clasificar</span>
         {!disabled && (
-          <button type="button" onClick={() => onCambio({ psico: 'si' })}
-            className="text-violet-700 hover:underline font-semibold">es psicofármaco</button>
+          <>
+            <AsignarPrincipio fila={fila} onCambio={onCambio} />
+            <span className="text-slate-300">·</span>
+            <button type="button" onClick={() => onCambio({ psico: 'si' })}
+              className="text-violet-700 hover:underline font-semibold">es psicofármaco</button>
+          </>
         )}
       </span>
     )

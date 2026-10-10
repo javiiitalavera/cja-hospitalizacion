@@ -16,6 +16,7 @@
 
 import { useEffect, useState } from 'react'
 import { quitarTildes } from './busqueda'
+import { supabase } from './supabase'
 
 // ─── Grupos ──────────────────────────────────────────────────
 
@@ -73,7 +74,8 @@ const RUIDO = new Set([
 // ─── Catálogo (carga perezosa) ───────────────────────────────
 
 // comun: de uso muy habitual (sale antes al buscar) · mixto: según para qué se use es o no psicofármaco
-export interface Farmaco { atc: string; nombre: string; marcas: string[]; comun?: boolean; mixto?: boolean }
+// componentes: en una combinación (p. ej. donepezilo + memantina), el ATC de cada principio activo: así cuenta como dos fármacos
+export interface Farmaco { atc: string; nombre: string; marcas: string[]; comun?: boolean; mixto?: boolean; componentes?: string[] }
 
 interface Entrada extends Farmaco { claves: string[] }
 
@@ -93,12 +95,31 @@ export function parsearCatalogo(txt: string): Entrada[] {
     if (p.length < 2 || !p[0].trim() || !p[1].trim()) continue
     const marcas = (p[2] ?? '').split(',').map((s) => s.trim()).filter(Boolean)
     const nombre = p[1].trim()
-    lista.push({ atc: p[0].trim().toUpperCase(), nombre, marcas, comun: (p[3] ?? '').includes('*'), mixto: (p[3] ?? '').includes('?'), claves: [nombre, ...marcas].map(normalizar).filter(Boolean) })
+    const componentes = (p[4] ?? '').split('+').map((s) => s.trim().toUpperCase()).filter(Boolean)
+    lista.push({
+      atc: p[0].trim().toUpperCase(), nombre, marcas, comun: (p[3] ?? '').includes('*'), mixto: (p[3] ?? '').includes('?'),
+      componentes: componentes.length > 1 ? componentes : undefined,
+      claves: [nombre, ...marcas].map(normalizar).filter(Boolean),
+    })
   }
   return lista
 }
 
-export function instalarCatalogo(lista: Entrada[]) {
+// Marcas que el equipo ha ido enseñando a la app (tabla farmacos_alias): «ketyalix» → quetiapina, etc.
+export interface AliasFarmaco { clave: string; atc: string }
+
+function anadirAlias(a: AliasFarmaco): boolean {
+  if (!catalogo || !porClave || !porAtc) return false
+  const clave = normalizar(a.clave)
+  const e = porAtc.get(a.atc.toUpperCase())
+  if (!clave || !e || porClave.has(clave)) return false
+  e.claves.push(clave)
+  e.marcas.push(a.clave.trim())
+  porClave.set(clave, e)
+  return true
+}
+
+export function instalarCatalogo(lista: Entrada[], alias: AliasFarmaco[] = []) {
   catalogo = lista
   porClave = new Map()
   porAtc = new Map()
@@ -106,17 +127,27 @@ export function instalarCatalogo(lista: Entrada[]) {
     if (!porAtc.has(e.atc)) porAtc.set(e.atc, e)
     for (const k of e.claves) if (!porClave.has(k)) porClave.set(k, e)
   }
+  for (const a of alias) anadirAlias(a)
   oyentes.forEach((f) => f())
+}
+
+// Si la tabla de marcas aprendidas no existe todavía (o falla), el catálogo funciona igual sin ellas.
+async function cargarAlias(): Promise<AliasFarmaco[]> {
+  try {
+    const { data, error } = await supabase.from('farmacos_alias').select('clave, atc')
+    if (error || !data) return []
+    return data as AliasFarmaco[]
+  } catch { return [] }
 }
 
 export function cargarCatalogoFarmacos(): Promise<void> {
   if (catalogo) return Promise.resolve()
   if (promesa) return promesa
-  promesa = import('./farmacos_atc.txt?raw')
-    .then((m) => {
+  promesa = Promise.all([import('./farmacos_atc.txt?raw'), cargarAlias()])
+    .then(([m, alias]) => {
       const lista = parsearCatalogo(m.default)
       if (lista.length < 100) throw new Error('catálogo de fármacos incompleto')
-      instalarCatalogo(lista)
+      instalarCatalogo(lista, alias)
     })
     .catch((e) => { promesa = null; throw e })
   return promesa
@@ -157,6 +188,26 @@ export function clasificarTexto(texto: string | null | undefined): Farmaco | nul
 
 export function farmacoPorAtc(atc: string | null | undefined): Farmaco | null {
   return (atc && porAtc?.get(atc.toUpperCase())) || null
+}
+
+// Lo que se recuerda de un texto como «Ketyalix 50 mg 1-0-1»: el nombre sin dosis ni palabras de relleno («ketyalix»).
+export function claveDeAlias(texto: string): string {
+  return normalizar(texto).split(' ').filter((w) => !/^\d/.test(w) && !RUIDO.has(w)).slice(0, 4).join(' ')
+}
+
+// Enseña a la app que este nombre (una marca que no conocía) es el principio activo `atc`, para todos y para siempre.
+// Solo médicos y administración pueden guardarlo; a los demás les sirve solo en esa fila.
+export async function recordarMarca(texto: string, atc: string): Promise<{ guardada: boolean; clave: string; error?: string }> {
+  const clave = claveDeAlias(texto)
+  if (clave.length < 3) return { guardada: false, clave, error: 'El nombre es demasiado corto para recordarlo.' }
+  let error: { message: string } | null = null
+  try {
+    ;({ error } = await supabase.from('farmacos_alias').upsert({ clave, atc: atc.toUpperCase() }, { onConflict: 'clave' }))
+  } catch (e) { error = { message: e instanceof Error ? e.message : 'No se pudo guardar.' } }
+  if (error) return { guardada: false, clave, error: error.message }
+  anadirAlias({ clave, atc })
+  oyentes.forEach((f) => f())
+  return { guardada: true, clave }
 }
 
 // ─── Buscador ────────────────────────────────────────────────
@@ -250,9 +301,16 @@ export function resumirMedicacion(filas: FilaConFarmaco[] | null | undefined): R
   const r: ResumenMedicacion = {
     total: 0, sinClasificar: [], dudosos: [], psicofarmacos: 0, porGrupo, benzodiacepinas: 0, farmacosZ: 0, antiepilepticos: 0, nombresPsico: [],
   }
+  // Una combinación (Domex = donepezilo + memantina) cuenta como un fármaco por cada principio activo.
+  const items: FilaConFarmaco[] = []
   for (const f of filas ?? []) {
+    if (!(f.farmaco ?? '').trim()) continue
+    const comps = farmacoPorAtc(atcDeFila(f))?.componentes
+    if (comps) for (const c of comps) items.push({ farmaco: farmacoPorAtc(c)?.nombre ?? c, atc: c, psico: f.psico })
+    else items.push(f)
+  }
+  for (const f of items) {
     const texto = (f.farmaco ?? '').trim()
-    if (!texto) continue
     const atc = atcDeFila(f)
     const clave = atc ? `atc:${atc}:${normalizar(farmacoPorAtc(atc)?.nombre ?? texto)}` : `txt:${normalizar(texto)}`
     const previo = vistos.get(clave)

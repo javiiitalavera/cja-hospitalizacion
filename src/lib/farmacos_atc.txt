@@ -1,6 +1,6 @@
 # Catálogo de principios activos con su código ATC (nivel 5), en español.
-# Formato: ATC|Nombre|sinónimos y marcas separados por coma|marcas   (marcas: * uso muy habitual · ? uso mixto: psicofármaco según para qué se use)
-# Lo mantiene el equipo médico. Para añadir un fármaco: una línea nueva y ejecutar scripts/generar_farmacos.py
+# Formato: ATC|Nombre|sinónimos y marcas separados por coma|indicadores|componentes   (indicadores: * uso muy habitual · ? uso mixto: psicofármaco según para qué se use · componentes: solo en combinaciones, los ATC de cada principio activo separados por +, para contar cada uno)
+# Lo mantiene el equipo médico. Para añadir un fármaco: una línea nueva y ejecutar python3 scripts/validar_farmacos.py
 # --- N05A Antipsicóticos ---
 N05AA01|Clorpromazina|Largactil|*
 N05AA02|Levomepromazina|Sinogan,Nozinan|*
@@ -11,29 +11,29 @@ N05AB06|Trifluoperazina|Stelazine|
 N05AC01|Periciazina|Neuleptil|
 N05AC02|Tioridazina|Meleril|
 N05AC04|Pipotiazina|Lonseren|
-N05AD01|Haloperidol|Haldol,Haloperidol decanoato|*
+N05AD01|Haloperidol|Haldol,Haloperidol decanoato,Haloperidol gotas|*
 N05AD05|Pipamperona|Dipiperon|
 N05AD08|Droperidol|Droperidol|
 N05AE03|Sertindol|Serdolect|
 N05AE04|Ziprasidona|Zeldox,Geodon|
 N05AE05|Lurasidona|Latuda|
 N05AF01|Flupentixol|Fluanxol|
-N05AF05|Zuclopentixol|Clopixol,Cisordinol|*
+N05AF05|Zuclopentixol|Clopixol,Cisordinol,Clopixol Depot,Clopixol Acuphase|*
 N05AG02|Pimozida|Orap|
 N05AH01|Loxapina|Adasuve|
 N05AH02|Clozapina|Leponex,Nemea|*
-N05AH03|Olanzapina|Zyprexa,Zyprexa Velotab,Olanzapina bucodispersable|*
-N05AH04|Quetiapina|Seroquel,Seroquel XR,Quetiapina retard|*
+N05AH03|Olanzapina|Zyprexa,Zyprexa Velotab,Olanzapina bucodispersable,Zalasta,Arenbil,Zypadhera,Olanzapina depot|*
+N05AH04|Quetiapina|Seroquel,Seroquel XR,Quetiapina retard,Ketyalix,Seroquel Prolong,Seroquel Retard|*
 N05AH05|Asenapina|Sycrest|
 N05AH06|Clotiapina|Etumina|
 N05AL01|Sulpirida|Dogmatil|*
 N05AL03|Tiaprida|Tiaprizal|*
 N05AL05|Amisulprida|Solian|
 N05AL07|Levosulpirida|Levogastrol|
-N05AN01|Litio|Plenur,Carbonato de litio|*
-N05AX08|Risperidona|Risperdal,Risperdal Consta,Arketin|*
-N05AX12|Aripiprazol|Abilify,Abilify Maintena|*
-N05AX13|Paliperidona|Invega,Xeplion,Trevicta|*
+N05AN01|Litio|Plenur,Carbonato de litio,Litio carbonato|*
+N05AX08|Risperidona|Risperdal,Risperdal Consta,Arketin,Okedi,Risperdal Quicklet,Risperidona Consta|*
+N05AX12|Aripiprazol|Abilify,Abilify Maintena,Aripiprazol bucodispersable|*
+N05AX13|Paliperidona|Invega,Xeplion,Trevicta,Byannli|*
 N05AX15|Cariprazina|Reagila|
 N05AX16|Brexpiprazol|Rxulti|
 N05AX17|Pimavanserina|Nuplazid|
@@ -42,10 +42,10 @@ N05BA01|Diazepam|Valium,Stesolid|*
 N05BA02|Clordiazepóxido|Huberplex,Librium|
 N05BA04|Oxazepam|Adumbran|
 N05BA05|Clorazepato dipotásico|Tranxilium,Clorazepato|
-N05BA06|Lorazepam|Orfidal,Idalprem,Lorazepam|*
+N05BA06|Lorazepam|Orfidal,Idalprem,Lorazepam,Ativan,Orfidal Wyeth|*
 N05BA08|Bromazepam|Lexatin,Lexatin 1.5|*
 N05BA09|Clobazam|Noiafren|
-N05BA12|Alprazolam|Trankimazin,Xanax|*
+N05BA12|Alprazolam|Trankimazin,Xanax,Trankimazin Retard,Alprazolam retard|*
 N05BA10|Ketazolam|Sedotime|
 N05BA13|Halazepam|Halazepam|
 N05BA21|Clotiazepam|Distensan|
@@ -61,10 +61,10 @@ N05CD07|Temazepam|Temazepam|
 N05CD08|Midazolam|Dormicum,Buccolam|*
 N05CD11|Loprazolam|Somnovit|
 N05CF01|Zopiclona|Limovan,Datolan|
-N05CF02|Zolpidem|Stilnox,Zolpidem|*
+N05CF02|Zolpidem|Stilnox,Zolpidem,Dalparan|*
 N05CF03|Zaleplon|Zaleplon|
 N05CF04|Eszopiclona|Lunesta|
-N05CH01|Melatonina|Circadin,Melatonina|*
+N05CH01|Melatonina|Circadin,Melatonina,Melatonina Forte,Melatonina Kern,Slenyto|*
 N05CM02|Clometiazol|Distraneurine|
 N05CM18|Dexmedetomidina|Dexdor|
 N05CM09|Valeriana|Valeriana|
@@ -77,26 +77,26 @@ N06AA06|Trimipramina|Surmontil|
 N06AA12|Doxepina|Sinequan,Silenor|
 N06AA21|Maprotilina|Ludiomil|
 N06AA16|Dosulepina|Prothiaden|
-N06AB03|Fluoxetina|Prozac,Adofen,Fluoxetina|*
-N06AB04|Citalopram|Prisdal,Seropram|*
-N06AB05|Paroxetina|Seroxat,Motivan,Paroxetina|*
-N06AB06|Sertralina|Besitran,Aremis,Sertralina|*
+N06AB03|Fluoxetina|Prozac,Adofen,Fluoxetina,Reneuron|*
+N06AB04|Citalopram|Prisdal,Seropram,Celexa|*
+N06AB05|Paroxetina|Seroxat,Motivan,Paroxetina,Frosinor,Paxil|*
+N06AB06|Sertralina|Besitran,Aremis,Sertralina,Zoloft|*
 N06AB08|Fluvoxamina|Dumirox,Fevarin|
-N06AB10|Escitalopram|Cipralex,Escitalopram|*
+N06AB10|Escitalopram|Cipralex,Escitalopram,Esertia,Lexapro|*
 N06AF03|Fenelzina|Fenelzina|
 N06AG02|Moclobemida|Manerix|
 N06AX03|Mianserina|Lantanon|
 N06AX05|Trazodona|Deprax,Desyrel,Trazodona|*
-N06AX11|Mirtazapina|Rexer,Vastat,Mirtazapina,Rexer Flas|*
-N06AX12|Bupropión|Elontril,Zyntabac,Bupropion|*
+N06AX11|Mirtazapina|Rexer,Vastat,Mirtazapina,Rexer Flas,Remeron|*
+N06AX12|Bupropión|Elontril,Zyntabac,Bupropion,Wellbutrin|*
 N06AX14|Tianeptina|Stablon|
-N06AX16|Venlafaxina|Vandral,Dobupal,Venlafaxina|*
+N06AX16|Venlafaxina|Vandral,Dobupal,Venlafaxina,Efexor,Vandral Retard|*
 N06AX17|Milnaciprán|Ixel|
 N06AX18|Reboxetina|Norebox,Davedax|
-N06AX21|Duloxetina|Cymbalta,Xeristar,Duloxetina|*
+N06AX21|Duloxetina|Cymbalta,Xeristar,Duloxetina,Yentreve|*
 N06AX22|Agomelatina|Valdoxan,Thymanax|*
 N06AX23|Desvenlafaxina|Pristiq|
-N06AX26|Vortioxetina|Brintellix|*
+N06AX26|Vortioxetina|Brintellix,Trintellix|*
 N06AX02|Triptófano|L-triptófano|
 N06AX25|Hipérico|Hierba de San Juan,Hypericum|
 # --- N06B Psicoestimulantes ---
@@ -108,24 +108,24 @@ N06BC01|Cafeína|Cafeína|
 N06BX03|Piracetam|Nootropil|
 N06BX06|Citicolina|Somazina,Ceraxon|
 # --- N06D Antidemencia ---
-N06DA02|Donepezilo|Aricept,Donepezilo|*
+N06DA02|Donepezilo|Aricept,Donepezilo,Aricept Evess,Yasnal,Donepezilo Flas|*
 N06DA03|Rivastigmina|Exelon,Prometax,Rivastigmina parche|*
 N06DA04|Galantamina|Reminyl,Galantamina|*
-N06DX01|Memantina|Ebixa,Axura,Memantina|*
+N06DX01|Memantina|Ebixa,Axura,Memantina,Namenda|*
 N06DX02|Ginkgo biloba|Tebonin,Ginkgo|
 # --- N03 Antiepilépticos (no psicofármacos por ATC) ---
 N03AA02|Fenobarbital|Luminal,Gardenal|
 N03AA03|Primidona|Mysoline|
 N03AB02|Fenitoína|Epanutin,Sinergina|
-N03AE01|Clonazepam|Rivotril,Clonazepam|*?
-N03AF01|Carbamazepina|Tegretol,Carbamazepina|*?
+N03AE01|Clonazepam|Rivotril,Clonazepam,Klonopin|*?
+N03AF01|Carbamazepina|Tegretol,Carbamazepina,Tegretol Retard|*?
 N03AF02|Oxcarbazepina|Trileptal|*?
 N03AF04|Eslicarbazepina|Zebinix|
 N03AG01|Ácido valproico|Depakine,Depakine Crono,Valproato,Valproato sódico,Valproico|*?
-N03AX09|Lamotrigina|Lamictal|*?
+N03AX09|Lamotrigina|Lamictal,Labileno|*?
 N03AX11|Topiramato|Topamax|*?
 N02BF01|Gabapentina|Neurontin,Gabapentina|*?
-N03AX14|Levetiracetam|Keppra,Levetiracetam|*
+N03AX14|Levetiracetam|Keppra,Levetiracetam,Keppra Oral|*
 N03AX15|Zonisamida|Zonegran|
 N02BF02|Pregabalina|Lyrica,Pregabalina|*?
 N03AX18|Lacosamida|Vimpat|
@@ -139,8 +139,8 @@ N04BA03|Levodopa/carbidopa/entacapona|Stalevo|
 N04BA01|Levodopa|Levodopa|
 N04BA02|Levodopa/benserazida|Madopar,Madopar Retard|*
 N04BB01|Amantadina|Amantadina,Amantadina Sulfato|
-N04BC04|Ropinirol|Requip|
-N04BC05|Pramipexol|Mirapexin,Sifrol|
+N04BC04|Ropinirol|Requip,Requip Prolib|
+N04BC05|Pramipexol|Mirapexin,Sifrol,Pramipexol Retard|
 N04BC09|Rotigotina|Neupro|
 N04BC07|Apomorfina|Apo-go|
 N04BD01|Selegilina|Selegilina|
@@ -158,11 +158,11 @@ N07CA02|Cinarizina|Stugeron|
 N07CA03|Flunarizina|Sibelium|
 N07XX02|Riluzol|Rilutek|
 # --- N02 Analgésicos ---
-N02AA01|Morfina|Morfina,MST,Sevredol|
-N02AA05|Oxicodona|Oxycontin|
+N02AA01|Morfina|Morfina,MST,Sevredol,Oramorph|
+N02AA05|Oxicodona|Oxycontin,Oxynorm|
 N02AA03|Hidromorfona|Jurnista|
 N02AA55|Oxicodona/naloxona|Targin|
-N02AB03|Fentanilo|Durogesic,Fentanilo parche,Abstral,Actiq|
+N02AB03|Fentanilo|Durogesic,Fentanilo parche,Abstral,Actiq,Matrifen|
 N02AE01|Buprenorfina|Transtec,Norspan,Buprenorfina|
 N02AJ06|Codeína/paracetamol|Dolocatil,Cod-efferalgan|
 N02AJ13|Tramadol/paracetamol|Pazital,Zaldiar,Ultracet|
@@ -170,7 +170,7 @@ N02AX02|Tramadol|Adolonta,Tramadol,Tradonal|*
 N02AX06|Tapentadol|Palexia|
 N02BA01|Ácido acetilsalicílico (analgésico)|AAS analgésico|
 N02BB02|Metamizol|Nolotil,Metamizol|*
-N02BE01|Paracetamol|Gelocatil,Efferalgan,Termalgin,Dolostop|*
+N02BE01|Paracetamol|Gelocatil,Efferalgan,Termalgin,Dolostop,Apiretal,Paracetamol Kern|*
 N02CC01|Sumatriptán|Imigran|
 N01BB02|Lidocaína|Versatis,Lidocaína|
 # --- M Musculoesquelético ---
@@ -316,7 +316,7 @@ C02KX01|Bosentán|Tracleer|
 C03AA03|Hidroclorotiazida|Hidrosaluretil|
 C03BA04|Clortalidona|Higrotona|
 C03BA11|Indapamida|Extur,Tertensif|
-C03CA01|Furosemida|Seguril,Furosemida|*
+C03CA01|Furosemida|Seguril,Furosemida,Lasix|*
 C03CA04|Torasemida|Dilutol,Isodiur,Torasemida|
 C03DA01|Espironolactona|Aldactone,Aldactone 25|
 C03DA04|Eplerenona|Inspra|
@@ -327,11 +327,11 @@ C07AA05|Propranolol|Sumial|?
 C07AA07|Sotalol|Sotapor|
 C07AB02|Metoprolol|Lopresor|
 C07AB03|Atenolol|Tenormin,Atenolol|
-C07AB07|Bisoprolol|Emconcor,Euradal,Bisoprolol|
+C07AB07|Bisoprolol|Emconcor,Euradal,Bisoprolol,Concor|
 C07AB12|Nebivolol|Lobivon,Nebilet|
 C07AG01|Labetalol|Trandate|
 C07AG02|Carvedilol|Coropres,Carvedilol|
-C08CA01|Amlodipino|Norvas,Astudal,Amlodipino|*
+C08CA01|Amlodipino|Norvas,Astudal,Amlodipino,Norvasc|*
 C08CA05|Nifedipino|Adalat|
 C08CA13|Lercanidipino|Zanidip,Lercanidipino|
 C08DA01|Verapamilo|Manidon|
@@ -340,10 +340,10 @@ C09AA01|Captopril|Capoten|
 C09AA02|Enalapril|Renitec,Enalapril|*
 C09AA03|Lisinopril|Zestril,Prinivil|
 C09AA04|Perindopril|Coversyl|
-C09AA05|Ramipril|Cardiopril,Carasel,Ramipril|
+C09AA05|Ramipril|Cardiopril,Carasel,Ramipril,Acovil|
 C09BA02|Enalapril/hidroclorotiazida|Renitec Plus|
 C09BA05|Ramipril/hidroclorotiazida|Cardiopril Plus|
-C09CA01|Losartán|Cozaar,Losartán|
+C09CA01|Losartán|Cozaar,Losartán,Hyzaar|
 C09CA03|Valsartán|Diovan,Valsartán|
 C09CA04|Irbesartán|Aprovel,Karvea|
 C09CA06|Candesartán|Atacand,Candesartán|
@@ -355,7 +355,7 @@ C09DB01|Valsartán/amlodipino|Exforge|
 C09DX04|Sacubitrilo/valsartán|Entresto|
 C10AA01|Simvastatina|Zocor,Simvastatina|
 C10AA03|Pravastatina|Pravastatina|
-C10AA05|Atorvastatina|Cardyl,Lipitor,Atorvastatina|*
+C10AA05|Atorvastatina|Cardyl,Lipitor,Atorvastatina,Zarator|*
 C10AA07|Rosuvastatina|Crestor,Rosuvastatina|
 C10AA08|Pitavastatina|Livazo|
 C10AB05|Fenofibrato|Secalip,Fenofibrato|
@@ -512,3 +512,6 @@ V06DC01|Glucosa|Glucosmón|
 # --- añadidos tras validar ---
 A12BA05|Gluconato potásico|Boi K (gluconato)|
 B03AB05|Hierro polimaltosado|Maltofer,Hierro polimaltosa|
+# --- combinaciones y añadidos ---
+N06DA52|Donepezilo/memantina|Domex,Donepezilo memantina,Donepezilo y memantina|*|N06DA02+N06DX01
+N04BX04|Opicapona|Ongentys|
