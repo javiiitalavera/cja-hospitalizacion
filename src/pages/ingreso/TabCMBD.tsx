@@ -6,7 +6,7 @@ import type { Ingreso } from '../../types'
 import { nombreCompleto } from '../../types'
 import { edad } from '../../lib/fechas'
 import { estadoSegunCircunstancia } from '../../lib/alta'
-import { infoCIE10, useCatalogoCIE10 } from '../../lib/cie10'
+import { avisoCodigoCIE10, cargarCatalogoCIE10, infoCIE10, useCatalogoCIE10 } from '../../lib/cie10'
 import { FilaDx } from '../../components/DiagnosticosCIE'
 import { CheckCircle, Circle, Download, Save } from 'lucide-react'
 
@@ -347,6 +347,16 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
       if ((fuente as any)[`${k}_poad`] == null && !infoCIE10(codigo)?.marcas?.includes('E')) sinPoad.push(codigo)
     }
     if (sinPoad.length > 0) faltan.push(`«Al ingreso» (SÍ/NO) sin contestar en: ${sinPoad.join(', ')}`)
+    // Códigos que la propia pantalla marca como incorrectos (no existen, están incompletos, son una
+    // manifestación como principal…): antes se exportaban igualmente («ZZZ» salía en el Excel con el
+    // CMBD «completo»). El aviso ya está calculado por el buscador; aquí se usa como barrera.
+    for (let n = 0; n <= N_SECUNDARIOS; n++) {
+      const k = n === 0 ? 'diagnostico_principal' : `diagnostico_secundario_${n}`
+      const codigo = (fuente as any)[k] as string | undefined
+      if (!codigo) continue
+      const aviso = avisoCodigoCIE10(codigo, { principal: n === 0 })
+      if (aviso) faltan.push(`${n === 0 ? 'Diagnóstico principal' : `Diagnóstico secundario ${n}`} «${codigo}»: ${aviso.replace(/\.$/, '')}`)
+    }
     return faltan
   }
 
@@ -360,6 +370,9 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
   }
 
   async function handleExportar() {
+    // Para saber si un código existe hace falta el catálogo completo: se espera a que cargue
+    // (si no hay conexión con él, se valida solo lo que se puede).
+    await cargarCatalogoCIE10().catch(() => {})
     const faltan = camposFaltantes(dataRef.current)
     if (faltan.length > 0) {
       // Antes se podía generar un Excel incompleto sin avisar — con

@@ -479,7 +479,10 @@ left join lateral (
            i2.medico_responsable_id, i2.motivo_ingreso, i2.estado, i2.created_at
     from public.ingresos i2
     where i2.paciente_id = p.id
-    order by i2.fecha_ingreso desc
+    -- Desempate: dos episodios el mismo día (alta y reingreso) tenían el mismo criterio y la vista
+    -- podía devolver el ya cerrado. Primero el activo (el listado de Pacientes tiene que coincidir con
+    -- Inicio y Dashboard, que cuentan los activos), después el más reciente por fecha, creación e id.
+    order by (i2.estado = 'activo') desc, i2.fecha_ingreso desc, i2.created_at desc nulls last, i2.id desc
     limit 1
 ) i on true;
 
@@ -1793,7 +1796,11 @@ begin
     and (p_medico_id is null or i.medico_responsable_id = p_medico_id);
 
   -- Ingresos nuevos del periodo que son reingresos: el mismo paciente
-  -- (misma ficha) tuvo un alta o traslado en los 30 días anteriores.
+  -- (misma ficha) tuvo un alta o traslado en los 30 días anteriores,
+  -- INCLUIDO el mismo día si el alta fue realmente anterior al nuevo episodio
+  -- (alta registrada antes de crear el reingreso). Con solo "<=" en la fecha, si
+  -- los dos episodios se cierran el mismo día el primero contaría como reingreso
+  -- del segundo; por eso el empate se resuelve con la hora real del alta.
   -- Es una proporción sobre ingresos, no la tasa clásica sobre altas.
   select count(*) into v_reingresos
   from public.ingresos i
@@ -1804,8 +1811,11 @@ begin
       where previo.paciente_id = i.paciente_id
         and previo.id <> i.id
         and previo.estado in ('alta', 'alta_traslado')
-        and previo.fecha_alta < i.fecha_ingreso
         and previo.fecha_alta >= i.fecha_ingreso - 30
+        and (
+          previo.fecha_alta < i.fecha_ingreso
+          or (previo.fecha_alta = i.fecha_ingreso and previo.dado_de_alta_en <= i.created_at)
+        )
     );
 
   -- Sin úlceras por presión (ver dashboard_seguridad): así la cifra
@@ -2053,7 +2063,7 @@ begin
   ) order by t.total desc), '[]'::jsonb)
   into v_por_tipo
   from (
-    select e.tipo, count(*) as total, count(distinct e.ingreso_id) as pacientes,
+    select e.tipo, count(*) as total, count(distinct i.paciente_id) as pacientes,
            count(*) filter (where e.estado = 'pendiente') as pendientes
     from public.eventos e
     inner join public.ingresos i on i.id = e.ingreso_id
@@ -2083,7 +2093,7 @@ begin
   --   sin origen indicado      -> origen null (pendiente de completar en Curas)
   -- Grado III-IV: el grado MÁXIMO que haya llegado a registrarse.
   with upp as (
-    select l.id, l.ingreso_id, l.origen,
+    select l.id, l.ingreso_id, i.paciente_id, l.origen,
            (select max(case v.grado when 'I' then 1 when 'II' then 2 when 'III' then 3 when 'IV' then 4 end)
               from public.curas_valoraciones v where v.lesion_id = l.id) as grado_max
     from public.curas_lesiones l
@@ -2097,7 +2107,7 @@ begin
     'aparecidas_durante', count(*) filter (where origen = 'centro'),
     'sin_origen', count(*) filter (where origen is null),
     'grado_iii_iv', count(*) filter (where grado_max >= 3),
-    'pacientes_afectados', count(distinct ingreso_id),
+    'pacientes_afectados', count(distinct paciente_id),
     'tasa_aparecidas_1000', case when v_dias_estancia > 0 then round(
       count(*) filter (where origen = 'centro')::numeric / v_dias_estancia * 1000, 2
     ) else null end

@@ -359,13 +359,18 @@ function parteIngresoXml(ii: InformeIngreso, escalaIngreso: EscalaClinica | null
   ]
 }
 
+// Aviso visible en el informe de alta exportado antes de que exista el alta.
+function borradorXml(font: string): string {
+  return `<w:p><w:pPr><w:keepNext/><w:pBdr><w:top w:val="single" w:sz="8" w:space="4" w:color="C00000"/><w:bottom w:val="single" w:sz="8" w:space="4" w:color="C00000"/></w:pBdr><w:spacing w:before="0" w:after="200" w:line="276" w:lineRule="auto"/><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="${font}" w:hAnsi="${font}"/><w:b/><w:color w:val="C00000"/></w:rPr><w:t xml:space="preserve">BORRADOR — el episodio todavía no tiene alta registrada. Este documento no es válido como informe de alta.</w:t></w:r></w:p>`
+}
+
 function introPacienteXml(ingreso: Ingreso, fechaRef: string | null | undefined, font: string): string {
   const p = ingreso.paciente!
   // Edad EN LA FECHA DEL INFORME (ingreso o alta), no en la fecha en que se
   // exporte: un informe antiguo debe decir la edad que tenía entonces.
   const edadPaciente = edad(p.fecha_nacimiento, fechaRef) ?? '?'
   return parrafoXml(
-    `D. ${nombreCompleto(p)} de ${edadPaciente} años, ingresa en nuestra Unidad de Hospitalización${ingreso.motivo_ingreso ? `, a petición de su médico de cabecera, por ${ingreso.motivo_ingreso.toLowerCase()}` : ''}.`,
+    `D. ${nombreCompleto(p)} de ${edadPaciente} años, ingresa en nuestra Unidad de Hospitalización${ingreso.motivo_ingreso ? `, por ${ingreso.motivo_ingreso.toLowerCase()}` : ''}.`,
     font
   )
 }
@@ -402,6 +407,8 @@ export async function exportarInformeAlta(ingreso: Ingreso, ii: InformeIngreso, 
   const num = () => ++apartado   // numeración de «Tratamiento y recomendaciones»
 
   const cuerpo = unir([
+    // Episodio todavía sin alta: se puede preparar el informe, pero el documento sale marcado como borrador.
+    ...(ingreso.fecha_alta ? [] : [borradorXml(font)]),
     // La edad que sale es la de la fecha de alta (o de ingreso si aún no hay alta).
     introPacienteXml(ingreso, ingreso.fecha_alta ?? ingreso.fecha_ingreso, font),
     ...parteIngresoXml(ii, escalaIngreso, font, true),

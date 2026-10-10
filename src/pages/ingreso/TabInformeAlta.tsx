@@ -79,8 +79,11 @@ function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
       setEscalaAlta((rEscalaAlta.data as EscalaClinica) ?? {})
 
       let base: Partial<InformeAlta> = dAlta ?? {}
-      const yaRellenada = (base.medicacion_estructurada as FilaMedicacion[] | undefined)?.length ?? 0
-      if (yaRellenada === 0 && dIngreso?.tratamiento_ingreso_estructurado) {
+      // Solo se hereda la medicación del ingreso si la del alta NUNCA se ha tocado (null/ausente).
+      // Una lista vacía ([]) es una decisión expresa («sin medicación al alta»): antes se confundía
+      // con «sin inicializar» y la medicación quitada reaparecía al volver a abrir el informe, y al
+      // exportar se volvía a guardar.
+      if (base.medicacion_estructurada == null && dIngreso?.tratamiento_ingreso_estructurado) {
         base = { ...base, medicacion_estructurada: dIngreso.tratamiento_ingreso_estructurado }
       }
       setData(base)

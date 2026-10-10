@@ -10,6 +10,17 @@ export type EstadoAviso = 'inactivo' | 'pendiente' | 'guardando' | 'guardado' | 
 export function AvisoGuardado({ avisos }: {
   avisos: { estado: EstadoAviso; etiqueta: string; texto?: string; error?: string }[]
 }) {
+  // Protección al salir: mientras haya cambios sin guardar (pendientes del guardado automático, en
+  // curso, con error o en conflicto), cerrar o recargar la pestaña pide confirmación. Sin esto, lo
+  // escrito en el último segundo y medio antes de recargar se perdía sin aviso.
+  const hayCambiosSinGuardar = avisos.some((a) => a.estado === 'pendiente' || a.estado === 'guardando' || a.estado === 'error' || a.estado === 'conflicto')
+  useEffect(() => {
+    if (!hayCambiosSinGuardar) return
+    const avisar = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = '' }
+    window.addEventListener('beforeunload', avisar)
+    return () => window.removeEventListener('beforeunload', avisar)
+  }, [hayCambiosSinGuardar])
+
   const visibles = avisos.filter((a) => a.estado === 'guardado' || a.estado === 'error')
   if (visibles.length === 0) return null
   return (
