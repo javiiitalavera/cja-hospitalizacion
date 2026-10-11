@@ -367,10 +367,23 @@ create table public.cmbd (
     servicio text default 'GRT',
     notas text,
     completado boolean default false,
+    -- Infección nosocomial (se anota a mano al alta; desde 20261016 ya no es una incidencia). El foco y el agente solo
+    -- valen si la casilla es «sí».
+    infeccion_nosocomial boolean,
+    infeccion_nosocomial_tipos text[] not null default '{}',
+    infeccion_nosocomial_agente text,
     version integer not null default 1,
     created_at timestamptz default now(),
     updated_at timestamptz default now()
 );
+
+alter table public.cmbd
+    add constraint cmbd_infeccion_tipos_validos check (
+        infeccion_nosocomial_tipos <@ array['urinaria', 'respiratoria', 'gastrointestinal', 'piel', 'bacteriemia', 'otra']::text[]),
+    add constraint cmbd_infeccion_detalle_coherente check (
+        coalesce(infeccion_nosocomial, false) or (infeccion_nosocomial_tipos = '{}' and infeccion_nosocomial_agente is null)),
+    add constraint cmbd_infeccion_agente_longitud check (
+        infeccion_nosocomial_agente is null or length(infeccion_nosocomial_agente) <= 200);
 
 -- Escalas clínicas: Barthel, Lawton, NPI-Q (solo gravedad) y
 -- GDS-FAST, una fila por ingreso y momento (ingreso/alta). Se
@@ -1722,7 +1735,7 @@ begin
   from public.eventos e
   inner join public.ingresos i on i.id = e.ingreso_id
   where e.estado = 'pendiente'
-    and e.tipo <> 'ulcera'
+    and e.tipo not in ('ulcera', 'infeccion_nosocomial')
     and (p_medico_id is null or i.medico_responsable_id = p_medico_id);
 
   return jsonb_build_object(
@@ -1844,7 +1857,7 @@ begin
   from public.eventos e
   inner join public.ingresos i on i.id = e.ingreso_id
   where e.fecha between p_desde and p_hasta
-    and e.tipo <> 'ulcera'
+    and e.tipo not in ('ulcera', 'infeccion_nosocomial')
     and (p_medico_id is null or i.medico_responsable_id = p_medico_id);
 
   return jsonb_build_object(
@@ -2088,7 +2101,7 @@ begin
     from public.eventos e
     inner join public.ingresos i on i.id = e.ingreso_id
     where e.fecha between p_desde and p_hasta
-      and e.tipo <> 'ulcera'
+      and e.tipo not in ('ulcera', 'infeccion_nosocomial')
       and (p_medico_id is null or i.medico_responsable_id = p_medico_id)
     group by e.tipo
   ) t;
@@ -2141,7 +2154,6 @@ begin
   select jsonb_build_object(
     'errores_medicacion', count(*) filter (where e.tipo = 'error_medicacion'),
     'efectos_adversos', count(*) filter (where e.tipo = 'efecto_adverso_medicacion'),
-    'infecciones_nosocomiales', count(*) filter (where e.tipo = 'infeccion_nosocomial'),
     'agresiones', count(*) filter (where e.tipo = 'agresividad_fisica'),
     'fugas', count(*) filter (where e.tipo = 'fuga'),
     'atragantamientos', count(*) filter (where e.tipo = 'atragantamiento'),
@@ -2152,8 +2164,20 @@ begin
   from public.eventos e
   inner join public.ingresos i on i.id = e.ingreso_id
   where e.fecha between p_desde and p_hasta
-    and e.tipo <> 'ulcera'
+    and e.tipo not in ('ulcera', 'infeccion_nosocomial')
     and (p_medico_id is null or i.medico_responsable_id = p_medico_id);
+
+  -- Infecciones nosocomiales: ya no son una incidencia, se anotan a mano en el CMBD (casilla del episodio). Cuenta los
+  -- episodios del periodo (los que se solapan con él) con la casilla marcada, así la cifra coincide con la lista del Explorador.
+  v_otras := v_otras || jsonb_build_object('infecciones_nosocomiales', (
+    select count(*)
+    from public.cmbd cm
+    inner join public.ingresos i on i.id = cm.ingreso_id
+    where cm.infeccion_nosocomial is true
+      and i.fecha_ingreso <= p_hasta
+      and (i.fecha_alta is null or i.fecha_alta >= p_desde)
+      and (p_medico_id is null or i.medico_responsable_id = p_medico_id)
+  ));
 
   with pauta as (
     select
@@ -2252,7 +2276,7 @@ begin
       (p.primer_apellido || ' ' || coalesce(p.segundo_apellido, '') || ' ' || p.nombre) as nombre_orden,
       nullif(coalesce(m.nombre || ' ' || m.apellidos, ''), '') as medico_nombre,
       (case when i.fecha_alta is not null then i.fecha_alta - i.fecha_ingreso else private.hoy_madrid() - i.fecha_ingreso end) as dias_estancia,
-      (select count(*) from public.eventos e where e.ingreso_id = i.id and e.tipo <> 'ulcera') as num_incidencias
+      (select count(*) from public.eventos e where e.ingreso_id = i.id and e.tipo not in ('ulcera', 'infeccion_nosocomial')) as num_incidencias
     from public.ingresos i
     inner join public.pacientes p on p.id = i.paciente_id
     left join public.profesionales m on m.id = i.medico_responsable_id
@@ -2278,7 +2302,10 @@ begin
           case when p_tipo_incidencia = 'ulcera'
             -- Úlceras por presión: viven en Curas, no en incidencias.
             then exists (select 1 from public.curas_lesiones l where l.ingreso_id = i.id and l.caracteristicas = 'upp')
-            else (select count(*) from public.eventos e where e.ingreso_id = i.id and e.tipo <> 'ulcera'
+            -- Infección nosocomial: vive en el CMBD, no en incidencias.
+            when p_tipo_incidencia = 'infeccion_nosocomial'
+            then exists (select 1 from public.cmbd cm where cm.ingreso_id = i.id and cm.infeccion_nosocomial is true)
+            else (select count(*) from public.eventos e where e.ingreso_id = i.id and e.tipo not in ('ulcera', 'infeccion_nosocomial')
                     and (p_tipo_incidencia is null or e.tipo = p_tipo_incidencia)) > 0
           end
         ) = p_con_incidencias
@@ -2296,7 +2323,7 @@ begin
         (p.primer_apellido || '' '' || coalesce(p.segundo_apellido, '''') || '' '' || p.nombre) as nombre_orden,
         nullif(coalesce(m.nombre || '' '' || m.apellidos, ''''), '''') as medico_nombre,
         (case when i.fecha_alta is not null then i.fecha_alta - i.fecha_ingreso else private.hoy_madrid() - i.fecha_ingreso end) as dias_estancia,
-        (select count(*) from public.eventos e where e.ingreso_id = i.id and e.tipo <> ''ulcera'') as num_incidencias
+        (select count(*) from public.eventos e where e.ingreso_id = i.id and e.tipo not in (''ulcera'', ''infeccion_nosocomial'')) as num_incidencias
       from public.ingresos i
       inner join public.pacientes p on p.id = i.paciente_id
       left join public.profesionales m on m.id = i.medico_responsable_id
@@ -2321,7 +2348,9 @@ begin
           $10::boolean is null or (
             case when $11::text = ''ulcera''
               then exists (select 1 from public.curas_lesiones l where l.ingreso_id = i.id and l.caracteristicas = ''upp'')
-              else (select count(*) from public.eventos e where e.ingreso_id = i.id and e.tipo <> ''ulcera''
+              when $11::text = ''infeccion_nosocomial''
+              then exists (select 1 from public.cmbd cm where cm.ingreso_id = i.id and cm.infeccion_nosocomial is true)
+              else (select count(*) from public.eventos e where e.ingreso_id = i.id and e.tipo not in (''ulcera'', ''infeccion_nosocomial'')
                       and ($11::text is null or e.tipo = $11::text)) > 0
             end
           ) = $10::boolean
@@ -2672,6 +2701,30 @@ create trigger impedir_evento_ulcera_upd
     execute function public.impedir_evento_ulcera();
 
 revoke execute on function public.impedir_evento_ulcera() from public, anon, authenticated;
+
+-- La infección nosocomial ya no se registra como incidencia (se anota en el CMBD): no se pueden crear incidencias nuevas
+-- de ese tipo. Las antiguas se conservan.
+create or replace function public.impedir_evento_infeccion() returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  raise exception 'La infección nosocomial ya no se registra como incidencia: se anota en el CMBD (pestaña CMBD de la ficha).';
+end;
+$$;
+
+drop trigger if exists impedir_evento_infeccion on public.eventos;
+create trigger impedir_evento_infeccion
+    before insert on public.eventos
+    for each row when (NEW.tipo = 'infeccion_nosocomial')
+    execute function public.impedir_evento_infeccion();
+drop trigger if exists impedir_evento_infeccion_upd on public.eventos;
+create trigger impedir_evento_infeccion_upd
+    before update of tipo on public.eventos
+    for each row when (NEW.tipo = 'infeccion_nosocomial' and OLD.tipo is distinct from 'infeccion_nosocomial')
+    execute function public.impedir_evento_infeccion();
+
+revoke execute on function public.impedir_evento_infeccion() from public, anon, authenticated;
 
 -- ────────────────────────────────────────────────────────────
 -- OTROS INFORMES / INFORMES PUNTUALES (2026-10-08)

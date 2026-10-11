@@ -130,7 +130,7 @@ export function SeguridadDashboard({ filtros, desde, hasta, onExplorar, onExplor
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               <TarjetaMetrica etiqueta="Errores de medicación" valor={datos.otras.errores_medicacion} onClick={() => irATipo('error_medicacion')} />
               <TarjetaMetrica etiqueta="Efectos adversos" valor={datos.otras.efectos_adversos} onClick={() => irATipo('efecto_adverso_medicacion')} />
-              <TarjetaMetrica etiqueta="Infecciones nosocomiales" valor={datos.otras.infecciones_nosocomiales} onClick={() => irATipo('infeccion_nosocomial')} />
+              <TarjetaMetrica etiqueta="Infecciones nosocomiales" valor={datos.otras.infecciones_nosocomiales} subvalor="Episodios del periodo con la casilla del CMBD marcada" onClick={() => irATipo('infeccion_nosocomial')} />
               <TarjetaMetrica etiqueta="Agresiones" valor={datos.otras.agresiones} onClick={() => irATipo('agresividad_fisica')} />
               <TarjetaMetrica etiqueta="Fugas" valor={datos.otras.fugas} onClick={() => irATipo('fuga')} />
               <TarjetaMetrica etiqueta="Atragantamientos" valor={datos.otras.atragantamientos ?? '—'} onClick={() => irATipo('atragantamiento')} />

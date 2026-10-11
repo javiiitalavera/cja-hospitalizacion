@@ -28,6 +28,16 @@ const TIPALT: Record<string, string> = {
   '9': '9 — Otras circunstancias / fuga / desconocido',
 }
 
+// Focos de la infección nosocomial (se pueden marcar varios).
+const INFECCION_TIPOS: Record<string, string> = {
+  urinaria: 'Urinaria',
+  respiratoria: 'Respiratoria',
+  gastrointestinal: 'Gastrointestinal',
+  piel: 'Piel / partes blandas',
+  bacteriemia: 'Bacteriemia / sepsis',
+  otra: 'Otra',
+}
+
 const PROCEDENCIA: Record<string, string> = {
   '10': '10 — Atención Primaria',
   '30': '30 — Traslado desde otro hospital/centro',
@@ -93,6 +103,10 @@ interface CMBDData {
   procedimiento_7?: string; procedimiento_7_desc?: string
   procedimiento_8?: string; procedimiento_8_desc?: string
   circunstancia_alta?: string
+  // Infección adquirida durante el ingreso: null = sin valorar. Los tipos y el agente solo valen si es true.
+  infeccion_nosocomial?: boolean | null
+  infeccion_nosocomial_tipos?: string[]
+  infeccion_nosocomial_agente?: string | null
   procedencia?: string
   servicio?: string
   notas?: string
@@ -531,6 +545,62 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
             })()}
           </div>
         </div>
+      </div>
+
+      {/* Infección nosocomial: dato que pide el CMBD, se anota a mano al alta (ya no es una incidencia). */}
+      <div className="card p-5 space-y-3" data-testid="cmbd-infeccion">
+        <div>
+          <p className="section-title mb-0">Infección nosocomial</p>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Infección adquirida durante el ingreso, según criterio médico. Se anota aquí, al alta; ya no se registra como incidencia.
+          </p>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="label" htmlFor="cmbd-infeccion-nosocomial">¿Ha tenido alguna durante el ingreso?</label>
+            <select id="cmbd-infeccion-nosocomial" className="input"
+              value={data.infeccion_nosocomial == null ? '' : data.infeccion_nosocomial ? 'si' : 'no'}
+              onChange={e => {
+                const v = e.target.value
+                // Si no la hubo (o no se ha valorado), se vacían sus detalles: la base de datos no admite detalles sin infección.
+                updateFields(v === 'si'
+                  ? { infeccion_nosocomial: true }
+                  : { infeccion_nosocomial: v === 'no' ? false : null, infeccion_nosocomial_tipos: [], infeccion_nosocomial_agente: null })
+              }}>
+              <option value="">— Sin valorar —</option>
+              <option value="no">No</option>
+              <option value="si">Sí</option>
+            </select>
+          </div>
+          {data.infeccion_nosocomial === true && (
+            <div>
+              <label className="label" htmlFor="cmbd-infeccion-agente">Agente causal (si se conoce)</label>
+              <input id="cmbd-infeccion-agente" className="input" maxLength={200}
+                value={data.infeccion_nosocomial_agente ?? ''}
+                onChange={e => update('infeccion_nosocomial_agente', e.target.value || null)} />
+            </div>
+          )}
+        </div>
+        {data.infeccion_nosocomial === true && (
+          <div>
+            <p className="label">Foco (se pueden marcar varios)</p>
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Foco de la infección">
+              {Object.entries(INFECCION_TIPOS).map(([k, l]) => {
+                const activo = (data.infeccion_nosocomial_tipos ?? []).includes(k)
+                return (
+                  <button key={k} type="button" aria-pressed={activo}
+                    onClick={() => {
+                      const actuales = data.infeccion_nosocomial_tipos ?? []
+                      update('infeccion_nosocomial_tipos', activo ? actuales.filter(x => x !== k) : [...actuales, k])
+                    }}
+                    className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${activo ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-slate-600 border-slate-300 hover:border-primary-400'}`}>
+                    {l}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Diagnósticos */}

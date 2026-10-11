@@ -147,11 +147,13 @@ export function FilaPaciente({ n, p, turno, columnas, acciones }: {
             }
             const otros = i.turnos.filter((t) => t !== turno)
             return (
-              <div key={key} className="flex items-start justify-between gap-2">
+              // Cada indicación va resaltada (fondo ámbar y borde a la izquierda) para que no se confunda con el botón
+              // «Añadir indicación», que es un botón discreto de borde punteado.
+              <div key={key} data-testid="indicacion" className="flex items-start justify-between gap-2 rounded-md bg-amber-50 border border-amber-200 border-l-4 border-l-amber-400 pl-2.5 pr-1.5 py-1.5">
                 <div className="min-w-0">
-                  <p className="text-sm text-slate-800 whitespace-pre-wrap break-words">{i.texto}</p>
+                  <p className="text-sm font-medium text-slate-900 whitespace-pre-wrap break-words">{i.texto}</p>
                   {otros.length > 0 && (
-                    <p className="text-[11px] text-slate-400">También: {otros.map(etiquetaTurno).join(', ')}</p>
+                    <p className="text-[11px] text-slate-500">También: {otros.map(etiquetaTurno).join(', ')}</p>
                   )}
                 </div>
                 {editable && i.id && (
@@ -198,7 +200,7 @@ export function FilaPaciente({ n, p, turno, columnas, acciones }: {
             </div>
           ) : (
             <button type="button" disabled={ocupado} onClick={() => { setNuevosTurnos([turno]); setAnadiendo(true) }}
-              className="text-xs text-primary-700 hover:text-primary-900 inline-flex items-center gap-1">
+              className="text-xs text-slate-500 hover:text-primary-700 hover:border-primary-300 border border-dashed border-slate-300 rounded-md px-2 py-0.5 inline-flex items-center gap-1 disabled:opacity-60">
               <Plus className="w-3.5 h-3.5" /> Añadir indicación
             </button>
           ))}

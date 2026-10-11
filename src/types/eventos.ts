@@ -21,12 +21,14 @@ export const TIPO_EVENTO_LABEL: Record<TipoEvento, string> = {
   atragantamiento: 'Atragantamiento',
 }
 
-// Las úlceras por presión ya no son una incidencia: se registran en Plan de
-// cuidados → Curas. El tipo se conserva aquí solo para poder mostrar (por
-// ejemplo en Auditoría) los eventos antiguos; no se ofrece al registrar ni se
-// muestra en los listados de Incidencias.
-export const TIPO_EVENTO_RETIRADO: TipoEvento = 'ulcera'
-export const TIPOS_REGISTRABLES = (Object.keys(TIPO_EVENTO_LABEL) as TipoEvento[]).filter((t) => t !== TIPO_EVENTO_RETIRADO)
+// Tipos que ya no son una incidencia. Se conservan solo para poder mostrar (por ejemplo en Auditoría) los eventos
+// antiguos; no se ofrecen al registrar ni salen en los listados de Incidencias.
+//   · úlcera por presión   → se registra en Plan de cuidados → Curas
+//   · infección nosocomial → se anota en el CMBD (pestaña CMBD de la ficha), al alta
+export const TIPOS_RETIRADOS: TipoEvento[] = ['ulcera', 'infeccion_nosocomial']
+export const TIPOS_REGISTRABLES = (Object.keys(TIPO_EVENTO_LABEL) as TipoEvento[]).filter((t) => !TIPOS_RETIRADOS.includes(t))
+// Para filtrar en las consultas a Supabase: .not('tipo', 'in', FILTRO_TIPOS_RETIRADOS)
+export const FILTRO_TIPOS_RETIRADOS = `(${TIPOS_RETIRADOS.join(',')})`
 
 export const TIPO_EVENTO_COLOR: Record<TipoEvento, string> = {
   caida: 'bg-orange-100 text-orange-700 border-orange-200',
@@ -92,7 +94,7 @@ const LUGARES = ['Habitación', 'Baño', 'Pasillo', 'Sala común', 'Comedor', 'G
 const DETALLES_LUGAR = ['Azul', 'Verde', 'Violeta', 'Gris', 'Sala 1', 'Sala 2']
 
 // Campo común: si el paciente tuvo que salir del centro por lo ocurrido. Se pide en las incidencias que pueden
-// acabar en urgencias (caída, agresión, efecto adverso, infección, atragantamiento).
+// acabar en urgencias (caída, agresión, efecto adverso, atragantamiento).
 export const DERIVACION: CampoEvento = {
   key: 'derivacion', label: 'Derivación a urgencias / hospital', tipo: 'select',
   opciones: ['No', 'Urgencias, sin ingreso', 'Ingreso hospitalario'], requerido: true,
@@ -139,11 +141,11 @@ export const CAMPOS_POR_TIPO: Record<TipoEvento, CampoEvento[]> = {
     DERIVACION,
   ],
 
+  // Retirado (ver TIPOS_RETIRADOS): estos campos solo sirven para mostrar los eventos antiguos.
   infeccion_nosocomial: [
     { key: 'tipo', label: 'Tipo de infección', tipo: 'select', opciones: ['Urinaria (ITU)', 'Respiratoria', 'Gastrointestinal', 'Piel / partes blandas', 'Otra'], requerido: true },
     { key: 'agente', label: 'Agente causal (si conocido)', tipo: 'text' },
     { key: 'confirmacion', label: 'Confirmación diagnóstica', tipo: 'select', opciones: ['Sospecha clínica', 'Confirmada por microbiología'], requerido: true },
-    DERIVACION,
   ],
 
   agresividad_fisica: [

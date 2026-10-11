@@ -7,7 +7,7 @@ import { escapeHtml, imprimirTablaHTML } from '../lib/imprimir'
 import { supabase } from '../lib/supabase'
 import { nombreCompleto, nombreYApellido } from '../types'
 import { ChevronDown, ChevronRight as ChevronRightIcon, Download, Printer, Search, Plus } from 'lucide-react'
-import { TIPO_EVENTO_LABEL, TIPO_EVENTO_COLOR, TURNO_LABEL, CAMPOS_POR_TIPO, DIAS_PENDIENTE_AVISO, diasPendiente, type TipoEvento } from '../types/eventos'
+import { TIPO_EVENTO_LABEL, TIPO_EVENTO_COLOR, TURNO_LABEL, CAMPOS_POR_TIPO, DIAS_PENDIENTE_AVISO, FILTRO_TIPOS_RETIRADOS, diasPendiente, type TipoEvento } from '../types/eventos'
 import { AntiguedadPendiente } from '../components/AntiguedadPendiente'
 import {
   severidadDia, severidadNoche, SEVERIDAD_ESTILO, necesitaConfirmacion, NOCHE_ES_CONTENCION,
@@ -22,7 +22,7 @@ import { InputFecha } from '../components/InputFecha'
 
 const TIPOS_ORDEN: TipoEvento[] = [
   'caida', 'agresividad_fisica',
-  'fuga', 'infeccion_nosocomial', 'error_medicacion', 'efecto_adverso_medicacion', 'atragantamiento',
+  'fuga', 'error_medicacion', 'efecto_adverso_medicacion', 'atragantamiento',
 ]
 
 interface EventoActivo {
@@ -150,7 +150,7 @@ export function Eventos() {
           ingreso:ingresos!inner(id, habitacion, estado, paciente:pacientes(nombre, primer_apellido, segundo_apellido))
         `)
         .eq('ingreso.estado', 'activo')
-        .neq('tipo', 'ulcera')   // las úlceras ya no son incidencia (están en Curas)
+        .not('tipo', 'in', FILTRO_TIPOS_RETIRADOS)   // úlceras (en Curas) e infección nosocomial (en el CMBD) ya no son incidencias
         .order('fecha', { ascending: false })
       if (err) {
         setErrorEstado('No se pudo cargar el estado actual: ' + err.message)
@@ -275,7 +275,7 @@ export function Eventos() {
           registrado_por:profesionales!registrado_por_id(nombre, apellidos),
           ingreso:ingresos!inner(id, habitacion, estado, medico_responsable_id, paciente:pacientes(nombre, primer_apellido, segundo_apellido))
         `)
-        .neq('tipo', 'ulcera')   // las úlceras ya no son incidencia (están en Curas)
+        .not('tipo', 'in', FILTRO_TIPOS_RETIRADOS)   // úlceras (en Curas) e infección nosocomial (en el CMBD) ya no son incidencias
         .order('fecha', { ascending: false })
 
       if (desde) q = q.gte('fecha', desde)

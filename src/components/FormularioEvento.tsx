@@ -6,7 +6,7 @@ import { useAuth } from '../lib/AuthContext'
 import { useAvisoSalida } from '../lib/avisoSalida'
 import type { Profesional } from '../types'
 import RevisionTrasIncidencia, { revisionPara } from './RevisionTrasIncidencia'
-import { TIPO_EVENTO_LABEL, TIPOS_REGISTRABLES, CAMPOS_POR_TIPO, CAMPOS_AÑADIDOS_DESPUES, TURNO_LABEL, campoVisible, turnoSegunHora, type TipoEvento, type Evento } from '../types/eventos'
+import { TIPO_EVENTO_LABEL, TIPOS_REGISTRABLES, CAMPOS_POR_TIPO, CAMPOS_AÑADIDOS_DESPUES, FILTRO_TIPOS_RETIRADOS, TURNO_LABEL, campoVisible, turnoSegunHora, type TipoEvento, type Evento } from '../types/eventos'
 import { X, Save } from 'lucide-react'
 
 interface Props {
@@ -68,7 +68,7 @@ export default function FormularioEvento({ ingresoId, eventoExistente, onClose, 
       .from('eventos')
       .select('id, tipo, fecha, hora, notas, registrado_por:profesionales!registrado_por_id(nombre, apellidos, rol)')
       .eq('ingreso_id', ingresoId)
-      .neq('tipo', 'ulcera')
+      .not('tipo', 'in', FILTRO_TIPOS_RETIRADOS)
       .gte('fecha', hace3dias.toISOString().slice(0, 10))
       .order('fecha', { ascending: false })
       .then(({ data }) => setRecientes((data ?? []) as unknown as Evento[]))

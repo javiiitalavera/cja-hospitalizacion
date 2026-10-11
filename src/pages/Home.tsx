@@ -19,7 +19,7 @@ import {
   CONTENCION_DIA_LABEL, CONTENCION_NOCHE_LABEL,
   type ContencionDia, type ContencionNoche,
 } from '../types/contenciones'
-import { TIPO_EVENTO_LABEL, TIPO_EVENTO_COLOR, type TipoEvento } from '../types/eventos'
+import { TIPO_EVENTO_LABEL, TIPO_EVENTO_COLOR, FILTRO_TIPOS_RETIRADOS, type TipoEvento } from '../types/eventos'
 import { BannerPendientes } from './inicio/BannerPendientes'
 import { calcularPendientes, cargarExtrasPendientes, EXTRAS_VACIOS } from './inicio/pendientes'
 import type { ExtrasPendientes, LineaPendiente } from './inicio/pendientes'
@@ -145,12 +145,12 @@ export default function Home() {
           // Todas las incidencias del ingreso (el mismo número que ve
           // quien abre la ficha). Lo reciente se distingue por el color
           // de la insignia, no recortando la lista.
-          supabase.from('eventos').select('id,ingreso_id,tipo,fecha,hora,estado').in('ingreso_id', ids).neq('tipo', 'ulcera').order('fecha', { ascending: false }),
+          supabase.from('eventos').select('id,ingreso_id,tipo,fecha,hora,estado').in('ingreso_id', ids).not('tipo', 'in', FILTRO_TIPOS_RETIRADOS).order('fecha', { ascending: false }),
           fetchContencionesPorIngreso(ids),
           // Sin límite de fecha, a propósito — una incidencia puede
           // llevar pendiente de completar más de 7 días y no por eso
           // deja de ser trabajo pendiente.
-          supabase.from('eventos').select('id,ingreso_id,tipo,fecha,created_at').in('ingreso_id', ids).neq('tipo', 'ulcera').eq('estado', 'pendiente'),
+          supabase.from('eventos').select('id,ingreso_id,tipo,fecha,created_at').in('ingreso_id', ids).not('tipo', 'in', FILTRO_TIPOS_RETIRADOS).eq('estado', 'pendiente'),
         ])
 
         // La lista de pacientes es lo esencial y ya se ha podido

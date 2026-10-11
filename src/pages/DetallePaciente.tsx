@@ -7,6 +7,7 @@ import { edad, diasEntre } from '../lib/fechas'
 import { ChevronLeft, ChevronRight, Plus, FileText, AlertTriangle, History, Pencil, Save, X } from 'lucide-react'
 import { ESTADO_INGRESO_LABEL as ESTADO_LABEL, ESTADO_INGRESO_COLOR as ESTADO_COLOR, nombreCompleto } from '../types'
 import { registrarAcceso } from '../lib/accesos'
+import { FILTRO_TIPOS_RETIRADOS } from '../types/eventos'
 
 interface Ingreso {
   id: string
@@ -110,7 +111,7 @@ export default function DetallePaciente() {
           .from('eventos')
           .select('*, registrado_por:profesionales!registrado_por_id(nombre,apellidos)')
           .in('ingreso_id', ingIds)
-          .neq('tipo', 'ulcera')   // las úlceras ya no son incidencia (están en Curas)
+          .not('tipo', 'in', FILTRO_TIPOS_RETIRADOS)   // úlceras (en Curas) e infección nosocomial (en el CMBD) ya no son incidencias
           .order('fecha', { ascending: false }),
         supabase.from('informe_ingreso').select('ingreso_id').in('ingreso_id', ingIds),
         supabase.from('informe_alta').select('ingreso_id').in('ingreso_id', ingIds),

@@ -6,7 +6,7 @@ import { useConfirmar } from '../../components/useConfirmar'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
 import FormularioEvento from '../../components/FormularioEvento'
 import { AntiguedadPendiente } from '../../components/AntiguedadPendiente'
-import { TIPO_EVENTO_LABEL, TIPO_EVENTO_COLOR, TURNO_LABEL, CAMPOS_POR_TIPO, type Evento } from '../../types/eventos'
+import { TIPO_EVENTO_LABEL, TIPO_EVENTO_COLOR, TURNO_LABEL, CAMPOS_POR_TIPO, FILTRO_TIPOS_RETIRADOS, type Evento } from '../../types/eventos'
 
 function TabEventos({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo?: { nombre: string; habitacion?: number | null } }) {
   const { profesional, esAdmin } = useAuth()
@@ -36,7 +36,7 @@ function TabEventos({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteIn
         .from('eventos')
         .select('*, registrado_por:profesionales!registrado_por_id(nombre, apellidos, rol)')
         .eq('ingreso_id', ingresoId)
-        .neq('tipo', 'ulcera')   // las úlceras ya no son incidencia (están en Curas)
+        .not('tipo', 'in', FILTRO_TIPOS_RETIRADOS)   // úlceras (en Curas) e infección nosocomial (en el CMBD) ya no son incidencias
         .order('fecha', { ascending: false })
         .order('created_at', { ascending: false })
       if (err) {

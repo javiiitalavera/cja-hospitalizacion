@@ -103,6 +103,7 @@ const CAMPO_LABEL: Record<string, string> = {
   texto: 'Texto', turnos: 'Turnos', via: 'Vía', atc: 'ATC', clave: 'Nombre', sonda_vesical: 'Sonda vesical', colector: 'Colector',
   alerta_conducta: 'Alertas de conducta', objetos_calma: 'Objetos que le calman', tipo: 'Tipo', notas: 'Notas', hora: 'Hora',
   turno: 'Turno', fecha: 'Fecha', dia: 'Día', noche: 'Noche', dni: 'DNI', sexo: 'Sexo', municipio: 'Municipio',
+  infeccion_nosocomial: 'Infección nosocomial', infeccion_nosocomial_tipos: 'Infección nosocomial: foco', infeccion_nosocomial_agente: 'Infección nosocomial: agente',
   vias: 'Vías', aislamiento: 'Aislamiento', sonda_fecha: 'Sonda: fecha de colocación', sonda_calibre: 'Sonda: calibre',
   oxigenoterapia: 'Oxigenoterapia', oxigeno_dispositivo: 'Oxígeno: dispositivo', oxigeno_flujo: 'Oxígeno: flujo (l/min)',
 }
