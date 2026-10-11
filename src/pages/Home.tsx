@@ -265,7 +265,7 @@ export default function Home() {
   }
 
   // Contención física (día y noche), con acceso rápido: igual en la vista de filas y en la de tarjetas.
-  function celdaContencion(ingreso: IngresoConPaciente) {
+  function celdaContencion(ingreso: IngresoConPaciente, conRotulos = false) {
     return (
         <div className="flex items-center gap-1">
           {(['dia', 'noche'] as const).map((eje) => {
@@ -289,7 +289,8 @@ export default function Home() {
               ? necesitaConfirmacion(estado?.dia, null) && !estado?.confirmado_por_id
               : necesitaConfirmacion(null, estado?.noche) && !estado?.confirmado_por_id
             return (
-              <div key={eje} className="relative group/tt">
+              <div key={eje} className="relative group/tt w-10 flex flex-col items-center">
+                {conRotulos && <span className="text-[0.7rem] leading-none text-slate-500 mb-1">{eje === 'dia' ? 'Día' : 'Noche'}</span>}
                 <button
                   onClick={(e) => { e.stopPropagation(); setModalContencion(ingreso.id) }}
                   className={`relative flex items-center justify-center w-6 h-6 rounded-md border transition-colors ${estilo.bg} ${estilo.border} ${estilo.text} hover:opacity-80 ${pendienteConfirmar ? 'animate-pulse ring-2 ring-amber-400' : ''}`}
@@ -437,8 +438,8 @@ export default function Home() {
               </div>
               <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
                 <span className="text-xs text-slate-500 truncate min-w-0" title={medico}>{medico}</span>
-                <div className="flex items-center gap-3 shrink-0">
-                  {celdaContencion(ingreso)}
+                <div className="flex items-end gap-3 shrink-0">
+                  {celdaContencion(ingreso, true)}
                   {celdaIncidencias(ingreso)}
                 </div>
               </div>
@@ -528,7 +529,7 @@ export default function Home() {
         <div className="card overflow-hidden">
           {/* Cabecera */}
           <div
-            className="grid gap-x-3 text-xs font-semibold text-slate-500 px-3 py-2 bg-slate-50 border-b"
+            className="grid gap-x-3 items-end text-xs font-semibold text-slate-500 px-3 py-2 bg-slate-50 border-b"
             style={{ gridTemplateColumns: COLUMNAS_TABLA }}
           >
             <div>Hab.</div>
@@ -537,7 +538,13 @@ export default function Home() {
             <div>Días</div>
             <div>Ingreso</div>
             <div>Médico</div>
-            <div>Contención</div>
+            <div>
+              <div>Contención</div>
+              <div className="flex gap-1 font-normal text-[0.7rem] leading-tight">
+                <span className="w-10 text-center">Día</span>
+                <span className="w-10 text-center">Noche</span>
+              </div>
+            </div>
             <div>Incidencias</div>
             <div></div>
           </div>

@@ -9,7 +9,7 @@ import ModalContencion from '../../components/ModalContencion'
 import { BloqueOxigeno, BloqueSonda, SelectorAislamiento, SelectorVias } from '../../components/ViasDispositivos'
 import type { DatosDispositivos } from '../../types/pautaCuidados'
 import {
-  severidadDia, severidadNoche, SEVERIDAD_ESTILO,
+  severidadDia, severidadNoche, SEVERIDAD_ESTILO, SEVERIDAD_BOTON_ESTILO,
   type ContencionDia, type ContencionNoche,
 } from '../../types/contenciones'
 import type { IngresoConItems } from './tipos'
@@ -331,28 +331,27 @@ export default function PanelEdicion({
 
         <p className="section-title mt-3">Seguridad y conducta</p>
         <span className="text-xs text-slate-600 block">Pauta de contención</span>
-        <p className="text-[0.7rem] text-slate-500 mb-1.5">Contención pautada para el día y la noche; cada cambio queda en su historial.</p>
+        <p className="text-[0.7rem] text-slate-500 mb-1.5">Contención pautada para el día y la noche. Pulsa Día o Noche para ver o editar; cada cambio queda en su historial.</p>
         {errorContencion && (
           <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded px-2 py-1 mb-1.5">{errorContencion}</p>
         )}
         {estadoContencion === 'cargando' ? (
           <p className="text-xs text-slate-500">Cargando…</p>
         ) : (
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex flex-wrap gap-2 mb-2" role="group" aria-label="Pauta de contención">
             {(['dia', 'noche'] as const).map((eje) => {
               const sev = eje === 'dia' ? severidadDia(estadoContencion.dia as any) : severidadNoche(estadoContencion.noche as any)
               const estilo = SEVERIDAD_ESTILO[sev]
               return (
-                <span key={eje} className={`px-2 py-1 rounded text-xs font-medium border ${estilo.bg} ${estilo.text} ${estilo.border}`}>
+                <button key={eje} type="button" onClick={() => setModalContencion(true)}
+                  aria-label={`Contención ${eje === 'dia' ? 'día' : 'noche'}: ${estilo.label}. Ver o editar`}
+                  className={`flex-1 min-w-[7rem] px-2 py-1.5 rounded-lg text-xs font-semibold border-2 transition-all hover:brightness-95 ${SEVERIDAD_BOTON_ESTILO[sev]}`}>
                   {eje === 'dia' ? 'Día' : 'Noche'}: {estilo.label}
-                </span>
+                </button>
               )
             })}
           </div>
         )}
-        <button onClick={() => setModalContencion(true)} className="text-xs text-primary-600 hover:underline font-medium mb-2">
-          Ver / editar contención
-        </button>
         {modalContencion && (
           <ModalContencion
             ingresoId={ingreso.id}

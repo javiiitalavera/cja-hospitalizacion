@@ -109,6 +109,16 @@ export function severidadNoche(noche: ContencionNoche[] | null | undefined): Sev
   return 'seguridad'
 }
 
+// Versión «botón» de los estilos de severidad: mismo peso visual que los botones del semáforo de caídas
+// (relleno marcado, no el tono pastel de las etiquetas). La usan la ficha y la Hoja de ítems.
+export const SEVERIDAD_BOTON_ESTILO: Record<SeveridadContencion, string> = {
+  sin_revisar: 'bg-slate-200 text-slate-700 border-slate-300',
+  ninguna: 'bg-emerald-200 text-emerald-900 border-emerald-300',
+  seguridad: 'bg-blue-200 text-blue-900 border-blue-300',
+  si_precisa: 'bg-amber-300 text-amber-950 border-amber-400',
+  activa: 'bg-red-500 text-white border-red-600',
+}
+
 export const SEVERIDAD_ESTILO: Record<SeveridadContencion, {
   bg: string; text: string; border: string; label: string
 }> = {

@@ -6,18 +6,10 @@ import type { ItemsPaciente } from '../../types'
 import { BloqueOxigeno, BloqueSonda, SelectorAislamiento, SelectorVias } from '../../components/ViasDispositivos'
 import type { DatosDispositivos } from '../../types/pautaCuidados'
 import ModalContencion from '../../components/ModalContencion'
-import { severidadDia, severidadNoche, SEVERIDAD_ESTILO } from '../../types/contenciones'
+import { severidadDia, severidadNoche, SEVERIDAD_ESTILO, SEVERIDAD_BOTON_ESTILO } from '../../types/contenciones'
 import { SEMAFORO_CAIDAS_COLOR } from '../../types'
 import { EVENTO_SEMAFORO, SEMAFOROS } from '../../components/SemaforoCaidas'
 
-// Mismo peso visual que los botones del semáforo de caídas: relleno marcado, no el tono pastel de las etiquetas.
-const ESTILO_BOTON_CONTENCION: Record<string, string> = {
-  sin_revisar: 'bg-slate-200 text-slate-700 border-slate-300',
-  ninguna: 'bg-emerald-200 text-emerald-900 border-emerald-300',
-  seguridad: 'bg-blue-200 text-blue-900 border-blue-300',
-  si_precisa: 'bg-amber-300 text-amber-950 border-amber-400',
-  activa: 'bg-red-500 text-white border-red-600',
-}
 
 function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo?: { nombre: string; habitacion?: number | null } }) {
   const [data, setData] = useState<Partial<ItemsPaciente & { version: number }>>({})
@@ -179,7 +171,7 @@ function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo
               return (
                 <button key={eje} type="button" onClick={() => setModalContencion(true)}
                   aria-label={`Contención ${eje === 'dia' ? 'día' : 'noche'}: ${estilo.label}. Ver o editar`}
-                  className={`min-w-[11rem] px-3 py-1.5 rounded-lg text-xs font-semibold border-2 transition-all hover:brightness-95 ${ESTILO_BOTON_CONTENCION[sev]}`}>
+                  className={`min-w-[11rem] px-3 py-1.5 rounded-lg text-xs font-semibold border-2 transition-all hover:brightness-95 ${SEVERIDAD_BOTON_ESTILO[sev]}`}>
                   {eje === 'dia' ? 'Día' : 'Noche'}: {estilo.label}
                 </button>
               )
