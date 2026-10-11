@@ -216,15 +216,16 @@ export default function Pacientes() {
             <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 animate-spin" />
           )}
         </div>
+        <div className="segmentado" role="group" aria-label="Estado">
         {(['activo', 'alta', 'todos'] as const).map(e => (
           <button key={e} type="button"
+            aria-pressed={filtroEstado === e}
             onClick={() => { setFiltroEstado(e); setPagina(0) }}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              filtroEstado === e ? 'bg-primary-600 text-white' : 'bg-white border text-slate-500 hover:bg-slate-50'
-            }`}>
+            className={`segmentado-btn ${filtroEstado === e ? 'activo' : ''}`}>
             {e === 'activo' ? 'Ingresados' : e === 'alta' ? 'Altas / Éxitus' : 'Todos'}
           </button>
         ))}
+        </div>
       </div>
 
       <div className="card overflow-hidden">

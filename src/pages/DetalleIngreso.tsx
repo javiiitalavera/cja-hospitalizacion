@@ -429,16 +429,14 @@ export default function DetalleIngreso() {
       <div className="flex-1 overflow-y-auto p-8">
         {/* Subpestañas (solo en las pestañas que las tienen) */}
         {tabActual.subs && subActual && (
-          <div className="flex flex-wrap gap-2 mb-6 pb-4 border-b border-slate-100">
+          <div className="segmentado mb-6" role="tablist">
             {tabActual.subs.map((s) => (
               <button
                 key={s.id}
                 onClick={() => irA(tabActual.id, s.id)}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  subActual.id === s.id
-                    ? 'bg-primary-50 text-primary-700'
-                    : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
-                }`}
+                role="tab"
+                aria-selected={subActual.id === s.id}
+                className={`segmentado-btn ${subActual.id === s.id ? 'activo' : ''}`}
               >
                 {s.label}
                 {s.enConstruccion && (

@@ -273,8 +273,8 @@ export default function Curas() {
                                   ? 'bg-rose-100 border-rose-300 text-rose-700'
                                   : 'bg-emerald-100 border-emerald-300 text-emerald-700'
                                 : toca
-                                  ? `bg-amber-200 border-amber-500 ${futuro ? '' : 'hover:bg-amber-300'}`
-                                  : 'bg-slate-100 border-slate-200'
+                                  ? `celda-toca ${futuro ? '' : 'hover:bg-amber-200'}`
+                                  : 'celda-notoca'
                             }`}
                           >
                             {marca
@@ -288,9 +288,15 @@ export default function Curas() {
                 ))}
               </tbody>
             </table>
-            <p className="px-4 py-2 text-xs text-slate-500 border-t">
-              Ámbar con ○: toca cura ese día según la pauta (si es anterior a hoy y sigue así, está sin registrar) · verde con ✓: hecha · rojo con ✗: no realizada (con su motivo) · gris claro: no toca. En las pautas «cada X h» se cuenta desde la última cura hecha.
-            </p>
+            <div className="px-4 py-2.5 text-xs text-slate-500 border-t space-y-1.5" data-testid="leyenda-curas">
+              <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
+                <span className="inline-flex items-center gap-1.5"><span aria-hidden className="celda-toca w-4 h-4 rounded border inline-flex items-center justify-center"><Circle className="w-2.5 h-2.5 text-amber-800" /></span>Toca cura (si es anterior a hoy y sigue así, está sin registrar)</span>
+                <span className="inline-flex items-center gap-1.5"><span aria-hidden className="w-4 h-4 rounded border bg-emerald-100 border-emerald-300 text-emerald-700 inline-flex items-center justify-center"><Check className="w-2.5 h-2.5" /></span>Hecha</span>
+                <span className="inline-flex items-center gap-1.5"><span aria-hidden className="w-4 h-4 rounded border bg-rose-100 border-rose-300 text-rose-700 inline-flex items-center justify-center"><X className="w-2.5 h-2.5" /></span>No realizada (con su motivo)</span>
+                <span className="inline-flex items-center gap-1.5"><span aria-hidden className="celda-notoca w-4 h-4 rounded border" />No toca</span>
+              </div>
+              <p>En las pautas «cada X h» se cuenta desde la última cura hecha.</p>
+            </div>
           </div>
 
           {pacientes.some((p) => p.lesiones.length > 0) && (

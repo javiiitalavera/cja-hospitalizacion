@@ -56,6 +56,18 @@
   .section-title {
     @apply text-sm font-semibold text-primary-700 mb-3;
   }
+  /* Control segmentado (Filas/Tarjetas, subpestañas de la ficha, filtros de Pacientes): un solo estilo para todos. */
+  .celda-notoca { @apply bg-slate-50 border-transparent; }
+  .celda-toca { @apply bg-amber-100 border-amber-300; }
+  .segmentado {
+    @apply inline-flex items-center gap-0.5 p-0.5 rounded-lg bg-slate-100 border border-slate-200/70;
+  }
+  .segmentado-btn {
+    @apply flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium text-slate-600 hover:text-slate-800 transition-colors;
+  }
+  .segmentado-btn.activo {
+    @apply bg-white text-primary-700 shadow-sm;
+  }
   .textarea {
     @apply w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white resize-none;
   }
@@ -69,4 +81,8 @@
   .app-lateral { border-color: #cbd5e1; }                    /* slate-300 */
   .card, .btn-secondary { border-color: #cbd5e1; }           /* slate-300 */
   .input, .textarea { border-color: #94a3b8; }               /* slate-400 */
+  .segmentado { background-color: #e2e8f0; border-color: #cbd5e1; }
+  .segmentado-btn.activo { box-shadow: 0 0 0 1px #cbd5e1; }
+  .celda-notoca { background-color: #f1f5f9; border-color: #e2e8f0; }
+  .celda-toca { background-color: #fde68a; border-color: #f59e0b; }
 }

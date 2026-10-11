@@ -15,16 +15,17 @@ const ROL_LABEL: Record<string, string> = {
 }
 
 const navItems = [
-  { to: '/', icon: Home, label: 'Inicio', end: true },
-  { to: '/pacientes', icon: Users, label: 'Buscar paciente' },
-  { to: '/informes', icon: FileText, label: 'Buscar informe' },
-  { to: '/items', icon: ClipboardList, label: 'Hoja de ítems' },
-  { to: '/hojas-turno', icon: ClipboardCheck, label: 'Hojas de turno' },
-  { to: '/curas', icon: Bandage, label: 'Pauta de curas' },
-  { to: '/eventos', icon: AlertTriangle, label: 'Incidencias' },
-  { to: '/dashboard', icon: BarChart2, label: 'Dashboard', soloAdmin: true },
-  { to: '/personal', icon: UserCog, label: 'Personal', soloAdmin: true },
-  { to: '/auditoria', icon: History, label: 'Auditoría', soloAdmin: true },
+  // grupo: los bloques se separan con una línea fina (navegar / registro diario / administración).
+  { to: '/', icon: Home, label: 'Inicio', end: true, grupo: 1 },
+  { to: '/pacientes', icon: Users, label: 'Buscar paciente', grupo: 1 },
+  { to: '/informes', icon: FileText, label: 'Buscar informe', grupo: 1 },
+  { to: '/items', icon: ClipboardList, label: 'Hoja de ítems', grupo: 2 },
+  { to: '/hojas-turno', icon: ClipboardCheck, label: 'Hojas de turno', grupo: 2 },
+  { to: '/curas', icon: Bandage, label: 'Pauta de curas', grupo: 2 },
+  { to: '/eventos', icon: AlertTriangle, label: 'Incidencias', grupo: 2 },
+  { to: '/dashboard', icon: BarChart2, label: 'Dashboard', soloAdmin: true, grupo: 3 },
+  { to: '/personal', icon: UserCog, label: 'Personal', soloAdmin: true, grupo: 3 },
+  { to: '/auditoria', icon: History, label: 'Auditoría', soloAdmin: true, grupo: 3 },
 ]
 
 export default function Layout() {
@@ -64,9 +65,9 @@ export default function Layout() {
 
         {/* Nav */}
         <nav className="flex-1 py-4 px-2 space-y-0.5 overflow-y-auto">
-          {items.map(({ to, icon: Icon, label, end }) => (
+          {items.map(({ to, icon: Icon, label, end, grupo }, i) => (
+            <div key={to} className={i > 0 && items[i - 1].grupo !== grupo ? 'pt-2 mt-2 border-t border-slate-100' : ''}>
             <NavLink
-              key={to}
               to={to}
               end={end}
               title={collapsed ? label : undefined}
@@ -83,6 +84,7 @@ export default function Layout() {
               <Icon className="w-4 h-4 shrink-0" />
               {!collapsed && label}
             </NavLink>
+            </div>
           ))}
         </nav>
 

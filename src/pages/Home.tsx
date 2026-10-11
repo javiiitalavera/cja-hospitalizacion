@@ -458,10 +458,10 @@ export default function Home() {
         <span className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500">
           <span aria-hidden className="w-2 h-2 rounded-full bg-slate-300" />{libres} libres
         </span>
-        <div className="flex rounded-lg border bg-white overflow-hidden text-sm" role="group" aria-label="Vista">
+        <div className="segmentado" role="group" aria-label="Vista">
           {([['filas', 'Filas', LayoutList], ['tarjetas', 'Tarjetas', LayoutGrid]] as const).map(([v, et, Icono]) => (
             <button key={v} type="button" onClick={() => cambiarVista(v)} aria-pressed={vista === v} title={`Vista de ${et.toLowerCase()}`}
-              className={`flex items-center gap-1.5 px-3 py-2 font-medium transition-colors ${vista === v ? 'bg-primary-50 text-primary-700' : 'text-slate-600 hover:bg-slate-50'}`}>
+              className={`segmentado-btn ${vista === v ? 'activo' : ''}`}>
               <Icono className="w-3.5 h-3.5" />{et}
             </button>
           ))}
@@ -525,10 +525,10 @@ export default function Home() {
           </p>
         )}
         {vista === 'tarjetas' ? vistaTarjetas() : (
-        <div className="grid grid-cols-1 gap-1">
+        <div className="card overflow-hidden">
           {/* Cabecera */}
           <div
-            className="grid gap-x-3 text-xs font-semibold text-slate-500 px-3 pb-1"
+            className="grid gap-x-3 text-xs font-semibold text-slate-500 px-3 py-2 bg-slate-50 border-b"
             style={{ gridTemplateColumns: COLUMNAS_TABLA }}
           >
             <div>Hab.</div>
@@ -542,6 +542,7 @@ export default function Home() {
             <div></div>
           </div>
 
+          <div className="divide-y divide-slate-100">
           {slots.map((ingreso, idx) => {
             const n = idx + 1
             const sem = ingreso ? items[ingreso.id]?.semaforo_caidas : undefined
@@ -552,8 +553,8 @@ export default function Home() {
               return (
                 <div
                   key={n}
-                  className={`grid gap-x-3 items-center border border-dashed border-slate-150 rounded-lg px-3 py-1.5 transition-colors ${
-                    esMedico ? 'cursor-pointer hover:border-primary-300 hover:bg-primary-50/30' : ''
+                  className={`grid gap-x-3 items-center bg-slate-50/50 px-3 py-1.5 transition-colors ${
+                    esMedico ? 'cursor-pointer hover:bg-primary-50/40' : ''
                   }`}
                   style={{ gridTemplateColumns: COLUMNAS_TABLA }}
                   onClick={esMedico ? () => navigate(`/pacientes/nuevo?habitacion=${n}`) : undefined}
@@ -592,7 +593,7 @@ export default function Home() {
             return (
               <div key={n} className="group">
                 <div
-                  className="grid gap-x-3 items-center bg-white border border-slate-200 rounded-lg px-3 py-2 hover:shadow-sm hover:border-primary-200 transition-all cursor-pointer"
+                  className="grid gap-x-3 items-center bg-white px-3 py-2 hover:bg-slate-50 transition-colors cursor-pointer"
                   style={{ gridTemplateColumns: COLUMNAS_TABLA }}
                   onClick={() => navigate(`/ingresos/${ingreso.id}`)}
                 >
@@ -653,6 +654,7 @@ export default function Home() {
               </div>
             )
           })}
+          </div>
         </div>
         )}
         </>
