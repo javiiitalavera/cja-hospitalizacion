@@ -1,19 +1,20 @@
-// Una cura de la "Tabla de cuidados" abierta en una ventana: se ve la pauta,
-// la última valoración y la evolución, y se puede editar sin salir de la
-// pantalla Curas. Usa las mismas piezas que la pestaña Pauta de curas de la ficha.
+// Una cura de la "Tabla de cuidados" abierta directamente en la ventana de edición (la misma que
+// «Editar» en la ficha), sin pasar antes por una tarjeta intermedia: Nueva valoración, Editar cura,
+// Editar lesión e Historial, todo en una sola ventana. Se abre en «Editar cura», que es lo que se ve
+// escrito en la tabla.
 
 import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/AuthContext'
 import { useConfirmar } from '../../components/useConfirmar'
 import { hoyLocal } from '../../lib/fechas'
-import { TarjetaLesion, ModalEditarLesion, FormularioValoracion } from '../ingreso/TabCuras'
-import { Modal } from './Modal'
+import { ModalEditarLesion, FormularioValoracion } from '../ingreso/TabCuras'
 import type { Lesion, Valoracion } from './tipos'
 
 export function ModalCura({
   titulo, lesion, onCerrar, onCambio,
 }: {
+  // Paciente al que pertenece la lesión («Apellidos, Nombre · Hab. 1»).
   titulo: string
   lesion: Lesion
   onCerrar: () => void
@@ -22,7 +23,6 @@ export function ModalCura({
 }) {
   const { profesional, esAdmin } = useAuth()
   const { confirmar, dialogo } = useConfirmar()
-  const [formLesion, setFormLesion] = useState(false)
   const [formValoracion, setFormValoracion] = useState<{ editando: Valoracion } | null>(null)
   const [errorAccion, setErrorAccion] = useState('')
 
@@ -51,7 +51,7 @@ export function ModalCura({
   }
 
   async function eliminarValoracion(v: Valoracion) {
-    if (!(await confirmar({ titulo: '¿Eliminar esta valoración?', mensaje: 'No se puede deshacer.', textoConfirmar: 'Eliminar', peligro: true }))) return
+    if (!(await confirmar({ titulo: '¿Eliminar este registro?', mensaje: 'No se puede deshacer.', textoConfirmar: 'Eliminar', peligro: true }))) return
     setErrorAccion('')
     const { error, count } = await supabase.from('curas_valoraciones').delete({ count: 'exact' }).eq('id', v.id)
     if (error) { setErrorAccion('No se pudo eliminar: ' + error.message); return }
@@ -62,31 +62,23 @@ export function ModalCura({
   return (
     <>
       {dialogo}
-      <Modal titulo={titulo} onClose={onCerrar} ancho="max-w-3xl">
-        {errorAccion && (
-          <p className="mb-3 text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{errorAccion}</p>
-        )}
-        <TarjetaLesion
-          lesion={lesion}
-          puedeEditar={puedeEditar}
-          puedeBorrar={puedeEditar && (esAdmin || esMio(lesion.registrado_por_id))}
-          puedeBorrarValoracion={(v) => puedeEditar && (esAdmin || esMio(v.registrado_por_id))}
-          evolucionAbierta
-          onEditar={() => setFormLesion(true)}
-          onEditarValoracion={(v) => setFormValoracion({ editando: v })}
-          onCambioEstado={cambiarEstado}
-          onEliminarLesion={eliminarLesion}
-          onEliminarValoracion={eliminarValoracion}
-        />
-      </Modal>
-
-      {formLesion && (
-        <ModalEditarLesion
-          lesion={lesion}
-          onClose={() => setFormLesion(false)}
-          onGuardado={async () => { setFormLesion(false); await onCambio() }}
-        />
-      )}
+      <ModalEditarLesion
+        lesion={lesion}
+        paciente={titulo}
+        pestañaInicial="pauta"
+        onClose={onCerrar}
+        onGuardado={async () => { await onCambio(); onCerrar() }}
+        extras={{
+          error: errorAccion,
+          puedeEditar,
+          puedeBorrar: puedeEditar && (esAdmin || esMio(lesion.registrado_por_id)),
+          puedeBorrarValoracion: (v) => puedeEditar && (esAdmin || esMio(v.registrado_por_id)),
+          onEditarValoracion: (v) => setFormValoracion({ editando: v }),
+          onEliminarValoracion: eliminarValoracion,
+          onCambioEstado: cambiarEstado,
+          onEliminarLesion: eliminarLesion,
+        }}
+      />
       {formValoracion && (
         <FormularioValoracion
           lesion={lesion}

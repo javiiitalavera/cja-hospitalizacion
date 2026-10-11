@@ -432,28 +432,45 @@ export function FormularioValoracion({
   )
 }
 
-// ── «Editar» una lesión: una sola ventana con tres pestañas ──────
+// ── «Editar» una lesión: una sola ventana con pestañas ───────────
 // Cada pestaña guarda lo suyo y es independiente de las demás: así no se mezcla corregir un dato
 // mal escrito con anotar cómo está la lesión o cambiar la cura.
-type Pestaña = 'valoracion' | 'pauta' | 'datos'
+type Pestaña = 'valoracion' | 'pauta' | 'datos' | 'historial'
 const PESTAÑAS: { id: Pestaña; titulo: string; ayuda: string }[] = [
   { id: 'valoracion', titulo: 'Nueva valoración', ayuda: 'Cómo está la lesión hoy: medidas, grado, frotis, escalas.' },
   { id: 'pauta', titulo: 'Editar cura', ayuda: 'Cambiar la cura que lleva: apósito, frecuencia, días.' },
   { id: 'datos', titulo: 'Editar lesión', ayuda: 'Para corregir algo mal escrito: localización, fecha de inicio, origen, notas.' },
+  { id: 'historial', titulo: 'Historial', ayuda: 'Valoraciones y cambios de cura registrados.' },
 ]
 
+// Lo que hace falta para llevar la lesión entera desde esta ventana (historial, dar por curada, eliminar),
+// cuando se abre directamente desde la tabla de cuidados y no pasa antes por la tarjeta de la ficha.
+export interface ExtrasEdicionLesion {
+  error?: string
+  puedeEditar: boolean
+  puedeBorrar: boolean
+  puedeBorrarValoracion: (v: Valoracion) => boolean
+  onEditarValoracion: (v: Valoracion) => void
+  onEliminarValoracion: (v: Valoracion) => void
+  onCambioEstado: () => void
+  onEliminarLesion: () => void
+}
+
 export function ModalEditarLesion({
-  lesion, pestañaInicial, onClose, onGuardado,
-}: { lesion: Lesion; pestañaInicial?: Pestaña; onClose: () => void; onGuardado: () => void }) {
+  lesion, paciente, pestañaInicial, extras, onClose, onGuardado,
+}: { lesion: Lesion; paciente?: string; pestañaInicial?: Pestaña; extras?: ExtrasEdicionLesion; onClose: () => void; onGuardado: () => void }) {
   const curada = !!lesion.fecha_fin
-  // Una lesión curada ya no se valora ni lleva cura: solo se pueden corregir sus datos.
-  const disponibles = curada ? PESTAÑAS.filter((p) => p.id === 'datos') : PESTAÑAS
+  // Una lesión curada ya no se valora ni lleva cura: solo se pueden corregir sus datos (y ver el historial).
+  const disponibles = PESTAÑAS.filter((p) => (p.id === 'historial' ? !!extras : curada ? p.id === 'datos' : true))
   const [pestaña, setPestaña] = useState<Pestaña>(pestañaInicial && disponibles.some((p) => p.id === pestañaInicial) ? pestañaInicial : disponibles[0].id)
   const actual = disponibles.find((p) => p.id === pestaña)!
+  const vals = ordenarValoraciones(lesion.valoraciones)
   return (
     <Modal titulo={`${lesion.localizacion} · ${CARACTERISTICA_LABEL[lesion.caracteristicas]}`} onClose={onClose}>
+      {paciente && <p className="text-sm font-medium text-slate-700 -mt-2 mb-3">{paciente}</p>}
+      {extras?.error && <p className="mb-3 text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{extras.error}</p>}
       {disponibles.length > 1 && (
-        <div role="tablist" className="flex gap-1 border-b border-slate-200 mb-3">
+        <div role="tablist" className="flex gap-1 border-b border-slate-200 mb-3 overflow-x-auto">
           {disponibles.map((p) => (
             <button
               key={p.id}
@@ -461,7 +478,7 @@ export function ModalEditarLesion({
               aria-selected={p.id === pestaña}
               type="button"
               onClick={() => setPestaña(p.id)}
-              className={`px-3 py-2 text-sm font-medium -mb-px border-b-2 transition-colors ${p.id === pestaña ? 'border-primary-600 text-primary-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+              className={`px-3 py-2 text-sm font-medium -mb-px border-b-2 whitespace-nowrap transition-colors ${p.id === pestaña ? 'border-primary-600 text-primary-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
             >
               {p.titulo}
             </button>
@@ -482,8 +499,73 @@ export function ModalEditarLesion({
       )}
       <div className={pestaña === 'datos' ? '' : 'hidden'}>
         <CuerpoLesion ingresoId={lesion.ingreso_id} editando={lesion} onClose={onClose} onGuardado={onGuardado} />
+        {extras?.puedeEditar && (
+          <div className="mt-5 pt-4 border-t border-slate-200 flex items-center justify-between gap-3">
+            <button type="button" onClick={extras.onCambioEstado} className="text-sm font-medium text-slate-600 hover:text-slate-800 underline">
+              {curada ? 'Reabrir la lesión' : 'Dar por curada'}
+            </button>
+            {extras.puedeBorrar && (
+              <button type="button" onClick={extras.onEliminarLesion} className="text-sm font-medium text-red-600 hover:text-red-700 flex items-center gap-1">
+                <Trash2 className="w-4 h-4" />Eliminar la lesión
+              </button>
+            )}
+          </div>
+        )}
       </div>
+      {extras && pestaña === 'historial' && (
+        <TablaHistorial
+          vals={vals}
+          puedeEditar={extras.puedeEditar}
+          puedeBorrarValoracion={extras.puedeBorrarValoracion}
+          onEditarValoracion={extras.onEditarValoracion}
+          onEliminarValoracion={extras.onEliminarValoracion}
+        />
+      )}
     </Modal>
+  )
+}
+
+// ── Historial de una lesión (valoraciones y cambios de cura) ────
+export function TablaHistorial({
+  vals, puedeEditar, puedeBorrarValoracion, onEditarValoracion, onEliminarValoracion,
+}: {
+  vals: Valoracion[]
+  puedeEditar: boolean
+  puedeBorrarValoracion: (v: Valoracion) => boolean
+  onEditarValoracion: (v: Valoracion) => void
+  onEliminarValoracion: (v: Valoracion) => void
+}) {
+  if (vals.length === 0) return <p className="text-xs text-slate-500 mt-2">Todavía no hay registros.</p>
+  return (
+    <div className="mt-2 overflow-x-auto">
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="text-left text-slate-500 border-b">
+            {['Fecha', 'Valoración', 'Cura', 'Notas', ''].map((h) => (
+              <th key={h} className="py-1 pr-3 font-semibold">{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {vals.map((v) => {
+            const partes = partesValoracion(v)
+            const cal = textoCalendario(v)
+            return (
+              <tr key={v.id} className="border-b last:border-0 align-top">
+                <td className="py-1.5 pr-3 whitespace-nowrap">{fechaLarga(v.fecha)}</td>
+                <td className="py-1.5 pr-3">{partes.length > 0 ? partes.join(' · ') : '—'}</td>
+                <td className="py-1.5 pr-3">{v.tipo_cura ? <>{v.tipo_cura}{cal && <span className="text-slate-500"> · {cal}</span>}</> : '—'}</td>
+                <td className="py-1.5 pr-3 max-w-[12rem]">{v.notas ?? ''}</td>
+                <td className="py-1.5 whitespace-nowrap">
+                  {puedeEditar && <button onClick={() => onEditarValoracion(v)} title="Corregir este registro" className="p-1 text-slate-500 hover:text-slate-600"><Pencil className="w-3.5 h-3.5" /></button>}
+                  {puedeBorrarValoracion(v) && <button onClick={() => onEliminarValoracion(v)} title="Eliminar este registro" className="p-1 text-slate-500 hover:text-red-600"><Trash2 className="w-3.5 h-3.5" /></button>}
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
   )
 }
 
@@ -567,39 +649,13 @@ export function TarjetaLesion({
       </div>
 
       {abierta && (
-        vals.length === 0 ? (
-          <p className="text-xs text-slate-500 mt-2">Todavía no hay registros.</p>
-        ) : (
-          <div className="mt-2 overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="text-left text-slate-500 border-b">
-                  {['Fecha', 'Valoración', 'Cura', 'Notas', ''].map((h) => (
-                    <th key={h} className="py-1 pr-3 font-semibold">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {vals.map((v) => {
-                  const partes = partesValoracion(v)
-                  const cal = textoCalendario(v)
-                  return (
-                    <tr key={v.id} className="border-b last:border-0 align-top">
-                      <td className="py-1.5 pr-3 whitespace-nowrap">{fechaLarga(v.fecha)}</td>
-                      <td className="py-1.5 pr-3">{partes.length > 0 ? partes.join(' · ') : '—'}</td>
-                      <td className="py-1.5 pr-3">{v.tipo_cura ? <>{v.tipo_cura}{cal && <span className="text-slate-500"> · {cal}</span>}</> : '—'}</td>
-                      <td className="py-1.5 pr-3 max-w-[12rem]">{v.notas ?? ''}</td>
-                      <td className="py-1.5 whitespace-nowrap">
-                        {puedeEditar && <button onClick={() => onEditarValoracion(v)} title="Corregir este registro" className="p-1 text-slate-500 hover:text-slate-600"><Pencil className="w-3.5 h-3.5" /></button>}
-                        {puedeBorrarValoracion(v) && <button onClick={() => onEliminarValoracion(v)} title="Eliminar este registro" className="p-1 text-slate-500 hover:text-red-600"><Trash2 className="w-3.5 h-3.5" /></button>}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        )
+        <TablaHistorial
+          vals={vals}
+          puedeEditar={puedeEditar}
+          puedeBorrarValoracion={puedeBorrarValoracion}
+          onEditarValoracion={onEditarValoracion}
+          onEliminarValoracion={onEliminarValoracion}
+        />
       )}
     </div>
   )
