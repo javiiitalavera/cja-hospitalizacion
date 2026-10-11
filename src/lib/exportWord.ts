@@ -178,6 +178,13 @@ function lineasXml(texto: string | null | undefined, font = 'Calibri'): string {
     .join('')
 }
 
+// Informe antiguo (anterior a la tabla): si nunca se rellenó la tabla (null, no una lista vacía puesta a propósito),
+// el tratamiento escrito como texto libre se imprime tal cual en vez de perderse.
+function textoAntiguoMedicacionXml(estructurada: unknown, texto: string | null | undefined, font: string): string {
+  if (estructurada != null || !texto?.trim()) return ''
+  return lineasXml(texto, font)
+}
+
 function tablaMedicacionXml(filas: FilaMedicacion[], font = 'Calibri'): string {
   // "Observaciones" es una columna extra del documento, no una toma en sí,
   // así que se añade aparte de las 5 que ya define TOMAS.
@@ -314,6 +321,7 @@ function parteIngresoXml(ii: InformeIngreso, escalaIngreso: EscalaClinica | null
     ...opcional(ii.antecedentes_familiares, () => parrafoBoldXml('Antecedentes familiares: ', '', font, { antes: 100 }) + lineasXml(ii.antecedentes_familiares, font)),
     parrafoBoldXml('Tratamiento al ingreso: ', '', font, { antes: 100 }),
     tablaMedicacionXml(ii.tratamiento_ingreso_estructurado ?? [], font),
+    textoAntiguoMedicacionXml(ii.tratamiento_ingreso_estructurado, ii.tratamiento_ingreso, font),
     espacioXml(),
     seccionXml('VALORACIÓN GERIÁTRICA INTEGRAL:', font),
     // Solo se imprimen los apartados con texto (las etiquetas vacías no aportan nada).
@@ -429,6 +437,7 @@ export async function exportarInformeAlta(ingreso: Ingreso, ii: InformeIngreso, 
     ...opcional(ia.cuidados_enfermeria, () => parrafoBoldXml(`${num()}. Cuidados de enfermería: `, '', font, { antes: 100 }) + lineasXml(ia.cuidados_enfermeria, font)),
     parrafoBoldXml(`${num()}. Medicación:`, '', font, { antes: 100 }),
     tablaMedicacionXml(ia.medicacion_estructurada ?? [], font),
+    textoAntiguoMedicacionXml(ia.medicacion_estructurada, ia.medicacion_alta, font),
     parrafoBoldXml(`${num()}. Otras recomendaciones: `, '', font, { antes: 160 }),
     lineasXml(ia.otras_recomendaciones, font),
     parrafoXml('- Se recomienda seguimiento por médico de cabecera y especialista de zona.', font),

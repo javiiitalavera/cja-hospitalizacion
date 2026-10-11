@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { hoyLocal } from '../lib/fechas'
 import { useAuth } from '../lib/AuthContext'
+import { useAvisoSalida } from '../lib/avisoSalida'
 import type { Profesional } from '../types'
 import { TIPO_EVENTO_LABEL, TIPOS_REGISTRABLES, CAMPOS_POR_TIPO, TURNO_LABEL, turnoSegunHora, type TipoEvento, type Evento } from '../types/eventos'
 import { X, Save } from 'lucide-react'
@@ -32,6 +33,15 @@ export default function FormularioEvento({ ingresoId, eventoExistente, onClose, 
   const [profesionales, setProfesionales] = useState<Profesional[]>([])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  // Control de concurrencia al EDITAR: se guarda solo si nadie ha tocado la incidencia desde que se abrió
+  // (marca `actualizado_en`, que fija el servidor en cada cambio). Antes el segundo en guardar pisaba al primero.
+  const [baseActualizado, setBaseActualizado] = useState<string | null>(eventoExistente?.actualizado_en ?? null)
+  const [conflicto, setConflicto] = useState(false)
+  // Cambios sin guardar: al recargar o cerrar la pestaña se pide confirmación.
+  const firma = JSON.stringify([tipo, fecha, hora, turno, estado, datos, notas])
+  const firmaInicialRef = useRef(firma)
+  const [guardadoOk, setGuardadoOk] = useState(false)
+  useAvisoSalida(!guardadoOk && firma !== firmaInicialRef.current)
 
   useEffect(() => {
     supabase
@@ -169,16 +179,43 @@ export default function FormularioEvento({ ingresoId, eventoExistente, onClose, 
       estado,
     }
 
-    const { error: dbError } = eventoExistente
-      ? await supabase.from('eventos').update(payload).eq('id', eventoExistente.id)
-      : await supabase.from('eventos').insert([payload])
+    let dbError: unknown = null
+    if (eventoExistente) {
+      const q = supabase.from('eventos').update(payload).eq('id', eventoExistente.id)
+      const { data: filas, error: e } = await (baseActualizado ? q.eq('actualizado_en', baseActualizado) : q.is('actualizado_en', null)).select('id')
+      dbError = e
+      if (!e && (filas ?? []).length === 0) {
+        // Ninguna fila cambiada: o la han modificado mientras tanto, o no se tiene permiso.
+        setSaving(false)
+        setConflicto(true)
+        return
+      }
+    } else {
+      dbError = (await supabase.from('eventos').insert([payload])).error
+    }
 
     setSaving(false)
     if (dbError) {
       setError('No se pudo guardar la incidencia. Inténtalo de nuevo.')
       return
     }
+    setGuardadoOk(true)
     onGuardado()
+  }
+
+  // Tras un conflicto: se carga la versión actual de la incidencia (se pierde lo escrito aquí, por eso es un botón).
+  async function recargarTrasConflicto() {
+    if (!eventoExistente) return
+    const { data: ev } = await supabase.from('eventos').select('*').eq('id', eventoExistente.id).maybeSingle()
+    if (!ev) { setError('No se pudo cargar la versión actual de la incidencia.'); return }
+    const e = ev as unknown as Evento
+    tipoAnteriorRef.current = e.tipo   // que cambiar el tipo aquí no vacíe los datos recién cargados
+    setTipo(e.tipo); setFecha(e.fecha); setHora(e.hora?.slice(0, 5) ?? ''); setTurno(e.turno ?? '')
+    setEstado(e.estado ?? 'completa'); setDatos((e.datos ?? {}) as Record<string, string>); setNotas(e.notas ?? '')
+    setBaseActualizado(e.actualizado_en ?? null)
+    firmaInicialRef.current = JSON.stringify([e.tipo, e.fecha, e.hora?.slice(0, 5) ?? '', e.turno ?? '', e.estado ?? 'completa', e.datos ?? {}, e.notas ?? ''])
+    setConflicto(false)
+    setError('')
   }
 
   const camposActuales = tipo ? CAMPOS_POR_TIPO[tipo] : []
@@ -367,6 +404,12 @@ export default function FormularioEvento({ ingresoId, eventoExistente, onClose, 
             </p>
           </div>
 
+          {conflicto && (
+            <div className="p-3 bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-lg flex items-center justify-between gap-3">
+              <span>No se ha guardado: alguien más ha modificado esta incidencia mientras la editabas (o no tienes permiso para cambiarla). Lo que has escrito sigue aquí.</span>
+              <button type="button" onClick={recargarTrasConflicto} className="btn-secondary text-xs shrink-0">Ver la versión actual</button>
+            </div>
+          )}
           {error && <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg">{error}</div>}
         </div>
 

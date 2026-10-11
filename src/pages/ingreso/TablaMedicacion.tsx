@@ -14,6 +14,19 @@ export const TOMAS: { key: keyof FilaMedicacion; label: string }[] = [
   { key: 'acostar',  label: 'Acostar' },
 ]
 
+// Informes antiguos (anteriores a la tabla de medicación) guardaban el tratamiento como texto libre. Ese texto
+// sigue en la base de datos; si la tabla está vacía se enseña aquí, para que no parezca que no había medicación.
+export function AvisoTextoAntiguo({ texto, filas }: { texto?: string | null; filas?: FilaMedicacion[] | null }) {
+  if (!texto?.trim()) return null
+  if ((filas ?? []).some((f) => f.farmaco?.trim())) return null
+  return (
+    <div className="mb-2 text-xs bg-amber-50 border border-amber-200 text-amber-900 rounded-lg px-3 py-2">
+      <p className="font-medium mb-1">Texto anterior a la tabla (informe antiguo): pásalo a la tabla para que salga en el resto de informes</p>
+      <p className="whitespace-pre-wrap">{texto}</p>
+    </div>
+  )
+}
+
 export function filaVacia(): FilaMedicacion {
   return { farmaco: '', dosis: '', desayuno: '', comida: '', merienda: '', cena: '', acostar: '', observaciones: '' }
 }

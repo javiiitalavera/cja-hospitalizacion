@@ -4,7 +4,7 @@ import { useAuth } from '../../lib/AuthContext'
 import type { FilaMedicacion, Ingreso, InformeIngreso } from '../../types'
 import { Download, Lock, AlertTriangle } from 'lucide-react'
 import { AutoTextarea, FILAS_CAMPO } from './AutoTextarea'
-import { TablaMedicacion } from './TablaMedicacion'
+import { TablaMedicacion, AvisoTextoAntiguo } from './TablaMedicacion'
 import { exportarInformeIngreso } from '../../lib/exportWord'
 import { EscalaBarthel, EscalaLawton, EscalaNPIQ, EscalaGDSFAST, TarjetaEscala, ModalEscala } from '../../components/EscalasClinicas'
 import { totalBarthel, totalLawton, totalNPI } from '../../types/escalas'
@@ -189,7 +189,31 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
 
   async function ejecutarGuardado(d: Partial<InformeIngreso & { version: number }>, miSecuencia: number): Promise<boolean> {
     // La versión que dejó el guardado anterior, no la que llevaba el formulario al teclear.
-    const version = versionGuardadaRef.current ?? dataRef.current.version ?? d.version ?? 1
+    const conocida = versionGuardadaRef.current ?? dataRef.current.version ?? d.version
+    if (conocida == null) {
+      // El episodio no tiene todavía fila de este informe (episodios antiguos, anteriores a que se creara
+      // al ingresar): se crea con el primer guardado. Antes se intentaba actualizar una fila inexistente y
+      // salía un falso «alguien más ha guardado».
+      const { version: _v, id: _i, updated_at: _u, ...campos } = d as Record<string, unknown>
+      const { data: creado, error: errCrear } = await supabase
+        .from('informe_ingreso')
+        .insert({ ingreso_id: ingresoId, ...campos })
+        .select()
+        .maybeSingle()
+      if (creado) versionGuardadaRef.current = creado.version
+      if (miSecuencia !== saveSeqRef.current) return true
+      if (errCrear) {
+        // 23505: otra persona la ha creado justo antes (ingreso_id es único) → conflicto de verdad.
+        setEstado(errCrear.code === '23505' ? 'conflicto' : 'error')
+        return false
+      }
+      if (!creado) { setEstado('error'); return false }
+      setData((prev) => ({ ...prev, id: creado.id, version: creado.version, updated_at: creado.updated_at }))
+      setEstado('guardado')
+      setTimeout(() => setEstado((e) => (e === 'guardado' ? 'inactivo' : e)), 2500)
+      return true
+    }
+    const version = conocida
     const { data: guardado, error } = await supabase
       .from('informe_ingreso')
       .update(d)
@@ -338,6 +362,7 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
         <div>
           <span className="label">Tratamiento al ingreso</span>
           {avisoRevisar('tratamiento_ingreso_estructurado')}
+          <AvisoTextoAntiguo texto={data.tratamiento_ingreso} filas={filasIngreso} />
           <TablaMedicacion filas={filasIngreso}
             onChange={v => update('tratamiento_ingreso_estructurado', v)} disabled={soloLectura} />
         </div>

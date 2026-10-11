@@ -79,6 +79,8 @@ export interface Lesion {
   notas: string | null
   registrado_por_id: string | null
   created_at: string
+  // Marca del último cambio (la fija el servidor): sirve para detectar que otra persona la ha editado mientras tanto.
+  updated_at?: string
   valoraciones?: Valoracion[]
   registrado_por?: { nombre: string; apellidos: string } | null
 }

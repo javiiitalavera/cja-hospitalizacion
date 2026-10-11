@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Cargando } from '../../components/Cargando'
+import { useAvisoSalida } from '../../lib/avisoSalida'
 import { supabase } from '../../lib/supabase'
 import type { ItemsPaciente } from '../../types'
 import ModalContencion from '../../components/ModalContencion'
@@ -12,6 +13,16 @@ function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo
   const [modalContencion, setModalContencion] = useState(false)
   const [estadoContencion, setEstadoContencion] = useState<{ dia: string | null; noche: string[] | null } | 'cargando'>('cargando')
   const [errorCarga, setErrorCarga] = useState('')
+  // Cambios hechos en pantalla y todavía sin guardar. `revRef` cuenta las ediciones: si mientras se
+  // guarda se escribe algo más, esa edición sigue pendiente (la respuesta del servidor no la pisa).
+  const [sucio, setSucio] = useState(false)
+  const revRef = useRef(0)
+  function editar(fn: (d: Partial<ItemsPaciente & { version: number }>) => Partial<ItemsPaciente & { version: number }>) {
+    revRef.current++
+    setSucio(true)
+    setData(fn)
+  }
+  useAvisoSalida(sucio || estado === 'guardando' || estado === 'error' || estado === 'conflicto')
 
   function cargarContencion() {
     supabase.from('contenciones').select('dia, noche').eq('ingreso_id', ingresoId).maybeSingle()
@@ -37,6 +48,7 @@ function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo
     // items a uno sin ellos, el formulario se vacía de verdad en vez
     // de seguir mostrando los datos del paciente anterior.
     setData({})
+    setSucio(false)
     setErrorCarga('')
     supabase.from('items_paciente').select('*').eq('ingreso_id', ingresoId).maybeSingle()
       .then(({ data: d, error }) => {
@@ -49,6 +61,7 @@ function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo
   }, [ingresoId])
 
   async function save() {
+    const miRev = revRef.current
     setEstado('guardando')
     // update() con la versión leída, no upsert() a ciegas: si alguien
     // más ha guardado esta misma hoja mientras tanto, esto no
@@ -66,14 +79,22 @@ function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo
       return
     }
     if (!guardado) { setEstado('conflicto'); return }
-    setData(guardado as Partial<ItemsPaciente>)
-    setEstado('guardado')
-    setTimeout(() => setEstado((e) => (e === 'guardado' ? 'inactivo' : e)), 2000)
+    // Solo se toma la versión nueva: lo que se haya cambiado mientras se guardaba se queda en pantalla
+    // y sigue pendiente de guardar (antes la respuesta del servidor lo borraba sin avisar).
+    setData((d) => ({ ...d, version: guardado.version, updated_at: guardado.updated_at }))
+    if (revRef.current === miRev) {
+      setSucio(false)
+      setEstado('guardado')
+      setTimeout(() => setEstado((e) => (e === 'guardado' ? 'inactivo' : e)), 2000)
+    } else {
+      setEstado('inactivo')   // hay ediciones posteriores: el botón vuelve a «Guardar cambios»
+    }
   }
 
   async function recargarTrasConflicto() {
     const { data: d } = await supabase.from('items_paciente').select('*').eq('ingreso_id', ingresoId).maybeSingle()
     setData(d ?? {})
+    setSucio(false)
     setEstado('inactivo')
   }
 
@@ -81,7 +102,7 @@ function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo
     <div>
       <label className="label">{label}</label>
       <select className="input" value={(data[key] as string) ?? ''}
-        onChange={e => setData(d => ({ ...d, [key]: e.target.value || null }))}>
+        onChange={e => editar(d => ({ ...d, [key]: e.target.value || null }))}>
         <option value="">—</option>
         {options.map(o => <option key={o.v} value={o.v}>{o.l}</option>)}
       </select>
@@ -92,7 +113,7 @@ function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo
     <label className="flex items-center gap-2 text-sm cursor-pointer">
       <input type="checkbox" className="w-4 h-4 rounded text-primary-600"
         checked={!!(data[key])}
-        onChange={e => setData(d => ({ ...d, [key]: e.target.checked }))} />
+        onChange={e => editar(d => ({ ...d, [key]: e.target.checked }))} />
       {label}
     </label>
   )
@@ -144,7 +165,7 @@ function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo
               const activo = actual.includes(opt.v)
               return (
                 <button key={opt.v} type="button"
-                  onClick={() => setData(d => ({ ...d, alerta_conducta: activo ? actual.filter(x => x !== opt.v) : [...actual, opt.v] } as any))}
+                  onClick={() => editar(d => ({ ...d, alerta_conducta: activo ? actual.filter(x => x !== opt.v) : [...actual, opt.v] } as any))}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${activo ? 'bg-red-50 text-red-700 border-red-200' : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400'}`}>
                   {opt.l}
                 </button>
@@ -155,7 +176,7 @@ function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo
         <div>
           <label className="label">Objetos de calma</label>
           <input className="input" value={(data.objetos_calma as string) ?? ''}
-            onChange={e => setData(d => ({ ...d, objetos_calma: e.target.value }))} />
+            onChange={e => editar(d => ({ ...d, objetos_calma: e.target.value }))} />
         </div>
       </div>
 
@@ -170,7 +191,7 @@ function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo
           <div>
             <label className="label">Cabecero elevado (º)</label>
             <input className="input" placeholder="p. ej. 30" value={(data.cabecero_grados as string) ?? ''}
-              onChange={e => setData(d => ({ ...d, cabecero_grados: e.target.value }))} />
+              onChange={e => editar(d => ({ ...d, cabecero_grados: e.target.value }))} />
           </div>
         </div>
         {sel('ayudas_deambulacion', 'Ayudas', [
@@ -249,7 +270,7 @@ function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo
         <p className="section-title">Observaciones</p>
         <textarea className="textarea" rows={3} placeholder="Notas libres…"
           value={(data.observaciones as string) ?? ''}
-          onChange={e => setData(d => ({ ...d, observaciones: e.target.value }))} />
+          onChange={e => editar(d => ({ ...d, observaciones: e.target.value }))} />
       </div>
 
       {estado === 'conflicto' && (

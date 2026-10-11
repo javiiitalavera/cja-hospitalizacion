@@ -23,10 +23,10 @@ interface PacienteConCuras {
 }
 
 // ── Impresión: tabla semanal + tabla de cuidados, en una hoja ────
-function imprimirHoja(pacientes: PacienteConCuras[], semana: string[], registros: Map<string, RegistroCura>) {
+function imprimirHoja(pacientes: PacienteConCuras[], semana: string[], registros: Map<string, RegistroCura>, toca: (p: PacienteConCuras, d: string) => boolean) {
   const cab = semana.map((d, i) => `<th>${DIAS_LARGO[i]}<br><span class="f">${fechaCorta(d)}</span></th>`).join('')
   const filasSemana = pacientes.map((p) => {
-    const celdas = semana.map((d) => `<td class="c">${(() => { const r = registros.get(`${p.id}|${d}`); return r ? (r.estado === 'no_realizada' ? '✗' : '✓') : '' })()}</td>`).join('')
+    const celdas = semana.map((d) => `<td class="c">${(() => { const r = registros.get(`${p.id}|${d}`); return r ? (r.estado === 'no_realizada' ? '✗' : '✓') : toca(p, d) ? '○' : '' })()}</td>`).join('')
     return `<tr><td class="n">${escapeHtml(nombreYApellido(p.paciente))} (hab. ${p.habitacion ?? '—'})</td>${celdas}</tr>`
   }).join('')
   const filasCuidados = pacientes.map((p) => {
@@ -46,6 +46,7 @@ function imprimirHoja(pacientes: PacienteConCuras[], semana: string[], registros
     `,
     cuerpo: `
     <table><thead><tr><th>Paciente</th>${cab}</tr></thead><tbody>${filasSemana}</tbody></table>
+    <p class="t">✓ hecha · ✗ no realizada · ○ toca cura según la pauta (sin registrar) · vacío: no toca</p>
     <h2>Tabla de cuidados</h2>
     <table><thead><tr><th>Paciente</th><th>Localización y cura / cuidado / necesidad</th></tr></thead><tbody>${filasCuidados}</tbody></table>`,
   }))
@@ -149,7 +150,7 @@ export default function Curas() {
           <span className="text-sm font-medium text-slate-700 min-w-[11rem] text-center">{fechaCorta(semana[0])} – {fechaCorta(semana[6])}</span>
           <button onClick={() => setLunes(sumarDias(lunes, 7))} className="btn-secondary !px-2.5" aria-label="Semana siguiente"><ChevronRight className="w-4 h-4" /></button>
           {!esSemanaActual && <button onClick={() => setLunes(lunesDe(hoy))} className="btn-secondary text-sm">Esta semana</button>}
-          <button onClick={() => imprimirHoja(pacientes, semana, registros)} disabled={pacientes.length === 0} className="btn-secondary text-sm">
+          <button onClick={() => imprimirHoja(pacientes, semana, registros, tocaEse)} disabled={pacientes.length === 0} className="btn-secondary text-sm">
             <Printer className="w-4 h-4" />Imprimir
           </button>
       </CabeceraPagina>

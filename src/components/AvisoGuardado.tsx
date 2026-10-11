@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useAvisoSalida } from '../lib/avisoSalida'
 import { AlertCircle, Check } from 'lucide-react'
 
 // Aviso flotante de guardado. El indicador de arriba del informe se queda fuera de la pantalla
@@ -14,12 +15,7 @@ export function AvisoGuardado({ avisos }: {
   // curso, con error o en conflicto), cerrar o recargar la pestaña pide confirmación. Sin esto, lo
   // escrito en el último segundo y medio antes de recargar se perdía sin aviso.
   const hayCambiosSinGuardar = avisos.some((a) => a.estado === 'pendiente' || a.estado === 'guardando' || a.estado === 'error' || a.estado === 'conflicto')
-  useEffect(() => {
-    if (!hayCambiosSinGuardar) return
-    const avisar = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = '' }
-    window.addEventListener('beforeunload', avisar)
-    return () => window.removeEventListener('beforeunload', avisar)
-  }, [hayCambiosSinGuardar])
+  useAvisoSalida(hayCambiosSinGuardar)
 
   const visibles = avisos.filter((a) => a.estado === 'guardado' || a.estado === 'error')
   if (visibles.length === 0) return null

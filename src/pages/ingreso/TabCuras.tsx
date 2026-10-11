@@ -116,6 +116,19 @@ export function FormularioLesion({
   const [pauta, setPauta] = useState<PautaForm>({ tipo_cura: '', frecuencia_horas: '', dias_semana: [] })
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
+  // Al editar: se guarda solo si nadie ha tocado la lesión desde que se abrió (marca `updated_at` del servidor).
+  const [baseActualizada, setBaseActualizada] = useState<string | null>(editando?.updated_at ?? null)
+  const [conflicto, setConflicto] = useState(false)
+
+  async function recargarTrasConflicto() {
+    if (!editando) return
+    const { data: l } = await supabase.from('curas_lesiones').select('*').eq('id', editando.id).maybeSingle()
+    if (!l) { setError('No se pudo cargar la versión actual de la lesión.'); return }
+    setF({ caracteristicas: l.caracteristicas, localizacion: l.localizacion, fecha_inicio: l.fecha_inicio, origen: l.origen ?? '', notas: l.notas ?? '' })
+    setBaseActualizada(l.updated_at ?? null)
+    setConflicto(false)
+    setError('')
+  }
 
   async function guardar() {
     setError('')
@@ -140,9 +153,11 @@ export function FormularioLesion({
       notas: f.notas.trim() || null,
     }
     if (editando) {
-      const { error: err } = await supabase.from('curas_lesiones').update(datos).eq('id', editando.id)
+      const q = supabase.from('curas_lesiones').update(datos).eq('id', editando.id)
+      const { data: filas, error: err } = await (baseActualizada ? q.eq('updated_at', baseActualizada) : q).select('id')
       setGuardando(false)
       if (err) { setError('No se pudo guardar: ' + err.message); return }
+      if ((filas ?? []).length === 0) { setConflicto(true); return }   // la han modificado mientras tanto (o no hay permiso)
       onGuardado()
       return
     }
@@ -216,10 +231,16 @@ export function FormularioLesion({
             <CamposPauta valor={pauta} onChange={setPauta} />
           </div>
         )}
+        {conflicto && (
+          <div className="text-sm bg-amber-50 border border-amber-200 text-amber-800 rounded-lg px-3 py-2 flex items-center justify-between gap-3">
+            <span>No se ha guardado: alguien más ha modificado esta lesión mientras la editabas (o no tienes permiso para cambiarla). Lo que has escrito sigue aquí.</span>
+            <button type="button" onClick={recargarTrasConflicto} className="btn-secondary text-xs shrink-0">Ver la versión actual</button>
+          </div>
+        )}
         {error && <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{error}</p>}
         <div className="flex gap-3 pt-1">
           <button onClick={onClose} className="btn-secondary flex-1">Cancelar</button>
-          <button onClick={guardar} disabled={guardando} className="btn-primary flex-1 justify-center">
+          <button onClick={guardar} disabled={guardando || conflicto} className="btn-primary flex-1 justify-center">
             {guardando ? 'Guardando…' : 'Guardar'}
           </button>
         </div>
