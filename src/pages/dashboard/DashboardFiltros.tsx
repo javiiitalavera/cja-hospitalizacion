@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import type { Filtros, Periodo } from './tipos'
 import { RotateCcw } from 'lucide-react'
+import { InputFecha } from '../../components/InputFecha'
 
 export function DashboardFiltros({ filtros, onCambiar, mostrarComparar }: {
   filtros: Filtros
@@ -51,9 +52,9 @@ export function DashboardFiltros({ filtros, onCambiar, mostrarComparar }: {
 
       {filtros.periodo === 'personalizado' && (
         <div className="flex items-center gap-2">
-          <input type="date" className="input py-1.5" value={filtros.desde} onChange={(e) => set({ desde: e.target.value })} />
+          <InputFecha className="input py-1.5" value={filtros.desde} onChange={(f) => set({ desde: f })} />
           <span className="text-slate-500 text-sm">a</span>
-          <input type="date" className="input py-1.5" value={filtros.hasta} onChange={(e) => set({ hasta: e.target.value })} />
+          <InputFecha className="input py-1.5" value={filtros.hasta} onChange={(f) => set({ hasta: f })} />
         </div>
       )}
 

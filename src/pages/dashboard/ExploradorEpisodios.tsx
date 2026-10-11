@@ -5,6 +5,7 @@ import { imprimirTablaHTML, escapeHtml } from '../../lib/imprimir'
 import { Download, Printer, ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-react'
 import type { EstadoCarga } from './tipos'
 import { EstadoCargando, EstadoError, EstadoSinDatos } from './ComponentesDashboard'
+import { InputFecha } from '../../components/InputFecha'
 
 const ESTADO_LABEL: Record<string, string> = { activo: 'Ingresado', alta: 'Alta', alta_traslado: 'Traslado', exitus: 'Éxitus' }
 const TIPOS_INCIDENCIA = [
@@ -240,13 +241,13 @@ export function ExploradorEpisodios() {
             </select>
           </div>
 
-          <div><label className="label">Ingreso desde</label><input type="date" className="input" value={filtros.desdeIngreso} onChange={(e) => set({ desdeIngreso: e.target.value })} /></div>
-          <div><label className="label">Ingreso hasta</label><input type="date" className="input" value={filtros.hastaIngreso} onChange={(e) => set({ hastaIngreso: e.target.value })} /></div>
-          <div><label className="label">Alta desde</label><input type="date" className="input" value={filtros.desdeAlta} onChange={(e) => set({ desdeAlta: e.target.value })} /></div>
-          <div><label className="label">Alta hasta</label><input type="date" className="input" value={filtros.hastaAlta} onChange={(e) => set({ hastaAlta: e.target.value })} /></div>
+          <div><label className="label">Ingreso desde</label><InputFecha value={filtros.desdeIngreso} onChange={(f) => set({ desdeIngreso: f })} /></div>
+          <div><label className="label">Ingreso hasta</label><InputFecha value={filtros.hastaIngreso} onChange={(f) => set({ hastaIngreso: f })} /></div>
+          <div><label className="label">Alta desde</label><InputFecha value={filtros.desdeAlta} onChange={(f) => set({ desdeAlta: f })} /></div>
+          <div><label className="label">Alta hasta</label><InputFecha value={filtros.hastaAlta} onChange={(f) => set({ hastaAlta: f })} /></div>
 
-          <div><label className="label">Solapa periodo desde</label><input type="date" className="input" value={filtros.solapaDesde} onChange={(e) => set({ solapaDesde: e.target.value })} /></div>
-          <div><label className="label">Solapa periodo hasta</label><input type="date" className="input" value={filtros.solapaHasta} onChange={(e) => set({ solapaHasta: e.target.value })} /></div>
+          <div><label className="label">Solapa periodo desde</label><InputFecha value={filtros.solapaDesde} onChange={(f) => set({ solapaDesde: f })} /></div>
+          <div><label className="label">Solapa periodo hasta</label><InputFecha value={filtros.solapaHasta} onChange={(f) => set({ solapaHasta: f })} /></div>
           <div><label className="label">Estancia mínima (días)</label><input type="number" min={0} className="input" value={filtros.estanciaMin} onChange={(e) => set({ estanciaMin: e.target.value })} /></div>
           <div><label className="label">Estancia máxima (días)</label><input type="number" min={0} className="input" value={filtros.estanciaMax} onChange={(e) => set({ estanciaMax: e.target.value })} /></div>
 

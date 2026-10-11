@@ -30,7 +30,7 @@ function buildPrintHTML(data: IngresoConItems[], today: string): string {
       }
       grupo.filas.forEach((fila) => {
         const esNegritaFila = LABEL_BOLD_ROWS.has(fila.key)
-        html += `<tr><td class="col-label${esNegritaFila ? ' bold' : ''}">${escapeHtml(fila.label)}</td>`
+        html += `<tr><td class="col-label${esNegritaFila ? ' bold' : ''}">${escapeHtml(fila.corta ?? fila.label)}</td>`
         numeros.forEach((n) => {
           const ing = porHabitacion[n]
           const valor = ing
@@ -56,8 +56,8 @@ function buildPrintHTML(data: IngresoConItems[], today: string): string {
     sinCabecera: true,
     css: `
       table { table-layout: fixed; }
-      th, td { padding: 1px 2px; font-size: 6.5pt; text-align: center; overflow: hidden; white-space: nowrap; border-color: #999; }
-      td.col-label, th.col-label { text-align: left; width: 70px; font-weight: 600; white-space: normal; }
+      th, td { padding: 2px 2px; font-size: 6.5pt; text-align: center; overflow: hidden; white-space: nowrap; border-color: #999; }
+      td.col-label, th.col-label { text-align: left; width: 24mm; font-weight: 600; white-space: nowrap; }
       tr.grupo td { background: #5b7a9d; color: #fff; font-weight: 700; text-align: left; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       th, td[style] { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       td.bold, th.bold { font-weight: 700; }

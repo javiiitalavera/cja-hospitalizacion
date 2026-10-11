@@ -10,6 +10,7 @@ import { imprimirHTMLEnMarco } from '../../lib/imprimir'
 import { TURNOS, textoVias, type Turno } from '../../types/pautaCuidados'
 import { TabsTurno } from './TabsTurno'
 import { TablaHoja } from './TablaHoja'
+import { InputFecha } from '../../components/InputFecha'
 import {
   construirHojaHTML, fechaDesdeTexto, pacienteDesdeHistorico, textoDiuresis,
   type FilaHistorico, type PacienteHoja,
@@ -95,13 +96,12 @@ function PorFecha() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3 flex-wrap">
-        <input
-          type="date"
+        <InputFecha
           className="input max-w-[200px]"
           value={fecha}
           min={limites.primera}
           max={limites.ultima}
-          onChange={(e) => { if (e.target.value) setFecha(e.target.value) }}
+          onChange={(f) => { if (f) setFecha(f) }}
         />
         <span className="text-sm text-slate-500">{fecha && fechaLarga(fecha)}</span>
         {pacientes.length > 0 && (

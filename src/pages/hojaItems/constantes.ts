@@ -61,7 +61,7 @@ export function nocheStr(arr: string[] | null | undefined): string {
 // Agrupado en bloques con sentido clínico, en vez de una lista plana
 // sin criterio. Cada grupo imprime su propia fila de cabecera antes
 // de sus ítems (ver buildBloque / Bloque más abajo).
-export const GRUPOS: { titulo: string; mostrarTitulo?: boolean; filas: { key: string; label: string; get: (it: any, i: IngresoConItems) => string }[] }[] = [
+export const GRUPOS: { titulo: string; mostrarTitulo?: boolean; filas: { key: string; label: string; corta?: string; get: (it: any, i: IngresoConItems) => string }[] }[] = [
   {
     titulo: 'Identidad',
     mostrarTitulo: false, // se sobreentiende, no hace falta el rótulo
@@ -73,8 +73,8 @@ export const GRUPOS: { titulo: string; mostrarTitulo?: boolean; filas: { key: st
   {
     titulo: 'Seguridad y conducta',
     filas: [
-      { key: 'cont_dia', label: 'Contención día', get: (_: any, i: IngresoConItems) => diaStr(i.contencion?.dia) },
-      { key: 'cont_noche', label: 'Contención noche', get: (_: any, i: IngresoConItems) => nocheStr(i.contencion?.noche) },
+      { key: 'cont_dia', label: 'Contención día', corta: 'Contenc. día', get: (_: any, i: IngresoConItems) => diaStr(i.contencion?.dia) },
+      { key: 'cont_noche', label: 'Contención noche', corta: 'Contenc. noche', get: (_: any, i: IngresoConItems) => nocheStr(i.contencion?.noche) },
       { key: 'sensor', label: 'Sensor', get: (_: any, i: IngresoConItems) => (i.contencion?.noche?.includes('sensor_presion') ? 'X' : '') },
       {
         key: 'alerta',
@@ -86,7 +86,7 @@ export const GRUPOS: { titulo: string; mostrarTitulo?: boolean; filas: { key: st
         },
       },
       { key: 'aislamiento', label: 'Aislamiento', get: (it: ItemsPaciente) => aislamientoStr(it?.aislamiento) },
-      { key: 'objetos_calma', label: 'Objetos de calma', get: (it: ItemsPaciente) => (it as any)?.objetos_calma ?? '' },
+      { key: 'objetos_calma', label: 'Objetos de calma', corta: 'Obj. calma', get: (it: ItemsPaciente) => (it as any)?.objetos_calma ?? '' },
     ],
   },
   {
@@ -112,6 +112,7 @@ export const GRUPOS: { titulo: string; mostrarTitulo?: boolean; filas: { key: st
       {
         key: 'ayudas',
         label: 'Ayudas deambulación',
+        corta: 'Ayudas deamb.',
         get: (it: ItemsPaciente) =>
           it?.ayudas_deambulacion
             ?.replace('andador_2r', 'And.2r')
@@ -121,7 +122,7 @@ export const GRUPOS: { titulo: string; mostrarTitulo?: boolean; filas: { key: st
       },
       { key: 'bipedestador', label: 'Bipedestador', get: (it: ItemsPaciente) => (it?.bipedestador ? 'X' : '') },
       { key: 'grua', label: 'Grúa', get: (it: ItemsPaciente) => (it?.grua ? 'X' : '') },
-      { key: 'cabecero', label: 'Cabecero elevado', get: (it: ItemsPaciente) => (it as any)?.cabecero_grados ?? '' },
+      { key: 'cabecero', label: 'Cabecero elevado', corta: 'Cabecero elev.', get: (it: ItemsPaciente) => (it as any)?.cabecero_grados ?? '' },
     ],
   },
   {
@@ -140,15 +141,15 @@ export const GRUPOS: { titulo: string; mostrarTitulo?: boolean; filas: { key: st
       { key: 'higiene', label: 'Higiene', get: (it: ItemsPaciente) => (it?.higiene === 'lavabo' ? 'L' : it?.higiene === 'cama' ? 'C' : '') },
       { key: 'ducha', label: 'Ducha', get: (it: ItemsPaciente) => (it?.ducha === 'pie' ? 'P' : it?.ducha === 'sentado' ? 'S' : '') },
       { key: 'vestido', label: 'Vestido', get: (it: ItemsPaciente) => ((it as any)?.vestido === 'autonomo' ? 'A' : (it as any)?.vestido === 'dependiente' ? 'D' : '') },
-      { key: 'banio', label: 'Baño acompañado', get: (it: ItemsPaciente) => (it?.banio ? 'X' : '') },
+      { key: 'banio', label: 'Baño acompañado', corta: 'Baño acomp.', get: (it: ItemsPaciente) => (it?.banio ? 'X' : '') },
     ],
   },
   {
     titulo: 'Piel y postura',
     filas: [
       { key: 'antiescaras', label: 'C. antiescaras', get: (it: ItemsPaciente) => (it?.colchon_antiescaras ? 'X' : '') },
-      { key: 'patucos', label: 'Patucos coderas', get: (it: ItemsPaciente) => (it?.patucos_coderas ? 'X' : '') },
-      { key: 'cambios', label: 'Cambios posturales', get: (it: ItemsPaciente) => (it?.cambios_posturales ? 'X' : '') },
+      { key: 'patucos', label: 'Patucos coderas', corta: 'Patucos/coderas', get: (it: ItemsPaciente) => (it?.patucos_coderas ? 'X' : '') },
+      { key: 'cambios', label: 'Cambios posturales', corta: 'Camb. posturales', get: (it: ItemsPaciente) => (it?.cambios_posturales ? 'X' : '') },
     ],
   },
   {
@@ -163,7 +164,7 @@ export const GRUPOS: { titulo: string; mostrarTitulo?: boolean; filas: { key: st
     titulo: 'Otros',
     filas: [
       { key: 'botella', label: 'Botella noche', get: (it: ItemsPaciente) => (it?.botella_noche ? 'X' : '') },
-      { key: 'timbre', label: 'Timbre habitación', get: (it: ItemsPaciente) => ((it as any)?.timbre_habitacion ? 'X' : '') },
+      { key: 'timbre', label: 'Timbre habitación', corta: 'Timbre hab.', get: (it: ItemsPaciente) => ((it as any)?.timbre_habitacion ? 'X' : '') },
       { key: 'siestas', label: 'Siesta tarde', get: (it: ItemsPaciente) => (it?.siestas ? 'X' : '') },
     ],
   },

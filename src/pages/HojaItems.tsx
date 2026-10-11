@@ -15,6 +15,7 @@ import { FILAS_PLANAS } from './hojaItems/constantes'
 import { printHoja } from './hojaItems/imprimir'
 import PanelEdicion from './hojaItems/PanelEdicion'
 import Bloque from './hojaItems/Bloque'
+import { InputFecha } from '../components/InputFecha'
 
 // Convierte items_historico al mismo formato que IngresoConItems, para
 // poder reutilizar el mismo componente Bloque en el modo "por fecha".
@@ -318,14 +319,11 @@ export default function HojaItems() {
             ) : (
               <>
                 <div className="flex items-center gap-3">
-                  <input
-                    type="date"
+                  <InputFecha
                     className="input max-w-[200px]"
                     value={fechaSeleccionada}
                     max={fechasSnapshot[0]}
-                    onChange={(e) => {
-                      if (e.target.value) cargarSnapshot(e.target.value)
-                    }}
+                    onChange={(f) => { if (f) cargarSnapshot(f) }}
                   />
                   <span className="text-sm text-slate-500">
                     {fechaSeleccionada &&

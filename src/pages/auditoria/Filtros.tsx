@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { BuscadorPaciente } from './BuscadorPaciente'
 import type { Personal } from './personal'
+import { InputFecha } from '../../components/InputFecha'
 
 // Los filtros que comparten Cambios y Accesos: persona, paciente y fechas. Lo propio de cada pestaña va en `hijos`.
 export function BarraFiltros<F extends { usuario: string; paciente: { id: string; nombre: string } | null; desde: string; hasta: string }>({
@@ -30,13 +31,11 @@ export function BarraFiltros<F extends { usuario: string; paciente: { id: string
         </div>
         <div>
           <label className="label">Desde</label>
-          <input type="date" className="input" value={filtros.desde} max={filtros.hasta || undefined}
-            onChange={(e) => onChange({ ...filtros, desde: e.target.value })} />
+          <InputFecha value={filtros.desde} max={filtros.hasta || undefined} onChange={(f) => onChange({ ...filtros, desde: f })} />
         </div>
         <div>
           <label className="label">Hasta</label>
-          <input type="date" className="input" value={filtros.hasta} min={filtros.desde || undefined}
-            onChange={(e) => onChange({ ...filtros, hasta: e.target.value })} />
+          <InputFecha value={filtros.hasta} min={filtros.desde || undefined} onChange={(f) => onChange({ ...filtros, hasta: f })} />
         </div>
       </div>
       {hayFiltros && (

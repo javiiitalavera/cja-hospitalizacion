@@ -15,6 +15,7 @@ import {
 } from '../types/contenciones'
 import ModalContencion from '../components/ModalContencion'
 import FormularioEvento from '../components/FormularioEvento'
+import { InputFecha } from '../components/InputFecha'
 
 // ─── CONSTANTES ────────────────────────────────────────────────
 
@@ -597,11 +598,11 @@ export function Eventos() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div>
               <label className="label">Desde</label>
-              <input type="date" className="input" value={fDesde} onChange={(e) => setFDesde(e.target.value)} />
+              <InputFecha value={fDesde} onChange={setFDesde} />
             </div>
             <div>
               <label className="label">Hasta</label>
-              <input type="date" className="input" value={fHasta} onChange={(e) => setFHasta(e.target.value)} />
+              <InputFecha value={fHasta} onChange={setFHasta} />
             </div>
             <div>
               <label className="label">Tipo</label>
