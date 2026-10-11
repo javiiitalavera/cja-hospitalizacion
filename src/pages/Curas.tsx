@@ -204,7 +204,7 @@ export default function Curas() {
             <Printer className="w-4 h-4" />Imprimir
           </button>
           <button onClick={() => { setBusquedaPaciente(''); setSelectorPaciente(true) }} className="btn-primary text-sm">
-            <Plus className="w-4 h-4" />Añadir cura
+            <Plus className="w-4 h-4" />Añadir lesión
           </button>
       </CabeceraPagina>
 
@@ -218,7 +218,7 @@ export default function Curas() {
 
       {!loading && !error && pacientes.length === 0 && (
         <div className="card p-8 text-center text-sm text-slate-500">
-          No hay pacientes con curas activas. Pulsa «Añadir cura» para registrar una lesión o cuidado (también se puede hacer desde la ficha del paciente, Plan de cuidados → Pauta de curas).
+          No hay pacientes con curas activas. Pulsa «Añadir lesión» para registrar una lesión o cuidado (también se puede hacer desde la ficha del paciente, Plan de cuidados → Pauta de curas).
         </div>
       )}
 
