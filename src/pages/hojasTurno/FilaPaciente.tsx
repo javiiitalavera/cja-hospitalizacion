@@ -1,4 +1,4 @@
-// Una fila de la hoja de turno en pantalla: habitación, paciente, vía, avisos que ya salen de la app y las
+// Una fila de la hoja de turno en pantalla: habitación, paciente, vía y las
 // indicaciones de enfermería del turno (editables por enfermería y administración).
 
 import { useState } from 'react'
@@ -10,7 +10,7 @@ import {
   MAX_TEXTO_PAUTA, TURNOS, VIA_LABEL,
   type Turno, type ViaPaciente,
 } from '../../types/pautaCuidados'
-import { avisosAutomaticos, colorSemaforo, textoDiuresis, type IndicacionHoja, type PacienteHoja } from './hoja'
+import { colorSemaforo, textoDiuresis, type IndicacionHoja, type PacienteHoja } from './hoja'
 
 export interface AccionesFila {
   cambiarVia: (ingresoId: string, via: ViaPaciente | null) => Promise<boolean>
@@ -58,7 +58,6 @@ export function FilaPaciente({ n, p, turno, columnas, acciones }: {
   const editable = !!acciones && !!ingresoId
   const delTurno = p.indicaciones.filter((i) => i.turnos.includes(turno))
   const diuresis = textoDiuresis(p)
-  const avisos = avisosAutomaticos(p, turno)
   const sem = colorSemaforo(p)
 
   async function envolver(f: () => Promise<boolean>): Promise<boolean> {
@@ -132,13 +131,6 @@ export function FilaPaciente({ n, p, turno, columnas, acciones }: {
         )}
       </td>
       <td className="px-3 py-2 min-w-[16rem]">
-        {avisos.length > 0 && (
-          <div className="flex flex-wrap gap-1 mb-2">
-            {avisos.map((a) => (
-              <span key={a} className="text-[11px] px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-100 font-medium">{a}</span>
-            ))}
-          </div>
-        )}
         <div className="space-y-2">
           {delTurno.map((i, k) => {
             const key = i.id ?? `${k}-${i.texto}`
@@ -228,7 +220,7 @@ export function FilaPaciente({ n, p, turno, columnas, acciones }: {
           ))}
 
           {dialogo}
-          {!editable && delTurno.length === 0 && avisos.length === 0 && <span className="text-slate-300 text-xs">—</span>}
+          {!editable && delTurno.length === 0 && <span className="text-slate-300 text-xs">—</span>}
         </div>
       </td>
     </tr>

@@ -4,6 +4,7 @@
 // página: no abre pestañas ni ventanas, que el navegador puede bloquear).
 
 import { registrarAcceso } from './accesos'
+import { SEMAFORO_CAIDAS_COLOR } from '../types'
 
 function desescapar(val: string): string {
   return val.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&')
@@ -128,15 +129,21 @@ export function imprimirTablaHTML(titulo: string, subtitulo: string, theadHTML: 
 
 // Lista de habitaciones 1 a 33 con el nombre del paciente (si la tiene ocupada), pensada para
 // llevarla en papel y anotar cosas a mano — cada habitación con su propia fila de igual tamaño,
-// y al lado una columna en blanco que ocupa el resto del ancho para escribir.
-export function imprimirListaHabitaciones(nombresPorHabitacion: (string | null)[]) {
-  const filas = nombresPorHabitacion.map((nombre, i) => `
+// y al lado una columna en blanco que ocupa el resto del ancho para escribir. El número de habitación sale con el
+// color del semáforo de caídas del paciente (el mismo de las hojas de turno), si lo tiene.
+export function imprimirListaHabitaciones(nombresPorHabitacion: (string | null)[], semaforos: (string | null | undefined)[] = []) {
+  const filas = nombresPorHabitacion.map((nombre, i) => {
+    const sem = nombre ? semaforos[i] : null
+    const fondo = sem ? SEMAFORO_CAIDAS_COLOR[sem] : undefined
+    const estilo = fondo ? ` style="background:${fondo};color:${sem === 'rojo' ? '#fff' : '#000'}"` : ''
+    return `
     <tr>
-      <td class="col-hab">${i + 1}</td>
+      <td class="col-hab"${estilo}>${i + 1}</td>
       <td class="col-nombre">${nombre ? escapeHtml(nombre) : ''}</td>
       <td class="col-libre"></td>
     </tr>
-  `).join('')
+  `
+  }).join('')
   imprimirHTMLEnMarco(documentoImpresion({
     titulo: 'Lista de pacientes',
     subtitulo: `Habitaciones 1 a ${nombresPorHabitacion.length}`,
@@ -144,7 +151,7 @@ export function imprimirListaHabitaciones(nombresPorHabitacion: (string | null)[
       table { table-layout: fixed; }
       td { height: 7.2mm; font-size: 10pt; padding: 1px 6px; }
       th { font-size: 9pt; padding: 3px 6px; }
-      .col-hab { width: 10%; text-align: center; font-weight: 700; }
+      .col-hab { width: 10%; text-align: center; font-weight: 700; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       .col-nombre { width: 30%; font-weight: 600; }
       .col-libre { width: 60%; }
     `,

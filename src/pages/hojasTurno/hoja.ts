@@ -4,10 +4,6 @@
 
 import { documentoImpresion, escapeHtml } from '../../lib/imprimir'
 import { SEMAFORO_CAIDAS_COLOR } from '../../types'
-import {
-  CONTENCION_DIA_LABEL, CONTENCION_NOCHE_LABEL, NOCHE_ES_CONTENCION,
-  type ContencionDia, type ContencionNoche,
-} from '../../types/contenciones'
 import { type Turno, type ViaPaciente } from '../../types/pautaCuidados'
 
 export interface IndicacionHoja { id?: string; texto: string; turnos: Turno[]; updated_at?: string }
@@ -21,35 +17,10 @@ export interface PacienteHoja {
   colector: boolean
   via: ViaPaciente | null
   viaActualizada?: string | null                   // `updated_at` de la fila de vía al cargar (null = no había)
-  alertas: string[]                                // 'riesgo_fuga', 'agresion_imprevisible', 'riesgo_autolitico'
-  objetosCalma: string | null
-  contencionDia: string | null
-  contencionNoche: string[] | null
   indicaciones: IndicacionHoja[]
 }
 
 const VIA_CORTA: Record<ViaPaciente, string> = { venosa: 'Venosa', subcutanea: 'Subcut.' }
-
-const ALERTA_LABEL: Record<string, string> = {
-  riesgo_fuga: 'Riesgo de fuga',
-  agresion_imprevisible: 'Agresión imprevisible',
-  riesgo_autolitico: 'Riesgo autolítico',
-}
-
-// Lo que ya está en la app (ítems y contención) y no hace falta que enfermería vuelva a escribir.
-export function avisosAutomaticos(p: PacienteHoja, turno: Turno): string[] {
-  const l: string[] = []
-  for (const a of p.alertas) if (ALERTA_LABEL[a]) l.push(ALERTA_LABEL[a])
-  if (p.objetosCalma?.trim()) l.push(`Le tranquiliza: ${p.objetosCalma.trim()}`)
-  if (turno === 'noche') {
-    const reales = (p.contencionNoche ?? []).filter((n) => NOCHE_ES_CONTENCION.includes(n as ContencionNoche))
-    // Las etiquetas de noche ya dicen «Contención fija / si precisa»: no se repite la palabra.
-    if (reales.length > 0) l.push(reales.map((n) => CONTENCION_NOCHE_LABEL[n as ContencionNoche]).join(', '))
-  } else if (p.contencionDia && p.contencionDia !== 'ninguna') {
-    l.push(`Contención: ${CONTENCION_DIA_LABEL[p.contencionDia as ContencionDia] ?? p.contencionDia}`)
-  }
-  return l
-}
 
 // Color del semáforo de caídas (el mismo que en Inicio y en la Hoja de ítems) y color de texto legible encima.
 export function colorSemaforo(p: PacienteHoja | undefined): { fondo: string; texto: string } | null {
@@ -98,7 +69,6 @@ const ESTILO = `
   .c-m { width: 14mm; }
   .c-via { font-size: 7pt; }
   .c-cui { font-size: 7.5pt; line-height: 1.15; }
-  .c-cui .auto { font-weight: 700; }                       /* avisos que salen solos de la app (contención…): primera línea */
   .c-cui .ind { padding-left: 2mm; text-indent: -2mm; }    /* cada indicación de enfermería, en su línea */
   .c-cui .ind::before { content: '• '; }
   tr.libre td { color: #999; }
@@ -115,12 +85,11 @@ function filaHTML(n: number, p: PacienteHoja | undefined, turno: Turno): string 
   if (!p) {
     return `<tr class="libre"><td class="c-hab">${n}</td><td class="c-nom"></td>${cols.map((c) => `<td class="${c.clase}"></td>`).join('')}<td class="c-m c-via"></td><td class="c-cui"></td></tr>`
   }
-  const auto = avisosAutomaticos(p, turno)
-  const propias = p.indicaciones.filter((i) => i.turnos.includes(turno)).map((i) => i.texto.trim())
-  const cuidados = [
-    ...(auto.length ? [`<div class="auto">${auto.map(escapeHtml).join(' · ')}</div>`] : []),
-    ...propias.map((t) => `<div class="ind">${escapeHtml(t)}</div>`),
-  ].join('')
+  // Solo las indicaciones de enfermería: contención, alertas de conducta, etc. ya están en la hoja de ítems.
+  const cuidados = p.indicaciones
+    .filter((i) => i.turnos.includes(turno))
+    .map((i) => `<div class="ind">${escapeHtml(i.texto.trim())}</div>`)
+    .join('')
   const celdas = cols.map((c) => {
     const contenido = c.titulo === 'Diuresis' || c.titulo === 'Orina' ? escapeHtml(textoDiuresis(p)) : ''
     return `<td class="${c.clase}">${contenido}</td>`
@@ -175,10 +144,6 @@ export function pacienteDesdeHistorico(f: FilaHistorico): PacienteHoja | null {
     sondaVesical: !!d.sonda_vesical,
     colector: !!d.colector,
     via: d.via ?? null,
-    alertas: Array.isArray(d.alerta_conducta) ? d.alerta_conducta : [],
-    objetosCalma: d.objetos_calma ?? null,
-    contencionDia: d.contencion_dia ?? null,
-    contencionNoche: Array.isArray(d.contencion_noche) ? d.contencion_noche : null,
     indicaciones: Array.isArray(d.indicaciones) ? d.indicaciones.map((i: any) => ({ texto: i.texto, turnos: i.turnos })) : [],
   }
 }

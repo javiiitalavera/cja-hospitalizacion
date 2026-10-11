@@ -11,7 +11,6 @@ import { useAuth } from '../lib/AuthContext'
 import { CabeceraPagina } from '../components/CabeceraPagina'
 import { BotonActualizar } from '../components/BotonActualizar'
 import { AvisoGuardado, useAvisoGuardado } from '../components/AvisoGuardado'
-import { fetchContencionesPorIngreso } from '../lib/contenciones'
 import { imprimirHTMLEnMarco } from '../lib/imprimir'
 import { TURNOS, type Turno, type ViaPaciente } from '../types/pautaCuidados'
 import { construirHojaHTML, turnoActual, type PacienteHoja } from './hojasTurno/hoja'
@@ -39,24 +38,22 @@ export default function HojasTurno() {
     setAviso('')
     const { data, error: eIng } = await supabase
       .from('ingresos')
-      .select('id, habitacion, paciente:pacientes(nombre, primer_apellido), items:items_paciente(sonda_vesical, colector, alerta_conducta, objetos_calma, semaforo_caidas)')
+      .select('id, habitacion, paciente:pacientes(nombre, primer_apellido), items:items_paciente(sonda_vesical, colector, semaforo_caidas)')
       .eq('estado', 'activo')
       .order('habitacion', { ascending: true })
     if (eIng) { setError('No se pudieron cargar los pacientes: ' + eIng.message); setCargando(false); return }
     const ingresos = (data ?? []) as any[]
     const ids = ingresos.map((i) => i.id)
 
-    const [rInd, rVia, rCont] = await Promise.all([
+    const [rInd, rVia] = await Promise.all([
       ids.length ? supabase.from('pauta_cuidados').select('id, ingreso_id, texto, turnos, created_at, updated_at').in('ingreso_id', ids).order('created_at', { ascending: true }) : Promise.resolve({ data: [], error: null }),
       ids.length ? supabase.from('pauta_via').select('ingreso_id, via, updated_at').in('ingreso_id', ids) : Promise.resolve({ data: [], error: null }),
-      fetchContencionesPorIngreso(ids),
     ])
     // Si falla algo auxiliar se sigue enseñando la hoja, pero avisando: una hoja sin indicaciones
     // no es lo mismo que «no hay indicaciones».
     const fallos: string[] = []
     if (rInd.error) fallos.push('la pauta de cuidados')
     if (rVia.error) fallos.push('la vía')
-    if (rCont.error) fallos.push('la contención')
     if (fallos.length) setAviso(`No se pudo cargar ${fallos.join(', ')}: la hoja podría estar incompleta.`)
 
     const indPorIngreso = new Map<string, { id: string; texto: string; turnos: Turno[]; updated_at?: string }[]>()
@@ -70,7 +67,6 @@ export default function HojasTurno() {
 
     setPacientes(ingresos.filter((i) => i.habitacion != null && i.paciente).map((i): PacienteHoja => {
       const it = Array.isArray(i.items) ? i.items[0] : i.items
-      const c = rCont.mapa[i.id]
       return {
         ingresoId: i.id,
         habitacion: i.habitacion,
@@ -80,10 +76,6 @@ export default function HojasTurno() {
         colector: !!it?.colector,
         via: viaPorIngreso.get(i.id) ?? null,
         viaActualizada: viaMarcaPorIngreso.get(i.id) ?? null,
-        alertas: it?.alerta_conducta ?? [],
-        objetosCalma: it?.objetos_calma ?? null,
-        contencionDia: c?.dia ?? null,
-        contencionNoche: c?.noche ?? null,
         indicaciones: indPorIngreso.get(i.id) ?? [],
       }
     }))

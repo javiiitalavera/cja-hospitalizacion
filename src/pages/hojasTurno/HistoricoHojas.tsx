@@ -11,7 +11,7 @@ import { TURNOS, VIA_LABEL, type Turno } from '../../types/pautaCuidados'
 import { TabsTurno } from './TabsTurno'
 import { TablaHoja } from './TablaHoja'
 import {
-  avisosAutomaticos, construirHojaHTML, fechaDesdeTexto, pacienteDesdeHistorico, textoDiuresis,
+  construirHojaHTML, fechaDesdeTexto, pacienteDesdeHistorico, textoDiuresis,
   type FilaHistorico, type PacienteHoja,
 } from './hoja'
 
@@ -219,7 +219,7 @@ function PorPaciente() {
                   <th className="px-3 py-2 whitespace-nowrap">Fecha</th>
                   <th className="px-3 py-2">Hab.</th>
                   <th className="px-3 py-2">Vía</th>
-                  <th className="px-3 py-2">Avisos de la app</th>
+                  <th className="px-3 py-2">Diuresis</th>
                   <th className="px-3 py-2 min-w-[20rem]">Indicaciones</th>
                 </tr>
               </thead>
@@ -229,7 +229,6 @@ function PorPaciente() {
                   const previo = dias[idx + 1]
                   const cambio = !!previo && previo.ingresoId === d.ingresoId && firma(previo.p) !== firma(d.p)
                   const diu = textoDiuresis(d.p)
-                  const av = [diu, ...avisosAutomaticos(d.p, 'manana').filter((a) => !a.startsWith('Contención'))].filter(Boolean)
                   return (
                     <tr key={`${d.ingresoId}-${d.fecha}`} className={`border-t align-top ${cambio ? 'bg-primary-50/40' : ''}`}>
                       <td className="px-3 py-2 font-medium text-slate-800 whitespace-nowrap">
@@ -238,7 +237,7 @@ function PorPaciente() {
                       </td>
                       <td className="px-3 py-2 text-slate-500">{d.p.habitacion}</td>
                       <td className="px-3 py-2 text-slate-600">{d.p.via ? VIA_LABEL[d.p.via] : <span className="text-slate-300">—</span>}</td>
-                      <td className="px-3 py-2 text-slate-600">{av.length ? av.join(' · ') : <span className="text-slate-300">—</span>}</td>
+                      <td className="px-3 py-2 text-slate-600">{diu || <span className="text-slate-300">—</span>}</td>
                       <td className="px-3 py-2">
                         {d.p.indicaciones.length === 0 ? <span className="text-slate-300">—</span> : (
                           <ul className="space-y-1">
