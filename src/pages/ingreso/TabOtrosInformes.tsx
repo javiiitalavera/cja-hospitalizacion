@@ -145,7 +145,7 @@ export function TabOtrosInformes({ ingresoId, ingreso }: { ingresoId: string; in
       )}
       {!loading && !errorCarga && lista.length === 0 && (
         <div className="card p-8 text-center text-sm text-slate-500">
-          <FileText className="w-6 h-6 mx-auto mb-2 text-slate-400" />
+          <FileText className="w-6 h-6 mx-auto mb-2 text-slate-500" />
           No hay informes.
         </div>
       )}

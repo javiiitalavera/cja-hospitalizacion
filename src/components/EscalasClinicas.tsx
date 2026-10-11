@@ -86,7 +86,7 @@ export function ModalEscala({ titulo, onCerrar, children, onGuardar, completa, f
               : avisoIncompleta ? <span className="text-amber-700">Guardado, pero la escala está incompleta{faltaTexto ? `: ${faltaTexto}` : ''}.</span>
               : estado === 'guardando' || guardando ? <span className="text-slate-500">Guardando…</span>
               : estado === 'pendiente' ? <span className="text-slate-500">Cambios pendientes de guardar</span>
-              : estado === 'guardado' ? <span className="text-emerald-600">✓ Guardado</span>
+              : estado === 'guardado' ? <span className="text-emerald-700">✓ Guardado</span>
               : null}
           </p>
           <div className="flex items-center gap-2 shrink-0">

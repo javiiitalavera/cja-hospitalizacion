@@ -22,8 +22,8 @@ export function ChipsTurno({ valor, onChange, deshabilitado, compacto }: {
             // Siempre debe quedar al menos un turno marcado.
             onClick={() => siguiente.length > 0 && onChange?.(TODOS_TURNOS.filter((x) => siguiente.includes(x)))}
             aria-pressed={activo}
-            className={`${compacto ? 'text-[11px] px-2 py-0.5' : 'text-xs px-2.5 py-1'} rounded-full border transition-colors ${
-              activo ? 'bg-primary-50 border-primary-300 text-primary-800 font-semibold' : 'bg-white border-slate-200 text-slate-400'
+            className={`${compacto ? 'text-[0.7rem] px-2 py-0.5' : 'text-xs px-2.5 py-1'} rounded-full border transition-colors ${
+              activo ? 'bg-primary-50 border-primary-300 text-primary-800 font-semibold' : 'bg-white border-slate-200 text-slate-500'
             } ${deshabilitado || !onChange ? 'cursor-default' : 'hover:border-primary-300'}`}
           >
             {t.etiqueta}

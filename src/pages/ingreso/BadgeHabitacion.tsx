@@ -40,7 +40,7 @@ export function BadgeHabitacion({
       }`}
       style={color ? { backgroundColor: color, color: semaforo === 'rojo' ? '#FFFFFF' : '#000000' } : undefined}
     >
-      <span className="text-[10px] font-semibold uppercase tracking-wider opacity-80">Hab.</span>
+      <span className="text-[0.65rem] font-semibold uppercase tracking-wider opacity-80">Hab.</span>
       <span className="text-3xl font-extrabold tabular-nums mt-0.5">{habitacion}</span>
     </div>
   )

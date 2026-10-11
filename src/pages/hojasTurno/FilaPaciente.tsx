@@ -45,8 +45,8 @@ export function FilaPaciente({ n, p, turno, columnas, acciones }: {
   if (!p) {
     return (
       <tr className="border-t">
-        <td className="px-3 py-2 text-center font-bold text-slate-400 align-top">{n}</td>
-        <td colSpan={columnas.length + 3} className="px-3 py-2 text-slate-400 italic align-top">Libre</td>
+        <td className="px-3 py-2 text-center font-bold text-slate-500 align-top">{n}</td>
+        <td colSpan={columnas.length + 3} className="px-3 py-2 text-slate-500 italic align-top">Libre</td>
       </tr>
     )
   }
@@ -103,13 +103,13 @@ export function FilaPaciente({ n, p, turno, columnas, acciones }: {
       </td>
       <td className="px-3 py-2 font-semibold text-slate-800 whitespace-nowrap">{p.nombre}</td>
       {columnas.map((c) => (
-        <td key={c} className="px-0.5 py-2 text-center text-[10px] text-slate-500 bg-slate-50/70 border-l border-dashed border-slate-200">
+        <td key={c} className="px-0.5 py-2 text-center text-[0.65rem] text-slate-500 bg-slate-50/70 border-l border-dashed border-slate-200">
           {c === 'Diuresis' || c === 'Orina' ? diuresis : ''}
         </td>
       ))}
       {/* La vía sale de la Pauta de cuidados del paciente: aquí solo se muestra, como Diuresis. */}
       <td
-        className="px-0.5 py-2 text-center text-[10px] text-slate-500 bg-slate-50/70 border-l border-dashed border-slate-200"
+        className="px-0.5 py-2 text-center text-[0.65rem] text-slate-500 bg-slate-50/70 border-l border-dashed border-slate-200"
         title={textoVias(p.vias, false) || undefined}
       >
         {textoVias(p.vias)}
@@ -153,18 +153,18 @@ export function FilaPaciente({ n, p, turno, columnas, acciones }: {
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-slate-900 whitespace-pre-wrap break-words">{i.texto}</p>
                   {otros.length > 0 && (
-                    <p className="text-[11px] text-slate-500">También: {otros.map(etiquetaTurno).join(', ')}</p>
+                    <p className="text-[0.7rem] text-slate-500">También: {otros.map(etiquetaTurno).join(', ')}</p>
                   )}
                 </div>
                 {editable && i.id && (
                   <div className="flex items-center gap-0.5 shrink-0">
                     <button type="button" title="Editar" aria-label="Editar indicación" disabled={ocupado}
-                      className="p-1 text-slate-400 hover:text-slate-700"
+                      className="p-1 text-slate-500 hover:text-slate-700"
                       onClick={() => { setEditando(i.id!); setTextoEdicion(i.texto); setTurnosEdicion(i.turnos) }}>
                       <Pencil className="w-3.5 h-3.5" />
                     </button>
                     <button type="button" title="Quitar" aria-label="Quitar indicación" disabled={ocupado}
-                      className="p-1 text-slate-400 hover:text-red-500" onClick={() => quitar(i)}>
+                      className="p-1 text-slate-500 hover:text-red-500" onClick={() => quitar(i)}>
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
@@ -206,7 +206,7 @@ export function FilaPaciente({ n, p, turno, columnas, acciones }: {
           ))}
 
           {dialogo}
-          {!editable && delTurno.length === 0 && <span className="text-slate-300 text-xs">—</span>}
+          {!editable && delTurno.length === 0 && <span className="text-slate-500 text-xs">—</span>}
         </div>
       </td>
     </tr>

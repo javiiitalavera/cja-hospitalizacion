@@ -207,11 +207,11 @@ export function TabPautaCuidados({ ingresoId, episodioActivo }: { ingresoId: str
                   <p className="text-sm text-slate-800 whitespace-pre-wrap break-words min-w-0">{i.texto}</p>
                   {puedeEditar && (
                     <div className="flex items-center gap-1 shrink-0">
-                      <button type="button" title="Editar" className="p-1 text-slate-400 hover:text-slate-700"
+                      <button type="button" title="Editar" className="p-1 text-slate-500 hover:text-slate-700"
                         onClick={() => { setEditando(i.id); setTextoEdicion(i.texto) }}>
                         <Pencil className="w-3.5 h-3.5" />
                       </button>
-                      <button type="button" title="Quitar" className="p-1 text-slate-400 hover:text-red-500" onClick={() => borrar(i)}>
+                      <button type="button" title="Quitar" className="p-1 text-slate-500 hover:text-red-500" onClick={() => borrar(i)}>
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>

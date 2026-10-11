@@ -85,7 +85,7 @@ export function SeguridadDashboard({ filtros, desde, hasta, onExplorar, onExplor
                         <td className="px-4 py-2 font-medium text-slate-700">{TIPO_LABEL[t.tipo] ?? t.tipo}</td>
                         <td className="px-4 py-2 text-right tabular-nums">{t.total}</td>
                         <td className="px-4 py-2 text-right tabular-nums">{t.pacientes_afectados}</td>
-                        <td className="px-4 py-2 text-right tabular-nums">{t.pendientes || <span className="text-slate-400">—</span>}</td>
+                        <td className="px-4 py-2 text-right tabular-nums">{t.pendientes || <span className="text-slate-500">—</span>}</td>
                         <td className="px-4 py-2 text-right tabular-nums text-slate-500">{t.tasa_1000 ?? '—'}</td>
                       </tr>
                     ))}

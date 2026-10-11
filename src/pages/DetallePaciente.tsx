@@ -415,7 +415,7 @@ export default function DetallePaciente() {
                       <span className="text-slate-800">
                         {type === 'date' && val
                           ? new Date(val).toLocaleDateString('es-ES')
-                          : val || <span className="text-slate-400">—</span>}
+                          : val || <span className="text-slate-500">—</span>}
                       </span>
                     )}
                   </div>

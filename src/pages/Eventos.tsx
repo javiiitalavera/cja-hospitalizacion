@@ -527,14 +527,14 @@ export function Eventos() {
                           <span className={`px-2 py-0.5 rounded text-xs font-medium ${SEVERIDAD_ESTILO[sevDia].bg} ${SEVERIDAD_ESTILO[sevDia].text}`}>
                             {CONTENCION_DIA_LABEL[c.dia as ContencionDia]}
                           </span>
-                        ) : <span className="text-slate-400">—</span>}
+                        ) : <span className="text-slate-500">—</span>}
                       </td>
                       <td className="px-4 py-2.5">
                         {nocheReal.length > 0 ? (
                           <span className={`px-2 py-0.5 rounded text-xs font-medium ${SEVERIDAD_ESTILO[sevNoche].bg} ${SEVERIDAD_ESTILO[sevNoche].text}`}>
                             {nocheReal.map((n) => CONTENCION_NOCHE_LABEL[n]).join(', ')}
                           </span>
-                        ) : <span className="text-slate-400">—</span>}
+                        ) : <span className="text-slate-500">—</span>}
                       </td>
                       <td className="px-4 py-2.5 text-slate-500 text-xs">
                         {c.actualizado_en ? new Date(c.actualizado_en).toLocaleDateString('es-ES') : '—'}
@@ -736,7 +736,7 @@ export function Eventos() {
                       </td>
                       <td className="px-4 py-2 text-xs">
                         {ev.ingreso?.estado === 'activo' ? (
-                          <span className="text-emerald-600">Activo</span>
+                          <span className="text-emerald-700">Activo</span>
                         ) : (
                           <span className="text-slate-500">Cerrado</span>
                         )}
@@ -772,11 +772,11 @@ function FilaTipo({ resumen, filas, abierto, onToggle, onClickPaciente }: {
         <td className="px-4 py-2.5 font-medium text-slate-700">{TIPO_EVENTO_LABEL[resumen.tipo]}</td>
         <td className="px-4 py-2.5 text-right tabular-nums">
           {resumen.pacientesAfectados === 0
-            ? <span className="text-slate-400">—</span>
+            ? <span className="text-slate-500">—</span>
             : <span className="font-semibold text-slate-800">{resumen.pacientesAfectados}</span>}
         </td>
         <td className="px-4 py-2.5 text-right tabular-nums text-slate-500">
-          {resumen.totalIncidencias || <span className="text-slate-400">—</span>}
+          {resumen.totalIncidencias || <span className="text-slate-500">—</span>}
         </td>
       </tr>
       {abierto && filas.length > 0 && (

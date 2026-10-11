@@ -93,7 +93,7 @@ export function MedicacionDashboard({ filtros, desde, hasta }: { filtros: Filtro
                   {(['ingreso', 'alta'] as const).map((m) => (
                     <td key={m} className="py-2 text-right tabular-nums text-slate-700">
                       <span className="font-semibold">{r.polifarmacia[m][k]}</span>
-                      <span className="text-slate-400"> · {pct(r.polifarmacia[m][k], r.conMedicacion[m])}</span>
+                      <span className="text-slate-500"> · {pct(r.polifarmacia[m][k], r.conMedicacion[m])}</span>
                     </td>
                   ))}
                 </tr>
@@ -121,14 +121,14 @@ export function MedicacionDashboard({ filtros, desde, hasta }: { filtros: Filtro
                   {(['ingreso', 'alta'] as const).map((m) => (
                     <td key={m} className="py-2 text-right tabular-nums text-slate-700">
                       <span className="font-semibold">{g.n[m]}</span>
-                      <span className="text-slate-400"> · {pct(g.n[m], r.conMedicacion[m])}</span>
+                      <span className="text-slate-500"> · {pct(g.n[m], r.conMedicacion[m])}</span>
                     </td>
                   ))}
                 </tr>
               ))}
             </tbody>
           </table>
-          <p className="text-xs text-slate-400 mt-3">
+          <p className="text-xs text-slate-500 mt-3">
             Porcentaje sobre las altas con medicación en ese informe. Los grupos se solapan: un paciente con un antipsicótico y una benzodiacepina cuenta en las dos filas.
           </p>
         </div>

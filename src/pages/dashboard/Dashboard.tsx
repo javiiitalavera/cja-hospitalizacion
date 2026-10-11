@@ -147,7 +147,7 @@ export function Dashboard() {
             className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
               vista === v.valor ? 'border-primary-600 text-primary-700'
               : v.disponible ? 'border-transparent text-slate-500 hover:text-slate-700'
-              : 'border-transparent text-slate-400 cursor-not-allowed'
+              : 'border-transparent text-slate-500 cursor-not-allowed'
             }`}
           >
             {v.etiqueta}

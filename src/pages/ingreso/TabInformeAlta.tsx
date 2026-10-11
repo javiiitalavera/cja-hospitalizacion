@@ -347,7 +347,7 @@ function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
           <span className="text-xs text-slate-500">
             {estadoEscalas === 'pendiente' && '● Cambios pendientes'}
             {estadoEscalas === 'guardando' && '● Guardando…'}
-            {estadoEscalas === 'guardado' && <span className="text-emerald-600">✓ Guardado</span>}
+            {estadoEscalas === 'guardado' && <span className="text-emerald-700">✓ Guardado</span>}
             {estadoEscalas === 'error' && <span className="text-red-600 font-semibold">✗ Error al guardar</span>}
           </span>
         </div>

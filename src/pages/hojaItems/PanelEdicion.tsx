@@ -270,7 +270,7 @@ export default function PanelEdicion({
               onKeyDown={(e) => e.key === 'Enter' && cambiarHabitacion()}
             />
             {savingHab && <span className="text-xs text-slate-500">…</span>}
-            {habError && <span className="text-xs text-red-500">{habError}</span>}
+            {habError && <span className="text-xs text-red-600">{habError}</span>}
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -320,7 +320,7 @@ export default function PanelEdicion({
                 key={color}
                 type="button"
                 onClick={() => update('semaforo_caidas' as keyof ItemsPaciente, active ? null : color)}
-                className={`flex-1 py-1.5 rounded-lg text-xs font-semibold border-2 transition-all ${active ? 'border-slate-700 scale-105' : 'border-transparent opacity-70 hover:opacity-100'}`}
+                className={`flex-1 py-1.5 rounded-lg text-xs font-semibold border-2 transition-all ${active ? 'border-slate-700 scale-105' : 'border-transparent opacity-90 hover:opacity-100'}`}
                 style={{ backgroundColor: bg, color: txtColor }}
               >
                 {color.charAt(0).toUpperCase() + color.slice(1)}
@@ -331,7 +331,7 @@ export default function PanelEdicion({
 
         <p className="section-title mt-3">Seguridad y conducta</p>
         <span className="text-xs text-slate-600 block">Pauta de contención</span>
-        <p className="text-[11px] text-slate-500 mb-1.5">Contención pautada para el día y la noche; cada cambio queda en su historial.</p>
+        <p className="text-[0.7rem] text-slate-500 mb-1.5">Contención pautada para el día y la noche; cada cambio queda en su historial.</p>
         {errorContencion && (
           <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded px-2 py-1 mb-1.5">{errorContencion}</p>
         )}

@@ -176,7 +176,7 @@ export function TabCambios({ personal }: { personal: Personal }) {
                       onClick={() => tieneDetalle && setExpandido((e) => (e === f.id ? null : f.id))}>
                       <td className="px-4 py-2 text-slate-600 whitespace-nowrap">
                         {formatoFecha(f.fecha)}
-                        {f.fechaFin && f.nGuardados > 1 && <span className="text-slate-400"> – {formatoHora(f.fechaFin)}</span>}
+                        {f.fechaFin && f.nGuardados > 1 && <span className="text-slate-500"> – {formatoHora(f.fechaFin)}</span>}
                       </td>
                       <td className="px-4 py-2 text-slate-800">
                         {f.actorId ? (nombreActor ?? 'Usuario desconocido') : (
@@ -190,10 +190,10 @@ export function TabCambios({ personal }: { personal: Personal }) {
                         {f.nivel === 'seguridad' && (
                           <span className="ml-1.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800" title="Cambio de permisos, de cuenta, o alta o baja de personal">Seguridad</span>
                         )}
-                        {f.nGuardados > 1 && <span className="ml-1.5 text-xs text-slate-400">{f.nGuardados} guardados</span>}
+                        {f.nGuardados > 1 && <span className="ml-1.5 text-xs text-slate-500">{f.nGuardados} guardados</span>}
                       </td>
                       <td className="px-4 py-2 text-slate-500">{textoAfecta(f, pacientes, personal)}</td>
-                      <td className="px-4 py-2 text-slate-400">{tieneDetalle && (expandido === f.id ? '▾' : '▸')}</td>
+                      <td className="px-4 py-2 text-slate-500">{tieneDetalle && (expandido === f.id ? '▾' : '▸')}</td>
                     </tr>
                     {expandido === f.id && tieneDetalle && (
                       <tr className="bg-slate-50 border-t border-slate-100">

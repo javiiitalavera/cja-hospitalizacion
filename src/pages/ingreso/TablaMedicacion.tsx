@@ -120,12 +120,12 @@ function CeldaFarmaco({ fila, disabled, onCambio }: {
                 onMouseEnter={() => setActivo(i)}
                 onClick={() => elegir(r)}>
                 <span className="font-medium text-slate-800">{r.farmaco.nombre}</span>
-                {r.via && <span className="text-slate-400">({r.via})</span>}
+                {r.via && <span className="text-slate-500">({r.via})</span>}
                 <span className="ml-auto flex items-center gap-1.5 shrink-0">
-                  {g && <span className="px-1.5 py-px rounded-full bg-violet-100 text-violet-800 text-[10px] font-semibold">
+                  {g && <span className="px-1.5 py-px rounded-full bg-violet-100 text-violet-800 text-[0.65rem] font-semibold">
                     {GRUPOS_PSICO.find(x => x.clave === g)?.etiqueta}
                   </span>}
-                  <span className="font-mono text-[10px] text-slate-400">{r.farmaco.atc}</span>
+                  <span className="font-mono text-[0.65rem] text-slate-500">{r.farmaco.atc}</span>
                 </span>
               </button>
             )
@@ -182,7 +182,7 @@ function AsignarPrincipio({ fila, onCambio }: {
           <div className="fixed inset-0 z-40" onClick={() => setAbierto(false)} />
           <div className="fixed z-50 w-80 bg-white border rounded-xl shadow-lg p-2 space-y-1 whitespace-normal"
             style={{ top: pos.top, left: pos.left }}>
-            <p className="text-[11px] text-slate-600">
+            <p className="text-[0.7rem] text-slate-600">
               ¿A qué principio activo corresponde «{fila.farmaco.trim()}»? La app lo recordará para la próxima vez.
             </p>
             <input autoFocus autoComplete="off" value={consulta} onChange={e => setConsulta(e.target.value)}
@@ -190,14 +190,14 @@ function AsignarPrincipio({ fila, onCambio }: {
               placeholder="Principio activo (p. ej. quetiapina)…"
               className="w-full border border-slate-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary-300" />
             {consulta.trim().length >= 2 && resultados.length === 0 && (
-              <p className="text-[11px] text-slate-500 px-1">No hay ningún fármaco con ese nombre en el catálogo.</p>
+              <p className="text-[0.7rem] text-slate-500 px-1">No hay ningún fármaco con ese nombre en el catálogo.</p>
             )}
             {resultados.map(r => (
               <button type="button" key={r.farmaco.atc + r.farmaco.nombre} onClick={() => elegir(r)}
                 className="w-full text-left px-2 py-1 rounded text-xs hover:bg-primary-50 flex items-center gap-2">
                 <span className="font-medium text-slate-800">{r.farmaco.nombre}</span>
-                {r.via && <span className="text-slate-400">({r.via})</span>}
-                <span className="ml-auto font-mono text-[10px] text-slate-400">{r.farmaco.atc}</span>
+                {r.via && <span className="text-slate-500">({r.via})</span>}
+                <span className="ml-auto font-mono text-[0.65rem] text-slate-500">{r.farmaco.atc}</span>
               </button>
             ))}
           </div>
@@ -222,9 +222,9 @@ function CeldaClase({ fila, disabled, onCambio }: {
   const sinAtc = !atcDeFila(fila)
   const quitar = !disabled && fila.psico && (
     <button type="button" title="Quitar la marca" onClick={() => onCambio({ psico: undefined })}
-      className="text-slate-400 hover:text-slate-700 leading-none px-0.5">×</button>
+      className="text-slate-500 hover:text-slate-700 leading-none px-0.5">×</button>
   )
-  const pill = 'inline-flex items-center gap-1 px-1.5 py-px rounded-full text-[10px] font-semibold whitespace-nowrap'
+  const pill = 'inline-flex items-center gap-1 px-1.5 py-px rounded-full text-[0.65rem] font-semibold whitespace-nowrap'
 
   if (estado === 'psico') {
     return (
@@ -247,7 +247,7 @@ function CeldaClase({ fila, disabled, onCambio }: {
   }
   if (estado === 'dudoso') {
     return (
-      <span className="inline-flex items-center gap-1 whitespace-nowrap text-[10px]">
+      <span className="inline-flex items-center gap-1 whitespace-nowrap text-[0.65rem]">
         <span className="text-amber-700 font-semibold" title="Se usa tanto como estabilizador del ánimo como para la epilepsia, el dolor…">¿Psicofármaco?</span>
         {!disabled && (
           <>
@@ -262,12 +262,12 @@ function CeldaClase({ fila, disabled, onCambio }: {
   }
   if (sinAtc) {
     return (
-      <span className="inline-flex items-center gap-1 whitespace-nowrap text-[10px]">
+      <span className="inline-flex items-center gap-1 whitespace-nowrap text-[0.65rem]">
         <span className={`${pill} bg-amber-100 text-amber-800`} title="No está en el catálogo: se guarda tal cual y no cuenta como psicofármaco salvo que lo marques o le asignes su principio activo">sin clasificar</span>
         {!disabled && (
           <>
             <AsignarPrincipio fila={fila} onCambio={onCambio} />
-            <span className="text-slate-300">·</span>
+            <span className="text-slate-500">·</span>
             <button type="button" onClick={() => onCambio({ psico: 'si' })}
               className="text-violet-700 hover:underline font-semibold">es psicofármaco</button>
           </>
@@ -354,7 +354,7 @@ export function TablaMedicacion({ filas, onChange, disabled }: {
                   <td className="border border-slate-200 p-1 text-center">
                     <button type="button"
                       onClick={() => onChange(filas.filter((_, idx) => idx !== i))}
-                      className="text-slate-400 hover:text-red-500 transition-colors">
+                      className="text-slate-500 hover:text-red-500 transition-colors">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </td>
@@ -369,7 +369,7 @@ export function TablaMedicacion({ filas, onChange, disabled }: {
           <span className="font-semibold text-slate-700">{resumen.total} {resumen.total === 1 ? 'fármaco' : 'fármacos'}</span>
           {cargado && (
             <>
-              <span className="text-slate-300">·</span>
+              <span className="text-slate-500">·</span>
               <span className={resumen.psicofarmacos > 0 ? 'font-semibold text-violet-800' : ''}>
                 {resumen.psicofarmacos} {resumen.psicofarmacos === 1 ? 'psicofármaco' : 'psicofármacos'}
               </span>

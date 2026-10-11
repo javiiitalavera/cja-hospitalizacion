@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { NavLink, Outlet } from "react-router-dom"
+import { Link, NavLink, Outlet, useNavigate } from "react-router-dom"
 import {
   Users, ClipboardList, AlertTriangle,
   BarChart2, Home, ChevronLeft, LogOut, UserCog, History, FileText, Bandage, ClipboardCheck
@@ -16,8 +16,8 @@ const ROL_LABEL: Record<string, string> = {
 
 const navItems = [
   { to: '/', icon: Home, label: 'Inicio', end: true },
-  { to: '/pacientes', icon: Users, label: 'Pacientes' },
-  { to: '/informes', icon: FileText, label: 'Informes' },
+  { to: '/pacientes', icon: Users, label: 'Buscar paciente' },
+  { to: '/informes', icon: FileText, label: 'Buscar informe' },
   { to: '/items', icon: ClipboardList, label: 'Hoja de ítems' },
   { to: '/hojas-turno', icon: ClipboardCheck, label: 'Hojas de turno' },
   { to: '/curas', icon: Bandage, label: 'Pauta de curas' },
@@ -29,20 +29,21 @@ const navItems = [
 
 export default function Layout() {
   const [collapsed, setCollapsed] = useState(false)
+  const navigate = useNavigate()
   const { profesional, rol, esAdmin, signOut } = useAuth()
   const items = navItems.filter((i) => !i.soloAdmin || esAdmin)
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-50">
-      <aside className={`bg-white border-r flex flex-col shrink-0 transition-all duration-200 ${collapsed ? 'w-14' : 'w-56'}`}>
+    <div className="flex h-screen overflow-hidden bg-slate-100">
+      <aside className={`bg-white border-r border-slate-300 flex flex-col shrink-0 transition-all duration-200 ${collapsed ? 'w-14' : 'w-56'}`}>
         {/* Cabecera */}
         <div className="border-b px-3 py-4 flex items-center justify-between gap-2">
           {/* Logo — siempre visible, expande si colapsado */}
           <button
-            onClick={() => collapsed && setCollapsed(false)}
-            className={`shrink-0 rounded-lg ${collapsed ? 'hover:opacity-80 cursor-pointer' : 'cursor-default'} transition-opacity`}
-            title={collapsed ? 'Expandir menú' : undefined}
-            aria-label={collapsed ? 'Expandir menú' : 'CJA Hospital'}
+            onClick={() => (collapsed ? setCollapsed(false) : navigate('/'))}
+            className="shrink-0 rounded-lg hover:opacity-80 cursor-pointer transition-opacity"
+            title={collapsed ? 'Expandir menú' : 'Ir a Inicio'}
+            aria-label={collapsed ? 'Expandir menú' : 'Ir a Inicio'}
           >
             <img src={logo} alt="" className="w-8 h-8 block" />
           </button>
@@ -51,10 +52,10 @@ export default function Layout() {
           {!collapsed && (
             <>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-slate-800 leading-tight">CJA Hospital</p>
+                <Link to="/" title="Ir a Inicio" className="text-sm font-bold text-slate-800 leading-tight hover:text-primary-700">CJA Hospital</Link>
               </div>
               <button onClick={() => setCollapsed(true)}
-                className="text-slate-400 hover:text-slate-500 transition-colors p-1 rounded shrink-0">
+                className="text-slate-500 hover:text-slate-800 transition-colors p-1 rounded shrink-0">
                 <ChevronLeft className="w-4 h-4" />
               </button>
             </>
@@ -104,7 +105,7 @@ export default function Layout() {
                 <LogOut className="w-3.5 h-3.5" />
                 Cerrar sesión
               </button>
-              <p className="text-xs text-slate-400 mt-2">Clínica Josefina Arregui · Alsasua · v1.0.0</p>
+              <p className="text-xs text-slate-500 mt-2">Clínica Josefina Arregui · Alsasua · v1.0.0</p>
             </div>
           ) : (
             <div className="py-3 flex justify-center">

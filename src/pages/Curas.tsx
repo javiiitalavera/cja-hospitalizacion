@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { CabeceraPagina } from '../components/CabeceraPagina'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, Check, X, Printer, Pencil, Plus } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Check, X, Circle, Printer, Pencil, Plus } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import { hoyLocal } from '../lib/fechas'
@@ -273,11 +273,13 @@ export default function Curas() {
                                   ? 'bg-rose-100 border-rose-300 text-rose-700'
                                   : 'bg-emerald-100 border-emerald-300 text-emerald-700'
                                 : toca
-                                  ? `bg-amber-100 border-amber-300 ${futuro ? '' : 'hover:bg-amber-200'}`
-                                  : 'bg-slate-200 border-slate-300'
+                                  ? `bg-amber-200 border-amber-500 ${futuro ? '' : 'hover:bg-amber-300'}`
+                                  : 'bg-slate-100 border-slate-200'
                             }`}
                           >
-                            {marca && (noRealizada ? <X className="w-4 h-4" /> : <Check className="w-4 h-4" />)}
+                            {marca
+                              ? (noRealizada ? <X className="w-4 h-4" /> : <Check className="w-4 h-4" />)
+                              : toca && <Circle className="w-3.5 h-3.5 text-amber-800" aria-hidden />}
                           </button>
                         </td>
                       )
@@ -287,7 +289,7 @@ export default function Curas() {
               </tbody>
             </table>
             <p className="px-4 py-2 text-xs text-slate-500 border-t">
-              Ámbar: toca cura ese día según la pauta (si es anterior a hoy y sigue en ámbar, está sin registrar) · verde: hecha · rojo: no realizada (con su motivo) · gris: no toca. En las pautas «cada X h» se cuenta desde la última cura hecha.
+              Ámbar con ○: toca cura ese día según la pauta (si es anterior a hoy y sigue así, está sin registrar) · verde con ✓: hecha · rojo con ✗: no realizada (con su motivo) · gris claro: no toca. En las pautas «cada X h» se cuenta desde la última cura hecha.
             </p>
           </div>
 
@@ -322,7 +324,7 @@ export default function Curas() {
                             <span className="text-xs text-slate-500"> ({CARACTERISTICA_LABEL[l.caracteristicas]})</span>
                             <span>: {textoPauta(pautaVigente(l.valoraciones))}</span>
                           </span>
-                          <Pencil className="w-3.5 h-3.5 mt-0.5 shrink-0 text-slate-400 group-hover:text-primary-600" />
+                          <Pencil className="w-3.5 h-3.5 mt-0.5 shrink-0 text-slate-500 group-hover:text-primary-600" />
                         </button>
                       ))}
                     </td>

@@ -255,7 +255,7 @@ export default function ModalContencion({ ingresoId, onClose, onGuardado, pacien
                 ultimo?.confirmado_por_id ? (
                   <div className="flex items-center justify-between gap-2 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2.5">
                     <div className="flex items-center gap-2">
-                      <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <ShieldCheck className="w-4 h-4 text-emerald-700 shrink-0" />
                       <p className="text-xs text-emerald-800">
                         Confirmada por {ultimo.confirmado_por?.nombre} {ultimo.confirmado_por?.apellidos}
                         {ultimo.confirmado_en && ` · ${new Date(ultimo.confirmado_en).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })}`}

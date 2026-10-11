@@ -171,7 +171,7 @@ export default function Pacientes() {
   return (
     <div className="p-6 md:p-8">
       <CabeceraPagina
-        titulo="Pacientes"
+        titulo="Buscar paciente"
         subtitulo={`${loading ? '…' : `${total} resultado${total !== 1 ? 's' : ''}`} · todos los pacientes de la clínica`}
       >
         {esMedico && (
@@ -213,7 +213,7 @@ export default function Pacientes() {
             }}
           />
           {(escribiendo || loading) && (
-            <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 animate-spin" />
+            <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 animate-spin" />
           )}
         </div>
         {(['activo', 'alta', 'todos'] as const).map(e => (
@@ -286,7 +286,7 @@ export default function Pacientes() {
                         <span className="font-mono text-slate-700">{identificador}</span>
                         {esCipna && <span className="text-slate-500 ml-1 text-xs">CIPNA</span>}
                       </>
-                    ) : <span className="text-slate-400">—</span>}
+                    ) : <span className="text-slate-500">—</span>}
                   </td>
                   <td className="px-4 py-3 text-slate-500 text-xs">
                     {p.ultimo_ingreso ? (
@@ -296,14 +296,14 @@ export default function Pacientes() {
                           <span className="text-slate-500"> · Hab. {p.ultimo_ingreso.habitacion}</span>
                         )}
                       </>
-                    ) : <span className="text-slate-400">—</span>}
+                    ) : <span className="text-slate-500">—</span>}
                   </td>
                   <td className="px-4 py-3">
                     {estado ? (
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${ESTADO_COLOR[estado] ?? 'bg-slate-100 text-slate-500'}`}>
                         {ESTADO_LABEL[estado] ?? estado}
                       </span>
-                    ) : <span className="text-slate-400 text-xs">Sin ingresos</span>}
+                    ) : <span className="text-slate-500 text-xs">Sin ingresos</span>}
                   </td>
                   <td className="px-4 py-3 text-right">
                     {esMedico && (estado === 'alta' || estado === 'alta_traslado') ? (

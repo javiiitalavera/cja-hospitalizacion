@@ -59,7 +59,7 @@ export function SemaforoCaidas({
               aria-pressed={activo}
               aria-label={nombre}
               onClick={() => elegir(color)}
-              className={`flex-1 min-w-[4.5rem] py-1.5 rounded-lg text-xs font-semibold border-2 transition-all disabled:opacity-60 ${activo ? 'border-slate-700 scale-105' : 'border-transparent opacity-70 hover:opacity-100'}`}
+              className={`flex-1 min-w-[4.5rem] py-1.5 rounded-lg text-xs font-semibold border-2 transition-all disabled:opacity-60 ${activo ? 'border-slate-700 scale-105' : 'border-transparent opacity-90 hover:opacity-100'}`}
               style={{ backgroundColor: fondo, color: texto }}
             >
               {MAYUS(color)}

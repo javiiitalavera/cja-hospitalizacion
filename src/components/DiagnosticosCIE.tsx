@@ -88,7 +88,7 @@ export function BuscadorCIE({ value, onChange, disabled, principal }: {
             )
           })}
           {!cargado && (
-            <p className="px-3 py-1.5 text-[11px] text-slate-400 bg-slate-50">Cargando el catálogo completo de la CIE-10-ES…</p>
+            <p className="px-3 py-1.5 text-[0.7rem] text-slate-500 bg-slate-50">Cargando el catálogo completo de la CIE-10-ES…</p>
           )}
         </div>
       )}
@@ -147,7 +147,7 @@ export function FilaDx({ label, codigo, desc, poad, onCodigoYDesc, onDesc, onPoa
                 </button>
               )
             })()}
-            {exento && <span className="text-[10px] text-slate-400 leading-none" title="Este código está exento de indicar POAD según la tabla oficial">Exento</span>}
+            {exento && <span className="text-[0.65rem] text-slate-500 leading-none" title="Este código está exento de indicar POAD según la tabla oficial">Exento</span>}
           </div>
         )}
       </div>
@@ -295,7 +295,7 @@ export function BloqueDiagnosticosCMBD({ ingresoId }: { ingresoId: string }) {
         <span className="text-xs text-slate-500 shrink-0">
           {estado === 'pendiente' && '● Cambios pendientes'}
           {estado === 'guardando' && '● Guardando…'}
-          {estado === 'guardado' && <span className="text-emerald-600">✓ Guardado</span>}
+          {estado === 'guardado' && <span className="text-emerald-700">✓ Guardado</span>}
           {estado === 'error' && <span className="text-red-600 font-semibold">✗ Error al guardar</span>}
         </span>
       </div>

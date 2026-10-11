@@ -447,7 +447,7 @@ export default function HojaItems() {
                                   const cambio = !esUltimo && JSON.stringify(it[f.key]) !== JSON.stringify(prev[f.key])
                                   return (
                                     <td key={f.key} className={`px-3 py-2 whitespace-nowrap ${
-                                      noDisponible ? 'text-slate-400 italic' : cambio ? 'font-semibold text-primary-700' : 'text-slate-600'
+                                      noDisponible ? 'text-slate-500 italic' : cambio ? 'font-semibold text-primary-700' : 'text-slate-600'
                                     }`}>
                                       {valor}
                                     </td>

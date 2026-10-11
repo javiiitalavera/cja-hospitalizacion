@@ -102,7 +102,7 @@ function TabDatos({ ingreso, onUpdate, iniciarEditando = false }: { ingreso: Ing
         ] as [string, string | null | undefined][]).map(([k, v]) => (
           <div key={k} className="flex py-1">
             <span className="w-40 text-slate-500 shrink-0">{k}</span>
-            <span className="text-slate-700">{v || <span className="text-slate-400">—</span>}</span>
+            <span className="text-slate-700">{v || <span className="text-slate-500">—</span>}</span>
           </div>
         ))}
       </div>
@@ -200,12 +200,12 @@ function TabDatos({ ingreso, onUpdate, iniciarEditando = false }: { ingreso: Ing
           {rowsIngreso.map(([k, v]) => (
             <div key={k} className="flex px-5 py-3 text-sm">
               <span className="w-44 text-slate-500 shrink-0">{k}</span>
-              <span className="text-slate-800">{v || <span className="text-slate-400">—</span>}</span>
+              <span className="text-slate-800">{v || <span className="text-slate-500">—</span>}</span>
             </div>
           ))}
         </div>
       </div>
-      {saved && <p className="text-emerald-600 text-sm text-right">✓ Guardado correctamente</p>}
+      {saved && <p className="text-emerald-700 text-sm text-right">✓ Guardado correctamente</p>}
     </div>
   )
 }

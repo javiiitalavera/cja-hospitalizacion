@@ -368,14 +368,14 @@ export default function Home() {
                       (TIPO_EVENTO_COLOR[ev.tipo as TipoEvento] ?? '').split(' ').find(c => c.startsWith('bg-')) ?? 'bg-slate-400'
                     }`} />
                     <span className="text-slate-100 whitespace-nowrap">{TIPO_EVENTO_LABEL[ev.tipo as TipoEvento] ?? ev.tipo}</span>
-                    <span className="text-slate-300 ml-auto pl-2 whitespace-nowrap">
+                    <span className="text-slate-500 ml-auto pl-2 whitespace-nowrap">
                       {fechaCorta(ev.fecha)}{ev.hora ? ` ${ev.hora.slice(0, 5)}` : ''}
                     </span>
                     {ev.estado === 'pendiente' && <span className="text-amber-300 whitespace-nowrap">pendiente</span>}
                   </div>
                 ))}
                 {lista.length > visibles.length && (
-                  <p className="text-xs text-slate-300">y {lista.length - visibles.length} más antigua{lista.length - visibles.length > 1 ? 's' : ''} · pulsa para verlas</p>
+                  <p className="text-xs text-slate-500">y {lista.length - visibles.length} más antigua{lista.length - visibles.length > 1 ? 's' : ''} · pulsa para verlas</p>
                 )}
               </Tooltip>
             </div>
@@ -397,8 +397,8 @@ export default function Home() {
                 className={`flex items-center gap-3 border border-dashed border-slate-300 rounded-xl px-4 py-3 min-h-[5.5rem] transition-colors ${esMedico ? 'cursor-pointer hover:border-primary-300 hover:bg-primary-50/30' : ''}`}
                 onClick={esMedico ? () => navigate(`/pacientes/nuevo?habitacion=${n}`) : undefined}
                 title={esMedico ? `Ingresar en habitación ${n}` : `Habitación ${n} libre`}>
-                <span className="w-9 h-9 rounded-lg bg-slate-50 text-slate-300 flex items-center justify-center font-bold text-sm shrink-0">{n}</span>
-                <span className="text-sm text-slate-400">Libre{esMedico ? ' · ingresar' : ''}</span>
+                <span className="w-9 h-9 rounded-lg bg-slate-50 text-slate-500 flex items-center justify-center font-bold text-sm shrink-0">{n}</span>
+                <span className="text-sm text-slate-500">Libre{esMedico ? ' · ingresar' : ''}</span>
               </div>
             )
           }
@@ -433,7 +433,7 @@ export default function Home() {
                     )}
                   </p>
                 </div>
-                <ChevronRight className="w-4 h-4 text-slate-200 group-hover:text-slate-500 transition-colors shrink-0 mt-1" />
+                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-500 transition-colors shrink-0 mt-1" />
               </div>
               <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
                 <span className="text-xs text-slate-500 truncate min-w-0" title={medico}>{medico}</span>
@@ -557,8 +557,8 @@ export default function Home() {
                   onClick={esMedico ? () => navigate(`/pacientes/nuevo?habitacion=${n}`) : undefined}
                   title={esMedico ? `Ingresar en habitación ${n}` : `Habitación ${n} libre`}
                 >
-                  <span className="text-xs font-bold text-slate-200">{n}</span>
-                  <span className="text-xs text-slate-200">— libre —</span>
+                  <span className="text-xs font-bold text-slate-500">{n}</span>
+                  <span className="text-xs text-slate-500">— libre —</span>
                   <span />
                   <span />
                   <span />
@@ -645,7 +645,7 @@ export default function Home() {
                   {celdaIncidencias(ingreso)}
                   {/* Arrow */}
                   <div className="flex justify-end">
-                    <ChevronRight className="w-4 h-4 text-slate-200 group-hover:text-slate-500 transition-colors" />
+                    <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-500 transition-colors" />
                   </div>
                 </div>
               </div>

@@ -39,7 +39,7 @@ export function SelectorAislamiento({ datos, onCambio, deshabilitado }: Props) {
           </button>
         )
       })}
-      {(datos.aislamiento ?? []).length === 0 && <span className="text-xs text-slate-400">Sin aislamiento</span>}
+      {(datos.aislamiento ?? []).length === 0 && <span className="text-xs text-slate-500">Sin aislamiento</span>}
     </div>
   )
 }
@@ -57,7 +57,7 @@ export function SelectorVias({ datos, onCambio, deshabilitado }: Props) {
           </button>
         )
       })}
-      {(datos.vias ?? []).length === 0 && <span className="text-xs text-slate-400">No lleva vías</span>}
+      {(datos.vias ?? []).length === 0 && <span className="text-xs text-slate-500">No lleva vías</span>}
     </div>
   )
 }

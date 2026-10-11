@@ -454,7 +454,7 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
           <span className="text-xs text-slate-500">
             {estado === 'pendiente' && '● Cambios pendientes'}
             {estado === 'guardando' && '● Guardando…'}
-            {estado === 'guardado' && <span className="text-emerald-600">✓ Guardado</span>}
+            {estado === 'guardado' && <span className="text-emerald-700">✓ Guardado</span>}
             {estado === 'error' && <span className="text-red-600 font-semibold">✗ Error al guardar</span>}
           </span>
           <button type="button" onClick={handleGuardar} className="btn-secondary text-xs py-1.5">
@@ -488,13 +488,13 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
           </div>
           <div><span className="text-slate-500 text-xs">F. nacimiento: </span>
             {p?.fecha_nacimiento ? new Date(p.fecha_nacimiento).toLocaleDateString('es-ES') : '—'}
-            {p?.fecha_nacimiento && <span className="text-slate-400 text-xs ml-1">({fmtFecha(p.fecha_nacimiento)})</span>}
+            {p?.fecha_nacimiento && <span className="text-slate-500 text-xs ml-1">({fmtFecha(p.fecha_nacimiento)})</span>}
           </div>
           <div><span className="text-slate-500 text-xs">F. ingreso: </span>
             {ingreso?.fecha_ingreso ? new Date(ingreso.fecha_ingreso).toLocaleDateString('es-ES') : '—'}
           </div>
           <div><span className="text-slate-500 text-xs">F. alta: </span>
-            {ingreso?.fecha_alta ? new Date(ingreso.fecha_alta).toLocaleDateString('es-ES') : <span className="text-amber-500 text-xs">Pendiente de alta</span>}
+            {ingreso?.fecha_alta ? new Date(ingreso.fecha_alta).toLocaleDateString('es-ES') : <span className="text-amber-700 text-xs">Pendiente de alta</span>}
           </div>
           <div><span className="text-slate-500 text-xs">Servicio: </span>
             <span className="font-mono text-xs">{data.servicio ?? 'GRT'}</span>
@@ -666,8 +666,8 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
           <div className="card p-4">
             <div className="flex items-center gap-3">
               {faltan.length === 0
-                ? <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
-                : <Circle className="w-5 h-5 text-slate-400 shrink-0" />
+                ? <CheckCircle className="w-5 h-5 text-emerald-700 shrink-0" />
+                : <Circle className="w-5 h-5 text-slate-500 shrink-0" />
               }
               <div>
                 <p className={`text-sm font-medium ${faltan.length === 0 ? 'text-emerald-700' : 'text-slate-600'}`}>

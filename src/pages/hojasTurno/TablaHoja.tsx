@@ -22,9 +22,9 @@ export function TablaHoja({ turno, pacientes, acciones }: {
             <th className="px-3 py-2 whitespace-nowrap">Paciente</th>
             {/* Las que se rellenan a mano en el papel: aquí solo se muestran, para que se vea que es la hoja de turno. */}
             {columnas.map((c) => (
-              <th key={c} className="px-1 py-2 text-center text-[10px] font-semibold text-slate-400 border-l border-dashed border-slate-200 w-14 min-w-14">{c}</th>
+              <th key={c} className="px-1 py-2 text-center text-[0.65rem] font-semibold text-slate-500 border-l border-dashed border-slate-200 w-14 min-w-14">{c}</th>
             ))}
-            <th className="px-1 py-2 text-center text-[10px] font-semibold text-slate-400 border-l border-dashed border-slate-200 w-14 min-w-14" title="Sale de la Pauta de cuidados del paciente">Vía</th>
+            <th className="px-1 py-2 text-center text-[0.65rem] font-semibold text-slate-500 border-l border-dashed border-slate-200 w-14 min-w-14" title="Sale de la Pauta de cuidados del paciente">Vía</th>
             <th className="px-3 py-2">Indicaciones · {TITULO_TURNO[turno].toLowerCase()}</th>
           </tr>
         </thead>

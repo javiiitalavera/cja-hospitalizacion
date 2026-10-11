@@ -44,7 +44,7 @@ export function BuscadorPaciente({ valor, onChange }: {
       <div className="input flex items-center justify-between gap-2">
         <span className="truncate">{valor.nombre}</span>
         <button type="button" aria-label="Quitar el filtro de paciente" onClick={() => { onChange(null); setTexto('') }}
-          className="text-slate-400 hover:text-slate-700 shrink-0"><X className="w-4 h-4" /></button>
+          className="text-slate-500 hover:text-slate-700 shrink-0"><X className="w-4 h-4" /></button>
       </div>
     )
   }

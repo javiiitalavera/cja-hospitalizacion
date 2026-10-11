@@ -152,7 +152,7 @@ function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo
               return (
                 <button key={color} type="button" aria-pressed={activo} aria-label={`Semáforo de caídas ${color}`}
                   onClick={() => editar(d => ({ ...d, semaforo_caidas: activo ? null : color } as any))}
-                  className={`min-w-[5.5rem] py-1.5 rounded-lg text-xs font-semibold border-2 transition-all ${activo ? 'border-slate-700 scale-105' : 'border-transparent opacity-70 hover:opacity-100'}`}
+                  className={`min-w-[5.5rem] py-1.5 rounded-lg text-xs font-semibold border-2 transition-all ${activo ? 'border-slate-700 scale-105' : 'border-transparent opacity-90 hover:opacity-100'}`}
                   style={{ backgroundColor: SEMAFORO_CAIDAS_COLOR[color], color: color === 'rojo' ? '#fff' : '#000' }}>
                   {color.charAt(0).toUpperCase() + color.slice(1)}
                 </button>

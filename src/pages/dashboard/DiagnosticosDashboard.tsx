@@ -104,13 +104,13 @@ export function DiagnosticosDashboard({ filtros, desde, hasta }: { filtros: Filt
                   <span className="text-xs text-slate-600 w-1/2 md:w-2/5 shrink-0 truncate" title={f.descripcion}>{f.descripcion || '—'}</span>
                   <Barra valor={f.n} max={maxFrec} />
                   <span className="text-xs font-semibold text-slate-700 w-14 text-right shrink-0 tabular-nums">
-                    {f.n} <span className="font-normal text-slate-400">· {pct(f.n, episodios.length)}</span>
+                    {f.n} <span className="font-normal text-slate-500">· {pct(f.n, episodios.length)}</span>
                   </span>
                 </div>
               ))}
             </div>
           )}
-          <p className="text-xs text-slate-400 mt-3">
+          <p className="text-xs text-slate-500 mt-3">
             {modo === 'principal'
               ? 'Porcentaje sobre las altas con diagnóstico principal codificado.'
               : 'Cada alta cuenta una vez por código, esté como principal o como secundario. Porcentaje sobre las altas con diagnóstico principal codificado.'}
@@ -138,18 +138,18 @@ export function DiagnosticosDashboard({ filtros, desde, hasta }: { filtros: Filt
                   <div key={t.clave} className="flex items-center gap-3">
                     <span className="text-xs text-slate-700 w-48 md:w-64 shrink-0 leading-tight">
                       {t.etiqueta}
-                      <span className="block text-[11px] text-slate-400 font-mono mt-0.5">{t.codigos}</span>
+                      <span className="block text-[0.7rem] text-slate-500 font-mono mt-0.5">{t.codigos}</span>
                     </span>
                     <Barra valor={n} max={maxTipo} />
                     <span className="text-xs font-semibold text-slate-700 w-14 text-right shrink-0 tabular-nums">
-                      {n} <span className="font-normal text-slate-400">· {pct(n, demencias.conDemencia)}</span>
+                      {n} <span className="font-normal text-slate-500">· {pct(n, demencias.conDemencia)}</span>
                     </span>
                   </div>
                 )
               })}
             </div>
           )}
-          <p className="text-xs text-slate-400 mt-3">
+          <p className="text-xs text-slate-500 mt-3">
             Cada alta se clasifica una sola vez según todos sus códigos (principal y secundarios): p. ej. G30.1 + F02.811 es una demencia de Alzheimer.
             Porcentajes sobre las altas con demencia. El deterioro cognitivo leve (G31.84) no cuenta como demencia.
           </p>

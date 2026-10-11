@@ -94,7 +94,7 @@ export function TabAccesos({ personal }: { personal: Personal }) {
                       <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${a.color}`}>{a.etiqueta}</span>
                     </td>
                     <td className="px-4 py-2 text-slate-600">
-                      {[pac, f.detalle].filter(Boolean).join(' · ') || <span className="text-slate-400">—</span>}
+                      {[pac, f.detalle].filter(Boolean).join(' · ') || <span className="text-slate-500">—</span>}
                     </td>
                   </tr>
                 )

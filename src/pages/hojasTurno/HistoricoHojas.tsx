@@ -233,17 +233,17 @@ function PorPaciente() {
                     <tr key={`${d.ingresoId}-${d.fecha}`} className={`border-t align-top ${cambio ? 'bg-primary-50/40' : ''}`}>
                       <td className="px-3 py-2 font-medium text-slate-800 whitespace-nowrap">
                         {fechaDesdeTexto(d.fecha).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
-                        {cambio && <span className="ml-2 text-[10px] font-semibold text-primary-700">CAMBIOS</span>}
+                        {cambio && <span className="ml-2 text-[0.65rem] font-semibold text-primary-700">CAMBIOS</span>}
                       </td>
                       <td className="px-3 py-2 text-slate-500">{d.p.habitacion}</td>
-                      <td className="px-3 py-2 text-slate-600">{textoVias(d.p.vias, false) || <span className="text-slate-300">—</span>}</td>
-                      <td className="px-3 py-2 text-slate-600">{diu || <span className="text-slate-300">—</span>}</td>
+                      <td className="px-3 py-2 text-slate-600">{textoVias(d.p.vias, false) || <span className="text-slate-500">—</span>}</td>
+                      <td className="px-3 py-2 text-slate-600">{diu || <span className="text-slate-500">—</span>}</td>
                       <td className="px-3 py-2">
-                        {d.p.indicaciones.length === 0 ? <span className="text-slate-300">—</span> : (
+                        {d.p.indicaciones.length === 0 ? <span className="text-slate-500">—</span> : (
                           <ul className="space-y-1">
                             {d.p.indicaciones.map((i, k) => (
                               <li key={k} className="text-slate-800">
-                                {i.texto} <span className="text-slate-400">({etiquetaTurnos(i.turnos)})</span>
+                                {i.texto} <span className="text-slate-500">({etiquetaTurnos(i.turnos)})</span>
                               </li>
                             ))}
                           </ul>

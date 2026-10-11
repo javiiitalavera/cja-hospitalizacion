@@ -228,7 +228,7 @@ export function Informes() {
     <div className="p-6 md:p-8">
       <CabeceraPagina
         className="!mb-2"
-        titulo="Informes"
+        titulo="Buscar informe"
         subtitulo={`${loading ? '…' : `${lista.length} informe${lista.length !== 1 ? 's' : ''}`} · historial de informes de ingreso, alta, enfermería y otros`}
       />
       <div className="mb-6">
@@ -329,14 +329,14 @@ export function Informes() {
                     <span className={`text-xs font-medium ${
                       r.estadoInforme === 'sin_iniciar' ? 'text-slate-500 italic'
                       : r.estadoInforme === 'en_elaboracion' ? 'text-amber-600'
-                      : r.estadoInforme === 'cerrado' ? 'text-emerald-600'
+                      : r.estadoInforme === 'cerrado' ? 'text-emerald-700'
                       : 'text-red-600 font-semibold'
                     }`}>
                       {ESTADO_INFORME_LABEL[r.estadoInforme]}
                     </span>
                   </td>
                   <td className="px-4 py-3 font-medium text-slate-800">{r.paciente}</td>
-                  <td className="px-4 py-3 text-slate-500 text-xs font-mono">{r.nhc || <span className="text-slate-400">—</span>}</td>
+                  <td className="px-4 py-3 text-slate-500 text-xs font-mono">{r.nhc || <span className="text-slate-500">—</span>}</td>
                   <td className="px-4 py-3 text-slate-500 text-xs">
                     {r.fecha ? new Date(r.fecha).toLocaleDateString('es-ES') : '—'}
                   </td>
