@@ -1,11 +1,11 @@
-// Escrituras de la pauta de cuidados (indicaciones y vía). Las comparten la ficha del paciente y las
+// Escrituras de la pauta de cuidados (indicaciones, vías y dispositivos). Las comparten la ficha del paciente y las
 // Hojas de turno, para que las dos hagan exactamente lo mismo.
 //
 // Dos enfermeras pueden tener abierta la misma pauta: cada cambio se guarda solo si la fila sigue como se vio al
 // cargarla (marca `updated_at` del servidor). Si alguien la tocó entre medias, no se pisa: se avisa con `conflicto`.
 
 import { supabase } from '../../lib/supabase'
-import type { IndicacionCuidado, Turno, ViaPaciente } from '../../types/pautaCuidados'
+import type { DatosDispositivos, IndicacionCuidado, Turno } from '../../types/pautaCuidados'
 
 const COLUMNAS = 'id, ingreso_id, texto, turnos, created_at, updated_at'
 
@@ -47,28 +47,12 @@ export async function borrarIndicacion(id: string, base: string | null | undefin
   return { error: null }
 }
 
-// Sin vía = se borra la fila. `base` = marca `updated_at` de la fila al cargarla (null si no había vía).
-export async function guardarVia(
-  ingresoId: string, via: ViaPaciente | null, base: string | null | undefined,
-): Promise<ResultadoPauta> {
-  if (!via) {
-    if (!base) return { error: null, actualizada: null }
-    const { data, error } = await supabase.from('pauta_via').delete()
-      .eq('ingreso_id', ingresoId).eq('updated_at', base).select('id')
-    if (error) return { error: error.message }
-    if (!data || data.length === 0) return { error: MENSAJE_CONFLICTO_PAUTA, conflicto: true }
-    return { error: null, actualizada: null }
-  }
-  if (!base) {
-    // No había vía al cargar: se crea. Si otra persona la creó justo antes (ingreso_id es único), es un conflicto.
-    const { data, error } = await supabase.from('pauta_via')
-      .insert({ ingreso_id: ingresoId, via }).select('updated_at').single()
-    if (error) return error.code === '23505' ? { error: MENSAJE_CONFLICTO_PAUTA, conflicto: true } : { error: error.message }
-    return { error: null, actualizada: data.updated_at }
-  }
-  const { data, error } = await supabase.from('pauta_via').update({ via })
-    .eq('ingreso_id', ingresoId).eq('updated_at', base).select('updated_at')
+// Vías, aislamiento, sonda vesical y oxigenoterapia: no tienen tabla propia, son columnas de la hoja de ítems
+// (`items_paciente`), así que lo que se marque en la Pauta de cuidados se ve allí y al revés. Se escriben solo las
+// columnas que cambian (no la hoja entera) para no pisar lo que otra persona haya cambiado en el resto.
+export async function guardarDispositivos(ingresoId: string, cambios: DatosDispositivos): Promise<ResultadoPauta> {
+  const { data, error } = await supabase.from('items_paciente').update(cambios).eq('ingreso_id', ingresoId).select('id')
   if (error) return { error: error.message }
-  if (!data || data.length === 0) return { error: MENSAJE_CONFLICTO_PAUTA, conflicto: true }
-  return { error: null, actualizada: data[0].updated_at }
+  if (!data || data.length === 0) return { error: 'No se pudo guardar: la hoja de ítems no existe o el episodio ya está cerrado.' }
+  return { error: null }
 }

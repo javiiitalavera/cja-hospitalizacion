@@ -246,9 +246,29 @@ create table public.items_paciente (
     -- se reaprovecha el mismo hueco con un propósito más amplio).
     observaciones text,
     semaforo_caidas text check (semaforo_caidas in ('verde', 'amarillo', 'naranja', 'rojo')),
+    -- Vías y dispositivos de acceso, sonda vesical, oxigenoterapia y aislamiento: los comparten la Hoja de
+    -- ítems, la Pauta de cuidados de la ficha y las Hojas de turno (una sola fuente). Sustituye a pauta_via.
+    vias text[] not null default '{}',
+    sonda_fecha date,
+    sonda_calibre smallint,
+    oxigeno_dispositivo text,
+    oxigeno_flujo numeric(3, 1),
+    aislamiento text[] not null default '{}',
     version integer not null default 1,
     created_at timestamptz default now(),
-    updated_at timestamptz default now()
+    updated_at timestamptz default now(),
+    constraint items_vias_validas check (
+        vias <@ array['venosa', 'subcutanea', 'central', 'sng', 'peg', 'ostomia', 'traqueostomia']::text[]),
+    constraint items_aislamiento_valido check (aislamiento <@ array['contacto', 'gotas']::text[]),
+    constraint items_sonda_calibre_valido check (sonda_calibre is null or sonda_calibre between 6 and 30),
+    -- Los detalles solo pueden tener valor si la casilla correspondiente está marcada.
+    constraint items_sonda_detalle_coherente check (
+        coalesce(sonda_vesical, false) or (sonda_fecha is null and sonda_calibre is null)),
+    constraint items_oxigeno_dispositivo_valido check (
+        oxigeno_dispositivo is null or oxigeno_dispositivo in ('gafas', 'mascarilla', 'reservorio')),
+    constraint items_oxigeno_flujo_valido check (oxigeno_flujo is null or (oxigeno_flujo > 0 and oxigeno_flujo <= 15)),
+    constraint items_oxigeno_detalle_coherente check (
+        coalesce(oxigenoterapia, false) or (oxigeno_dispositivo is null and oxigeno_flujo is null))
 );
 
 -- Histórico diario de items_paciente: una fila por ingreso y día,
@@ -2884,6 +2904,7 @@ create table if not exists public.pauta_cuidados (
 
 create index if not exists pauta_cuidados_ingreso_idx on public.pauta_cuidados (ingreso_id, created_at);
 
+-- SIN USO desde 20261014: las vías están en items_paciente.vias. Se conserva por su histórico de auditoría.
 create table if not exists public.pauta_via (
     id uuid primary key default gen_random_uuid(),
     ingreso_id uuid not null unique references public.ingresos(id) on delete cascade,
@@ -3051,7 +3072,8 @@ begin
       'nombre', p.nombre,
       'primer_apellido', p.primer_apellido,
       'semaforo', ip.semaforo_caidas,
-      'via', (select v.via from public.pauta_via v where v.ingreso_id = i.id),
+      'vias', to_jsonb(coalesce(ip.vias, '{}'::text[])),
+      'aislamiento', to_jsonb(coalesce(ip.aislamiento, '{}'::text[])),
       'indicaciones', coalesce((
         select jsonb_agg(jsonb_build_object('texto', c.texto, 'turnos', c.turnos) order by c.created_at)
         from public.pauta_cuidados c where c.ingreso_id = i.id

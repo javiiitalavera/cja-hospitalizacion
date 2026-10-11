@@ -1,35 +1,47 @@
-// Pauta de cuidados de un paciente: las indicaciones de enfermería que leen las auxiliares en las
-// hojas de trabajo de cada turno (mañana, tarde, noche) y si lleva vía. Solo enfermería escribe;
-// el resto lee. Con el episodio cerrado todo queda en solo lectura.
+// Pauta de cuidados de un paciente, en el orden en que se piensa un paciente: precauciones (aislamiento), vías y
+// dispositivos (vías, sonda vesical, oxigenoterapia), indicaciones de enfermería para las hojas de trabajo de
+// cada turno y, al final, lo que se sigue gestionando en Aegerus.
+//
+// Aislamiento, vías y dispositivos son columnas de la Hoja de ítems (la misma información, sin duplicar): los
+// puede cambiar enfermería y médicos. Las indicaciones solo las escribe enfermería. Con el episodio cerrado todo
+// queda en solo lectura.
 
 import { useEffect, useState } from 'react'
 import { useAvisoSalida } from '../../lib/avisoSalida'
 import { Cargando } from '../../components/Cargando'
-import { Lock, Pencil, Plus, Trash2, Check, X } from 'lucide-react'
+import { Lock, Pencil, Plus, Trash2, Check, X, Info } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/AuthContext'
 import { ChipsTurno } from '../../components/ChipsTurno'
 import { AvisoGuardado, useAvisoGuardado } from '../../components/AvisoGuardado'
 import { useConfirmar } from '../../components/useConfirmar'
+import { BloqueOxigeno, BloqueSonda, SelectorAislamiento, SelectorVias } from '../../components/ViasDispositivos'
 import {
-  anadirIndicacion, borrarIndicacion, cambiarIndicacion, guardarVia, type ResultadoPauta,
+  anadirIndicacion, borrarIndicacion, cambiarIndicacion, guardarDispositivos, type ResultadoPauta,
 } from '../hojasTurno/operaciones'
 import {
-  MAX_TEXTO_PAUTA, TODOS_TURNOS, VIA_LABEL,
-  type IndicacionCuidado, type Turno, type ViaPaciente,
+  CAMPOS_DISPOSITIVOS, MAX_TEXTO_PAUTA, TODOS_TURNOS,
+  type DatosDispositivos, type IndicacionCuidado, type Turno,
 } from '../../types/pautaCuidados'
 
+// Lo que sigue en Aegerus: es parte de la pauta de enfermería, pero esta aplicación todavía no se usa para ello.
+const EN_AEGERUS = [
+  { titulo: 'Dieta y textura', detalle: 'Tipo de dieta, textura (triturada, pastosa…), espesante y ayuda para comer.' },
+  { titulo: 'Controles pautados', detalle: 'Constantes, glucemias, peso, balance hídrico y otros controles periódicos.' },
+]
+
 export function TabPautaCuidados({ ingresoId, episodioActivo }: { ingresoId: string; episodioActivo: boolean }) {
-  const { esEnfermeria } = useAuth()
+  const { esEnfermeria, esMedico } = useAuth()
   const puedeEditar = esEnfermeria && episodioActivo
+  // Igual que en la hoja de ítems (de donde salen estos datos): lo puede cambiar el equipo asistencial.
+  const puedeEditarDispositivos = (esEnfermeria || esMedico) && episodioActivo
 
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')
   const { avisos, guardado, fallo } = useAvisoGuardado('Pauta de cuidados')
   const { confirmar, dialogo } = useConfirmar()
   const [indicaciones, setIndicaciones] = useState<IndicacionCuidado[]>([])
-  const [via, setVia] = useState<ViaPaciente | null>(null)
-  const [viaActualizada, setViaActualizada] = useState<string | null>(null)
+  const [dispositivos, setDispositivos] = useState<DatosDispositivos>({})
 
   const [nuevoTexto, setNuevoTexto] = useState('')
   const [nuevosTurnos, setNuevosTurnos] = useState<Turno[]>(TODOS_TURNOS)
@@ -40,20 +52,18 @@ export function TabPautaCuidados({ ingresoId, episodioActivo }: { ingresoId: str
   async function cargar(silencioso = false) {
     if (!silencioso) setCargando(true)
     setError('')
-    const [rInd, rVia] = await Promise.all([
+    const [rInd, rDisp] = await Promise.all([
       supabase.from('pauta_cuidados').select('id, ingreso_id, texto, turnos, created_at, updated_at')
         .eq('ingreso_id', ingresoId).order('created_at', { ascending: true }),
-      supabase.from('pauta_via').select('via, updated_at').eq('ingreso_id', ingresoId).maybeSingle(),
+      supabase.from('items_paciente').select(CAMPOS_DISPOSITIVOS.join(', ')).eq('ingreso_id', ingresoId).maybeSingle(),
     ])
-    if (rInd.error || rVia.error) {
-      setError('No se pudo cargar la pauta de cuidados: ' + (rInd.error?.message ?? rVia.error?.message))
+    if (rInd.error || rDisp.error) {
+      setError('No se pudo cargar la pauta de cuidados: ' + (rInd.error?.message ?? rDisp.error?.message))
       setCargando(false)
       return
     }
     setIndicaciones((rInd.data ?? []) as IndicacionCuidado[])
-    const filaVia = rVia.data as { via: ViaPaciente; updated_at: string } | null
-    setVia(filaVia?.via ?? null)
-    setViaActualizada(filaVia?.updated_at ?? null)
+    setDispositivos((rDisp.data ?? {}) as DatosDispositivos)
     setCargando(false)
   }
 
@@ -79,10 +89,10 @@ export function TabPautaCuidados({ ingresoId, episodioActivo }: { ingresoId: str
     return r
   }
 
-  async function cambiarVia(nueva: ViaPaciente | null) {
-    if (!puedeEditar || ocupado || nueva === via) return
-    const r = await ejecutar(() => guardarVia(ingresoId, nueva, viaActualizada))
-    if (r) { setVia(nueva); setViaActualizada(r.actualizada ?? null) }
+  async function cambiarDispositivos(cambios: DatosDispositivos) {
+    if (!puedeEditarDispositivos || ocupado) return
+    const r = await ejecutar(() => guardarDispositivos(ingresoId, cambios))
+    if (r) setDispositivos((d) => ({ ...d, ...cambios }))
   }
 
   async function anadir() {
@@ -132,37 +142,41 @@ export function TabPautaCuidados({ ingresoId, episodioActivo }: { ingresoId: str
         <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
           <Lock className="w-4 h-4 shrink-0" />
           {!esEnfermeria
-            ? 'Solo lectura: esta pauta la escribe enfermería (o un administrador).'
+            ? 'Solo lectura: las indicaciones y la vía las escribe enfermería (o un administrador).'
             : 'Episodio cerrado: la pauta queda en solo lectura.'}
         </div>
       )}
       <AvisoGuardado avisos={avisos} />
       {dialogo}
 
-      {/* Vía */}
+      {/* 1 · Precauciones */}
       <section>
-        <p className="section-title">Vía</p>
-        <div className="flex flex-wrap gap-2">
-          {([null, 'venosa', 'subcutanea'] as (ViaPaciente | null)[]).map((v) => (
-            <button
-              key={v ?? 'ninguna'}
-              type="button"
-              disabled={!puedeEditar || ocupado}
-              onClick={() => cambiarVia(v)}
-              aria-pressed={via === v}
-              className={`text-sm px-3 py-1.5 rounded-lg border transition-colors ${
-                via === v ? 'bg-primary-50 border-primary-300 text-primary-800 font-semibold' : 'bg-white border-slate-200 text-slate-500'
-              } ${puedeEditar ? 'hover:border-primary-300' : 'cursor-default'}`}
-            >
-              {v ? VIA_LABEL[v] : 'No lleva vía'}
-            </button>
-          ))}
+        <p className="section-title">Aislamiento</p>
+        <div className="card p-4">
+          <SelectorAislamiento datos={dispositivos} onCambio={cambiarDispositivos} deshabilitado={!puedeEditarDispositivos || ocupado} />
         </div>
       </section>
 
-      {/* Indicaciones */}
+      {/* 2 · Vías y dispositivos (las mismas casillas de la hoja de ítems) */}
       <section>
-        <p className="section-title">Indicaciones</p>
+        <p className="section-title">Vías y dispositivos</p>
+        <div className="card divide-y">
+          <div className="p-4 space-y-2.5">
+            <p className="text-sm font-medium text-slate-800">Vías</p>
+            <SelectorVias datos={dispositivos} onCambio={cambiarDispositivos} deshabilitado={!puedeEditarDispositivos || ocupado} />
+          </div>
+          <div className="p-4">
+            <BloqueSonda datos={dispositivos} onCambio={cambiarDispositivos} deshabilitado={!puedeEditarDispositivos || ocupado} />
+          </div>
+          <div className="p-4">
+            <BloqueOxigeno datos={dispositivos} onCambio={cambiarDispositivos} deshabilitado={!puedeEditarDispositivos || ocupado} />
+          </div>
+        </div>
+      </section>
+
+      {/* 3 · Indicaciones para las hojas de trabajo */}
+      <section>
+        <p className="section-title">Indicaciones para las auxiliares</p>
         <div className="card divide-y">
           {indicaciones.length === 0 && (
             <p className="px-4 py-6 text-sm text-slate-500 text-center">Todavía no hay indicaciones para este paciente.</p>
@@ -235,6 +249,25 @@ export function TabPautaCuidados({ ingresoId, episodioActivo }: { ingresoId: str
           </div>
         </section>
       )}
+
+      {/* 4 · Lo que sigue en Aegerus */}
+      <section>
+        <p className="section-title">Se gestiona en Aegerus</p>
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+          <ul className="space-y-2">
+            {EN_AEGERUS.map((x) => (
+              <li key={x.titulo} className="text-sm">
+                <span className="font-medium text-slate-800">{x.titulo}</span>
+                <span className="text-slate-500"> · {x.detalle}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="flex items-start gap-2 text-xs text-slate-500">
+            <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+            Forman parte de la pauta de enfermería, pero esta aplicación todavía no se usa para pautarlos ni registrarlos: se hacen en Aegerus.
+          </p>
+        </div>
+      </section>
     </div>
   )
 }

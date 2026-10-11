@@ -6,6 +6,8 @@ import type { ItemsPaciente } from '../../types'
 import { nombreCompleto, SEMAFORO_CAIDAS_COLOR as SEMAFORO_COLOR } from '../../types'
 import { Save, X } from 'lucide-react'
 import ModalContencion from '../../components/ModalContencion'
+import { BloqueOxigeno, BloqueSonda, SelectorAislamiento, SelectorVias } from '../../components/ViasDispositivos'
+import type { DatosDispositivos } from '../../types/pautaCuidados'
 import {
   severidadDia, severidadNoche, SEVERIDAD_ESTILO,
   type ContencionDia, type ContencionNoche,
@@ -156,7 +158,8 @@ export default function PanelEdicion({
     // campos no toca el resto de columnas si no se listan aquí.
     const vacio = {
       dependencia_avd: null, panial_dia: null, panial_noche: null,
-      colector: false, sonda_vesical: false,
+      colector: false, sonda_vesical: false, sonda_fecha: null, sonda_calibre: null,
+      vias: [], aislamiento: [], oxigeno_dispositivo: null, oxigeno_flujo: null,
       dentadura: null, audifonos: null, gafas: null,
       higiene: null, vestido: null, ducha: null, banio: false, siestas: false,
       deambulacion: null, ayudas_deambulacion: null,
@@ -193,8 +196,13 @@ export default function PanelEdicion({
   }
 
   function update(key: keyof ItemsPaciente, val: any) {
+    updateVarios({ [key]: val })
+  }
+
+  // Varias columnas a la vez (p. ej. quitar la sonda borra también su fecha y calibre).
+  function updateVarios(cambios: Record<string, any>) {
     if (estado === 'conflicto') return
-    const next = { ...dataRef.current, [key]: val }
+    const next = { ...dataRef.current, ...cambios }
     setData(next)
     editRevRef.current++
     setEstado('pendiente')
@@ -396,6 +404,25 @@ export default function PanelEdicion({
           />
         </div>
 
+        <p className="section-title mt-3">Aislamiento, vías y dispositivos</p>
+        {(() => {
+          const d = data as DatosDispositivos
+          return (
+            <div className="space-y-4 py-1.5">
+              <div className="space-y-1.5">
+                <span className="text-xs text-slate-600">Aislamiento</span>
+                <SelectorAislamiento datos={d} onCambio={updateVarios} />
+              </div>
+              <div className="space-y-1.5">
+                <span className="text-xs text-slate-600">Vías</span>
+                <SelectorVias datos={d} onCambio={updateVarios} />
+              </div>
+              <BloqueSonda datos={d} onCambio={updateVarios} />
+              <BloqueOxigeno datos={d} onCambio={updateVarios} />
+            </div>
+          )
+        })()}
+
         <p className="section-title mt-3">Movilidad</p>
         {sel('deambulacion', 'Deambulación', [
           { v: 'autonomo', l: 'Autónomo' },
@@ -444,7 +471,6 @@ export default function PanelEdicion({
           { v: 'CA+malla', l: 'CA+malla' },
         ])}
         {bool('colector', 'Colector')}
-        {bool('sonda_vesical', 'Sonda vesical')}
         {sel('higiene', 'Higiene', [
           { v: 'lavabo', l: 'Lavabo' },
           { v: 'cama', l: 'Cama' },
@@ -486,7 +512,6 @@ export default function PanelEdicion({
         ])}
 
         <p className="section-title mt-3">Otros</p>
-        {bool('oxigenoterapia', 'Oxigenoterapia')}
         {bool('botella_noche', 'Botella noche')}
         {bool('timbre_habitacion' as any, 'Timbre en habitación')}
         {bool('siestas', 'Siesta por la tarde')}

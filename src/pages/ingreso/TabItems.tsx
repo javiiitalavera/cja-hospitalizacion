@@ -3,6 +3,8 @@ import { Cargando } from '../../components/Cargando'
 import { useAvisoSalida } from '../../lib/avisoSalida'
 import { supabase } from '../../lib/supabase'
 import type { ItemsPaciente } from '../../types'
+import { BloqueOxigeno, BloqueSonda, SelectorAislamiento, SelectorVias } from '../../components/ViasDispositivos'
+import type { DatosDispositivos } from '../../types/pautaCuidados'
 import ModalContencion from '../../components/ModalContencion'
 import { severidadDia, severidadNoche, SEVERIDAD_ESTILO } from '../../types/contenciones'
 
@@ -180,6 +182,30 @@ function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo
         </div>
       </div>
 
+      <div className="card p-6 space-y-5">
+        <p className="section-title">Aislamiento, vías y dispositivos</p>
+        {(() => {
+          const d = data as DatosDispositivos
+          const cambiar = (c: DatosDispositivos) => editar((x) => ({ ...x, ...c } as any))
+          return (
+            <>
+              <div>
+                <label className="label">Aislamiento</label>
+                <SelectorAislamiento datos={d} onCambio={cambiar} />
+              </div>
+              <div>
+                <label className="label">Vías</label>
+                <SelectorVias datos={d} onCambio={cambiar} />
+              </div>
+              <div className="grid sm:grid-cols-2 gap-6">
+                <BloqueSonda datos={d} onCambio={cambiar} />
+                <BloqueOxigeno datos={d} onCambio={cambiar} />
+              </div>
+            </>
+          )
+        })()}
+      </div>
+
       <div className="card p-6 space-y-4">
         <p className="section-title">Movilidad</p>
         <div className="grid grid-cols-2 gap-4">
@@ -224,7 +250,6 @@ function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo
         </div>
         <div className="flex flex-wrap gap-4">
           {bool('colector', 'Colector')}
-          {bool('sonda_vesical', 'Sonda vesical')}
           {bool('banio', 'Baño acompañado (no va solo)')}
         </div>
       </div>
@@ -259,7 +284,6 @@ function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo
       <div className="card p-6 space-y-4">
         <p className="section-title">Otros</p>
         <div className="flex flex-wrap gap-4">
-          {bool('oxigenoterapia', 'Oxigenoterapia')}
           {bool('botella_noche', 'Botella noche')}
           {bool('timbre_habitacion', 'Timbre en habitación')}
           {bool('siestas', 'Siesta por la tarde')}
@@ -324,6 +348,8 @@ function HistoricoItems({ ingresoId }: { ingresoId: string }) {
     cabecero_grados: 'Cabecero elevado (º)', timbre_habitacion: 'Timbre habitación',
     objetos_calma: 'Objetos de calma', alerta_conducta: 'Alerta de conducta',
     ingestas: 'Ingestas', oxigenoterapia: 'Oxigenoterapia', botella_noche: 'Botella noche',
+    vias: 'Vías', aislamiento: 'Aislamiento', sonda_fecha: 'Sonda: fecha de colocación', sonda_calibre: 'Sonda: calibre',
+    oxigeno_dispositivo: 'Oxígeno: dispositivo', oxigeno_flujo: 'Oxígeno: flujo (l/min)',
     colchon_antiescaras: 'Colchón antiescaras', patucos_coderas: 'Patucos/coderas',
     observaciones: 'Observaciones', semaforo_caidas: 'Semáforo caídas',
   }

@@ -7,7 +7,7 @@ import { Cargando } from '../../components/Cargando'
 import { Printer } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { imprimirHTMLEnMarco } from '../../lib/imprimir'
-import { TURNOS, VIA_LABEL, type Turno } from '../../types/pautaCuidados'
+import { TURNOS, textoVias, type Turno } from '../../types/pautaCuidados'
 import { TabsTurno } from './TabsTurno'
 import { TablaHoja } from './TablaHoja'
 import {
@@ -134,8 +134,8 @@ interface PacienteLista { id: string; nombre: string; primer_apellido: string; s
 
 const etiquetaTurnos = (ts: Turno[]) => (ts.length === 3 ? 'todos los turnos' : ts.map((t) => TURNOS.find((x) => x.clave === t)?.etiqueta).join(' + '))
 
-// Lo que cambia de un día a otro: la vía y las indicaciones (texto y turnos).
-const firma = (p: PacienteHoja) => JSON.stringify([p.via, p.indicaciones.map((i) => [i.texto, i.turnos])])
+// Lo que cambia de un día a otro: las vías y las indicaciones (texto y turnos).
+const firma = (p: PacienteHoja) => JSON.stringify([p.vias, p.indicaciones.map((i) => [i.texto, i.turnos])])
 
 function PorPaciente() {
   const [lista, setLista] = useState<PacienteLista[] | undefined>(undefined)
@@ -236,7 +236,7 @@ function PorPaciente() {
                         {cambio && <span className="ml-2 text-[10px] font-semibold text-primary-700">CAMBIOS</span>}
                       </td>
                       <td className="px-3 py-2 text-slate-500">{d.p.habitacion}</td>
-                      <td className="px-3 py-2 text-slate-600">{d.p.via ? VIA_LABEL[d.p.via] : <span className="text-slate-300">—</span>}</td>
+                      <td className="px-3 py-2 text-slate-600">{textoVias(d.p.vias, false) || <span className="text-slate-300">—</span>}</td>
                       <td className="px-3 py-2 text-slate-600">{diu || <span className="text-slate-300">—</span>}</td>
                       <td className="px-3 py-2">
                         {d.p.indicaciones.length === 0 ? <span className="text-slate-300">—</span> : (
@@ -255,7 +255,7 @@ function PorPaciente() {
               </tbody>
             </table>
           </div>
-          <p className="text-xs text-slate-500">Las filas resaltadas son los días en que cambió la vía o alguna indicación respecto al día anterior guardado.</p>
+          <p className="text-xs text-slate-500">Las filas resaltadas son los días en que cambiaron las vías o alguna indicación respecto al día anterior guardado.</p>
         </div>
       ))}
     </div>

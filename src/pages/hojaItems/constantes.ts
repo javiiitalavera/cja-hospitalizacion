@@ -39,6 +39,13 @@ export const NOCHE_SHORT: Record<string, string> = {
   contencion_fija: 'CF',
   contencion_si_precisa: 'CSP',
 }
+// Códigos muy cortos para las celdas estrechas de la hoja (vías y aislamiento).
+const VIA_HOJA: Record<string, string> = { venosa: 'IV', subcutanea: 'SC', central: 'CVC', sng: 'SNG', peg: 'PEG', ostomia: 'Ost', traqueostomia: 'Tq' }
+const AISLAMIENTO_HOJA: Record<string, string> = { contacto: 'C', gotas: 'G' }
+const ordenado = (valores: readonly string[] | null | undefined, orden: string[]) => orden.filter((x) => (valores ?? []).includes(x))
+export const viasStr = (v: readonly string[] | null | undefined) => ordenado(v, Object.keys(VIA_HOJA)).map((x) => VIA_HOJA[x]).join('+')
+export const aislamientoStr = (v: readonly string[] | null | undefined) => ordenado(v, Object.keys(AISLAMIENTO_HOJA)).map((x) => AISLAMIENTO_HOJA[x]).join('+')
+
 export function diaStr(v: string | null | undefined): string {
   if (!v || v === 'ninguna') return ''
   return DIA_SHORT[v] ?? v
@@ -78,7 +85,17 @@ export const GRUPOS: { titulo: string; mostrarTitulo?: boolean; filas: { key: st
           return arr.map((x) => short[x] ?? x).join('+')
         },
       },
+      { key: 'aislamiento', label: 'Aislamiento', get: (it: ItemsPaciente) => aislamientoStr(it?.aislamiento) },
       { key: 'objetos_calma', label: 'Objetos de calma', get: (it: ItemsPaciente) => (it as any)?.objetos_calma ?? '' },
+    ],
+  },
+  {
+    titulo: 'Vías y dispositivos',
+    filas: [
+      { key: 'vias', label: 'Vías', get: (it: ItemsPaciente) => viasStr(it?.vias) },
+      // La casilla se marca con X; si hay detalle, se enseña en su lugar (calibre de la sonda, flujo del oxígeno).
+      { key: 'sonda', label: 'Sonda vesical', get: (it: ItemsPaciente) => (it?.sonda_vesical ? (it.sonda_calibre ? `Ch${it.sonda_calibre}` : 'X') : '') },
+      { key: 'oxigeno', label: 'Oxigenoterapia', get: (it: ItemsPaciente) => (it?.oxigenoterapia ? (it.oxigeno_flujo ? `${String(it.oxigeno_flujo).replace('.', ',')}l` : 'X') : '') },
     ],
   },
   {
@@ -120,7 +137,6 @@ export const GRUPOS: { titulo: string; mostrarTitulo?: boolean; filas: { key: st
       { key: 'panial_dia', label: 'Pañal día', get: (it: ItemsPaciente) => it?.panial_dia ?? '' },
       { key: 'panial_noche', label: 'Pañal noche', get: (it: ItemsPaciente) => it?.panial_noche ?? '' },
       { key: 'colector', label: 'Colector', get: (it: ItemsPaciente) => (it?.colector ? 'X' : '') },
-      { key: 'sonda', label: 'Sonda vesical', get: (it: ItemsPaciente) => (it?.sonda_vesical ? 'X' : '') },
       { key: 'higiene', label: 'Higiene', get: (it: ItemsPaciente) => (it?.higiene === 'lavabo' ? 'L' : it?.higiene === 'cama' ? 'C' : '') },
       { key: 'ducha', label: 'Ducha', get: (it: ItemsPaciente) => (it?.ducha === 'pie' ? 'P' : it?.ducha === 'sentado' ? 'S' : '') },
       { key: 'vestido', label: 'Vestido', get: (it: ItemsPaciente) => ((it as any)?.vestido === 'autonomo' ? 'A' : (it as any)?.vestido === 'dependiente' ? 'D' : '') },
@@ -146,7 +162,6 @@ export const GRUPOS: { titulo: string; mostrarTitulo?: boolean; filas: { key: st
   {
     titulo: 'Otros',
     filas: [
-      { key: 'oxigeno', label: 'Oxigenoterapia', get: (it: ItemsPaciente) => (it?.oxigenoterapia ? 'X' : '') },
       { key: 'botella', label: 'Botella noche', get: (it: ItemsPaciente) => (it?.botella_noche ? 'X' : '') },
       { key: 'timbre', label: 'Timbre habitación', get: (it: ItemsPaciente) => ((it as any)?.timbre_habitacion ? 'X' : '') },
       { key: 'siestas', label: 'Siesta tarde', get: (it: ItemsPaciente) => (it?.siestas ? 'X' : '') },

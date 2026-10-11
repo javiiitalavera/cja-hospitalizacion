@@ -1,5 +1,5 @@
 // Hojas de turno: las hojas de trabajo de mañana, tarde y noche de las auxiliares, con los pacientes de hoy y
-// la pauta de cuidados. Enfermería (y administración) edita aquí mismo las indicaciones y la vía; el resto lo ve.
+// la pauta de cuidados. Enfermería (y administración) edita aquí mismo las indicaciones; la vía sale de la Pauta de cuidados del paciente.
 // Cada noche se guarda una copia de la pauta (histórico), igual que la hoja de ítems. Se imprime cada turno y
 // las columnas en blanco se rellenan a mano.
 
@@ -12,14 +12,14 @@ import { CabeceraPagina } from '../components/CabeceraPagina'
 import { BotonActualizar } from '../components/BotonActualizar'
 import { AvisoGuardado, useAvisoGuardado } from '../components/AvisoGuardado'
 import { imprimirHTMLEnMarco } from '../lib/imprimir'
-import { TURNOS, type Turno, type ViaPaciente } from '../types/pautaCuidados'
+import { TURNOS, type Turno } from '../types/pautaCuidados'
 import { construirHojaHTML, turnoActual, type PacienteHoja } from './hojasTurno/hoja'
 import { TablaHoja } from './hojasTurno/TablaHoja'
 import { HistoricoHojas } from './hojasTurno/HistoricoHojas'
 import { TabsTurno } from './hojasTurno/TabsTurno'
 import type { AccionesFila } from './hojasTurno/FilaPaciente'
 import {
-  anadirIndicacion, borrarIndicacion, cambiarIndicacion, guardarVia, type ResultadoPauta,
+  anadirIndicacion, borrarIndicacion, cambiarIndicacion, type ResultadoPauta,
 } from './hojasTurno/operaciones'
 
 export default function HojasTurno() {
@@ -38,23 +38,19 @@ export default function HojasTurno() {
     setAviso('')
     const { data, error: eIng } = await supabase
       .from('ingresos')
-      .select('id, habitacion, paciente:pacientes(nombre, primer_apellido), items:items_paciente(sonda_vesical, colector, semaforo_caidas)')
+      .select('id, habitacion, paciente:pacientes(nombre, primer_apellido), items:items_paciente(sonda_vesical, colector, semaforo_caidas, vias)')
       .eq('estado', 'activo')
       .order('habitacion', { ascending: true })
     if (eIng) { setError('No se pudieron cargar los pacientes: ' + eIng.message); setCargando(false); return }
     const ingresos = (data ?? []) as any[]
     const ids = ingresos.map((i) => i.id)
 
-    const [rInd, rVia] = await Promise.all([
-      ids.length ? supabase.from('pauta_cuidados').select('id, ingreso_id, texto, turnos, created_at, updated_at').in('ingreso_id', ids).order('created_at', { ascending: true }) : Promise.resolve({ data: [], error: null }),
-      ids.length ? supabase.from('pauta_via').select('ingreso_id, via, updated_at').in('ingreso_id', ids) : Promise.resolve({ data: [], error: null }),
-    ])
+    const rInd = ids.length
+      ? await supabase.from('pauta_cuidados').select('id, ingreso_id, texto, turnos, created_at, updated_at').in('ingreso_id', ids).order('created_at', { ascending: true })
+      : { data: [], error: null }
     // Si falla algo auxiliar se sigue enseñando la hoja, pero avisando: una hoja sin indicaciones
     // no es lo mismo que «no hay indicaciones».
-    const fallos: string[] = []
-    if (rInd.error) fallos.push('la pauta de cuidados')
-    if (rVia.error) fallos.push('la vía')
-    if (fallos.length) setAviso(`No se pudo cargar ${fallos.join(', ')}: la hoja podría estar incompleta.`)
+    if (rInd.error) setAviso('No se pudo cargar la pauta de cuidados: la hoja podría estar incompleta.')
 
     const indPorIngreso = new Map<string, { id: string; texto: string; turnos: Turno[]; updated_at?: string }[]>()
     for (const r of (rInd.data ?? []) as any[]) {
@@ -62,8 +58,6 @@ export default function HojasTurno() {
       l.push({ id: r.id, texto: r.texto, turnos: r.turnos, updated_at: r.updated_at })
       indPorIngreso.set(r.ingreso_id, l)
     }
-    const viaPorIngreso = new Map<string, ViaPaciente>((((rVia.data ?? []) as any[]).map((r) => [r.ingreso_id, r.via])))
-    const viaMarcaPorIngreso = new Map<string, string>((((rVia.data ?? []) as any[]).map((r) => [r.ingreso_id, r.updated_at])))
 
     setPacientes(ingresos.filter((i) => i.habitacion != null && i.paciente).map((i): PacienteHoja => {
       const it = Array.isArray(i.items) ? i.items[0] : i.items
@@ -74,8 +68,7 @@ export default function HojasTurno() {
         nombre: `${i.paciente.nombre} ${i.paciente.primer_apellido}`.trim(),
         sondaVesical: !!it?.sonda_vesical,
         colector: !!it?.colector,
-        via: viaPorIngreso.get(i.id) ?? null,
-        viaActualizada: viaMarcaPorIngreso.get(i.id) ?? null,
+        vias: Array.isArray(it?.vias) ? it.vias : [],
         indicaciones: indPorIngreso.get(i.id) ?? [],
       }
     }))
@@ -101,13 +94,6 @@ export default function HojasTurno() {
   }
 
   const acciones: AccionesFila | undefined = esEnfermeria ? {
-    cambiarVia: async (ingresoId, via) => {
-      const base = pacientes.find((p) => p.ingresoId === ingresoId)?.viaActualizada ?? null
-      const r = await guardarVia(ingresoId, via, base)
-      const ok = await ejecutar(r)
-      if (ok) actualizar(ingresoId, (p) => ({ ...p, via, viaActualizada: r.actualizada ?? null }))
-      return ok
-    },
     anadir: async (ingresoId, texto, turnos) => {
       const r = await anadirIndicacion(ingresoId, texto, turnos)
       const ok = await ejecutar({ error: r.error })

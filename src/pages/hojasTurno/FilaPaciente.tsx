@@ -1,19 +1,16 @@
-// Una fila de la hoja de turno en pantalla: habitación, paciente, vía y las
-// indicaciones de enfermería del turno (editables por enfermería y administración).
+// Una fila de la hoja de turno en pantalla: habitación, paciente, columnas de papel, vía y las
+// indicaciones de enfermería del turno (editables por enfermería y administración). La vía y la diuresis salen
+// de la Pauta de cuidados y de la Hoja de ítems: aquí no se editan.
 
 import { useState } from 'react'
 import { Check, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { ChipsTurno } from '../../components/ChipsTurno'
 import { useAvisoSalida } from '../../lib/avisoSalida'
 import { useConfirmar } from '../../components/useConfirmar'
-import {
-  MAX_TEXTO_PAUTA, TURNOS, VIA_LABEL,
-  type Turno, type ViaPaciente,
-} from '../../types/pautaCuidados'
+import { MAX_TEXTO_PAUTA, TURNOS, textoVias, type Turno } from '../../types/pautaCuidados'
 import { colorSemaforo, textoDiuresis, type IndicacionHoja, type PacienteHoja } from './hoja'
 
 export interface AccionesFila {
-  cambiarVia: (ingresoId: string, via: ViaPaciente | null) => Promise<boolean>
   anadir: (ingresoId: string, texto: string, turnos: Turno[]) => Promise<boolean>
   cambiar: (ingresoId: string, id: string, cambios: { texto: string; turnos: Turno[] }) => Promise<boolean>
   borrar: (ingresoId: string, id: string) => Promise<boolean>
@@ -49,7 +46,7 @@ export function FilaPaciente({ n, p, turno, columnas, acciones }: {
     return (
       <tr className="border-t">
         <td className="px-3 py-2 text-center font-bold text-slate-400 align-top">{n}</td>
-        <td colSpan={columnas.length + 2} className="px-3 py-2 text-slate-400 italic align-top">Libre</td>
+        <td colSpan={columnas.length + 3} className="px-3 py-2 text-slate-400 italic align-top">Libre</td>
       </tr>
     )
   }
@@ -110,25 +107,12 @@ export function FilaPaciente({ n, p, turno, columnas, acciones }: {
           {c === 'Diuresis' || c === 'Orina' ? diuresis : ''}
         </td>
       ))}
-      <td className="px-3 py-2">
-        {editable ? (
-          <select
-            aria-label={`Vía de ${p.nombre}`}
-            className={`input py-1 text-xs w-28 ${p.via ? '' : 'text-slate-400'}`}
-            value={p.via ?? ''}
-            disabled={ocupado}
-            onChange={(e) => {
-              const v = (e.target.value || null) as ViaPaciente | null
-              void envolver(() => acciones!.cambiarVia(ingresoId!, v))
-            }}
-          >
-            <option value="">Sin vía</option>
-            <option value="venosa">{VIA_LABEL.venosa}</option>
-            <option value="subcutanea">{VIA_LABEL.subcutanea}</option>
-          </select>
-        ) : (
-          <span className="text-xs text-slate-600">{p.via ? VIA_LABEL[p.via] : <span className="text-slate-300">—</span>}</span>
-        )}
+      {/* La vía sale de la Pauta de cuidados del paciente: aquí solo se muestra, como Diuresis. */}
+      <td
+        className="px-0.5 py-2 text-center text-[10px] text-slate-500 bg-slate-50/70 border-l border-dashed border-slate-200"
+        title={textoVias(p.vias, false) || undefined}
+      >
+        {textoVias(p.vias)}
       </td>
       <td className="px-3 py-2 min-w-[16rem]">
         <div className="space-y-2">

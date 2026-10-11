@@ -4,7 +4,7 @@
 
 import { documentoImpresion, escapeHtml } from '../../lib/imprimir'
 import { SEMAFORO_CAIDAS_COLOR } from '../../types'
-import { type Turno, type ViaPaciente } from '../../types/pautaCuidados'
+import { textoVias, type Turno } from '../../types/pautaCuidados'
 
 export interface IndicacionHoja { id?: string; texto: string; turnos: Turno[]; updated_at?: string }
 
@@ -15,12 +15,9 @@ export interface PacienteHoja {
   nombre: string                                   // «Merche Cambra»: nombre y primer apellido
   sondaVesical: boolean
   colector: boolean
-  via: ViaPaciente | null
-  viaActualizada?: string | null                   // `updated_at` de la fila de vía al cargar (null = no había)
+  vias: string[]                                   // vías y dispositivos de acceso (de la Hoja de ítems): IV, SC, ostomía…
   indicaciones: IndicacionHoja[]
 }
-
-const VIA_CORTA: Record<ViaPaciente, string> = { venosa: 'Venosa', subcutanea: 'Subcut.' }
 
 // Color del semáforo de caídas (el mismo que en Inicio y en la Hoja de ítems) y color de texto legible encima.
 export function colorSemaforo(p: PacienteHoja | undefined): { fondo: string; texto: string } | null {
@@ -36,7 +33,7 @@ export function textoDiuresis(p: PacienteHoja): string {
 export interface ColumnaHoja { titulo: string; clase: string }
 
 // Todas las columnas de la hoja que no son Hb, Nombre ni Cuidados (Aseo, Diuresis, Deposición, comidas y
-// Vía) miden lo mismo: así la hoja se ve ordenada y todas dejan el mismo hueco para escribir a mano.
+// Vía; esta última sale de la Pauta de cuidados) miden lo mismo: así la hoja se ve ordenada y todas dejan el mismo hueco para escribir a mano.
 const MANUAL = 'c-m'   // 14 mm: bastan para anotar a mano y dejan más ancho a «Cuidados», que es donde hay más texto
 const COLUMNAS: Record<Turno, ColumnaHoja[]> = {
   manana: ['Aseo', 'Diuresis', 'Deposición', 'Desayuno', 'Comida'].map((titulo) => ({ titulo, clase: MANUAL })),
@@ -94,7 +91,7 @@ function filaHTML(n: number, p: PacienteHoja | undefined, turno: Turno): string 
     const contenido = c.titulo === 'Diuresis' || c.titulo === 'Orina' ? escapeHtml(textoDiuresis(p)) : ''
     return `<td class="${c.clase}">${contenido}</td>`
   }).join('')
-  const via = `<td class="c-m c-via">${p.via ? escapeHtml(VIA_CORTA[p.via]) : ''}</td>`
+  const via = `<td class="c-m c-via">${escapeHtml(textoVias(p.vias))}</td>`
   const sem = colorSemaforo(p)
   const estiloHab = sem ? ` style="background:${sem.fondo};color:${sem.texto}"` : ''
   return `<tr><td class="c-hab"${estiloHab}>${n}</td><td class="c-nom">${escapeHtml(p.nombre)}</td>${celdas}${via}<td class="c-cui">${cuidados}</td></tr>`
@@ -143,7 +140,8 @@ export function pacienteDesdeHistorico(f: FilaHistorico): PacienteHoja | null {
     nombre: `${d.nombre ?? ''} ${d.primer_apellido ?? ''}`.trim(),
     sondaVesical: !!d.sonda_vesical,
     colector: !!d.colector,
-    via: d.via ?? null,
+    // Las copias anteriores a las vías múltiples guardaban un solo valor en «via».
+    vias: Array.isArray(d.vias) ? d.vias : d.via ? [d.via] : [],
     indicaciones: Array.isArray(d.indicaciones) ? d.indicaciones.map((i: any) => ({ texto: i.texto, turnos: i.turnos })) : [],
   }
 }

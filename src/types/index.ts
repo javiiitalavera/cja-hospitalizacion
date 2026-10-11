@@ -190,6 +190,14 @@ export interface ItemsPaciente {
   // de la Hoja de Ítems (la contención vive en su propia pauta).
   observaciones?: string
   semaforo_caidas?: 'verde' | 'amarillo' | 'naranja' | 'rojo'
+  // Vías y dispositivos de acceso, detalle de sonda y oxígeno, aislamiento (los comparten la Hoja de ítems, la
+  // Pauta de cuidados y las Hojas de turno).
+  vias?: ('venosa' | 'subcutanea' | 'central' | 'sng' | 'peg' | 'ostomia' | 'traqueostomia')[]
+  sonda_fecha?: string | null
+  sonda_calibre?: number | null
+  oxigeno_dispositivo?: 'gafas' | 'mascarilla' | 'reservorio' | null
+  oxigeno_flujo?: number | null
+  aislamiento?: ('contacto' | 'gotas')[]
   created_at: string
   updated_at: string
 }

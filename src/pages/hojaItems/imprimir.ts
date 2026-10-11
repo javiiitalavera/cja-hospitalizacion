@@ -56,7 +56,7 @@ function buildPrintHTML(data: IngresoConItems[], today: string): string {
     sinCabecera: true,
     css: `
       table { table-layout: fixed; }
-      th, td { padding: 1.5px 2px; font-size: 6.5pt; text-align: center; overflow: hidden; white-space: nowrap; border-color: #999; }
+      th, td { padding: 1px 2px; font-size: 6.5pt; text-align: center; overflow: hidden; white-space: nowrap; border-color: #999; }
       td.col-label, th.col-label { text-align: left; width: 70px; font-weight: 600; white-space: normal; }
       tr.grupo td { background: #5b7a9d; color: #fff; font-weight: 700; text-align: left; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       th, td[style] { -webkit-print-color-adjust: exact; print-color-adjust: exact; }

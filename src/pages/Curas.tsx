@@ -34,13 +34,13 @@ function imprimirHoja(pacientes: PacienteConCuras[], semana: string[], registros
   const cab = semana.map((d, i) => `<th>${DIAS_LARGO[i]}<br><span class="f">${fechaCorta(d)}</span></th>`).join('')
   const filasSemana = pacientes.map((p) => {
     const celdas = semana.map((d) => `<td class="c">${(() => { const r = registros.get(`${p.id}|${d}`); return r ? (r.estado === 'no_realizada' ? '✗' : '✓') : toca(p, d) ? '○' : '' })()}</td>`).join('')
-    return `<tr><td class="n">${escapeHtml(nombreYApellido(p.paciente))} (hab. ${p.habitacion ?? '—'})</td>${celdas}</tr>`
+    return `<tr><td class="h">${p.habitacion ?? '—'}</td><td class="n">${escapeHtml(nombreYApellido(p.paciente))}</td>${celdas}</tr>`
   }).join('')
   const filasCuidados = pacientes.map((p) => {
     const l = p.lesiones.map((x) =>
       `<div><b>${escapeHtml(x.localizacion)}</b> <span class="t">(${escapeHtml(CARACTERISTICA_LABEL[x.caracteristicas])})</span>: ${escapeHtml(textoPauta(pautaVigente(x.valoraciones)))}</div>`
     ).join('')
-    return `<tr><td class="n">${escapeHtml(nombreYApellido(p.paciente))} (hab. ${p.habitacion ?? '—'})</td><td>${l}</td></tr>`
+    return `<tr><td class="h">${p.habitacion ?? '—'}</td><td class="n">${escapeHtml(nombreYApellido(p.paciente))}</td><td>${l}</td></tr>`
   }).join('')
   imprimirHTMLEnMarco(documentoImpresion({
     titulo: `Pauta de curas — semana del ${fechaLarga(semana[0])} al ${fechaLarga(semana[6])}`,
@@ -48,14 +48,14 @@ function imprimirHoja(pacientes: PacienteConCuras[], semana: string[], registros
       h2 { font-size: 11pt; margin: 6mm 0 2mm; }
       th { font-size: 8.5pt; } .f { font-weight: normal; color: #555; }
       td, th { padding: 3px 5px; font-size: 10pt; }
-      td.c { text-align: center; width: 11%; height: 7mm; font-size: 12pt; } td.n { font-weight: 600; width: 30%; }
+      td.c { text-align: center; width: 10%; height: 7mm; font-size: 12pt; } td.n { font-weight: 600; width: 28%; } td.h { text-align: center; font-weight: 700; width: 8mm; }
       .t { color: #555; font-size: 8.5pt; }
     `,
     cuerpo: `
-    <table><thead><tr><th>Paciente</th>${cab}</tr></thead><tbody>${filasSemana}</tbody></table>
+    <table><thead><tr><th>Hab.</th><th>Paciente</th>${cab}</tr></thead><tbody>${filasSemana}</tbody></table>
     <p class="t">✓ hecha · ✗ no realizada · ○ toca cura según la pauta (sin registrar) · vacío: no toca</p>
     <h2>Tabla de cuidados</h2>
-    <table><thead><tr><th>Paciente</th><th>Localización y cura / cuidado / necesidad</th></tr></thead><tbody>${filasCuidados}</tbody></table>`,
+    <table><thead><tr><th>Hab.</th><th>Paciente</th><th>Localización y cura / cuidado / necesidad</th></tr></thead><tbody>${filasCuidados}</tbody></table>`,
   }))
 }
 
@@ -126,8 +126,14 @@ export default function Curas() {
       return
     }
     const conCuras = ((resP.data ?? []) as unknown as (Omit<PacienteConCuras, 'lesiones'> & { lesiones: Lesion[] })[])
-      .map((p) => ({ ...p, lesiones: (p.lesiones ?? []).filter((l) => !l.fecha_fin) }))
+      .map((p) => ({
+        ...p,
+        // Dentro de cada paciente, las lesiones por antigüedad (la más antigua primero) para que no cambien de sitio.
+        lesiones: (p.lesiones ?? []).filter((l) => !l.fecha_fin).sort((a, b) => a.fecha_inicio.localeCompare(b.fecha_inicio) || a.created_at.localeCompare(b.created_at)),
+      }))
       .filter((p) => p.lesiones.length > 0)
+      // Pacientes por habitación (las dos tablas y la impresión), sin habitación al final.
+      .sort((a, b) => (a.habitacion ?? 999) - (b.habitacion ?? 999))
     setPacientes(conCuras)
     const mapa = new Map<string, RegistroCura>()
     ;((resR.data ?? []) as unknown as RegistroCura[]).forEach((r) => mapa.set(`${r.ingreso_id}|${r.fecha}`, r))
@@ -213,7 +219,8 @@ export default function Curas() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-slate-50 text-xs text-slate-500">
-                  <th className="text-left px-4 py-2 font-semibold">Paciente</th>
+                  <th className="px-4 py-2 font-semibold text-center w-16">Hab.</th>
+                  <th className="text-left px-2 py-2 font-semibold">Paciente</th>
                   {semana.map((d, i) => (
                     <th key={d} className={`px-2 py-2 font-semibold text-center ${d === hoy ? 'text-primary-700' : ''}`}>
                       {DIAS_CORTO[i]}<br /><span className="font-normal">{fechaCorta(d)}</span>
@@ -224,10 +231,10 @@ export default function Curas() {
               <tbody>
                 {pacientes.map((p) => (
                   <tr key={p.id} className="border-b last:border-0">
-                    <td className="px-4 py-2">
-                      <button onClick={() => navigate(`/ingresos/${p.id}?tab=plan&sub=curas`)} className="text-left hover:text-primary-700">
-                        <span className="font-medium text-slate-800">{nombreCompleto(p.paciente)}</span>
-                        <span className="text-xs text-slate-500"> · Hab. {p.habitacion ?? '—'}</span>
+                    <td className="px-4 py-2 text-center font-semibold text-slate-700">{p.habitacion ?? '—'}</td>
+                    <td className="px-2 py-2">
+                      <button onClick={() => navigate(`/ingresos/${p.id}?tab=plan&sub=curas`)} className="text-left font-medium text-slate-800 hover:text-primary-700">
+                        {nombreCompleto(p.paciente)}
                       </button>
                     </td>
                     {semana.map((d) => {
@@ -276,16 +283,16 @@ export default function Curas() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-slate-50 text-xs text-slate-500">
-                  <th className="text-left px-4 py-2 font-semibold w-1/3">Paciente</th>
+                  <th className="px-4 py-2 font-semibold text-center w-16">Hab.</th>
+                  <th className="text-left px-2 py-2 font-semibold w-1/3">Paciente</th>
                   <th className="text-left px-4 py-2 font-semibold">Localización y cura / cuidado / necesidad</th>
                 </tr>
               </thead>
               <tbody>
                 {pacientes.map((p) => (
                   <tr key={p.id} className="border-b last:border-0 align-top">
-                    <td className="px-4 py-2 font-medium text-slate-800">
-                      {nombreCompleto(p.paciente)}<span className="text-xs text-slate-500 font-normal"> · Hab. {p.habitacion ?? '—'}</span>
-                    </td>
+                    <td className="px-4 py-2 text-center font-semibold text-slate-700">{p.habitacion ?? '—'}</td>
+                    <td className="px-2 py-2 font-medium text-slate-800">{nombreCompleto(p.paciente)}</td>
                     <td className="px-2 py-1.5">
                       {p.lesiones.map((l) => (
                         <button

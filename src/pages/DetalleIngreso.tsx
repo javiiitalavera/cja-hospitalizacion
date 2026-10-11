@@ -79,8 +79,19 @@ const ALIAS_TABS: Record<string, { tab: string; sub: string }> = {
   eventos: { tab: 'seguimiento', sub: 'incidencias' },
 }
 
-function resolverPestana(tabParam: string | null, subParam: string | null): { tab: Tab; sub: Sub | null } {
+// Pestaña con la que se abre la ficha cuando el enlace no indica ninguna: enfermería entra en la pauta de
+// cuidados y los médicos en el informe de ingreso. El resto (y los enlaces con ?tab=…) abren Datos o lo indicado.
+function pestanaPorDefecto(rol: string | undefined): { tab: string; sub?: string } {
+  if (rol === 'enfermeria') return { tab: 'plan', sub: 'cuidados' }
+  if (rol === 'medico') return { tab: 'informes', sub: 'ingreso' }
+  return { tab: 'datos' }
+}
+
+function resolverPestana(tabParam: string | null, subParam: string | null, rol?: string, editar?: boolean): { tab: Tab; sub: Sub | null } {
   const alias = tabParam ? ALIAS_TABS[tabParam] : undefined
+  // Sin ?tab: la de por defecto según el rol (salvo que el enlace pida editar datos, que vive en Datos).
+  const porDefecto = !tabParam && !editar ? pestanaPorDefecto(rol) : null
+  if (porDefecto) { tabParam = porDefecto.tab; subParam = subParam ?? porDefecto.sub ?? null }
   const tabId = alias?.tab ?? tabParam ?? 'datos'
   const tab = TABS.find((t) => t.id === tabId) ?? TABS[0]
   if (!tab.subs) return { tab, sub: null }
@@ -95,11 +106,11 @@ export default function DetalleIngreso() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const { esMedico } = useAuth()
+  const { esMedico, profesional } = useAuth()
   // La pestaña y la subpestaña se leen siempre de la URL (?tab=…&sub=…),
   // sin estado propio: así, al navegar de un ingreso a otro sin recargar
   // la página, la pestaña nunca se queda "pegada" a la anterior.
-  const { tab: tabActual, sub: subActual } = resolverPestana(searchParams.get('tab'), searchParams.get('sub'))
+  const { tab: tabActual, sub: subActual } = resolverPestana(searchParams.get('tab'), searchParams.get('sub'), profesional?.rol, !!searchParams.get('editar'))
   const seccion: Seccion = subActual ? subActual.seccion : tabActual.seccion!
   const [ingreso, setIngreso] = useState<Ingreso | null>(null)
   const [loading, setLoading] = useState(true)
