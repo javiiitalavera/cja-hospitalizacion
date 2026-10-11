@@ -83,11 +83,16 @@ export interface CampoEvento {
   requerido?: boolean
 }
 
+const LUGARES = ['Habitación', 'Baño', 'Pasillo', 'Sala común', 'Comedor', 'Gimnasio', 'Sala de terapia', 'Exterior']
+const DETALLES_LUGAR = ['Azul', 'Verde', 'Violeta', 'Gris', 'Sala 1', 'Sala 2']
+
 export const CAMPOS_POR_TIPO: Record<TipoEvento, CampoEvento[]> = {
   caida: [
     { key: 'con_lesion', label: 'Con lesión', tipo: 'select', opciones: ['Sí', 'No', 'Pendiente de valoración'], requerido: true },
     { key: 'gravedad', label: 'Gravedad', tipo: 'select', opciones: ['Sin lesión', 'Leve', 'Moderada', 'Grave', 'Pendiente de valoración'] },
-    { key: 'lugar', label: 'Lugar', tipo: 'select', opciones: ['Habitación', 'Baño', 'Pasillo', 'Sala común', 'Comedor', 'Gimnasio', 'Sala de terapia', 'Exterior'], requerido: true },
+    { key: 'lugar', label: 'Lugar', tipo: 'select', opciones: LUGARES, requerido: true },
+    // Solo se pide si el lugar es un pasillo o la sala de terapia (ver DETALLE_LUGAR).
+    { key: 'lugar_detalle', label: 'Pasillo / sala', tipo: 'select', opciones: DETALLES_LUGAR },
     { key: 'circunstancias', label: 'Circunstancias', tipo: 'select', opciones: ['Solo', 'Supervisado', 'Con sujeción activa'] },
     { key: 'consecuencias', label: 'Consecuencias', tipo: 'select', opciones: ['Sin lesión', 'Contusión', 'Herida', 'Fractura', 'TCE', 'Otro', 'Pendiente de valoración'] },
   ],
@@ -123,6 +128,8 @@ export const CAMPOS_POR_TIPO: Record<TipoEvento, CampoEvento[]> = {
     { key: 'dirigida_a', label: 'Dirigida a', tipo: 'select', opciones: ['Personal sanitario', 'Otro paciente', 'Familiar', 'Objeto / mobiliario'], requerido: true },
     { key: 'tipo', label: 'Tipo de agresión', tipo: 'select', opciones: ['Golpes', 'Mordeduras', 'Empujones', 'Arañazos', 'Lanzamiento de objetos', 'Otra'], requerido: true },
     { key: 'gravedad', label: 'Gravedad / consecuencias', tipo: 'select', opciones: ['Sin lesión a terceros', 'Lesión leve', 'Lesión grave', 'Daños materiales'], requerido: true },
+    { key: 'lugar', label: 'Lugar', tipo: 'select', opciones: LUGARES, requerido: true },
+    { key: 'lugar_detalle', label: 'Pasillo / sala', tipo: 'select', opciones: DETALLES_LUGAR },
     { key: 'medidas', label: 'Medidas adoptadas', tipo: 'select', opciones: ['Contención verbal', 'Rescate farmacológico', 'Contención física', 'Notificación a dirección', 'Varias'], requerido: true },
   ],
 
@@ -131,6 +138,20 @@ export const CAMPOS_POR_TIPO: Record<TipoEvento, CampoEvento[]> = {
     { key: 'duracion', label: 'Duración de la ausencia', tipo: 'text' },
     { key: 'destino_conocido', label: 'Destino conocido', tipo: 'select', opciones: ['Sí', 'No'] },
   ],
+}
+
+// Lugares que hay que concretar: en qué pasillo (Azul, Verde, Violeta o Gris) o en qué sala de terapia (1 o 2).
+export const DETALLE_LUGAR: Record<string, { label: string; opciones: string[] }> = {
+  'Pasillo': { label: 'Pasillo', opciones: ['Azul', 'Verde', 'Violeta', 'Gris'] },
+  'Sala de terapia': { label: 'Sala de terapia', opciones: ['Sala 1', 'Sala 2'] },
+}
+
+// El campo tal como se muestra en el formulario con los datos actuales, o null si hoy no toca (el detalle del lugar
+// solo aparece cuando el lugar es un pasillo o la sala de terapia, y entonces es obligatorio).
+export function campoVisible(c: CampoEvento, datos: Record<string, string>): CampoEvento | null {
+  if (c.key !== 'lugar_detalle') return c
+  const d = DETALLE_LUGAR[datos.lugar ?? '']
+  return d ? { ...c, label: d.label, opciones: d.opciones, requerido: true } : null
 }
 
 export const TURNO_LABEL: Record<string, string> = {

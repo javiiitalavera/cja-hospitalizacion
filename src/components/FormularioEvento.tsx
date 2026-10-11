@@ -5,7 +5,7 @@ import { hoyLocal } from '../lib/fechas'
 import { useAuth } from '../lib/AuthContext'
 import { useAvisoSalida } from '../lib/avisoSalida'
 import type { Profesional } from '../types'
-import { TIPO_EVENTO_LABEL, TIPOS_REGISTRABLES, CAMPOS_POR_TIPO, TURNO_LABEL, turnoSegunHora, type TipoEvento, type Evento } from '../types/eventos'
+import { TIPO_EVENTO_LABEL, TIPOS_REGISTRABLES, CAMPOS_POR_TIPO, TURNO_LABEL, campoVisible, turnoSegunHora, type TipoEvento, type Evento } from '../types/eventos'
 import { X, Save } from 'lucide-react'
 
 interface Props {
@@ -112,7 +112,12 @@ export default function FormularioEvento({ ingresoId, eventoExistente, onClose, 
   }, [tipo])
 
   function setDato(key: string, val: string) {
-    setDatos((d) => ({ ...d, [key]: val }))
+    // Al cambiar de lugar se descarta el pasillo o la sala que se hubiera elegido para el anterior.
+    setDatos((d) => {
+      const nuevo = { ...d, [key]: val }
+      if (key === 'lugar') delete nuevo.lugar_detalle
+      return nuevo
+    })
   }
 
   function cambiarHora(v: string) {
@@ -146,8 +151,14 @@ export default function FormularioEvento({ ingresoId, eventoExistente, onClose, 
     // guardar, que es justo lo que se quiere evitar.
     if (estado === 'completa') {
       const campos = CAMPOS_POR_TIPO[tipo]
-      for (const campo of campos) {
-        if (campo.requerido && !datos[campo.key]) {
+      for (const base of campos) {
+        const campo = campoVisible(base, datos)
+        if (!campo) continue
+        // Una incidencia antigua que ya decía «Pasillo» sin concretar no obliga a concretarlo al editarla por otra cosa.
+        // Igual con las agresiones antiguas, de cuando aún no se registraba el lugar.
+        const antiguaSinDetalle = base.key === 'lugar_detalle' && eventoExistente?.datos?.lugar === datos.lugar && !eventoExistente.datos.lugar_detalle
+        const antiguaSinLugar = base.key === 'lugar' && tipo === 'agresividad_fisica' && eventoExistente?.tipo === tipo && !eventoExistente.datos?.lugar
+        if (campo.requerido && !antiguaSinDetalle && !antiguaSinLugar && !datos[campo.key]) {
           setError(`El campo "${campo.label}" es obligatorio.`)
           return
         }
@@ -335,7 +346,10 @@ export default function FormularioEvento({ ingresoId, eventoExistente, onClose, 
           {tipo && (
             <div className="space-y-3 pt-1">
               <p className="text-xs font-bold text-primary-600 uppercase tracking-widest">{TIPO_EVENTO_LABEL[tipo]}</p>
-              {camposActuales.map((campo) => (
+              {camposActuales.map((base) => {
+                const campo = campoVisible(base, datos)
+                if (!campo) return null
+                return (
                 <div key={campo.key}>
                   <label className="label">
                     {campo.label}
@@ -363,7 +377,8 @@ export default function FormularioEvento({ ingresoId, eventoExistente, onClose, 
                     />
                   )}
                 </div>
-              ))}
+                )
+              })}
               {/* Aviso, no bloqueo — puede haber matices clínicos que
                   esto no capture, pero conviene que quien registra lo
                   revise antes de dar por buena la combinación. */}
