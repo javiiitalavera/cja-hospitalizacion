@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useAvisoSalida } from '../../lib/avisoSalida'
 import { Cargando } from '../../components/Cargando'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/AuthContext'
@@ -119,6 +120,9 @@ export function FormularioLesion({
   // Al editar: se guarda solo si nadie ha tocado la lesión desde que se abrió (marca `updated_at` del servidor).
   const [baseActualizada, setBaseActualizada] = useState<string | null>(editando?.updated_at ?? null)
   const [conflicto, setConflicto] = useState(false)
+  // Aviso al recargar o cerrar la pestaña con cambios sin guardar en el formulario.
+  const firmaInicialRef = useRef(JSON.stringify([f, pauta]))
+  useAvisoSalida(JSON.stringify([f, pauta]) !== firmaInicialRef.current)
 
   async function recargarTrasConflicto() {
     if (!editando) return
@@ -126,6 +130,7 @@ export function FormularioLesion({
     if (!l) { setError('No se pudo cargar la versión actual de la lesión.'); return }
     setF({ caracteristicas: l.caracteristicas, localizacion: l.localizacion, fecha_inicio: l.fecha_inicio, origen: l.origen ?? '', notas: l.notas ?? '' })
     setBaseActualizada(l.updated_at ?? null)
+    firmaInicialRef.current = JSON.stringify([{ caracteristicas: l.caracteristicas, localizacion: l.localizacion, fecha_inicio: l.fecha_inicio, origen: l.origen ?? '', notas: l.notas ?? '' }, pauta])
     setConflicto(false)
     setError('')
   }
@@ -274,6 +279,8 @@ export function FormularioValoracion({
   })
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
+  const firmaInicialRef = useRef(JSON.stringify([f, pauta]))
+  useAvisoSalida(JSON.stringify([f, pauta]) !== firmaInicialRef.current)
 
   async function guardar() {
     setError('')

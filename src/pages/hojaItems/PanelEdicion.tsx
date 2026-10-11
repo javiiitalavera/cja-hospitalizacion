@@ -33,6 +33,8 @@ export default function PanelEdicion({
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const dataRef = useRef(data)
   const saveSeqRef = useRef(0)
+  // Cuenta las ediciones: un guardado solo da «Guardado» si no se ha cambiado nada desde que empezó.
+  const editRevRef = useRef(0)
   // Guardados en cola + versión que dejó el último guardado propio (null = la que trae la hoja).
   const cadenaRef = useRef<Promise<boolean>>(Promise.resolve(true))
   const versionGuardadaRef = useRef<number | null>(null)
@@ -95,11 +97,12 @@ export default function PanelEdicion({
 
   function save(d = dataRef.current): Promise<boolean> {
     const miSecuencia = ++saveSeqRef.current
+    const rev = editRevRef.current
     setEstado('guardando')
-    return encadenar(cadenaRef, () => ejecutarGuardado(d, miSecuencia))
+    return encadenar(cadenaRef, () => ejecutarGuardado(d, miSecuencia, rev))
   }
 
-  async function ejecutarGuardado(d: Partial<ItemsPaciente & { version: number }>, miSecuencia: number): Promise<boolean> {
+  async function ejecutarGuardado(d: Partial<ItemsPaciente & { version: number }>, miSecuencia: number, rev: number): Promise<boolean> {
     // La versión que dejó el guardado anterior, no la que llevaba el panel al hacer el cambio.
     const version = versionGuardadaRef.current ?? dataRef.current.version ?? d.version ?? 1
     const { data: updated, error } = await supabase
@@ -126,6 +129,7 @@ export default function PanelEdicion({
     // Solo la versión nueva: lo que se haya cambiado mientras se guardaba se queda como está.
     setData((prev) => ({ ...prev, version: updated.version, updated_at: updated.updated_at }))
     onSaved(updated as ItemsPaciente)
+    if (editRevRef.current !== rev) return true // hay cambios nuevos pendientes: sigue «pendiente»
     setEstado('guardado')
     setTimeout(() => setEstado((e) => (e === 'guardado' ? 'inactivo' : e)), 2800)
     return true
@@ -142,11 +146,12 @@ export default function PanelEdicion({
   async function limpiarItems() {
     if (debounceRef.current) { clearTimeout(debounceRef.current); debounceRef.current = null }
     const miSecuencia = ++saveSeqRef.current
+    const rev = editRevRef.current
     setEstado('guardando')
-    await encadenar(cadenaRef, () => ejecutarLimpieza(miSecuencia))
+    await encadenar(cadenaRef, () => ejecutarLimpieza(miSecuencia, rev))
   }
 
-  async function ejecutarLimpieza(miSecuencia: number): Promise<boolean> {
+  async function ejecutarLimpieza(miSecuencia: number, rev: number): Promise<boolean> {
     // Vacío explícito de cada campo: un update que solo mande estos
     // campos no toca el resto de columnas si no se listan aquí.
     const vacio = {
@@ -182,7 +187,7 @@ export default function PanelEdicion({
     }
     if (!updated) { setEstado('conflicto'); return false }
     setData(updated as ItemsPaciente)
-    setEstado('inactivo')
+    if (editRevRef.current === rev) setEstado('inactivo')
     onSaved(updated as ItemsPaciente)
     return true
   }
@@ -191,6 +196,7 @@ export default function PanelEdicion({
     if (estado === 'conflicto') return
     const next = { ...dataRef.current, [key]: val }
     setData(next)
+    editRevRef.current++
     setEstado('pendiente')
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => save(next), 1200)

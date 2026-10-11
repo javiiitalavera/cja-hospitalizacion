@@ -10,7 +10,7 @@ import {
 } from '../../types/contenciones'
 import { type Turno, type ViaPaciente } from '../../types/pautaCuidados'
 
-export interface IndicacionHoja { id?: string; texto: string; turnos: Turno[] }
+export interface IndicacionHoja { id?: string; texto: string; turnos: Turno[]; updated_at?: string }
 
 export interface PacienteHoja {
   ingresoId?: string                               // solo en la hoja de hoy (la del histórico no se edita)
@@ -20,6 +20,7 @@ export interface PacienteHoja {
   sondaVesical: boolean
   colector: boolean
   via: ViaPaciente | null
+  viaActualizada?: string | null                   // `updated_at` de la fila de vía al cargar (null = no había)
   alertas: string[]                                // 'riesgo_fuga', 'agresion_imprevisible', 'riesgo_autolitico'
   objetosCalma: string | null
   contencionDia: string | null

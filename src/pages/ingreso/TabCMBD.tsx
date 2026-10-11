@@ -192,6 +192,13 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
   )
   dataRef.current = data
   const saveSeqRef = useRef(0)
+  // Cuenta las ediciones: un guardado solo da «Guardado» si no se ha tecleado nada desde que empezó.
+  const editRevRef = useRef(0)
+  function marcarGuardado(rev: number) {
+    if (editRevRef.current !== rev) return // hay cambios nuevos pendientes
+    setEstado('guardado')
+    setTimeout(() => setEstado((e) => (e === 'guardado' ? 'inactivo' : e)), 2500)
+  }
   // Guardados en cola + id y versión que dejó el último guardado propio (null = los que trae la carga).
   const cadenaRef = useRef<Promise<boolean>>(Promise.resolve(true))
   const guardadaRef = useRef<{ id: string; version: number } | null>(null)
@@ -211,11 +218,12 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
 
   function save(d = dataRef.current): Promise<boolean> {
     const miSecuencia = ++saveSeqRef.current
+    const rev = editRevRef.current
     setEstado('guardando')
-    return encadenar(cadenaRef, () => ejecutarGuardado(d, miSecuencia))
+    return encadenar(cadenaRef, () => ejecutarGuardado(d, miSecuencia, rev))
   }
 
-  async function ejecutarGuardado(d: CMBDData, miSecuencia: number): Promise<boolean> {
+  async function ejecutarGuardado(d: CMBDData, miSecuencia: number, rev: number): Promise<boolean> {
     // Id y versión que dejó el guardado anterior (si lo hubo): el formulario puede llevar los de antes
     // (o, en el primer guardado, ninguno: sin esto, dos guardados seguidos intentaban crear la fila dos veces).
     const conocida = guardadaRef.current
@@ -249,8 +257,7 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
       }
       // Solo id y versión: lo que se haya tecleado mientras se guardaba no se pisa.
       if (creado) setData((prev) => ({ ...prev, id: creado.id, version: creado.version, updated_at: creado.updated_at }) as CMBDData)
-      setEstado('guardado')
-      setTimeout(() => setEstado((e) => (e === 'guardado' ? 'inactivo' : e)), 2500)
+      marcarGuardado(rev)
       return true
     }
 
@@ -270,8 +277,7 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
     if (error) { setEstado('error'); return false }
     if (!guardado) { setEstado('conflicto'); return false }
     setData((prev) => ({ ...prev, id: guardado.id, version: guardado.version, updated_at: guardado.updated_at }) as CMBDData)
-    setEstado('guardado')
-    setTimeout(() => setEstado((e) => (e === 'guardado' ? 'inactivo' : e)), 2500)
+    marcarGuardado(rev)
     return true
   }
 
@@ -288,6 +294,7 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
     setErrorFaltantes([])
     const next = { ...dataRef.current, [key]: value }
     setData(next)
+    editRevRef.current++
     setEstado('pendiente')
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => save(next), 1500)
@@ -305,6 +312,7 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
     setErrorFaltantes([])
     const next = { ...dataRef.current, ...cambios }
     setData(next)
+    editRevRef.current++
     setEstado('pendiente')
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => save(next), 1500)

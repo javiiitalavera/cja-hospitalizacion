@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
+import { useAvisoSalida } from '../lib/avisoSalida'
 import { X, Save, History as HistoryIcon, ChevronDown, AlertCircle, ShieldCheck } from 'lucide-react'
 import {
   DIA_OPCIONES, NOCHE_OPCIONES, CONTENCION_DIA_LABEL, CONTENCION_DIA_DESC, CONTENCION_NOCHE_LABEL,
@@ -35,6 +36,13 @@ export default function ModalContencion({ ingresoId, onClose, onGuardado, pacien
   const [historial, setHistorial] = useState<HistorialContencion[] | null>(null)
 
   useEffect(() => { cargar() }, [ingresoId])
+
+  // Aviso al recargar o cerrar la pestaña con una pauta cambiada y sin guardar.
+  const baseDia = (ultimo?.dia as ContencionDia | null | undefined) ?? 'ninguna'
+  const baseNoche = (ultimo?.noche as ContencionNoche[] | null | undefined) ?? []
+  const hayCambios = !loading && !loadError
+    && (dia !== baseDia || noche.length !== baseNoche.length || noche.some((x) => !baseNoche.includes(x)))
+  useAvisoSalida(hayCambios)
 
   async function cargar() {
     setLoading(true)

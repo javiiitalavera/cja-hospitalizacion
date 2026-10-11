@@ -16,6 +16,7 @@ export interface IndicacionCuidado {
   texto: string
   turnos: Turno[]
   created_at: string
+  updated_at?: string   // marca del servidor: sirve para no pisar un cambio de otra persona
 }
 
 export type ViaPaciente = 'venosa' | 'subcutanea'

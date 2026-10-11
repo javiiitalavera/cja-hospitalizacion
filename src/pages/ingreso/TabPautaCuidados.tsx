@@ -3,6 +3,7 @@
 // el resto lee. Con el episodio cerrado todo queda en solo lectura.
 
 import { useEffect, useState } from 'react'
+import { useAvisoSalida } from '../../lib/avisoSalida'
 import { Cargando } from '../../components/Cargando'
 import { Lock, Pencil, Plus, Trash2, Check, X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
@@ -11,7 +12,7 @@ import { ChipsTurno } from '../../components/ChipsTurno'
 import { AvisoGuardado, useAvisoGuardado } from '../../components/AvisoGuardado'
 import { useConfirmar } from '../../components/useConfirmar'
 import {
-  anadirIndicacion, borrarIndicacion, cambiarTextoIndicacion, cambiarTurnosIndicacion, guardarVia,
+  anadirIndicacion, borrarIndicacion, cambiarIndicacion, guardarVia, type ResultadoPauta,
 } from '../hojasTurno/operaciones'
 import {
   MAX_TEXTO_PAUTA, TODOS_TURNOS, VIA_LABEL,
@@ -28,6 +29,7 @@ export function TabPautaCuidados({ ingresoId, episodioActivo }: { ingresoId: str
   const { confirmar, dialogo } = useConfirmar()
   const [indicaciones, setIndicaciones] = useState<IndicacionCuidado[]>([])
   const [via, setVia] = useState<ViaPaciente | null>(null)
+  const [viaActualizada, setViaActualizada] = useState<string | null>(null)
 
   const [nuevoTexto, setNuevoTexto] = useState('')
   const [nuevosTurnos, setNuevosTurnos] = useState<Turno[]>(TODOS_TURNOS)
@@ -35,13 +37,13 @@ export function TabPautaCuidados({ ingresoId, episodioActivo }: { ingresoId: str
   const [textoEdicion, setTextoEdicion] = useState('')
   const [ocupado, setOcupado] = useState(false)
 
-  async function cargar() {
-    setCargando(true)
+  async function cargar(silencioso = false) {
+    if (!silencioso) setCargando(true)
     setError('')
     const [rInd, rVia] = await Promise.all([
-      supabase.from('pauta_cuidados').select('id, ingreso_id, texto, turnos, created_at')
+      supabase.from('pauta_cuidados').select('id, ingreso_id, texto, turnos, created_at, updated_at')
         .eq('ingreso_id', ingresoId).order('created_at', { ascending: true }),
-      supabase.from('pauta_via').select('via').eq('ingreso_id', ingresoId).maybeSingle(),
+      supabase.from('pauta_via').select('via, updated_at').eq('ingreso_id', ingresoId).maybeSingle(),
     ])
     if (rInd.error || rVia.error) {
       setError('No se pudo cargar la pauta de cuidados: ' + (rInd.error?.message ?? rVia.error?.message))
@@ -49,7 +51,9 @@ export function TabPautaCuidados({ ingresoId, episodioActivo }: { ingresoId: str
       return
     }
     setIndicaciones((rInd.data ?? []) as IndicacionCuidado[])
-    setVia(((rVia.data as { via: ViaPaciente } | null)?.via) ?? null)
+    const filaVia = rVia.data as { via: ViaPaciente; updated_at: string } | null
+    setVia(filaVia?.via ?? null)
+    setViaActualizada(filaVia?.updated_at ?? null)
     setCargando(false)
   }
 
@@ -60,55 +64,64 @@ export function TabPautaCuidados({ ingresoId, episodioActivo }: { ingresoId: str
     cargar()
   }, [ingresoId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Ejecuta una escritura (devuelve el mensaje de error, o null si fue bien).
-  async function ejecutar(accion: () => Promise<string | null>): Promise<boolean> {
+  // Ejecuta una escritura. Si otra persona cambió la pauta mientras tanto (conflicto), no se pisa: se avisa y se
+  // recarga en silencio la versión actual (lo que se estaba escribiendo se queda en pantalla).
+  async function ejecutar(accion: () => Promise<ResultadoPauta>): Promise<ResultadoPauta | null> {
     setOcupado(true)
-    const e = await accion()
+    const r = await accion()
     setOcupado(false)
-    if (e) { fallo(e); return false }
+    if (r.error) {
+      fallo(r.error)
+      if (r.conflicto) await cargar(true)
+      return null
+    }
     guardado()
-    return true
+    return r
   }
 
   async function cambiarVia(nueva: ViaPaciente | null) {
     if (!puedeEditar || ocupado || nueva === via) return
-    const ok = await ejecutar(() => guardarVia(ingresoId, nueva))
-    if (ok) setVia(nueva)
+    const r = await ejecutar(() => guardarVia(ingresoId, nueva, viaActualizada))
+    if (r) { setVia(nueva); setViaActualizada(r.actualizada ?? null) }
   }
 
   async function anadir() {
     const texto = nuevoTexto.trim()
     if (!puedeEditar || ocupado || !texto) return
-    const ok = await ejecutar(() => anadirIndicacion(ingresoId, texto, nuevosTurnos).then((r) => r.error))
-    if (ok) {
+    const r = await ejecutar(() => anadirIndicacion(ingresoId, texto, nuevosTurnos).then((x) => ({ error: x.error })))
+    if (r) {
       setNuevoTexto('')
       setNuevosTurnos(TODOS_TURNOS)
-      await cargar()
+      await cargar(true)
     }
   }
 
   async function guardarEdicion(i: IndicacionCuidado) {
     const texto = textoEdicion.trim()
     if (!texto || ocupado) return
-    const ok = await ejecutar(() => cambiarTextoIndicacion(i.id, texto))
-    if (ok) {
-      setIndicaciones((l) => l.map((x) => (x.id === i.id ? { ...x, texto } : x)))
+    const r = await ejecutar(() => cambiarIndicacion(i.id, { texto }, i.updated_at))
+    if (r) {
+      setIndicaciones((l) => l.map((x) => (x.id === i.id ? { ...x, texto, updated_at: r.actualizada ?? x.updated_at } : x)))
       setEditando(null)
     }
   }
 
   async function cambiarTurnos(i: IndicacionCuidado, turnos: Turno[]) {
     if (!puedeEditar || ocupado) return
-    const ok = await ejecutar(() => cambiarTurnosIndicacion(i.id, turnos))
-    if (ok) setIndicaciones((l) => l.map((x) => (x.id === i.id ? { ...x, turnos } : x)))
+    const r = await ejecutar(() => cambiarIndicacion(i.id, { turnos }, i.updated_at))
+    if (r) setIndicaciones((l) => l.map((x) => (x.id === i.id ? { ...x, turnos, updated_at: r.actualizada ?? x.updated_at } : x)))
   }
 
   async function borrar(i: IndicacionCuidado) {
     if (!puedeEditar || ocupado) return
     if (!(await confirmar({ titulo: '¿Quitar esta indicación?', mensaje: 'Se quitará de la pauta de cuidados del paciente.', textoConfirmar: 'Quitar', peligro: true }))) return
-    const ok = await ejecutar(() => borrarIndicacion(i.id))
-    if (ok) setIndicaciones((l) => l.filter((x) => x.id !== i.id))
+    const r = await ejecutar(() => borrarIndicacion(i.id, i.updated_at))
+    if (r) setIndicaciones((l) => l.filter((x) => x.id !== i.id))
   }
+
+  // Aviso al recargar o cerrar la pestaña con texto escrito y sin guardar.
+  const original = editando ? indicaciones.find((x) => x.id === editando) : undefined
+  useAvisoSalida((!!original && textoEdicion.trim() !== original.texto.trim()) || nuevoTexto.trim() !== '')
 
   if (cargando) return <Cargando />
   if (error) return <p className="text-sm text-red-600 py-8 text-center">{error}</p>

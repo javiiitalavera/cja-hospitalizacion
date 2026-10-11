@@ -36,6 +36,13 @@ function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
   const dataRef = useRef(data)
   dataRef.current = data
   const saveSeqRef = useRef(0)
+  // Cuenta las ediciones del informe: un guardado solo da «Guardado» si no se ha tecleado nada desde que empezó.
+  const editRevRef = useRef(0)
+  function marcarGuardado(rev: number) {
+    if (editRevRef.current !== rev) return // hay cambios nuevos pendientes: el estado sigue siendo «pendiente»
+    setEstado('guardado')
+    setTimeout(() => setEstado((e) => (e === 'guardado' ? 'inactivo' : e)), 2500)
+  }
   // Guardados en cola + versión que dejó el último guardado propio (null = la que trae la carga).
   const cadenaRef = useRef<Promise<boolean>>(Promise.resolve(true))
   const versionGuardadaRef = useRef<number | null>(null)
@@ -174,6 +181,8 @@ function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
       if (error) { escalasSuciasRef.current = true; setEstadoEscalas('error'); return false }
       if (creado) setEscalaAlta((prev) => ({ ...prev, id: creado.id, version: creado.version }))
     }
+    // Si se ha cambiado algo mientras se guardaba, sigue «pendiente»: no se da por guardado.
+    if (escalasSuciasRef.current) return true
     setEstadoEscalas('guardado')
     setTimeout(() => setEstadoEscalas((e) => (e === 'guardado' ? 'inactivo' : e)), 2500)
     return true
@@ -190,11 +199,12 @@ function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
     // Un guardado manual cancela el automático pendiente (si no, saldría después con la versión vieja).
     if (debounceRef.current) { clearTimeout(debounceRef.current); debounceRef.current = null }
     const miSecuencia = ++saveSeqRef.current
+    const rev = editRevRef.current
     setEstado('guardando')
-    return encadenar(cadenaRef, () => ejecutarGuardado(d, miSecuencia))
+    return encadenar(cadenaRef, () => ejecutarGuardado(d, miSecuencia, rev))
   }
 
-  async function ejecutarGuardado(d: Partial<InformeAlta & { version: number }>, miSecuencia: number): Promise<boolean> {
+  async function ejecutarGuardado(d: Partial<InformeAlta & { version: number }>, miSecuencia: number, rev: number): Promise<boolean> {
     // La versión que dejó el guardado anterior, no la que llevaba el formulario al teclear.
     const conocida = versionGuardadaRef.current ?? dataRef.current.version ?? d.version
     if (conocida == null) {
@@ -216,8 +226,7 @@ function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
       }
       if (!creado) { setEstado('error'); return false }
       setData((prev) => ({ ...prev, id: creado.id, version: creado.version, updated_at: creado.updated_at }))
-      setEstado('guardado')
-      setTimeout(() => setEstado((e) => (e === 'guardado' ? 'inactivo' : e)), 2500)
+      marcarGuardado(rev)
       return true
     }
     const version = conocida
@@ -239,8 +248,7 @@ function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
     }
     // Solo se toma la versión nueva: lo que se haya tecleado mientras se guardaba se queda como está.
     setData((prev) => ({ ...prev, version: guardado.version, updated_at: guardado.updated_at }))
-    setEstado('guardado')
-    setTimeout(() => setEstado((e) => (e === 'guardado' ? 'inactivo' : e)), 2500)
+    marcarGuardado(rev)
     return true
   }
 
@@ -257,6 +265,7 @@ function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
     if (estado === 'conflicto') return
     const next = { ...dataRef.current, [key]: value }
     setData(next)
+    editRevRef.current++
     setEstado('pendiente')
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => save(next), 1500)

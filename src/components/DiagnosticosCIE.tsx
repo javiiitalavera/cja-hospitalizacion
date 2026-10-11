@@ -204,13 +204,22 @@ export function BloqueDiagnosticosCMBD({ ingresoId }: { ingresoId: string }) {
     })
   }, [ingresoId])
 
-  function save(d: FilaCmbd = dataRef.current): Promise<boolean> {
-    const mi = ++seqRef.current
-    setEstado('guardando')
-    return encadenar(cadenaRef, () => ejecutarGuardado(d, mi))
+  // Cuenta las ediciones: un guardado solo da «Guardado» si no se ha tecleado nada desde que empezó.
+  const editRevRef = useRef(0)
+  function marcarGuardado(rev: number) {
+    if (editRevRef.current !== rev) return // hay cambios nuevos pendientes
+    setEstado('guardado')
+    setTimeout(() => setEstado((e) => (e === 'guardado' ? 'inactivo' : e)), 2500)
   }
 
-  async function ejecutarGuardado(d: FilaCmbd, mi: number): Promise<boolean> {
+  function save(d: FilaCmbd = dataRef.current): Promise<boolean> {
+    const mi = ++seqRef.current
+    const rev = editRevRef.current
+    setEstado('guardando')
+    return encadenar(cadenaRef, () => ejecutarGuardado(d, mi, rev))
+  }
+
+  async function ejecutarGuardado(d: FilaCmbd, mi: number, rev: number): Promise<boolean> {
     // Id y versión que dejó el guardado anterior (si lo hubo), no los que llevaba el formulario al teclear.
     const conocida = guardadaRef.current
     const id = conocida?.id ?? d.id
@@ -236,8 +245,7 @@ export function BloqueDiagnosticosCMBD({ ingresoId }: { ingresoId: string }) {
       if (!guardado) { setEstado('conflicto'); return false }
       setData((prev) => ({ ...prev, id: guardado.id, version: guardado.version }) as FilaCmbd)
     }
-    setEstado('guardado')
-    setTimeout(() => setEstado((e) => (e === 'guardado' ? 'inactivo' : e)), 2500)
+    marcarGuardado(rev)
     return true
   }
 
@@ -254,6 +262,7 @@ export function BloqueDiagnosticosCMBD({ ingresoId }: { ingresoId: string }) {
     if (soloLectura || estado === 'conflicto') return
     const next = { ...dataRef.current, ...cambios }
     setData(next)
+    editRevRef.current++
     setEstado('pendiente')
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => save(next), 1500)

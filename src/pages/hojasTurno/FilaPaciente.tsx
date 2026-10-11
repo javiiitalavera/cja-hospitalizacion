@@ -4,6 +4,7 @@
 import { useState } from 'react'
 import { Check, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { ChipsTurno } from '../../components/ChipsTurno'
+import { useAvisoSalida } from '../../lib/avisoSalida'
 import { useConfirmar } from '../../components/useConfirmar'
 import {
   MAX_TEXTO_PAUTA, TURNOS, VIA_LABEL,
@@ -35,6 +36,14 @@ export function FilaPaciente({ n, p, turno, columnas, acciones }: {
   const [nuevosTurnos, setNuevosTurnos] = useState<Turno[]>([turno])
   const [ocupado, setOcupado] = useState(false)
   const { confirmar, dialogo } = useConfirmar()
+
+  // Aviso al recargar o cerrar la pestaña con una indicación a medio escribir o editar.
+  const original = editando ? p?.indicaciones.find((i) => i.id === editando) : undefined
+  const turnosIguales = (a: Turno[], b: Turno[]) => a.length === b.length && a.every((t) => b.includes(t))
+  useAvisoSalida(
+    (!!original && (textoEdicion.trim() !== original.texto.trim() || !turnosIguales(turnosEdicion, original.turnos)))
+    || (anadiendo && nuevoTexto.trim() !== ''),
+  )
 
   if (!p) {
     return (

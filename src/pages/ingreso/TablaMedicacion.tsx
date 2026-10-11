@@ -46,6 +46,14 @@ function CeldaFarmaco({ fila, disabled, onCambio }: {
   // Al pulsar una sugerencia, el input pierde el foco antes de que termine el clic: sin esta marca,
   // el reconocimiento retrasado del blur pisaba la elección.
   const eligiendoRef = useRef(false)
+  // El reconocimiento del blur se hace 150 ms después: ha de trabajar con la fila y el manejador de ENTONCES,
+  // no con los de cuando se perdió el foco (si no, pisaba la dosis o las tomas tecleadas en ese intervalo).
+  const filaRef = useRef(fila)
+  filaRef.current = fila
+  const onCambioRef = useRef(onCambio)
+  onCambioRef.current = onCambio
+  const reconocerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => { if (reconocerRef.current) clearTimeout(reconocerRef.current) }, [])
 
   const resultados: ResultadoFarmaco[] = abierto ? buscarFarmacos(fila.farmaco, 8) : []
 
@@ -88,13 +96,16 @@ function CeldaFarmaco({ fila, disabled, onCambio }: {
           else if (e.key === 'Escape') setAbierto(false)
         }}
         onBlur={() => {
-          setTimeout(() => {
+          const nombreAlSalir = fila.farmaco
+          if (reconocerRef.current) clearTimeout(reconocerRef.current)
+          reconocerRef.current = setTimeout(() => {
             setAbierto(false)
             if (eligiendoRef.current) { eligiendoRef.current = false; return }
-            if (!fila.atc && fila.farmaco.trim()) {
-              const reconocido = clasificarTexto(fila.farmaco)
-              if (reconocido) onCambio({ atc: reconocido.atc })
-            }
+            const actual = filaRef.current
+            // Solo si el nombre sigue siendo el mismo y la fila aún no tiene ATC (si se ha vuelto a teclear, manda lo nuevo).
+            if (actual.farmaco !== nombreAlSalir || actual.atc || !actual.farmaco.trim()) return
+            const reconocido = clasificarTexto(actual.farmaco)
+            if (reconocido) onCambioRef.current({ atc: reconocido.atc })
           }, 150)
         }} />
       {abierto && pos && resultados.length > 0 && (
@@ -273,11 +284,19 @@ export function TablaMedicacion({ filas, onChange, disabled }: {
   disabled?: boolean
 }) {
   const cargado = useCatalogoFarmacos(true)
+  // Siempre sobre la lista y el manejador más recientes: los cambios diferidos (reconocimiento del fármaco al salir)
+  // no deben partir de una copia vieja de la tabla.
+  const filasRef = useRef(filas)
+  filasRef.current = filas
+  const onChangeRef = useRef(onChange)
+  onChangeRef.current = onChange
   function update(i: number, key: keyof FilaMedicacion, v: string) {
-    onChange(filas.map((f, idx) => idx === i ? { ...f, [key]: v } : f))
+    cambiar(i, { [key]: v })
   }
   function cambiar(i: number, cambio: Partial<FilaMedicacion>) {
-    onChange(filas.map((f, idx) => idx === i ? { ...f, ...cambio } : f))
+    const nuevas = filasRef.current.map((f, idx) => idx === i ? { ...f, ...cambio } : f)
+    filasRef.current = nuevas
+    onChangeRef.current(nuevas)
   }
   const resumen = resumirMedicacion(filas)
 

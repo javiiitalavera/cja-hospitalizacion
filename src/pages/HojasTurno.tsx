@@ -20,7 +20,7 @@ import { HistoricoHojas } from './hojasTurno/HistoricoHojas'
 import { TabsTurno } from './hojasTurno/TabsTurno'
 import type { AccionesFila } from './hojasTurno/FilaPaciente'
 import {
-  anadirIndicacion, borrarIndicacion, cambiarIndicacion, guardarVia,
+  anadirIndicacion, borrarIndicacion, cambiarIndicacion, guardarVia, type ResultadoPauta,
 } from './hojasTurno/operaciones'
 
 export default function HojasTurno() {
@@ -33,8 +33,8 @@ export default function HojasTurno() {
   const [aviso, setAviso] = useState('')
   const { avisos, guardado, fallo } = useAvisoGuardado('Hoja de turno')
 
-  async function cargar() {
-    setCargando(true)
+  async function cargar(silencioso = false) {
+    if (!silencioso) setCargando(true)
     setError('')
     setAviso('')
     const { data, error: eIng } = await supabase
@@ -47,8 +47,8 @@ export default function HojasTurno() {
     const ids = ingresos.map((i) => i.id)
 
     const [rInd, rVia, rCont] = await Promise.all([
-      ids.length ? supabase.from('pauta_cuidados').select('id, ingreso_id, texto, turnos, created_at').in('ingreso_id', ids).order('created_at', { ascending: true }) : Promise.resolve({ data: [], error: null }),
-      ids.length ? supabase.from('pauta_via').select('ingreso_id, via').in('ingreso_id', ids) : Promise.resolve({ data: [], error: null }),
+      ids.length ? supabase.from('pauta_cuidados').select('id, ingreso_id, texto, turnos, created_at, updated_at').in('ingreso_id', ids).order('created_at', { ascending: true }) : Promise.resolve({ data: [], error: null }),
+      ids.length ? supabase.from('pauta_via').select('ingreso_id, via, updated_at').in('ingreso_id', ids) : Promise.resolve({ data: [], error: null }),
       fetchContencionesPorIngreso(ids),
     ])
     // Si falla algo auxiliar se sigue enseñando la hoja, pero avisando: una hoja sin indicaciones
@@ -59,13 +59,14 @@ export default function HojasTurno() {
     if (rCont.error) fallos.push('la contención')
     if (fallos.length) setAviso(`No se pudo cargar ${fallos.join(', ')}: la hoja podría estar incompleta.`)
 
-    const indPorIngreso = new Map<string, { id: string; texto: string; turnos: Turno[] }[]>()
+    const indPorIngreso = new Map<string, { id: string; texto: string; turnos: Turno[]; updated_at?: string }[]>()
     for (const r of (rInd.data ?? []) as any[]) {
       const l = indPorIngreso.get(r.ingreso_id) ?? []
-      l.push({ id: r.id, texto: r.texto, turnos: r.turnos })
+      l.push({ id: r.id, texto: r.texto, turnos: r.turnos, updated_at: r.updated_at })
       indPorIngreso.set(r.ingreso_id, l)
     }
     const viaPorIngreso = new Map<string, ViaPaciente>((((rVia.data ?? []) as any[]).map((r) => [r.ingreso_id, r.via])))
+    const viaMarcaPorIngreso = new Map<string, string>((((rVia.data ?? []) as any[]).map((r) => [r.ingreso_id, r.updated_at])))
 
     setPacientes(ingresos.filter((i) => i.habitacion != null && i.paciente).map((i): PacienteHoja => {
       const it = Array.isArray(i.items) ? i.items[0] : i.items
@@ -78,6 +79,7 @@ export default function HojasTurno() {
         sondaVesical: !!it?.sonda_vesical,
         colector: !!it?.colector,
         via: viaPorIngreso.get(i.id) ?? null,
+        viaActualizada: viaMarcaPorIngreso.get(i.id) ?? null,
         alertas: it?.alerta_conducta ?? [],
         objetosCalma: it?.objetos_calma ?? null,
         contencionDia: c?.dia ?? null,
@@ -95,35 +97,44 @@ export default function HojasTurno() {
     setPacientes((l) => l.map((p) => (p.ingresoId === ingresoId ? f(p) : p)))
   }
 
-  // Resultado de una escritura (mensaje de error, o null si fue bien): avisa en pantalla.
-  async function ejecutar(error: string | null): Promise<boolean> {
-    if (error) fallo(error)
-    else guardado()
-    return !error
+  // Resultado de una escritura: avisa en pantalla. Si otra persona cambió la pauta mientras tanto (conflicto),
+  // no se pisa su cambio: se avisa y se recarga en silencio la versión actual (lo que se estaba escribiendo
+  // se queda en pantalla para poder repetirlo).
+  async function ejecutar(r: ResultadoPauta): Promise<boolean> {
+    if (r.error) {
+      fallo(r.error)
+      if (r.conflicto) await cargar(true)
+    } else guardado()
+    return !r.error
   }
 
   const acciones: AccionesFila | undefined = esEnfermeria ? {
     cambiarVia: async (ingresoId, via) => {
-      const ok = await ejecutar(await guardarVia(ingresoId, via))
-      if (ok) actualizar(ingresoId, (p) => ({ ...p, via }))
+      const base = pacientes.find((p) => p.ingresoId === ingresoId)?.viaActualizada ?? null
+      const r = await guardarVia(ingresoId, via, base)
+      const ok = await ejecutar(r)
+      if (ok) actualizar(ingresoId, (p) => ({ ...p, via, viaActualizada: r.actualizada ?? null }))
       return ok
     },
     anadir: async (ingresoId, texto, turnos) => {
       const r = await anadirIndicacion(ingresoId, texto, turnos)
-      const ok = await ejecutar(r.error)
+      const ok = await ejecutar({ error: r.error })
       if (ok && r.indicacion) {
-        const nueva = { id: r.indicacion.id, texto: r.indicacion.texto, turnos: r.indicacion.turnos }
+        const nueva = { id: r.indicacion.id, texto: r.indicacion.texto, turnos: r.indicacion.turnos, updated_at: r.indicacion.updated_at }
         actualizar(ingresoId, (p) => ({ ...p, indicaciones: [...p.indicaciones, nueva] }))
       }
       return ok
     },
     cambiar: async (ingresoId, id, cambios) => {
-      const ok = await ejecutar(await cambiarIndicacion(id, cambios))
-      if (ok) actualizar(ingresoId, (p) => ({ ...p, indicaciones: p.indicaciones.map((i) => (i.id === id ? { ...i, ...cambios } : i)) }))
+      const base = pacientes.find((p) => p.ingresoId === ingresoId)?.indicaciones.find((i) => i.id === id)?.updated_at
+      const r = await cambiarIndicacion(id, cambios, base)
+      const ok = await ejecutar(r)
+      if (ok) actualizar(ingresoId, (p) => ({ ...p, indicaciones: p.indicaciones.map((i) => (i.id === id ? { ...i, ...cambios, updated_at: r.actualizada ?? i.updated_at } : i)) }))
       return ok
     },
     borrar: async (ingresoId, id) => {
-      const ok = await ejecutar(await borrarIndicacion(id))
+      const base = pacientes.find((p) => p.ingresoId === ingresoId)?.indicaciones.find((i) => i.id === id)?.updated_at
+      const ok = await ejecutar(await borrarIndicacion(id, base))
       if (ok) actualizar(ingresoId, (p) => ({ ...p, indicaciones: p.indicaciones.filter((i) => i.id !== id) }))
       return ok
     },
@@ -139,7 +150,7 @@ export default function HojasTurno() {
         titulo="Hojas de turno"
         subtitulo="Hojas de trabajo de las auxiliares"
       >
-        {!verHistorico && <BotonActualizar onClick={cargar} cargando={cargando} />}
+        {!verHistorico && <BotonActualizar onClick={() => cargar()} cargando={cargando} />}
         <button onClick={() => setVerHistorico((v) => !v)} className={`btn-secondary ${verHistorico ? 'bg-slate-100' : ''}`}>
           <History className="w-4 h-4" /> {verHistorico ? 'Ver hoy' : 'Histórico'}
         </button>
