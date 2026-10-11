@@ -441,7 +441,7 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
   if (loading) return <Cargando />
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="max-w-3xl space-y-6">
       <AvisoGuardado avisos={[{ estado, etiqueta: 'CMBD' }]} />
 
       {/* Header */}

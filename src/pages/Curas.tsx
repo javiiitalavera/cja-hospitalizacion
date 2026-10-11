@@ -20,7 +20,10 @@ interface PacienteConCuras {
   id: string            // id del ingreso
   habitacion: number | null
   paciente: { nombre: string; primer_apellido: string; segundo_apellido?: string | null }
-  lesiones: Lesion[]    // solo las activas
+  lesiones: Lesion[]    // las activas ahora (tabla de cuidados, impresión)
+  // Las que estuvieron activas en algún momento de la semana mostrada (incluye las curadas durante ella o después):
+  // así una lesión curada no desaparece de las semanas pasadas.
+  lesionesSemana: Lesion[]
 }
 
 interface IngresoActivo {
@@ -36,7 +39,7 @@ function imprimirHoja(pacientes: PacienteConCuras[], semana: string[], registros
     const celdas = semana.map((d) => `<td class="c">${(() => { const r = registros.get(`${p.id}|${d}`); return r ? (r.estado === 'no_realizada' ? '✗' : '✓') : toca(p, d) ? '○' : '' })()}</td>`).join('')
     return `<tr><td class="h">${p.habitacion ?? '—'}</td><td class="n">${escapeHtml(nombreYApellido(p.paciente))}</td>${celdas}</tr>`
   }).join('')
-  const filasCuidados = pacientes.map((p) => {
+  const filasCuidados = pacientes.filter((p) => p.lesiones.length > 0).map((p) => {
     const l = p.lesiones.map((x) =>
       `<div><b>${escapeHtml(x.localizacion)}</b> <span class="t">(${escapeHtml(CARACTERISTICA_LABEL[x.caracteristicas])})</span>: ${escapeHtml(textoPauta(pautaVigente(x.valoraciones)))}</div>`
     ).join('')
@@ -125,13 +128,17 @@ export default function Curas() {
       setLoading(false)
       return
     }
-    const conCuras = ((resP.data ?? []) as unknown as (Omit<PacienteConCuras, 'lesiones'> & { lesiones: Lesion[] })[])
-      .map((p) => ({
-        ...p,
+    const conCuras = ((resP.data ?? []) as unknown as (Omit<PacienteConCuras, 'lesiones' | 'lesionesSemana'> & { lesiones: Lesion[] })[])
+      .map((p) => {
         // Dentro de cada paciente, las lesiones por antigüedad (la más antigua primero) para que no cambien de sitio.
-        lesiones: (p.lesiones ?? []).filter((l) => !l.fecha_fin).sort((a, b) => a.fecha_inicio.localeCompare(b.fecha_inicio) || a.created_at.localeCompare(b.created_at)),
-      }))
-      .filter((p) => p.lesiones.length > 0)
+        const todas = (p.lesiones ?? []).sort((a, b) => a.fecha_inicio.localeCompare(b.fecha_inicio) || a.created_at.localeCompare(b.created_at))
+        return {
+          ...p,
+          lesiones: todas.filter((l) => !l.fecha_fin),
+          lesionesSemana: todas.filter((l) => l.fecha_inicio <= semana[6] && (!l.fecha_fin || l.fecha_fin >= semana[0])),
+        }
+      })
+      .filter((p) => p.lesionesSemana.length > 0)
       // Pacientes por habitación (las dos tablas y la impresión), sin habitación al final.
       .sort((a, b) => (a.habitacion ?? 999) - (b.habitacion ?? 999))
     setPacientes(conCuras)
@@ -167,8 +174,11 @@ export default function Curas() {
       for (const k of historial) if (k.startsWith(p.id + '|')) hechas.add(k.slice(p.id.length + 1))
       for (const d of semana) if (registros.get(`${p.id}|${d}`)?.estado === 'hecha') hechas.add(d)
       const dias = new Set<string>()
-      for (const l of p.lesiones) {
-        fechasQueTocaLesion(l.valoraciones, semana[0], semana[6], hechas, hoy).forEach((d) => dias.add(d))
+      for (const l of p.lesionesSemana) {
+        // Una lesión curada deja de tocar el día que se da por curada.
+        const hasta = l.fecha_fin && l.fecha_fin <= semana[6] ? sumarDias(l.fecha_fin, -1) : semana[6]
+        if (hasta < semana[0]) continue
+        fechasQueTocaLesion(l.valoraciones, semana[0], hasta, hechas, hoy).forEach((d) => dias.add(d))
       }
       mapa.set(p.id, dias)
     }
@@ -184,7 +194,7 @@ export default function Curas() {
     <div className="p-6 md:p-8 max-w-6xl">
       <CabeceraPagina
         titulo="Pauta de curas"
-        subtitulo={`${loading ? '…' : `${pacientes.length} paciente${pacientes.length === 1 ? '' : 's'} con curas activas`} · registro semanal de curas`}
+        subtitulo={`${loading ? '…' : `${pacientes.filter((p) => p.lesiones.length > 0).length} paciente${pacientes.filter((p) => p.lesiones.length > 0).length === 1 ? '' : 's'} con curas activas`} · registro semanal de curas`}
       >
           <button onClick={() => setLunes(sumarDias(lunes, -7))} className="btn-secondary !px-2.5" aria-label="Semana anterior"><ChevronLeft className="w-4 h-4" /></button>
           <span className="text-sm font-medium text-slate-700 min-w-[11rem] text-center">{fechaCorta(semana[0])} – {fechaCorta(semana[6])}</span>
@@ -236,6 +246,9 @@ export default function Curas() {
                       <button onClick={() => navigate(`/ingresos/${p.id}?tab=plan&sub=curas`)} className="text-left font-medium text-slate-800 hover:text-primary-700">
                         {nombreCompleto(p.paciente)}
                       </button>
+                      {p.lesionesSemana.filter((l) => l.fecha_fin).map((l) => (
+                        <p key={l.id} className="text-xs text-emerald-700" data-testid="lesion-curada">{l.localizacion}: curada el {fechaCorta(l.fecha_fin!)}</p>
+                      ))}
                     </td>
                     {semana.map((d) => {
                       const clave = `${p.id}|${d}`
@@ -278,6 +291,8 @@ export default function Curas() {
             </p>
           </div>
 
+          {pacientes.some((p) => p.lesiones.length > 0) && (
+          <>
           <p className="section-title">Tabla de cuidados</p>
           <div className="card overflow-x-auto">
             <table className="w-full text-sm">
@@ -289,7 +304,7 @@ export default function Curas() {
                 </tr>
               </thead>
               <tbody>
-                {pacientes.map((p) => (
+                {pacientes.filter((p) => p.lesiones.length > 0).map((p) => (
                   <tr key={p.id} className="border-b last:border-0 align-top">
                     <td className="px-4 py-2 text-center font-semibold text-slate-700">{p.habitacion ?? '—'}</td>
                     <td className="px-2 py-2 font-medium text-slate-800">{nombreCompleto(p.paciente)}</td>
@@ -316,6 +331,8 @@ export default function Curas() {
               </tbody>
             </table>
           </div>
+          </>
+          )}
         </>
       )}
 

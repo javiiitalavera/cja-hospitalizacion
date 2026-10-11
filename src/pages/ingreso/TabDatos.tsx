@@ -118,7 +118,7 @@ function TabDatos({ ingreso, onUpdate, iniciarEditando = false }: { ingreso: Ing
       </div>
     )
     return (
-      <div className="max-w-2xl space-y-5">
+      <div className="max-w-3xl space-y-5">
         {filaPaciente}
         <div className="card p-6 space-y-4">
           <p className="section-title">Datos del ingreso</p>
@@ -188,7 +188,7 @@ function TabDatos({ ingreso, onUpdate, iniciarEditando = false }: { ingreso: Ing
     ['Habitación', ingreso.habitacion?.toString()],
   ]
   return (
-    <div className="max-w-2xl space-y-5">
+    <div className="max-w-3xl space-y-5">
       {filaPaciente}
       <div className="flex justify-end">
         <button onClick={() => setEditando(true)} className="btn-secondary">

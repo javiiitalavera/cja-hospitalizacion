@@ -192,7 +192,12 @@ export function fechasQueTocaLesion(
   for (const v of ordenarValoraciones(valoraciones).reverse()) {
     if (v.tipo_cura && v.tipo_cura.trim() !== '') porDia.set(v.fecha, v)
   }
-  const pautas = [...porDia.values()].sort((a, b) => (a.fecha < b.fecha ? -1 : 1))
+  const todas = [...porDia.values()].sort((a, b) => (a.fecha < b.fecha ? -1 : 1))
+  // Una valoración nueva que mantiene el mismo calendario (misma frecuencia y mismos días: solo cambian las
+  // medidas, el apósito…) no empieza una pauta nueva: si no, el ciclo «cada X h» se reiniciaba ese día y marcaba
+  // una cura que no tocaba.
+  const calendario = (v: Valoracion) => `${v.frecuencia_horas ?? ''}|${[...(v.dias_semana ?? [])].sort().join(',')}`
+  const pautas = todas.filter((v, i) => i === 0 || calendario(v) !== calendario(todas[i - 1]))
   pautas.forEach((pauta, i) => {
     const fin = i + 1 < pautas.length ? sumarDias(pautas[i + 1].fecha, -1) : hasta
     const tope = fin < hasta ? fin : hasta

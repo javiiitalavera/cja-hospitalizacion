@@ -91,6 +91,17 @@ function CamposPauta({ valor, onChange }: { valor: PautaForm; onChange: (v: Paut
           </div>
         </div>
       </div>
+      {/* El calendario de la tabla semanal sale solo de la frecuencia o de los días: se avisa si no hay ninguno o si chocan. */}
+      {valor.dias_semana.length > 0 && valor.frecuencia_horas.trim() !== '' && (
+        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2" data-testid="aviso-pauta">
+          Has indicado frecuencia y días de la semana: la tabla semanal solo usa los días. Quita uno de los dos.
+        </p>
+      )}
+      {valor.tipo_cura.trim() !== '' && valor.dias_semana.length === 0 && valor.frecuencia_horas.trim() === '' && (
+        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2" data-testid="aviso-pauta">
+          Sin frecuencia ni días: esta cura no aparecerá como pendiente en la tabla semanal ni en los pendientes de Inicio.
+        </p>
+      )}
     </div>
   )
 }
@@ -578,7 +589,7 @@ export function TabCuras({ ingresoId, episodioActivo }: { ingresoId: string; epi
   }
 
   return (
-    <div className="max-w-4xl space-y-5">
+    <div className="max-w-3xl space-y-5">
       {dialogo}
       {!episodioActivo && (
         <div className="flex items-center gap-2 text-sm text-slate-600 bg-slate-100 border border-slate-200 rounded-lg px-3 py-2">
