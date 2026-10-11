@@ -539,9 +539,11 @@ export default function Home() {
             <div>Días</div>
             <div>Ingreso</div>
             <div>Médico</div>
-            <div>
-              <div>Contención</div>
-              <div className="flex gap-1 font-normal text-[0.7rem] leading-tight">
+            {/* Cabecera agrupada: «Contención» con una línea fina sobre las dos columnas, y debajo Día / Noche con el
+                mismo estilo que el resto de cabeceras (así quedan en la misma línea que Hab., Paciente, Edad…). */}
+            <div className="w-[5.25rem]">
+              <div className="text-center font-medium text-slate-500 pb-0.5 mb-0.5 border-b border-slate-300">Contención</div>
+              <div className="flex gap-1">
                 <span className="w-10 text-center">Día</span>
                 <span className="w-10 text-center">Noche</span>
               </div>
