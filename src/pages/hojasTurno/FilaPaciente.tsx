@@ -144,9 +144,9 @@ export function FilaPaciente({ n, p, turno, columnas, acciones }: {
               )
             }
             return (
-              // Cada indicación va resaltada (fondo ámbar y borde a la izquierda) para que no se confunda con el botón
+              // Cada indicación va resaltada (fondo ámbar y borde fino, sin barra lateral) para que no se confunda con el botón
               // «Añadir indicación», que es un botón discreto de borde punteado.
-              <div key={key} data-testid="indicacion" className="flex items-start justify-between gap-2 rounded-md bg-amber-50 border border-amber-200 border-l-4 border-l-amber-400 pl-2.5 pr-1.5 py-1.5">
+              <div key={key} data-testid="indicacion" className="flex items-start justify-between gap-2 rounded-md bg-amber-50 border border-amber-200 pl-2.5 pr-1.5 py-1.5">
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-slate-900 whitespace-pre-wrap break-words">{i.texto}</p>
                 </div>
