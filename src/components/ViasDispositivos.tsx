@@ -62,8 +62,9 @@ export function SelectorVias({ datos, onCambio, deshabilitado }: Props) {
   )
 }
 
-// Número o fecha que se guarda al salir del campo (o con Enter), no en cada tecla. Si el valor no es válido se
-// avisa y se vuelve al anterior.
+// Número o fecha que se guarda al salir del campo (o con Enter), no en cada tecla: en una fecha, mientras se teclea
+// el día o el año ya hay fechas «válidas» a medias (año 0002…), y guardar entonces impedía terminar de escribirla.
+// Si el valor no es válido se avisa y se vuelve al anterior.
 function CampoDetalle({ etiqueta, tipo, valor, deshabilitado, onGuardar, ancho, ...extra }: {
   etiqueta: string
   tipo: 'date' | 'number'
@@ -90,9 +91,9 @@ function CampoDetalle({ etiqueta, tipo, valor, deshabilitado, onGuardar, ancho, 
         className={`input ${ancho ?? ''}`}
         value={texto}
         disabled={deshabilitado}
-        onChange={(e) => { setTexto(e.target.value); if (tipo === 'date') confirmar(e.target.value) }}
-        onBlur={() => tipo === 'number' && confirmar(texto)}
-        onKeyDown={(e) => { if (e.key === 'Enter' && tipo === 'number') { e.preventDefault(); confirmar(texto) } }}
+        onChange={(e) => setTexto(e.target.value)}
+        onBlur={() => confirmar(texto)}
+        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); confirmar(texto) } }}
         {...extra}
       />
       {error && <span className="block text-xs text-red-600 mt-0.5">{error}</span>}
@@ -119,6 +120,7 @@ export function BloqueSonda({ datos, onCambio, deshabilitado }: Props) {
           <CampoDetalle
             etiqueta="Colocada el" tipo="date" valor={datos.sonda_fecha} deshabilitado={deshabilitado} max={hoyLocal()}
             onGuardar={(t) => {
+              if (t && t < '1990-01-01') return 'Fecha no válida.'
               if (t > hoyLocal()) return 'La fecha no puede ser futura.'
               onCambio({ sonda_fecha: t || null }); return null
             }}
