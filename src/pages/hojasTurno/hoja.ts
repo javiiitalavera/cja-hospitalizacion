@@ -66,7 +66,7 @@ export interface ColumnaHoja { titulo: string; clase: string }
 
 // Todas las columnas de la hoja que no son Hb, Nombre ni Cuidados (Aseo, Diuresis, Deposición, comidas y
 // Vía) miden lo mismo: así la hoja se ve ordenada y todas dejan el mismo hueco para escribir a mano.
-const MANUAL = 'c-m'
+const MANUAL = 'c-m'   // 14 mm: bastan para anotar a mano y dejan más ancho a «Cuidados», que es donde hay más texto
 const COLUMNAS: Record<Turno, ColumnaHoja[]> = {
   manana: ['Aseo', 'Diuresis', 'Deposición', 'Desayuno', 'Comida'].map((titulo) => ({ titulo, clase: MANUAL })),
   tarde: ['Diuresis', 'Deposición', 'Merienda', 'Cena'].map((titulo) => ({ titulo, clase: MANUAL })),
@@ -95,10 +95,12 @@ const ESTILO = `
   .noche td { height: 6.1mm; }   /* la noche lleva además la lista de reposición: tiene que caber en la misma hoja */
   .c-hab { width: 6mm; text-align: center; font-weight: 700; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .c-nom { width: 30mm; font-weight: 600; }
-  .c-m { width: 15mm; }
+  .c-m { width: 14mm; }
   .c-via { font-size: 7pt; }
-  .c-cui { font-size: 7.5pt; }
-  .c-cui .auto { font-weight: 700; }
+  .c-cui { font-size: 7.5pt; line-height: 1.15; }
+  .c-cui .auto { font-weight: 700; }                       /* avisos que salen solos de la app (contención…): primera línea */
+  .c-cui .ind { padding-left: 2mm; text-indent: -2mm; }    /* cada indicación de enfermería, en su línea */
+  .c-cui .ind::before { content: '• '; }
   tr.libre td { color: #999; }
   .ctrl { display: flex; gap: 8mm; margin-top: 3mm; break-inside: avoid; }
   .ctrl > div { flex: 1; }
@@ -116,9 +118,9 @@ function filaHTML(n: number, p: PacienteHoja | undefined, turno: Turno): string 
   const auto = avisosAutomaticos(p, turno)
   const propias = p.indicaciones.filter((i) => i.turnos.includes(turno)).map((i) => i.texto.trim())
   const cuidados = [
-    ...auto.map((t) => `<span class="auto">${escapeHtml(t)}</span>`),
-    ...propias.map((t) => escapeHtml(t)),
-  ].join(' · ')
+    ...(auto.length ? [`<div class="auto">${auto.map(escapeHtml).join(' · ')}</div>`] : []),
+    ...propias.map((t) => `<div class="ind">${escapeHtml(t)}</div>`),
+  ].join('')
   const celdas = cols.map((c) => {
     const contenido = c.titulo === 'Diuresis' || c.titulo === 'Orina' ? escapeHtml(textoDiuresis(p)) : ''
     return `<td class="${c.clase}">${contenido}</td>`
@@ -148,6 +150,7 @@ export function construirHojaHTML(turno: Turno, pacientes: PacienteHoja[], fecha
     derecha: fechaTxt,
     css: ESTILO,
     claseBody: turno,
+    unaPagina: true,   // la hoja de trabajo tiene que salir siempre en una sola hoja
     cuerpo: `<table><thead>${thead}</thead><tbody>${filas}</tbody></table>${control}`,
   })
 }

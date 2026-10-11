@@ -25,7 +25,9 @@ export function imprimirHTMLEnMarco(html: string): void {
   registrarAcceso('impresion', { detalle: titulo ? desescapar(titulo) : 'Documento' })
   const marco = document.createElement('iframe')
   marco.setAttribute('aria-hidden', 'true')
-  marco.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0'
+  // Fuera de la pantalla pero con el ancho útil de un A4 vertical (210 − 2×8 mm): así el documento se maqueta como saldrá
+  // en papel y puede medirse (los documentos «de una sola página» se ajustan midiéndose a sí mismos).
+  marco.style.cssText = 'position:fixed;left:-10000px;top:0;width:194mm;height:280mm;border:0'
   const quitar = () => { if (marco.parentNode) marco.parentNode.removeChild(marco) }
   marco.onload = () => {
     const w = marco.contentWindow
@@ -82,7 +84,26 @@ export interface OpcionesDocumento {
   orientacion?: 'portrait' | 'landscape'
   claseBody?: string
   sinCabecera?: boolean                // el cuerpo ya trae sus cabeceras (documentos de varias páginas)
+  unaPagina?: boolean                  // tiene que salir en UNA hoja: si no cabe, se reduce el tamaño hasta que quepa
 }
+
+// Reduce el documento (zoom) lo justo para que entre en una sola hoja A4 con sus márgenes de 8 mm. Se mide a sí
+// mismo al cargar y justo antes de imprimir; si ya cabe, no toca nada.
+const SCRIPT_UNA_PAGINA = `<script>(function(){
+  function ajustar(){
+    var b = document.body, h = document.documentElement;
+    b.style.zoom = '1';
+    var p = document.createElement('div');
+    p.style.cssText = 'position:absolute;visibility:hidden;width:1px;height:279mm';
+    b.appendChild(p);
+    var max = p.getBoundingClientRect().height;
+    b.removeChild(p);
+    var s = 1;
+    while (h.getBoundingClientRect().height > max && s > 0.45) { s = Math.round((s - 0.02) * 100) / 100; b.style.zoom = String(s); }
+  }
+  ajustar();
+  window.addEventListener('beforeprint', ajustar);
+})();</script>`
 
 // Documento HTML completo, listo para imprimirHTMLEnMarco.
 export function documentoImpresion(o: OpcionesDocumento): string {
@@ -92,6 +113,7 @@ export function documentoImpresion(o: OpcionesDocumento): string {
     ${cab}${sub}
     ${o.cuerpo}
     ${pieImpresion()}
+    ${o.unaPagina ? SCRIPT_UNA_PAGINA : ''}
   </body></html>`
 }
 
