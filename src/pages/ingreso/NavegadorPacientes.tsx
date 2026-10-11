@@ -9,6 +9,7 @@ import { ChevronLeft, ChevronRight, Search } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { quitarTildes } from '../../lib/busqueda'
 import { nombreCompleto } from '../../types'
+import { useConfirmarSalida } from '../../components/useConfirmarSalida'
 
 interface Item {
   id: string
@@ -21,6 +22,7 @@ const MAX_RESULTADOS = 8
 
 export function NavegadorPacientes({ ingresoId }: { ingresoId: string }) {
   const navigate = useNavigate()
+  const { permitirSalida, dialogoSalida } = useConfirmarSalida()
   const [searchParams] = useSearchParams()
   const [lista, setLista] = useState<Item[]>([])
   const [error, setError] = useState(false)
@@ -78,7 +80,8 @@ export function NavegadorPacientes({ ingresoId }: { ingresoId: string }) {
 
   // replace: para que la flecha de volver de la ficha lleve a donde se
   // venía (Inicio, Curas…) y no recorra uno a uno los pacientes visitados.
-  function ir(id: string) {
+  async function ir(id: string) {
+    if (!(await permitirSalida())) return
     const params = new URLSearchParams()
     for (const k of ['tab', 'sub']) {
       const v = searchParams.get(k)
@@ -100,6 +103,7 @@ export function NavegadorPacientes({ ingresoId }: { ingresoId: string }) {
 
   return (
     <div className="flex items-center gap-1.5">
+      {dialogoSalida}
       <button
         type="button"
         aria-label="Paciente anterior"

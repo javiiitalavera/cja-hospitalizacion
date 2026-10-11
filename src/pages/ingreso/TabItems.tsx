@@ -18,6 +18,11 @@ function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo
   const [modalContencion, setModalContencion] = useState(false)
   const [estadoContencion, setEstadoContencion] = useState<{ dia: string | null; noche: string[] | null } | 'cargando'>('cargando')
   const [errorCarga, setErrorCarga] = useState('')
+  // Estado de la carga de los ítems: hasta que llegan (o si falla) no se enseña el formulario ni se puede guardar,
+  // para que un formulario vacío por error de carga no se confunda con «no lleva nada» ni se guarde encima de datos reales.
+  const [itemsListos, setItemsListos] = useState(false)
+  const [errorItems, setErrorItems] = useState('')
+  const [reintento, setReintento] = useState(0)
   // Cambios hechos en pantalla y todavía sin guardar. `revRef` cuenta las ediciones: si mientras se
   // guarda se escribe algo más, esa edición sigue pendiente (la respuesta del servidor no la pisa).
   const [sucio, setSucio] = useState(false)
@@ -55,15 +60,21 @@ function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo
     setData({})
     setSucio(false)
     setErrorCarga('')
+    setItemsListos(false)
+    setErrorItems('')
+    let vigente = true
     supabase.from('items_paciente').select('*').eq('ingreso_id', ingresoId).maybeSingle()
       .then(({ data: d, error }) => {
+        if (!vigente) return
         if (error) {
-          setErrorCarga('No se pudieron cargar los ítems: ' + error.message)
+          setErrorItems('No se pudieron cargar los ítems: ' + error.message)
           return
         }
         setData(d ?? {})
+        setItemsListos(true)
       })
-  }, [ingresoId])
+    return () => { vigente = false }
+  }, [ingresoId, reintento])
 
   async function save() {
     const miRev = revRef.current
@@ -124,6 +135,15 @@ function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo
       {label}
     </label>
   )
+
+  if (!itemsListos) {
+    return errorItems ? (
+      <div className="max-w-3xl bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 flex items-center justify-between gap-3" role="alert">
+        <span>{errorItems} Hasta que se carguen no se puede editar ni guardar.</span>
+        <button type="button" onClick={() => setReintento((n) => n + 1)} className="btn-secondary text-xs shrink-0">Reintentar</button>
+      </div>
+    ) : <Cargando texto="Cargando hoja de ítems…" />
+  }
 
   return (
     <div className="max-w-3xl space-y-6">

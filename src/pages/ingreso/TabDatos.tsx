@@ -63,7 +63,7 @@ function TabDatos({ ingreso, onUpdate, iniciarEditando = false }: { ingreso: Ing
         medico_responsable_id: ingresoEdit.medico_responsable_id || null,
       })
       .eq('id', ingreso.id)
-      .select('*, paciente:pacientes(*)')
+      .select('*, paciente:pacientes(*), medico_responsable:profesionales(*), cmbd(circunstancia_alta)')
       .single()
     setSaving(false)
     if (dbError) {

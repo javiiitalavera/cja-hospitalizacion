@@ -1,10 +1,13 @@
 import { useState } from 'react'
-import { Link, NavLink, Outlet, useNavigate } from "react-router-dom"
+import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom"
 import {
   Users, ClipboardList, AlertTriangle,
   BarChart2, Home, ChevronLeft, LogOut, UserCog, History, FileText, Bandage, ClipboardCheck
 } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext'
+import { hayCambiosSinGuardar } from '../lib/avisoSalida'
+import { useConfirmarSalida } from './useConfirmarSalida'
+import { ErrorBoundary } from './ErrorBoundary'
 import logo from '../assets/logo.png'
 
 const ROL_LABEL: Record<string, string> = {
@@ -31,6 +34,14 @@ const navItems = [
 export default function Layout() {
   const [collapsed, setCollapsed] = useState(false)
   const navigate = useNavigate()
+  const location = useLocation()
+  const { permitirSalida, dialogoSalida } = useConfirmarSalida()
+  // Enlaces del menú: con cambios sin guardar se pregunta antes de salir; sin ellos funcionan como siempre.
+  async function irConAviso(e: React.MouseEvent, to: string) {
+    if (!hayCambiosSinGuardar()) return
+    e.preventDefault()
+    if (await permitirSalida()) navigate(to)
+  }
   const { profesional, rol, esAdmin, signOut } = useAuth()
   const items = navItems.filter((i) => !i.soloAdmin || esAdmin)
 
@@ -41,7 +52,10 @@ export default function Layout() {
         <div className="border-b px-3 py-4 flex items-center justify-between gap-2">
           {/* Logo — siempre visible, expande si colapsado */}
           <button
-            onClick={() => (collapsed ? setCollapsed(false) : navigate('/'))}
+            onClick={async () => {
+              if (collapsed) { setCollapsed(false); return }
+              if (await permitirSalida()) navigate('/')
+            }}
             className="shrink-0 rounded-lg hover:opacity-80 cursor-pointer transition-opacity"
             title={collapsed ? 'Expandir menú' : 'Ir a Inicio'}
             aria-label={collapsed ? 'Expandir menú' : 'Ir a Inicio'}
@@ -53,7 +67,7 @@ export default function Layout() {
           {!collapsed && (
             <>
               <div className="flex-1 min-w-0">
-                <Link to="/" title="Ir a Inicio" className="text-sm font-bold text-slate-800 leading-tight hover:text-primary-700">CJA Hospital</Link>
+                <Link to="/" title="Ir a Inicio" onClick={(e) => irConAviso(e, '/')} className="text-sm font-bold text-slate-800 leading-tight hover:text-primary-700">CJA Hospital</Link>
               </div>
               <button onClick={() => setCollapsed(true)}
                 className="text-slate-500 hover:text-slate-800 transition-colors p-1 rounded shrink-0">
@@ -70,6 +84,7 @@ export default function Layout() {
             <NavLink
               to={to}
               end={end}
+              onClick={(e) => irConAviso(e, to)}
               title={collapsed ? label : undefined}
               className={({ isActive }) =>
                 `flex items-center gap-3 px-2 py-2 rounded-lg text-sm transition-colors duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300 ${
@@ -124,7 +139,11 @@ export default function Layout() {
       </aside>
 
       <main className="flex-1 overflow-y-auto">
-        <Outlet />
+        {dialogoSalida}
+        {/* key: al cambiar de pantalla el error se descarta y la nueva pantalla carga normal */}
+        <ErrorBoundary key={location.pathname}>
+          <Outlet />
+        </ErrorBoundary>
       </main>
     </div>
   )

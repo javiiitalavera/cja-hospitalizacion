@@ -141,9 +141,11 @@ export function TabPautaCuidados({ ingresoId, episodioActivo }: { ingresoId: str
       {!puedeEditar && (
         <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
           <Lock className="w-4 h-4 shrink-0" />
-          {!esEnfermeria
-            ? 'Solo lectura: las indicaciones y la vía las escribe enfermería (o un administrador).'
-            : 'Episodio cerrado: la pauta queda en solo lectura.'}
+          {!episodioActivo
+            ? 'Episodio cerrado: la pauta queda en solo lectura.'
+            : puedeEditarDispositivos
+              ? 'Las indicaciones de turno las escribe enfermería (o un administrador); tú puedes editar el aislamiento, las vías y los dispositivos.'
+              : 'Solo lectura: las indicaciones las escribe enfermería, y el aislamiento, las vías y los dispositivos, enfermería y médicos (o un administrador).'}
         </div>
       )}
       <AvisoGuardado avisos={avisos} />

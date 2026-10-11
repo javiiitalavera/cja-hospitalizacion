@@ -9,7 +9,7 @@ import type { Profesional, Paciente } from '../types'
 import { nombreCompleto } from '../types'
 import { ChevronLeft, Save, Search, UserPlus, RefreshCw, Lock } from 'lucide-react'
 import SelectorHabitacion from '../components/SelectorHabitacion'
-import { informeBaseReingreso } from '../lib/reingreso'
+import { informeBaseReingreso, itemsBaseReingreso } from '../lib/reingreso'
 
 export default function NuevoIngreso() {
   const navigate = useNavigate()
@@ -29,6 +29,8 @@ export default function NuevoIngreso() {
   const [busqueda, setBusqueda] = useState('')
   const [resultados, setResultados] = useState<(Paciente & { ingresos?: { id: string; habitacion: number | null; estado: string }[] })[]>([])
   const [buscando, setBuscando] = useState(false)
+  // Término con el que se completó la última búsqueda (solo entonces se puede decir «sin coincidencias»).
+  const [consultada, setConsultada] = useState('')
   const [pacienteSeleccionado, setPacienteSeleccionado] = useState<Paciente | null>(null)
   const [cargandoPacienteParam, setCargandoPacienteParam] = useState(!!pacienteIdParam)
 
@@ -109,6 +111,7 @@ export default function NuevoIngreso() {
       return
     }
     setResultados(data ?? [])
+    setConsultada(busqueda.trim())
     setBuscando(false)
   }
 
@@ -192,8 +195,7 @@ export default function NuevoIngreso() {
         }
 
         if (itemsPrev) {
-          const { id, ingreso_id, created_at, updated_at, semaforo_caidas, ...itemsEstables } = itemsPrev
-          itemsBase = itemsEstables
+          itemsBase = itemsBaseReingreso(itemsPrev as Record<string, unknown>)
         }
       }
     }
@@ -443,8 +445,11 @@ export default function NuevoIngreso() {
               </div>
             )}
 
-            {resultados.length === 0 && busqueda && !buscando && !errorBusqueda && (
-              <p className="text-sm text-slate-500 mt-3">No se encontraron resultados para "{busqueda}".</p>
+            {resultados.length === 0 && consultada && consultada === busqueda.trim() && !buscando && !errorBusqueda && (
+              <p className="text-sm text-slate-500 mt-3">Sin coincidencias para "{consultada}".</p>
+            )}
+            {busqueda.trim() && consultada !== busqueda.trim() && !buscando && !errorBusqueda && (
+              <p className="text-sm text-slate-500 mt-3">Pulsa Buscar para comprobar si ya existe.</p>
             )}
             {errorBusqueda && (
               <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-3 py-2 mt-3 flex items-center justify-between gap-3">

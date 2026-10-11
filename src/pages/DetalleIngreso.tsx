@@ -23,6 +23,7 @@ import { BadgeHabitacion } from './ingreso/BadgeHabitacion'
 import { EVENTO_SEMAFORO } from '../components/SemaforoCaidas'
 import { TIPALT_LABEL } from '../lib/alta'
 import { registrarAcceso } from '../lib/accesos'
+import { useConfirmarSalida } from '../components/useConfirmarSalida'
 
 // Estructura de la ficha: pestañas principales y, dentro de algunas,
 // subpestañas. Cada contenido tiene un identificador de "sección"
@@ -109,6 +110,7 @@ export default function DetalleIngreso() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const { esMedico, profesional } = useAuth()
+  const { permitirSalida, dialogoSalida } = useConfirmarSalida()
   // La pestaña y la subpestaña se leen siempre de la URL (?tab=…&sub=…),
   // sin estado propio: así, al navegar de un ingreso a otro sin recargar
   // la página, la pestaña nunca se queda "pegada" a la anterior.
@@ -251,7 +253,9 @@ export default function DetalleIngreso() {
   // replace: true — cambiar de pestaña no debería llenar el historial del
   // navegador con una entrada por cada clic, solo dejar que recargar o
   // compartir el enlace abra la pestaña correcta.
-  function irA(tabId: string, subId?: string) {
+  async function irA(tabId: string, subId?: string) {
+    // Cambiar de pestaña desmonta el formulario: si tiene cambios sin guardar, se pregunta antes.
+    if ((tabId !== tabActual.id || (subId ?? null) !== (subActual?.id ?? null)) && !(await permitirSalida())) return
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev)
       next.set('tab', tabId)
@@ -267,11 +271,12 @@ export default function DetalleIngreso() {
 
   return (
     <div className="flex flex-col h-full">
+      {dialogoSalida}
       {/* Header */}
       <div className="border-b bg-white px-8 py-4">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <button onClick={() => navigate(-1)} className="text-slate-500 hover:text-slate-600 mt-1">
+            <button onClick={async () => { if (await permitirSalida()) navigate(-1) }} className="text-slate-500 hover:text-slate-600 mt-1">
               <ChevronLeft className="w-5 h-5" />
             </button>
             {ingreso.habitacion && (

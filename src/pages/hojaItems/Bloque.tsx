@@ -114,7 +114,9 @@ const Bloque = memo(function Bloque({
                                 ? '#e2f5cc'
                                 : '#fff'
                         : '#fff'
-                    const color = alertaActiva ? '#fff' : ingreso && tenirPorSemaforo ? textColor(bg) : '#000'
+                    // El fondo de la celda es el tono claro del semáforo (o rojo intenso si hay alerta), no el color saturado de `bg`:
+                    // el contraste se calcula sobre lo que realmente se ve.
+                    const color = alertaActiva ? '#fff' : '#000'
                     const isSelected = ingreso?.id === selectedId
                     return (
                       <td

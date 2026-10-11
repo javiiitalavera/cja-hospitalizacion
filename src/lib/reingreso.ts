@@ -38,6 +38,22 @@ function tieneContenido(v: unknown): boolean {
   return true
 }
 
+// Ítems de un REINGRESO: se heredan los hábitos estables (higiene, deambulación, dentadura, alertas de conducta…).
+// NO se heredan los dispositivos ni lo cambiante del episodio anterior (sonda, oxígeno, vías, aislamiento, colector,
+// observaciones, semáforo): meses después podrían mostrar como actuales cosas que ya no existen.
+const ITEMS_NO_COPIAR = new Set([
+  'id', 'ingreso_id', 'created_at', 'updated_at', 'version', 'semaforo_caidas',
+  'sonda_vesical', 'sonda_fecha', 'sonda_calibre',
+  'oxigenoterapia', 'oxigeno_dispositivo', 'oxigeno_flujo',
+  'vias', 'aislamiento', 'colector', 'observaciones',
+])
+
+export function itemsBaseReingreso(anterior: Record<string, unknown>): Record<string, unknown> {
+  const base: Record<string, unknown> = {}
+  for (const [k, v] of Object.entries(anterior)) if (!ITEMS_NO_COPIAR.has(k)) base[k] = v
+  return base
+}
+
 export function informeBaseReingreso(anterior: Record<string, unknown>): Record<string, unknown> {
   const base: Record<string, unknown> = {}
   for (const [k, v] of Object.entries(anterior)) if (!NO_COPIAR.has(k)) base[k] = v

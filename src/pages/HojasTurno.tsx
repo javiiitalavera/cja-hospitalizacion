@@ -133,7 +133,8 @@ export default function HojasTurno() {
           <History className="w-4 h-4" /> {verHistorico ? 'Ver hoy' : 'Histórico'}
         </button>
         {!verHistorico && (
-          <button onClick={() => imprimirHTMLEnMarco(html)} disabled={cargando || !!error} className="btn-primary">
+          <button onClick={() => imprimirHTMLEnMarco(html)} disabled={cargando || !!error || !!aviso} className="btn-primary"
+            title={aviso ? 'No se puede imprimir: faltan datos por cargar. Pulsa Actualizar.' : undefined}>
             <Printer className="w-4 h-4" /> Imprimir {etiquetaTurno}
           </button>
         )}
