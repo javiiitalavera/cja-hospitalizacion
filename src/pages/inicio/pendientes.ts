@@ -77,12 +77,24 @@ export type AccionPendiente =
   | { tipo: 'ruta'; ruta: string }
   | { tipo: 'contencion'; ingresoId: string }
 
+// Una habitación afectada por un aviso, con adonde lleva pulsarla.
+export interface DestinoHabitacion {
+  hab: number
+  accion: AccionPendiente
+}
+
 export interface LineaPendiente {
   id: string
   texto: string
-  // Habitaciones afectadas, ya redactadas ("Hab. 4, 9, 12").
+  // Habitaciones afectadas, ya redactadas ("Hab. 4, 9, 12"), más lo que acompañe ("· 1 con más de 7 días").
   detalle: string
+  // Pulsar el texto del aviso lleva a la primera habitación afectada (o a la lista) …
   accion: AccionPendiente
+  // … y pulsar una habitación concreta lleva a esa. Solo en los avisos donde cada habitación tiene su propio destino;
+  // se limita a MAX_HABS, igual que `detalle`.
+  destinos?: DestinoHabitacion[]
+  // Texto que acompaña a las habitaciones cuando se muestran como botones ("1 con más de 7 días").
+  nota?: string
 }
 
 const MAX_HABS = 6
@@ -92,6 +104,18 @@ export function textoHabitaciones(habs: (number | null | undefined)[]): string {
   if (unicas.length === 0) return ''
   const mostradas = unicas.slice(0, MAX_HABS).join(', ')
   return `Hab. ${mostradas}${unicas.length > MAX_HABS ? '…' : ''}`
+}
+
+// Habitaciones (ordenadas, sin repetir, con número) con su destino propio, para que cada una sea pulsable.
+function destinosPorHab(
+  items: { hab: number | null | undefined; accion: AccionPendiente }[]
+): DestinoHabitacion[] {
+  const vistos = new Set<number>()
+  return items
+    .filter((i): i is { hab: number; accion: AccionPendiente } => i.hab != null)
+    .sort((a, b) => a.hab - b.hab)
+    .filter((i) => (vistos.has(i.hab) ? false : (vistos.add(i.hab), true)))
+    .slice(0, MAX_HABS)
 }
 
 const plural = (n: number, uno: string, varios: string) => (n === 1 ? uno : varios)
@@ -106,6 +130,11 @@ export function calcularPendientes(e: EntradaPendientes): LineaPendiente[] {
   const porHab = (ids: string[]) =>
     [...ids].sort((a, b) => (habDe.get(a) ?? 999) - (habDe.get(b) ?? 999))
   const detalle = (ids: string[]) => textoHabitaciones(ids.map((id) => habDe.get(id)))
+  // Destino propio de cada habitación: la ficha del paciente (en la pestaña que toque) o su ventana de contención.
+  const destinosFicha = (ids: string[], query: string) =>
+    destinosPorHab(ids.map((id) => ({ hab: habDe.get(id), accion: { tipo: 'ruta' as const, ruta: `/ingresos/${id}?${query}` } })))
+  const destinosContencion = (ids: string[]) =>
+    destinosPorHab(ids.map((id) => ({ hab: habDe.get(id), accion: { tipo: 'contencion' as const, ingresoId: id } })))
 
   // ── Incidencias pendientes de completar (todos) ───────────────
   const pend = e.eventosPendientes.filter((ev) => activos.has(ev.ingreso_id))
@@ -124,6 +153,8 @@ export function calcularPendientes(e: EntradaPendientes): LineaPendiente[] {
       texto: `${n} ${plural(n, 'caída pendiente', 'caídas pendientes')} de completar`,
       detalle: unir(detalle([...new Set(caidas.map((c) => c.ingreso_id))]), atrasadas(caidas)),
       accion: { tipo: 'ruta', ruta: '/eventos?incidencias=pendiente&tipo_incidencia=caida' },
+      destinos: destinosFicha([...new Set(caidas.map((c) => c.ingreso_id))], 'tab=seguimiento&sub=incidencias'),
+      nota: atrasadas(caidas),
     })
   }
   if (otras.length > 0) {
@@ -134,6 +165,8 @@ export function calcularPendientes(e: EntradaPendientes): LineaPendiente[] {
       texto: `${n} ${nombre} de completar`,
       detalle: unir(detalle([...new Set(otras.map((c) => c.ingreso_id))]), atrasadas(otras)),
       accion: { tipo: 'ruta', ruta: '/eventos?incidencias=pendiente' },
+      destinos: destinosFicha([...new Set(otras.map((c) => c.ingreso_id))], 'tab=seguimiento&sub=incidencias'),
+      nota: atrasadas(otras),
     })
   }
 
@@ -154,6 +187,7 @@ export function calcularPendientes(e: EntradaPendientes): LineaPendiente[] {
       texto: `${n} ${plural(n, 'paciente', 'pacientes')} sin pauta de contención`,
       detalle: detalle(sinPautar),
       accion: { tipo: 'contencion', ingresoId: primero(sinPautar) },
+      destinos: destinosContencion(sinPautar),
     })
   }
   // Solo el médico puede confirmarla; para el resto no es accionable.
@@ -171,6 +205,7 @@ export function calcularPendientes(e: EntradaPendientes): LineaPendiente[] {
         texto: `${n} ${plural(n, 'contención pendiente', 'contenciones pendientes')} de confirmación médica`,
         detalle: detalle(sinConfirmar),
         accion: { tipo: 'contencion', ingresoId: primero(sinConfirmar) },
+        destinos: destinosContencion(sinConfirmar),
       })
     }
   }
@@ -222,6 +257,7 @@ export function calcularPendientes(e: EntradaPendientes): LineaPendiente[] {
       texto: `${n} ${plural(n, 'lesión', 'lesiones')} sin valoración en más de ${DIAS_SIN_VALORACION} días`,
       detalle: detalle(ingresosAfectados),
       accion: { tipo: 'ruta', ruta: `/ingresos/${primero(ingresosAfectados)}?tab=plan&sub=curas` },
+      destinos: destinosFicha(ingresosAfectados, 'tab=plan&sub=curas'),
     })
   }
 
@@ -236,6 +272,7 @@ export function calcularPendientes(e: EntradaPendientes): LineaPendiente[] {
         texto: `${n} ${plural(n, 'paciente', 'pacientes')} sin semáforo de caídas`,
         detalle: detalle(sinSemaforo),
         accion: { tipo: 'ruta', ruta: '/items' },
+        destinos: destinosFicha(sinSemaforo, 'tab=plan&sub=items'),
       })
     }
   }
@@ -254,6 +291,7 @@ export function calcularPendientes(e: EntradaPendientes): LineaPendiente[] {
         texto: `${n} ${plural(n, 'informe de ingreso sin empezar', 'informes de ingreso sin empezar')} (más de ${DIAS_INFORME_INGRESO} días de ingreso)`,
         detalle: detalle(ingresoSinInforme),
         accion: { tipo: 'ruta', ruta: `/ingresos/${primero(ingresoSinInforme)}?tab=informes&sub=ingreso` },
+        destinos: destinosFicha(ingresoSinInforme, 'tab=informes&sub=ingreso'),
       })
     }
     const altasSinInforme = e.extras.altasRecientes.filter((a) => a.informeVacio)
@@ -264,6 +302,7 @@ export function calcularPendientes(e: EntradaPendientes): LineaPendiente[] {
         texto: `${n} ${plural(n, 'informe de alta sin hacer', 'informes de alta sin hacer')} (altas de los últimos ${DIAS_ALTA_RECIENTE} días)`,
         detalle: textoHabitaciones(altasSinInforme.map((a) => a.habitacion)),
         accion: { tipo: 'ruta', ruta: `/ingresos/${altasSinInforme[0].id}?tab=informes&sub=alta` },
+        destinos: destinosPorHab(altasSinInforme.map((a) => ({ hab: a.habitacion, accion: { tipo: 'ruta' as const, ruta: `/ingresos/${a.id}?tab=informes&sub=alta` } }))),
       })
     }
   }

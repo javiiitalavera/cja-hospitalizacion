@@ -1,35 +1,64 @@
 // Recuadro "Pendiente" de Inicio: una línea por cosa que queda por hacer,
-// ya filtrada por perfil (ver calcularPendientes). Cada línea lleva
-// directamente adonde hace falta ir. No aparece si no hay nada.
+// ya filtrada por perfil (ver calcularPendientes). Pulsar el texto lleva a la primera habitación afectada (o a la
+// lista); pulsar una habitación concreta lleva a esa. No aparece si no hay nada.
 
-import type { LineaPendiente } from './pendientes'
+import type { AccionPendiente, LineaPendiente } from './pendientes'
 
 export function BannerPendientes({
   lineas,
   onAccion,
 }: {
   lineas: LineaPendiente[]
-  onAccion: (l: LineaPendiente) => void
+  onAccion: (a: AccionPendiente) => void
 }) {
   if (lineas.length === 0) return null
   return (
-    <div className="mb-5 card px-4 py-3" role="region" aria-label="Pendiente">
-      <p className="text-sm font-semibold text-slate-800 mb-2">
-        Pendiente <span className="font-normal text-slate-500">· {lineas.length}</span>
+    // Resalte suave: fondo ámbar muy tenue y borde fino por todos los lados (sin barra lateral); el texto va en gris oscuro.
+    <div
+      className="mb-5 rounded-xl border border-amber-200 bg-amber-50/60 px-4 py-3 shadow-sm"
+      role="region"
+      aria-label="Pendiente"
+    >
+      <p className="text-sm font-semibold text-amber-900 mb-2">
+        Pendiente <span className="font-normal text-amber-800/70">· {lineas.length}</span>
       </p>
       <div className="md:columns-2 md:gap-x-10">
         {lineas.map((l) => (
-          <button
-            key={l.id}
-            type="button"
-            data-linea={l.id}
-            onClick={() => onAccion(l)}
-            className="block w-full text-left text-sm text-slate-700 hover:text-slate-900 group py-0.5 break-inside-avoid"
-          >
+          <div key={l.id} className="py-0.5 text-sm text-slate-800 break-inside-avoid">
             <span aria-hidden className="inline-block w-1.5 h-1.5 rounded-full bg-amber-500 mr-2 align-middle" />
-            <span className="group-hover:underline">{l.texto}</span>
-            {l.detalle && <span className="text-xs text-slate-500"> · {l.detalle}</span>}
-          </button>
+            <button
+              type="button"
+              data-linea={l.id}
+              onClick={() => onAccion(l.accion)}
+              className="text-left hover:text-slate-950 hover:underline underline-offset-2"
+            >
+              {l.texto}
+            </button>
+            {l.destinos && l.destinos.length > 0 ? (
+              <span className="text-xs text-slate-500">
+                {' · Hab. '}
+                {l.destinos.map((d, i) => (
+                  <span key={d.hab} className="whitespace-nowrap">
+                    <button
+                      type="button"
+                      data-hab={d.hab}
+                      data-linea-hab={l.id}
+                      title={`Abrir la habitación ${d.hab}`}
+                      onClick={() => onAccion(d.accion)}
+                      className="px-1 -mx-0.5 rounded font-semibold text-primary-700 hover:bg-amber-100 hover:underline underline-offset-2"
+                    >
+                      {d.hab}
+                    </button>
+                    {i < l.destinos!.length - 1 ? ', ' : ''}
+                  </span>
+                ))}
+                {(l.detalle.includes('…')) && '…'}
+                {l.nota && ` · ${l.nota}`}
+              </span>
+            ) : (
+              l.detalle && <span className="text-xs text-slate-500"> · {l.detalle}</span>
+            )}
+          </div>
         ))}
       </div>
     </div>

@@ -22,7 +22,7 @@ import {
 import { TIPO_EVENTO_LABEL, TIPO_EVENTO_COLOR, FILTRO_TIPOS_RETIRADOS, type TipoEvento } from '../types/eventos'
 import { BannerPendientes } from './inicio/BannerPendientes'
 import { calcularPendientes, cargarExtrasPendientes, EXTRAS_VACIOS } from './inicio/pendientes'
-import type { ExtrasPendientes, LineaPendiente } from './inicio/pendientes'
+import type { AccionPendiente, ExtrasPendientes, LineaPendiente } from './inicio/pendientes'
 
 // Fecha de hace 7 días exactos, en el mismo formato que usa el resto
 // de la aplicación para comparar con columnas "fecha".
@@ -259,9 +259,9 @@ export default function Home() {
     try { localStorage.setItem(CLAVE_VISTA, v) } catch { /* sin almacenamiento: solo no se recuerda */ }
   }
 
-  function abrirPendiente(l: LineaPendiente) {
-    if (l.accion.tipo === 'contencion') setModalContencion(l.accion.ingresoId)
-    else navigate(l.accion.ruta)
+  function abrirPendiente(a: AccionPendiente) {
+    if (a.tipo === 'contencion') setModalContencion(a.ingresoId)
+    else navigate(a.ruta)
   }
 
   // Contención física (día y noche), con acceso rápido: igual en la vista de filas y en la de tarjetas.
@@ -526,10 +526,11 @@ export default function Home() {
           </p>
         )}
         {vista === 'tarjetas' ? vistaTarjetas() : (
-        <div className="card overflow-hidden">
+        // Sin overflow-hidden a propósito: recortaría los tooltips de la primera fila. Las esquinas se redondean a mano.
+        <div className="card">
           {/* Cabecera */}
           <div
-            className="grid gap-x-3 items-end text-xs font-semibold text-slate-500 px-3 py-2 bg-slate-50 border-b"
+            className="grid gap-x-3 items-end text-xs font-semibold text-slate-500 px-3 py-2 bg-slate-50 border-b rounded-t-xl"
             style={{ gridTemplateColumns: COLUMNAS_TABLA }}
           >
             <div>Hab.</div>
@@ -549,7 +550,7 @@ export default function Home() {
             <div></div>
           </div>
 
-          <div className="divide-y divide-slate-100">
+          <div className="divide-y divide-slate-100 [&>*:last-child]:rounded-b-xl">
           {slots.map((ingreso, idx) => {
             const n = idx + 1
             const sem = ingreso ? items[ingreso.id]?.semaforo_caidas : undefined
@@ -560,7 +561,7 @@ export default function Home() {
               return (
                 <div
                   key={n}
-                  className={`grid gap-x-3 items-center bg-slate-50/50 px-3 py-1.5 transition-colors ${
+                  className={`grid gap-x-3 items-center bg-slate-50/50 px-3 py-1.5 transition-colors rounded-[inherit] ${
                     esMedico ? 'cursor-pointer hover:bg-primary-50/40' : ''
                   }`}
                   style={{ gridTemplateColumns: COLUMNAS_TABLA }}
@@ -600,7 +601,7 @@ export default function Home() {
             return (
               <div key={n} className="group">
                 <div
-                  className="grid gap-x-3 items-center bg-white px-3 py-2 hover:bg-slate-50 transition-colors cursor-pointer"
+                  className="grid gap-x-3 items-center bg-white px-3 py-2 hover:bg-slate-50 transition-colors cursor-pointer rounded-[inherit]"
                   style={{ gridTemplateColumns: COLUMNAS_TABLA }}
                   onClick={() => navigate(`/ingresos/${ingreso.id}`)}
                 >
