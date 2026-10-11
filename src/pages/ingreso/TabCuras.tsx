@@ -10,7 +10,7 @@ import { Modal } from '../curas/Modal'
 import { MarcaCuraModal } from '../curas/MarcaCuraModal'
 import {
   CARACTERISTICA_LABEL, GRADO_LABEL, LOCALIZACIONES_SUGERIDAS, CURAS_SUGERIDAS, DIAS_CORTO,
-  ordenarValoraciones, pautaVigente, textoPauta, fechaLarga, sumarDias, fechasQueTocaLesion, DIAS_HISTORIAL_CURAS,
+  ordenarValoraciones, pautaVigente, textoPauta, fechaLarga, esValoracionClinica, partesValoracion, textoCalendario, sumarDias, fechasQueTocaLesion, DIAS_HISTORIAL_CURAS,
   type Lesion, type Valoracion, type Caracteristica, type RegistroCura,
 } from '../curas/tipos'
 
@@ -114,7 +114,7 @@ function aEntero(s: string): number | null {
 }
 
 // ── Formulario de lesión (crear / editar) ────────────────────
-export function FormularioLesion({
+function CuerpoLesion({
   ingresoId, editando, onClose, onGuardado, pacienteInfo,
 }: { ingresoId: string; editando: Lesion | null; onClose: () => void; onGuardado: () => void; pacienteInfo?: string }) {
   const { profesional } = useAuth()
@@ -204,7 +204,7 @@ export function FormularioLesion({
   }
 
   return (
-    <Modal titulo={editando ? 'Editar lesión o cuidado' : 'Añadir lesión o cuidado'} onClose={onClose}>
+    <>
       <div className="space-y-3">
         {pacienteInfo && <p className="text-sm font-medium text-slate-700">{pacienteInfo}</p>}
         <div className="grid grid-cols-2 gap-3">
@@ -262,18 +262,33 @@ export function FormularioLesion({
           </button>
         </div>
       </div>
+    </>
+  )
+}
+
+// Añadir una lesión nueva (para corregir una existente se usa «Editar», con sus pestañas).
+export function FormularioLesion(props: { ingresoId: string; editando: Lesion | null; onClose: () => void; onGuardado: () => void; pacienteInfo?: string }) {
+  return (
+    <Modal titulo={props.editando ? 'Corregir datos de la lesión' : 'Añadir lesión o cuidado'} onClose={props.onClose}>
+      <CuerpoLesion {...props} />
     </Modal>
   )
 }
 
-// ── Formulario de valoración (evolución) ─────────────────────
-export function FormularioValoracion({
-  lesion, editando, onClose, onGuardado,
-}: { lesion: Lesion; editando: Valoracion | null; onClose: () => void; onGuardado: () => void }) {
+// ── Valoración y pauta de cura ───────────────────────────────
+// Dos usos, cada uno en su pestaña de «Editar»:
+//  · 'valoracion': anotar cómo está la lesión (medidas, grado, frotis, escalas). No toca la pauta de cura.
+//  · 'pauta': cambiar la cura (tipo, frecuencia, días). No toca los datos de la valoración.
+// Al corregir un registro del historial (editando) salen las dos partes, porque el registro puede tener ambas.
+function CuerpoValoracion({
+  lesion, editando, modo, onClose, onGuardado,
+}: { lesion: Lesion; editando: Valoracion | null; modo: 'valoracion' | 'pauta'; onClose: () => void; onGuardado: () => void }) {
   const { profesional } = useAuth()
   const vigente = pautaVigente(lesion.valoraciones)
-  // Al crear, se parte de la pauta vigente: lo normal es no cambiarla.
-  const base = editando ?? vigente
+  const mostrarValoracion = !!editando || modo === 'valoracion'
+  const mostrarPauta = !!editando || modo === 'pauta'
+  // Al cambiar la pauta se parte de la vigente: lo normal es tocar solo la frecuencia o el apósito.
+  const base = editando ?? (modo === 'pauta' ? vigente : null)
   const [f, setF] = useState({
     fecha: editando?.fecha ?? hoyLocal(),
     medidas: editando?.medidas ?? '',
@@ -297,23 +312,36 @@ export function FormularioValoracion({
   async function guardar() {
     setError('')
     if (!profesional) { setError('Tu cuenta no tiene ficha de profesional.'); return }
-    const frec = aEntero(pauta.frecuencia_horas)
+    const frec = mostrarPauta ? aEntero(pauta.frecuencia_horas) : null
     const norton = aEntero(f.norton), braden = aEntero(f.braden), emina = aEntero(f.emina)
+    if (modo === 'pauta' && !editando && !pauta.tipo_cura.trim()) { setError('Indica el tipo de cura.'); return }
     if (frec !== null && (Number.isNaN(frec) || frec < 1 || frec > 720)) { setError('La frecuencia debe ser un número entero de horas entre 1 y 720.'); return }
-    if (norton !== null && (Number.isNaN(norton) || norton < 5 || norton > 20)) { setError('Norton: valor entre 5 y 20.'); return }
-    if (braden !== null && (Number.isNaN(braden) || braden < 6 || braden > 23)) { setError('Braden: valor entre 6 y 23.'); return }
-    if (emina !== null && (Number.isNaN(emina) || emina < 0 || emina > 15)) { setError('EMINA: valor entre 0 y 15.'); return }
-    if (f.fecha < lesion.fecha_inicio) { setError('La valoración no puede ser anterior al inicio de la lesión (' + fechaLarga(lesion.fecha_inicio) + ').'); return }
+    if (modo === 'pauta' && !editando && vigente
+      && (vigente.tipo_cura ?? '').trim() === pauta.tipo_cura.trim()
+      && (vigente.frecuencia_horas ?? null) === frec
+      && JSON.stringify([...(vigente.dias_semana ?? [])].sort()) === JSON.stringify([...pauta.dias_semana].sort())) {
+      setError('La pauta es la misma que la actual: cambia algo o cierra la ventana.'); return
+    }
+    if (mostrarValoracion) {
+      if (norton !== null && (Number.isNaN(norton) || norton < 5 || norton > 20)) { setError('Norton: valor entre 5 y 20.'); return }
+      if (braden !== null && (Number.isNaN(braden) || braden < 6 || braden > 23)) { setError('Braden: valor entre 6 y 23.'); return }
+      if (emina !== null && (Number.isNaN(emina) || emina < 0 || emina > 15)) { setError('EMINA: valor entre 0 y 15.'); return }
+      const algo = f.medidas.trim() || f.grado || f.frotis || norton !== null || braden !== null || emina !== null || f.notas.trim()
+      if (!editando && !algo) { setError('Anota al menos un dato de la valoración (medidas, grado, escalas, notas…).'); return }
+    }
+    if (f.fecha < lesion.fecha_inicio) { setError('La fecha no puede ser anterior al inicio de la lesión (' + fechaLarga(lesion.fecha_inicio) + ').'); return }
     setGuardando(true)
     const datos = {
       fecha: f.fecha,
-      medidas: f.medidas.trim() || null,
-      grado: f.grado || null,
-      frotis: f.frotis,
-      tipo_cura: pauta.tipo_cura.trim() || null,
+      medidas: mostrarValoracion ? f.medidas.trim() || null : null,
+      grado: mostrarValoracion ? f.grado || null : null,
+      frotis: mostrarValoracion ? f.frotis : false,
+      tipo_cura: mostrarPauta ? pauta.tipo_cura.trim() || null : null,
       frecuencia_horas: frec,
-      dias_semana: pauta.dias_semana,
-      norton, braden, emina,
+      dias_semana: mostrarPauta ? pauta.dias_semana : [],
+      norton: mostrarValoracion ? norton : null,
+      braden: mostrarValoracion ? braden : null,
+      emina: mostrarValoracion ? emina : null,
       notas: f.notas.trim() || null,
     }
     const { error: err } = editando
@@ -326,35 +354,46 @@ export function FormularioValoracion({
 
   const mostrarGrado = lesion.caracteristicas !== 'cuidado_piel'
   return (
-    <Modal titulo={`${editando ? 'Editar valoración' : 'Nueva valoración'} · ${lesion.localizacion}`} onClose={onClose}>
-      <div className="space-y-3">
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="label">Fecha de valoración</label>
-            <input className="input" type="date" max={hoyLocal()} value={f.fecha} onChange={(e) => setF({ ...f, fecha: e.target.value })} />
-          </div>
+    <div className="space-y-3">
+      {modo === 'pauta' && !editando && vigente && (
+        <p className="text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+          Pauta actual: <b>{textoPauta(vigente)}</b>
+        </p>
+      )}
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="label">{modo === 'pauta' && !editando ? 'Vigente desde' : 'Fecha'}</label>
+          <input className="input" type="date" max={hoyLocal()} value={f.fecha} onChange={(e) => setF({ ...f, fecha: e.target.value })} />
+        </div>
+        {mostrarValoracion && (
           <div>
             <label className="label">Medidas (cm × cm)</label>
             <input className="input" maxLength={40} placeholder="Ej.: 2 x 3" value={f.medidas} onChange={(e) => setF({ ...f, medidas: e.target.value })} />
           </div>
-          {mostrarGrado && (
-            <div>
-              <label className="label">Grado</label>
-              <select className="input" value={f.grado} onChange={(e) => setF({ ...f, grado: e.target.value })}>
-                <option value="">—</option>
-                {Object.entries(GRADO_LABEL).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
-              </select>
-            </div>
-          )}
+        )}
+        {mostrarValoracion && mostrarGrado && (
+          <div>
+            <label className="label">Grado</label>
+            <select className="input" value={f.grado} onChange={(e) => setF({ ...f, grado: e.target.value })}>
+              <option value="">—</option>
+              {Object.entries(GRADO_LABEL).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+            </select>
+          </div>
+        )}
+        {mostrarValoracion && (
           <label className="flex items-center gap-2 text-sm text-slate-700 mt-6">
             <input type="checkbox" checked={f.frotis} onChange={(e) => setF({ ...f, frotis: e.target.checked })} />
             Frotis
           </label>
-        </div>
-        <div className="border-t pt-3">
-          <p className="section-title">Cura</p>
+        )}
+      </div>
+      {mostrarPauta && (
+        <div className={mostrarValoracion ? 'border-t pt-3' : ''}>
+          {mostrarValoracion && <p className="section-title">Cura</p>}
           <CamposPauta valor={pauta} onChange={setPauta} />
         </div>
+      )}
+      {mostrarValoracion && (
         <div className="border-t pt-3">
           <p className="section-title">Escalas de riesgo (opcional)</p>
           <div className="grid grid-cols-3 gap-3">
@@ -366,35 +405,101 @@ export function FormularioValoracion({
             ))}
           </div>
         </div>
-        <div>
-          <label className="label">Notas</label>
-          <textarea className="textarea" rows={2} maxLength={2000} value={f.notas} onChange={(e) => setF({ ...f, notas: e.target.value })} />
+      )}
+      <div>
+        <label className="label">{modo === 'pauta' && !editando ? 'Motivo del cambio (opcional)' : 'Notas'}</label>
+        <textarea className="textarea" rows={2} maxLength={2000} value={f.notas} onChange={(e) => setF({ ...f, notas: e.target.value })} />
+      </div>
+      {error && <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{error}</p>}
+      <div className="flex gap-3 pt-1">
+        <button onClick={onClose} className="btn-secondary flex-1">Cancelar</button>
+        <button onClick={guardar} disabled={guardando} className="btn-primary flex-1 justify-center">
+          {guardando ? 'Guardando…' : modo === 'pauta' && !editando ? 'Guardar pauta' : 'Guardar'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// Corregir un registro concreto del historial (salen valoración y pauta juntas).
+export function FormularioValoracion({
+  lesion, editando, onClose, onGuardado,
+}: { lesion: Lesion; editando: Valoracion; onClose: () => void; onGuardado: () => void }) {
+  return (
+    <Modal titulo={`Corregir un registro del historial · ${lesion.localizacion}`} onClose={onClose}>
+      <CuerpoValoracion lesion={lesion} editando={editando} modo="valoracion" onClose={onClose} onGuardado={onGuardado} />
+    </Modal>
+  )
+}
+
+// ── «Editar» una lesión: una sola ventana con tres pestañas ──────
+// Cada pestaña guarda lo suyo y es independiente de las demás: así no se mezcla corregir un dato
+// mal escrito con anotar cómo está la lesión o cambiar la cura.
+type Pestaña = 'valoracion' | 'pauta' | 'datos'
+const PESTAÑAS: { id: Pestaña; titulo: string; ayuda: string }[] = [
+  { id: 'valoracion', titulo: 'Valoración', ayuda: 'Cómo está la lesión hoy: medidas, grado, frotis, escalas.' },
+  { id: 'pauta', titulo: 'Pauta de cura', ayuda: 'La cura que lleva: apósito, frecuencia, días.' },
+  { id: 'datos', titulo: 'Datos de la lesión', ayuda: 'Para corregir algo mal escrito: localización, fecha de inicio, origen, notas.' },
+]
+
+export function ModalEditarLesion({
+  lesion, pestañaInicial, onClose, onGuardado,
+}: { lesion: Lesion; pestañaInicial?: Pestaña; onClose: () => void; onGuardado: () => void }) {
+  const curada = !!lesion.fecha_fin
+  // Una lesión curada ya no se valora ni lleva cura: solo se pueden corregir sus datos.
+  const disponibles = curada ? PESTAÑAS.filter((p) => p.id === 'datos') : PESTAÑAS
+  const [pestaña, setPestaña] = useState<Pestaña>(pestañaInicial && disponibles.some((p) => p.id === pestañaInicial) ? pestañaInicial : disponibles[0].id)
+  const actual = disponibles.find((p) => p.id === pestaña)!
+  return (
+    <Modal titulo={`Editar · ${lesion.localizacion}`} onClose={onClose}>
+      {disponibles.length > 1 && (
+        <div role="tablist" className="flex gap-1 border-b border-slate-200 mb-3">
+          {disponibles.map((p) => (
+            <button
+              key={p.id}
+              role="tab"
+              aria-selected={p.id === pestaña}
+              type="button"
+              onClick={() => setPestaña(p.id)}
+              className={`px-3 py-2 text-sm font-medium -mb-px border-b-2 transition-colors ${p.id === pestaña ? 'border-primary-600 text-primary-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+            >
+              {p.titulo}
+            </button>
+          ))}
         </div>
-        {error && <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{error}</p>}
-        <div className="flex gap-3 pt-1">
-          <button onClick={onClose} className="btn-secondary flex-1">Cancelar</button>
-          <button onClick={guardar} disabled={guardando} className="btn-primary flex-1 justify-center">
-            {guardando ? 'Guardando…' : 'Guardar'}
-          </button>
+      )}
+      <p className="text-xs text-slate-500 mb-3">{actual.ayuda}</p>
+      {/* Las pestañas no visibles siguen montadas: así lo escrito en una no se pierde al mirar otra. */}
+      {!curada && (
+        <div className={pestaña === 'valoracion' ? '' : 'hidden'}>
+          <CuerpoValoracion lesion={lesion} editando={null} modo="valoracion" onClose={onClose} onGuardado={onGuardado} />
         </div>
+      )}
+      {!curada && (
+        <div className={pestaña === 'pauta' ? '' : 'hidden'}>
+          <CuerpoValoracion lesion={lesion} editando={null} modo="pauta" onClose={onClose} onGuardado={onGuardado} />
+        </div>
+      )}
+      <div className={pestaña === 'datos' ? '' : 'hidden'}>
+        <CuerpoLesion ingresoId={lesion.ingreso_id} editando={lesion} onClose={onClose} onGuardado={onGuardado} />
       </div>
     </Modal>
   )
 }
 
 // ── Tarjeta de una lesión ────────────────────────────────────
+// Sencilla: lo que hay (pauta y última valoración) y un solo botón «Editar».
 export function TarjetaLesion({
   lesion, puedeEditar, puedeBorrar, puedeBorrarValoracion, evolucionAbierta = false,
-  onNuevaValoracion, onEditarLesion, onEditarValoracion, onCambioEstado, onEliminarLesion, onEliminarValoracion,
+  onEditar, onEditarValoracion, onCambioEstado, onEliminarLesion, onEliminarValoracion,
 }: {
   lesion: Lesion
   puedeEditar: boolean
   puedeBorrar: boolean
   puedeBorrarValoracion: (v: Valoracion) => boolean
-  // Abre la evolución desde el principio (en la ventana de la tabla de cuidados).
+  // Abre el historial desde el principio (en la ventana de la tabla de cuidados).
   evolucionAbierta?: boolean
-  onNuevaValoracion: () => void
-  onEditarLesion: () => void
+  onEditar: () => void
   onEditarValoracion: (v: Valoracion) => void
   onCambioEstado: () => void
   onEliminarLesion: () => void
@@ -403,7 +508,8 @@ export function TarjetaLesion({
   const [abierta, setAbierta] = useState(evolucionAbierta)
   const vals = ordenarValoraciones(lesion.valoraciones)
   const vigente = pautaVigente(lesion.valoraciones)
-  const ultima = vals[0]
+  const ultima = vals.find(esValoracionClinica)
+  const partesUltima = ultima ? partesValoracion(ultima) : []
   const curada = !!lesion.fecha_fin
   return (
     <div className={`card p-4 ${curada ? 'opacity-80' : ''}`}>
@@ -422,36 +528,36 @@ export function TarjetaLesion({
         </div>
         {puedeEditar && (
           <div className="flex items-center gap-1 shrink-0">
-            {!curada && <button onClick={onNuevaValoracion} className="btn-secondary !px-3 !py-1.5 text-xs"><Plus className="w-3.5 h-3.5" />Valoración</button>}
-            <button onClick={onEditarLesion} title="Editar" className="p-1.5 text-slate-500 hover:text-slate-600"><Pencil className="w-4 h-4" /></button>
-            {puedeBorrar && <button onClick={onEliminarLesion} title="Eliminar" className="p-1.5 text-slate-500 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>}
+            <button onClick={onEditar} className="btn-secondary !px-3 !py-1.5 text-xs"><Pencil className="w-3.5 h-3.5" />Editar</button>
+            {puedeBorrar && <button onClick={onEliminarLesion} title="Eliminar la lesión" className="p-1.5 text-slate-500 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>}
           </div>
         )}
       </div>
 
       {!curada && (
-        <div className="mt-3 rounded-lg bg-primary-50/60 border border-primary-100 px-3 py-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-primary-700">Pauta actual</p>
-          <p className="text-sm text-slate-800">{textoPauta(vigente)}</p>
+        <div className="mt-3 rounded-lg bg-primary-50/60 border border-primary-100 px-3 py-2" data-testid="bloque-pauta">
+          <p className="text-xs font-semibold uppercase tracking-wide text-primary-700">Pauta de cura</p>
+          {vigente ? (
+            <p className="text-sm text-slate-800">
+              <span className="font-medium">{vigente.tipo_cura}</span>
+              {textoCalendario(vigente) && <span className="text-slate-600"> · {textoCalendario(vigente)}</span>}
+            </p>
+          ) : (
+            <p className="text-sm text-slate-500">Sin pauta de cura</p>
+          )}
         </div>
       )}
-      {ultima && (
-        <p className="text-xs text-slate-500 mt-2">
-          Última valoración {fechaLarga(ultima.fecha)}
-          {ultima.medidas && ` · ${ultima.medidas} cm`}
-          {ultima.grado && ` · ${GRADO_LABEL[ultima.grado]}`}
-          {ultima.frotis && ' · frotis'}
-          {ultima.norton != null && ` · Norton ${ultima.norton}`}
-          {ultima.braden != null && ` · Braden ${ultima.braden}`}
-          {ultima.emina != null && ` · EMINA ${ultima.emina}`}
-        </p>
-      )}
+      <p className="text-xs text-slate-500 mt-2" data-testid="bloque-valoracion">
+        {ultima
+          ? <>Última valoración {fechaLarga(ultima.fecha)}{partesUltima.length > 0 && ` · ${partesUltima.join(' · ')}`}</>
+          : 'Todavía no hay valoraciones.'}
+      </p>
       {lesion.notas && <p className="text-xs text-slate-600 mt-1 whitespace-pre-wrap">{lesion.notas}</p>}
 
       <div className="mt-3 flex items-center gap-3">
         <button onClick={() => setAbierta(!abierta)} className="flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700">
           {abierta ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-          Evolución ({vals.length})
+          Historial ({vals.length})
         </button>
         {puedeEditar && (
           <button onClick={onCambioEstado} className="text-xs font-medium text-slate-500 hover:text-slate-700 underline">
@@ -462,39 +568,34 @@ export function TarjetaLesion({
 
       {abierta && (
         vals.length === 0 ? (
-          <p className="text-xs text-slate-500 mt-2">Todavía no hay valoraciones.</p>
+          <p className="text-xs text-slate-500 mt-2">Todavía no hay registros.</p>
         ) : (
           <div className="mt-2 overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
                 <tr className="text-left text-slate-500 border-b">
-                  {['Fecha', 'Medidas', 'Grado', 'Cura', 'Frec.', 'Norton', 'Braden', 'EMINA', 'Notas', ''].map((h) => (
+                  {['Fecha', 'Valoración', 'Cura', 'Notas', ''].map((h) => (
                     <th key={h} className="py-1 pr-3 font-semibold">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {vals.map((v) => (
-                  <tr key={v.id} className="border-b last:border-0 align-top">
-                    <td className="py-1.5 pr-3 whitespace-nowrap">{fechaLarga(v.fecha)}</td>
-                    <td className="py-1.5 pr-3">{v.medidas ?? '—'}{v.frotis && ' · frotis'}</td>
-                    <td className="py-1.5 pr-3">{v.grado ? GRADO_LABEL[v.grado] : '—'}</td>
-                    <td className="py-1.5 pr-3">{v.tipo_cura ?? '—'}</td>
-                    <td className="py-1.5 pr-3 whitespace-nowrap">
-                      {v.frecuencia_horas ? `${v.frecuencia_horas} h` : ''}
-                      {v.dias_semana?.length ? ` ${[...v.dias_semana].sort().map((d) => DIAS_CORTO[d - 1]).join('')}` : ''}
-                      {!v.frecuencia_horas && !v.dias_semana?.length && '—'}
-                    </td>
-                    <td className="py-1.5 pr-3">{v.norton ?? '—'}</td>
-                    <td className="py-1.5 pr-3">{v.braden ?? '—'}</td>
-                    <td className="py-1.5 pr-3">{v.emina ?? '—'}</td>
-                    <td className="py-1.5 pr-3 max-w-[14rem]">{v.notas ?? ''}</td>
-                    <td className="py-1.5 whitespace-nowrap">
-                      {puedeEditar && <button onClick={() => onEditarValoracion(v)} title="Editar" className="p-1 text-slate-500 hover:text-slate-600"><Pencil className="w-3.5 h-3.5" /></button>}
-                      {puedeBorrarValoracion(v) && <button onClick={() => onEliminarValoracion(v)} title="Eliminar" className="p-1 text-slate-500 hover:text-red-600"><Trash2 className="w-3.5 h-3.5" /></button>}
-                    </td>
-                  </tr>
-                ))}
+                {vals.map((v) => {
+                  const partes = partesValoracion(v)
+                  const cal = textoCalendario(v)
+                  return (
+                    <tr key={v.id} className="border-b last:border-0 align-top">
+                      <td className="py-1.5 pr-3 whitespace-nowrap">{fechaLarga(v.fecha)}</td>
+                      <td className="py-1.5 pr-3">{partes.length > 0 ? partes.join(' · ') : '—'}</td>
+                      <td className="py-1.5 pr-3">{v.tipo_cura ? <>{v.tipo_cura}{cal && <span className="text-slate-500"> · {cal}</span>}</> : '—'}</td>
+                      <td className="py-1.5 pr-3 max-w-[12rem]">{v.notas ?? ''}</td>
+                      <td className="py-1.5 whitespace-nowrap">
+                        {puedeEditar && <button onClick={() => onEditarValoracion(v)} title="Corregir este registro" className="p-1 text-slate-500 hover:text-slate-600"><Pencil className="w-3.5 h-3.5" /></button>}
+                        {puedeBorrarValoracion(v) && <button onClick={() => onEliminarValoracion(v)} title="Eliminar este registro" className="p-1 text-slate-500 hover:text-red-600"><Trash2 className="w-3.5 h-3.5" /></button>}
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -517,7 +618,7 @@ export function TabCuras({ ingresoId, episodioActivo }: { ingresoId: string; epi
   const [errorCarga, setErrorCarga] = useState('')
   const [errorAccion, setErrorAccion] = useState('')
   const [formLesion, setFormLesion] = useState<{ editando: Lesion | null } | null>(null)
-  const [formValoracion, setFormValoracion] = useState<{ lesion: Lesion; editando: Valoracion | null } | null>(null)
+  const [formValoracion, setFormValoracion] = useState<{ lesion: Lesion; editando: Valoracion } | null>(null)
   const hoy = hoyLocal()
 
   async function cargar() {
@@ -647,8 +748,7 @@ export function TabCuras({ ingresoId, episodioActivo }: { ingresoId: string; epi
                 puedeEditar={puedeEditar}
                 puedeBorrar={puedeEditar && (esAdmin || esMio(l.registrado_por_id))}
                 puedeBorrarValoracion={(v) => puedeEditar && (esAdmin || esMio(v.registrado_por_id))}
-                onNuevaValoracion={() => setFormValoracion({ lesion: l, editando: null })}
-                onEditarLesion={() => setFormLesion({ editando: l })}
+                onEditar={() => setFormLesion({ editando: l })}
                 onEditarValoracion={(v) => setFormValoracion({ lesion: l, editando: v })}
                 onCambioEstado={() => cambiarEstado(l)}
                 onEliminarLesion={() => eliminarLesion(l)}
@@ -667,8 +767,7 @@ export function TabCuras({ ingresoId, episodioActivo }: { ingresoId: string; epi
                     puedeEditar={puedeEditar}
                     puedeBorrar={puedeEditar && (esAdmin || esMio(l.registrado_por_id))}
                     puedeBorrarValoracion={(v) => puedeEditar && (esAdmin || esMio(v.registrado_por_id))}
-                    onNuevaValoracion={() => setFormValoracion({ lesion: l, editando: null })}
-                    onEditarLesion={() => setFormLesion({ editando: l })}
+                    onEditar={() => setFormLesion({ editando: l })}
                     onEditarValoracion={(v) => setFormValoracion({ lesion: l, editando: v })}
                     onCambioEstado={() => cambiarEstado(l)}
                     onEliminarLesion={() => eliminarLesion(l)}
@@ -692,10 +791,17 @@ export function TabCuras({ ingresoId, episodioActivo }: { ingresoId: string; epi
         />
       )}
 
-      {formLesion && (
+      {formLesion && !formLesion.editando && (
         <FormularioLesion
           ingresoId={ingresoId}
-          editando={formLesion.editando}
+          editando={null}
+          onClose={() => setFormLesion(null)}
+          onGuardado={async () => { setFormLesion(null); await cargar() }}
+        />
+      )}
+      {formLesion?.editando && (
+        <ModalEditarLesion
+          lesion={formLesion.editando}
           onClose={() => setFormLesion(null)}
           onGuardado={async () => { setFormLesion(null); await cargar() }}
         />

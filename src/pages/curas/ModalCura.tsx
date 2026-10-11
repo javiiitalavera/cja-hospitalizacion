@@ -7,7 +7,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/AuthContext'
 import { useConfirmar } from '../../components/useConfirmar'
 import { hoyLocal } from '../../lib/fechas'
-import { TarjetaLesion, FormularioLesion, FormularioValoracion } from '../ingreso/TabCuras'
+import { TarjetaLesion, ModalEditarLesion, FormularioValoracion } from '../ingreso/TabCuras'
 import { Modal } from './Modal'
 import type { Lesion, Valoracion } from './tipos'
 
@@ -23,7 +23,7 @@ export function ModalCura({
   const { profesional, esAdmin } = useAuth()
   const { confirmar, dialogo } = useConfirmar()
   const [formLesion, setFormLesion] = useState(false)
-  const [formValoracion, setFormValoracion] = useState<{ editando: Valoracion | null } | null>(null)
+  const [formValoracion, setFormValoracion] = useState<{ editando: Valoracion } | null>(null)
   const [errorAccion, setErrorAccion] = useState('')
 
   // En la pantalla Curas solo salen ingresos activos, así que se puede editar
@@ -72,8 +72,7 @@ export function ModalCura({
           puedeBorrar={puedeEditar && (esAdmin || esMio(lesion.registrado_por_id))}
           puedeBorrarValoracion={(v) => puedeEditar && (esAdmin || esMio(v.registrado_por_id))}
           evolucionAbierta
-          onNuevaValoracion={() => setFormValoracion({ editando: null })}
-          onEditarLesion={() => setFormLesion(true)}
+          onEditar={() => setFormLesion(true)}
           onEditarValoracion={(v) => setFormValoracion({ editando: v })}
           onCambioEstado={cambiarEstado}
           onEliminarLesion={eliminarLesion}
@@ -82,9 +81,8 @@ export function ModalCura({
       </Modal>
 
       {formLesion && (
-        <FormularioLesion
-          ingresoId={lesion.ingreso_id}
-          editando={lesion}
+        <ModalEditarLesion
+          lesion={lesion}
           onClose={() => setFormLesion(false)}
           onGuardado={async () => { setFormLesion(false); await onCambio() }}
         />

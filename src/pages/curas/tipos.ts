@@ -129,6 +129,34 @@ export function textoPauta(v: Valoracion | null): string {
   return partes.filter(Boolean).join(' · ')
 }
 
+// Una valoración «de verdad» es la que recoge cómo está la lesión (medidas, grado, frotis o escalas). Un
+// cambio de pauta solo registra la cura nueva, y no cuenta como valorar la lesión.
+export function esValoracionClinica(v: Partial<Pick<Valoracion, 'medidas' | 'grado' | 'frotis' | 'norton' | 'braden' | 'emina' | 'notas' | 'tipo_cura'>>): boolean {
+  if (v.medidas || v.grado || v.frotis || v.norton != null || v.braden != null || v.emina != null) return true
+  // Una nota suelta sin cura pautada también es una valoración (con cura pautada es el motivo del cambio de pauta).
+  return !!v.notas && !v.tipo_cura
+}
+
+// Fragmentos de una valoración para mostrarla en una línea: «Medidas 2 x 3 cm · Grado II · Frotis…»
+export function partesValoracion(v: Valoracion): string[] {
+  const partes: string[] = []
+  if (v.medidas) partes.push(`Medidas ${v.medidas} cm`)
+  if (v.grado) partes.push(GRADO_LABEL[v.grado] ?? v.grado)
+  if (v.frotis) partes.push('Frotis')
+  if (v.norton != null) partes.push(`Norton ${v.norton}`)
+  if (v.braden != null) partes.push(`Braden ${v.braden}`)
+  if (v.emina != null) partes.push(`EMINA ${v.emina}`)
+  return partes
+}
+
+// Calendario de una pauta: «cada 48 h · L X V».
+export function textoCalendario(v: Pick<Valoracion, 'frecuencia_horas' | 'dias_semana'>): string {
+  const partes: string[] = []
+  if (v.frecuencia_horas) partes.push(`cada ${v.frecuencia_horas} h`)
+  if (v.dias_semana?.length) partes.push([...v.dias_semana].sort().map((d) => DIAS_CORTO[d - 1]).join(' '))
+  return partes.join(' · ')
+}
+
 // Días de historial de marcas necesarios para saber en qué punto del ciclo
 // va una pauta por frecuencia (la máxima es 720 h = 30 días).
 export const DIAS_HISTORIAL_CURAS = 45

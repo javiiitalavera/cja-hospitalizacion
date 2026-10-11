@@ -8,7 +8,7 @@ import { supabase } from '../../lib/supabase'
 import { estaVacio } from '../../lib/informesEstado'
 import { necesitaConfirmacion } from '../../types/contenciones'
 import type { ContencionDia, ContencionNoche } from '../../types/contenciones'
-import { DIAS_HISTORIAL_CURAS, fechasQueTocaLesion, ordenarValoraciones, sumarDias } from '../curas/tipos'
+import { DIAS_HISTORIAL_CURAS, esValoracionClinica, fechasQueTocaLesion, ordenarValoraciones, sumarDias } from '../curas/tipos'
 import type { Valoracion } from '../curas/tipos'
 
 // Umbrales (días). Cambiar aquí cambia los avisos.
@@ -25,7 +25,7 @@ export interface IngresoPendientes {
 export interface LesionPendientes {
   ingreso_id: string
   fecha_inicio: string
-  valoraciones: Pick<Valoracion, 'fecha' | 'created_at' | 'tipo_cura' | 'frecuencia_horas' | 'dias_semana'>[]
+  valoraciones: (Pick<Valoracion, 'fecha' | 'created_at' | 'tipo_cura' | 'frecuencia_horas' | 'dias_semana'> & Partial<Pick<Valoracion, 'medidas' | 'grado' | 'frotis' | 'norton' | 'braden' | 'emina' | 'notas'>>)[]
 }
 
 export interface AltaReciente {
@@ -210,7 +210,8 @@ export function calcularPendientes(e: EntradaPendientes): LineaPendiente[] {
   // Lesiones sin valoración nueva en más de DIAS_SIN_VALORACION días (todos menos el técnico).
   const limiteValoracion = sumarDias(e.hoy, -DIAS_SIN_VALORACION)
   const sinValorar = !e.verLesiones ? [] : lesionesActivas.filter((l) => {
-    const ultima = ordenarValoraciones(l.valoraciones as Valoracion[])[0]?.fecha ?? l.fecha_inicio
+    // Cuenta como valorar la lesión anotar cómo está (medidas, grado, escalas…), no cambiar la pauta de cura.
+    const ultima = ordenarValoraciones(l.valoraciones as Valoracion[]).find(esValoracionClinica)?.fecha ?? l.fecha_inicio
     return ultima < limiteValoracion
   })
   if (sinValorar.length > 0) {
@@ -291,7 +292,7 @@ export async function cargarExtrasPendientes(
     ids.length > 0 && (verCuras || verLesiones)
       ? supabase
           .from('curas_lesiones')
-          .select('ingreso_id, fecha_inicio, valoraciones:curas_valoraciones(fecha, created_at, tipo_cura, frecuencia_horas, dias_semana)')
+          .select('ingreso_id, fecha_inicio, valoraciones:curas_valoraciones(fecha, created_at, tipo_cura, frecuencia_horas, dias_semana, medidas, grado, frotis, norton, braden, emina, notas)')
           .in('ingreso_id', ids)
           .is('fecha_fin', null)
       : Promise.resolve({ data: [], error: null }),

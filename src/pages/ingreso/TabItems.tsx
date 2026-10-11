@@ -140,8 +140,8 @@ function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo
           {errorCarga} — no guardes cambios hasta recargar la página, para no sobrescribir datos reales con vacío.
         </div>
       )}
-      <div className="card p-6 space-y-3">
-        <p className="section-title">Seguridad y conducta</p>
+      <div className="card p-6 space-y-5">
+        <p className="section-title !mb-0">Seguridad y conducta</p>
 
         {/* Semáforo de caídas: como el resto del formulario, no se guarda hasta pulsar «Guardar cambios». */}
         <div>
@@ -162,7 +162,7 @@ function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo
           <p className="text-xs text-slate-500 mt-1">Riesgo de caída del paciente. Pulsa el color activo para quitarlo.</p>
         </div>
 
-        <div className="border-t border-slate-100 pt-3 space-y-2">
+        <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 space-y-2.5" data-testid="bloque-contencion">
           <div>
             <p className="label !mb-0">Pauta de contención</p>
             <p className="text-xs text-slate-500">
@@ -195,7 +195,7 @@ function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo
           />
         )}
         </div>
-        <div>
+        <div className="border-t border-slate-200 pt-5" data-testid="bloque-alerta-conducta">
           <label className="label">Alerta de conducta</label>
           <div className="flex flex-wrap gap-2">
             {([
