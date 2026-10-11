@@ -414,7 +414,7 @@ function CuerpoValoracion({
       <div className="flex gap-3 pt-1">
         <button onClick={onClose} className="btn-secondary flex-1">Cancelar</button>
         <button onClick={guardar} disabled={guardando} className="btn-primary flex-1 justify-center">
-          {guardando ? 'Guardando…' : modo === 'pauta' && !editando ? 'Guardar pauta' : 'Guardar'}
+          {guardando ? 'Guardando…' : modo === 'pauta' && !editando ? 'Guardar cura' : modo === 'valoracion' && !editando ? 'Guardar valoración' : 'Guardar'}
         </button>
       </div>
     </div>
@@ -437,9 +437,9 @@ export function FormularioValoracion({
 // mal escrito con anotar cómo está la lesión o cambiar la cura.
 type Pestaña = 'valoracion' | 'pauta' | 'datos'
 const PESTAÑAS: { id: Pestaña; titulo: string; ayuda: string }[] = [
-  { id: 'valoracion', titulo: 'Valoración', ayuda: 'Cómo está la lesión hoy: medidas, grado, frotis, escalas.' },
-  { id: 'pauta', titulo: 'Pauta de cura', ayuda: 'La cura que lleva: apósito, frecuencia, días.' },
-  { id: 'datos', titulo: 'Datos de la lesión', ayuda: 'Para corregir algo mal escrito: localización, fecha de inicio, origen, notas.' },
+  { id: 'valoracion', titulo: 'Nueva valoración', ayuda: 'Cómo está la lesión hoy: medidas, grado, frotis, escalas.' },
+  { id: 'pauta', titulo: 'Editar cura', ayuda: 'Cambiar la cura que lleva: apósito, frecuencia, días.' },
+  { id: 'datos', titulo: 'Editar lesión', ayuda: 'Para corregir algo mal escrito: localización, fecha de inicio, origen, notas.' },
 ]
 
 export function ModalEditarLesion({
@@ -451,7 +451,7 @@ export function ModalEditarLesion({
   const [pestaña, setPestaña] = useState<Pestaña>(pestañaInicial && disponibles.some((p) => p.id === pestañaInicial) ? pestañaInicial : disponibles[0].id)
   const actual = disponibles.find((p) => p.id === pestaña)!
   return (
-    <Modal titulo={`Editar · ${lesion.localizacion}`} onClose={onClose}>
+    <Modal titulo={`${lesion.localizacion} · ${CARACTERISTICA_LABEL[lesion.caracteristicas]}`} onClose={onClose}>
       {disponibles.length > 1 && (
         <div role="tablist" className="flex gap-1 border-b border-slate-200 mb-3">
           {disponibles.map((p) => (
