@@ -10,6 +10,15 @@ import { severidadDia, severidadNoche, SEVERIDAD_ESTILO } from '../../types/cont
 import { SEMAFORO_CAIDAS_COLOR } from '../../types'
 import { EVENTO_SEMAFORO, SEMAFOROS } from '../../components/SemaforoCaidas'
 
+// Mismo peso visual que los botones del semáforo de caídas: relleno marcado, no el tono pastel de las etiquetas.
+const ESTILO_BOTON_CONTENCION: Record<string, string> = {
+  sin_revisar: 'bg-slate-200 text-slate-700 border-slate-300',
+  ninguna: 'bg-emerald-200 text-emerald-900 border-emerald-300',
+  seguridad: 'bg-blue-200 text-blue-900 border-blue-300',
+  si_precisa: 'bg-amber-300 text-amber-950 border-amber-400',
+  activa: 'bg-red-500 text-white border-red-600',
+}
+
 function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo?: { nombre: string; habitacion?: number | null } }) {
   const [data, setData] = useState<Partial<ItemsPaciente & { version: number }>>({})
   const [estado, setEstado] = useState<'inactivo' | 'guardando' | 'guardado' | 'error' | 'conflicto'>('inactivo')
@@ -157,27 +166,26 @@ function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo
           <div>
             <p className="label !mb-0">Pauta de contención</p>
             <p className="text-xs text-slate-500">
-              Contención pautada para el día y para la noche. Se cambia en «Ver / editar contención» y cada cambio queda en su historial.
+              Contención pautada para el día y para la noche. Pulsa Día o Noche para ver o editar la contención; cada cambio queda en su historial.
             </p>
           </div>
         {estadoContencion === 'cargando' ? (
           <Cargando />
         ) : (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Pauta de contención">
             {(['dia', 'noche'] as const).map((eje) => {
               const sev = eje === 'dia' ? severidadDia(estadoContencion.dia as any) : severidadNoche(estadoContencion.noche as any)
               const estilo = SEVERIDAD_ESTILO[sev]
               return (
-                <span key={eje} className={`px-2.5 py-1.5 rounded-lg text-xs font-medium border ${estilo.bg} ${estilo.text} ${estilo.border}`}>
+                <button key={eje} type="button" onClick={() => setModalContencion(true)}
+                  aria-label={`Contención ${eje === 'dia' ? 'día' : 'noche'}: ${estilo.label}. Ver o editar`}
+                  className={`min-w-[11rem] px-3 py-1.5 rounded-lg text-xs font-semibold border-2 transition-all hover:brightness-95 ${ESTILO_BOTON_CONTENCION[sev]}`}>
                   {eje === 'dia' ? 'Día' : 'Noche'}: {estilo.label}
-                </span>
+                </button>
               )
             })}
           </div>
         )}
-        <button onClick={() => setModalContencion(true)} className="btn-secondary text-xs w-fit">
-          Ver / editar contención
-        </button>
         {modalContencion && (
           <ModalContencion
             ingresoId={ingresoId}
