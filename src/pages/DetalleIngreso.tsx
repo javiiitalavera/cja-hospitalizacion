@@ -19,6 +19,7 @@ import { TabOtrosInformes } from './ingreso/TabOtrosInformes'
 import { TabInformeEnfermeria } from './ingreso/TabInformeEnfermeria'
 import { NavegadorPacientes } from './ingreso/NavegadorPacientes'
 import { BadgeHabitacion } from './ingreso/BadgeHabitacion'
+import { SemaforoCaidas, EVENTO_SEMAFORO } from '../components/SemaforoCaidas'
 import { TIPALT_LABEL } from '../lib/alta'
 import { registrarAcceso } from '../lib/accesos'
 
@@ -154,7 +155,7 @@ export default function DetalleIngreso() {
     if (ingreso?.id) registrarAcceso('expediente', { ingresoId: ingreso.id, pacienteId: ingreso.paciente_id })
   }, [ingreso?.id])
 
-  // Semáforo de caídas del paciente (lo rellena enfermería en la hoja de
+  // Semáforo de caídas del paciente (se cambia desde la cabecera de la ficha o en la hoja de
   // ítems). Se vuelve a leer al cambiar de pestaña por si ha cambiado.
   const [semaforo, setSemaforo] = useState<string | null>(null)
   useEffect(() => {
@@ -168,6 +169,15 @@ export default function DetalleIngreso() {
       .then(({ data }) => { if (vigente) setSemaforo((data as { semaforo_caidas?: string | null } | null)?.semaforo_caidas ?? null) })
     return () => { vigente = false }
   }, [id, tabActual.id, subActual?.id])
+  // El semáforo también se puede cambiar desde otro punto de esta misma pantalla (el aviso tras registrar una caída).
+  useEffect(() => {
+    function alCambiar(e: Event) {
+      const d = (e as CustomEvent<{ ingresoId: string; valor: string | null }>).detail
+      if (d.ingresoId === id) setSemaforo(d.valor)
+    }
+    window.addEventListener(EVENTO_SEMAFORO, alCambiar)
+    return () => window.removeEventListener(EVENTO_SEMAFORO, alCambiar)
+  }, [id])
 
   async function darAlta() {
     if (!id) return
@@ -292,6 +302,13 @@ export default function DetalleIngreso() {
                 >
                   {ESTADO_LABEL[ingreso.estado] ?? ingreso.estado}
                 </span>
+                {/* El semáforo de caídas se cambia desde aquí, sin ir a la Hoja de ítems (lo puede hacer cualquier perfil). */}
+                {!episodioCerrado && id && (
+                  <span className="flex items-center gap-1.5" data-testid="semaforo-ficha">
+                    <span>Semáforo de caídas</span>
+                    <SemaforoCaidas ingresoId={id} valor={semaforo} onCambio={setSemaforo} />
+                  </span>
+                )}
               </div>
             </div>
           </div>

@@ -80,7 +80,7 @@ export default function Home() {
   // cargado entero (null), el recuadro no se muestra: antes de tener los
   // datos todo parecería "sin pautar" o "sin semáforo".
   const [datosPendientes, setDatosPendientes] = useState<{
-    eventosPendientes: { ingreso_id: string; tipo: string }[]
+    eventosPendientes: { ingreso_id: string; tipo: string; fecha?: string; created_at?: string }[]
     extras: ExtrasPendientes
     contencionesOk: boolean
     semaforosOk: boolean
@@ -150,7 +150,7 @@ export default function Home() {
           // Sin límite de fecha, a propósito — una incidencia puede
           // llevar pendiente de completar más de 7 días y no por eso
           // deja de ser trabajo pendiente.
-          supabase.from('eventos').select('id,ingreso_id,tipo').in('ingreso_id', ids).neq('tipo', 'ulcera').eq('estado', 'pendiente'),
+          supabase.from('eventos').select('id,ingreso_id,tipo,fecha,created_at').in('ingreso_id', ids).neq('tipo', 'ulcera').eq('estado', 'pendiente'),
         ])
 
         // La lista de pacientes es lo esencial y ya se ha podido
@@ -189,7 +189,7 @@ export default function Home() {
           setErrorAuxiliar('Algunos datos (incidencias, contención, pendientes) podrían no estar actualizados.')
         }
         setDatosPendientes({
-          eventosPendientes: errPendientes ? [] : ((pendientesData ?? []) as { ingreso_id: string; tipo: string }[]),
+          eventosPendientes: errPendientes ? [] : ((pendientesData ?? []) as { ingreso_id: string; tipo: string; fecha?: string; created_at?: string }[]),
           extras,
           contencionesOk: !errPautas,
           semaforosOk: !errItems,

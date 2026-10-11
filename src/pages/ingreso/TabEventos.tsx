@@ -5,6 +5,7 @@ import { useAuth } from '../../lib/AuthContext'
 import { useConfirmar } from '../../components/useConfirmar'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
 import FormularioEvento from '../../components/FormularioEvento'
+import { AntiguedadPendiente } from '../../components/AntiguedadPendiente'
 import { TIPO_EVENTO_LABEL, TIPO_EVENTO_COLOR, TURNO_LABEL, CAMPOS_POR_TIPO, type Evento } from '../../types/eventos'
 
 function TabEventos({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo?: { nombre: string; habitacion?: number | null } }) {
@@ -116,9 +117,12 @@ function TabEventos({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteIn
                       {TIPO_EVENTO_LABEL[ev.tipo]}
                     </span>
                     {ev.estado === 'pendiente' && (
-                      <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200">
-                        Pendiente de completar
-                      </span>
+                      <>
+                        <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200">
+                          Pendiente de completar
+                        </span>
+                        <AntiguedadPendiente ev={ev} />
+                      </>
                     )}
                     <span className="text-xs text-slate-500">
                       {new Date(ev.fecha).toLocaleDateString('es-ES')}

@@ -5,7 +5,8 @@ import { hoyLocal } from '../lib/fechas'
 import { useAuth } from '../lib/AuthContext'
 import { useAvisoSalida } from '../lib/avisoSalida'
 import type { Profesional } from '../types'
-import { TIPO_EVENTO_LABEL, TIPOS_REGISTRABLES, CAMPOS_POR_TIPO, TURNO_LABEL, campoVisible, turnoSegunHora, type TipoEvento, type Evento } from '../types/eventos'
+import RevisionTrasIncidencia, { revisionPara } from './RevisionTrasIncidencia'
+import { TIPO_EVENTO_LABEL, TIPOS_REGISTRABLES, CAMPOS_POR_TIPO, CAMPOS_AÑADIDOS_DESPUES, TURNO_LABEL, campoVisible, turnoSegunHora, type TipoEvento, type Evento } from '../types/eventos'
 import { X, Save } from 'lucide-react'
 
 interface Props {
@@ -41,6 +42,8 @@ export default function FormularioEvento({ ingresoId, eventoExistente, onClose, 
   const firma = JSON.stringify([tipo, fecha, hora, turno, estado, datos, notas])
   const firmaInicialRef = useRef(firma)
   const [guardadoOk, setGuardadoOk] = useState(false)
+  // Tras guardar una incidencia nueva de ciertos tipos se propone revisar el semáforo o la contención (ver RevisionTrasIncidencia).
+  const [revisar, setRevisar] = useState<ReturnType<typeof revisionPara>>(null)
   useAvisoSalida(!guardadoOk && firma !== firmaInicialRef.current)
 
   useEffect(() => {
@@ -158,7 +161,9 @@ export default function FormularioEvento({ ingresoId, eventoExistente, onClose, 
         // Igual con las agresiones antiguas, de cuando aún no se registraba el lugar.
         const antiguaSinDetalle = base.key === 'lugar_detalle' && eventoExistente?.datos?.lugar === datos.lugar && !eventoExistente.datos.lugar_detalle
         const antiguaSinLugar = base.key === 'lugar' && tipo === 'agresividad_fisica' && eventoExistente?.tipo === tipo && !eventoExistente.datos?.lugar
-        if (campo.requerido && !antiguaSinDetalle && !antiguaSinLugar && !datos[campo.key]) {
+        // Campos que no existían cuando se registró una incidencia antigua: no se exigen al editarla.
+        const antiguaSinCampoNuevo = CAMPOS_AÑADIDOS_DESPUES.includes(base.key) && !!eventoExistente && eventoExistente.tipo === tipo && !eventoExistente.datos?.[base.key]
+        if (campo.requerido && !antiguaSinDetalle && !antiguaSinLugar && !antiguaSinCampoNuevo && !datos[campo.key]) {
           setError(`El campo "${campo.label}" es obligatorio.`)
           return
         }
@@ -211,7 +216,9 @@ export default function FormularioEvento({ ingresoId, eventoExistente, onClose, 
       return
     }
     setGuardadoOk(true)
-    onGuardado()
+    const propuesta = eventoExistente ? null : revisionPara(tipo)
+    if (propuesta) setRevisar(propuesta)   // se avisa de la propuesta antes de cerrar; onGuardado se llama al terminar
+    else onGuardado()
   }
 
   // Tras un conflicto: se carga la versión actual de la incidencia (se pierde lo escrito aquí, por eso es un botón).
@@ -439,6 +446,10 @@ export default function FormularioEvento({ ingresoId, eventoExistente, onClose, 
           </button>
         </div>
       </div>
+
+      {revisar && (
+        <RevisionTrasIncidencia tipo={revisar} ingresoId={ingresoId} pacienteInfo={pacienteInfo} onTerminar={onGuardado} />
+      )}
 
       {/* Aviso al guardar, no bloqueo: puede haber dos incidencias
           reales del mismo tipo en 24h — se pregunta, no se impide. */}

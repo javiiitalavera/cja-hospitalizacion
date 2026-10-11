@@ -12,7 +12,7 @@ const TIPOS_INCIDENCIA = [
   { valor: 'caida', etiqueta: 'Caída' }, { valor: 'ulcera', etiqueta: 'Úlcera por presión (en Curas)' },
   { valor: 'error_medicacion', etiqueta: 'Error de medicación' }, { valor: 'efecto_adverso_medicacion', etiqueta: 'Efecto adverso' },
   { valor: 'infeccion_nosocomial', etiqueta: 'Infección nosocomial' }, { valor: 'agresividad_fisica', etiqueta: 'Agresividad física' },
-  { valor: 'fuga', etiqueta: 'Fuga' },
+  { valor: 'fuga', etiqueta: 'Fuga' }, { valor: 'atragantamiento', etiqueta: 'Atragantamiento' },
 ]
 
 interface Fila {

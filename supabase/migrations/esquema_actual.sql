@@ -288,7 +288,7 @@ create table public.eventos (
     ingreso_id uuid not null references public.ingresos(id) on delete cascade,
     tipo text not null check (tipo in (
         'caida', 'ulcera', 'error_medicacion', 'efecto_adverso_medicacion',
-        'infeccion_nosocomial', 'agresividad_fisica', 'fuga'
+        'infeccion_nosocomial', 'agresividad_fisica', 'fuga', 'atragantamiento'
     )),
     fecha date not null default current_date,
     hora time,
@@ -2144,6 +2144,9 @@ begin
     'infecciones_nosocomiales', count(*) filter (where e.tipo = 'infeccion_nosocomial'),
     'agresiones', count(*) filter (where e.tipo = 'agresividad_fisica'),
     'fugas', count(*) filter (where e.tipo = 'fuga'),
+    'atragantamientos', count(*) filter (where e.tipo = 'atragantamiento'),
+    'derivaciones_urgencias', count(*) filter (where e.datos->>'derivacion' = 'Urgencias, sin ingreso'),
+    'ingresos_hospitalarios', count(*) filter (where e.datos->>'derivacion' = 'Ingreso hospitalario'),
     'pendientes_completar', count(*) filter (where e.estado = 'pendiente')
   ) into v_otras
   from public.eventos e

@@ -7,7 +7,8 @@ import { escapeHtml, imprimirTablaHTML } from '../lib/imprimir'
 import { supabase } from '../lib/supabase'
 import { nombreCompleto, nombreYApellido } from '../types'
 import { ChevronDown, ChevronRight as ChevronRightIcon, Download, Printer, Search, Plus } from 'lucide-react'
-import { TIPO_EVENTO_LABEL, TIPO_EVENTO_COLOR, TURNO_LABEL, CAMPOS_POR_TIPO, type TipoEvento } from '../types/eventos'
+import { TIPO_EVENTO_LABEL, TIPO_EVENTO_COLOR, TURNO_LABEL, CAMPOS_POR_TIPO, DIAS_PENDIENTE_AVISO, diasPendiente, type TipoEvento } from '../types/eventos'
+import { AntiguedadPendiente } from '../components/AntiguedadPendiente'
 import {
   severidadDia, severidadNoche, SEVERIDAD_ESTILO, necesitaConfirmacion, NOCHE_ES_CONTENCION,
   CONTENCION_DIA_LABEL, CONTENCION_NOCHE_LABEL,
@@ -21,7 +22,7 @@ import { InputFecha } from '../components/InputFecha'
 
 const TIPOS_ORDEN: TipoEvento[] = [
   'caida', 'agresividad_fisica',
-  'fuga', 'infeccion_nosocomial', 'error_medicacion', 'efecto_adverso_medicacion',
+  'fuga', 'infeccion_nosocomial', 'error_medicacion', 'efecto_adverso_medicacion', 'atragantamiento',
 ]
 
 interface EventoActivo {
@@ -33,6 +34,7 @@ interface EventoActivo {
   datos: Record<string, string>
   notas?: string
   estado?: 'pendiente' | 'completa'
+  created_at?: string
   registrado_por?: { nombre: string; apellidos: string }
   ingreso: {
     id: string
@@ -143,7 +145,7 @@ export function Eventos() {
       const { data, error: err } = await supabase
         .from('eventos')
         .select(`
-          id, tipo, fecha, hora, turno, datos, notas, estado,
+          id, tipo, fecha, hora, turno, datos, notas, estado, created_at,
           registrado_por:profesionales!registrado_por_id(nombre, apellidos),
           ingreso:ingresos!inner(id, habitacion, estado, paciente:pacientes(nombre, primer_apellido, segundo_apellido))
         `)
@@ -442,13 +444,20 @@ export function Eventos() {
 
       {/* ══════════════ PENDIENTES DE COMPLETAR ══════════════ */}
       {(() => {
-        const pendientes = eventosActivos.filter((ev) => ev.estado === 'pendiente')
+        // Las que más tiempo llevan abiertas, primero.
+        const pendientes = eventosActivos
+          .filter((ev) => ev.estado === 'pendiente')
+          .sort((a, b) => diasPendiente(b) - diasPendiente(a))
         if (pendientes.length === 0) return null
+        const atrasadas = pendientes.filter((ev) => diasPendiente(ev) > DIAS_PENDIENTE_AVISO).length
         return (
           <section>
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
               <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide mb-3">
                 {pendientes.length} {pendientes.length === 1 ? 'incidencia pendiente' : 'incidencias pendientes'} de completar
+                {atrasadas > 0 && (
+                  <span className="text-red-700"> · {atrasadas} {atrasadas === 1 ? 'lleva' : 'llevan'} más de {DIAS_PENDIENTE_AVISO} días</span>
+                )}
               </p>
               <div className="space-y-1.5">
                 {pendientes.map((ev) => (
@@ -464,7 +473,10 @@ export function Eventos() {
                       <span className="font-medium text-slate-700">{nombreCompleto(ev.ingreso.paciente)}</span>
                       <span className="text-slate-500">Hab. {ev.ingreso.habitacion ?? '—'}</span>
                     </span>
-                    <span className="text-xs text-slate-500">{new Date(ev.fecha).toLocaleDateString('es-ES')}</span>
+                    <span className="flex items-center gap-2">
+                      <span className="text-xs text-slate-500">{new Date(ev.fecha).toLocaleDateString('es-ES')}</span>
+                      <AntiguedadPendiente ev={ev} />
+                    </span>
                   </button>
                 ))}
               </div>

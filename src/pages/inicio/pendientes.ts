@@ -3,6 +3,7 @@
 // función pura, sin acceso a la base de datos, para poder probarla; la que
 // trae los datos que Inicio todavía no tenía es cargarExtrasPendientes.
 
+import { DIAS_PENDIENTE_AVISO, diasPendiente } from '../../types/eventos'
 import { supabase } from '../../lib/supabase'
 import { estaVacio } from '../../lib/informesEstado'
 import { necesitaConfirmacion } from '../../types/contenciones'
@@ -68,7 +69,7 @@ export interface EntradaPendientes {
   contenciones: Record<string, { dia: ContencionDia | string | null; noche: (ContencionNoche | string)[] | null; confirmado_por_id: string | null }> | null
   // semáforo de caídas por ingreso; sin fila en items = sin semáforo
   semaforos: Record<string, string | null | undefined> | null
-  eventosPendientes: { ingreso_id: string; tipo: string }[]
+  eventosPendientes: { ingreso_id: string; tipo: string; fecha?: string; created_at?: string }[]
   extras: ExtrasPendientes
 }
 
@@ -110,12 +111,18 @@ export function calcularPendientes(e: EntradaPendientes): LineaPendiente[] {
   const pend = e.eventosPendientes.filter((ev) => activos.has(ev.ingreso_id))
   const caidas = pend.filter((ev) => ev.tipo === 'caida')
   const otras = pend.filter((ev) => ev.tipo !== 'caida')
+  // «· 2 con más de 7 días»: las que llevan demasiado abiertas, para no dejarlas olvidadas.
+  const atrasadas = (lista: typeof pend) => {
+    const n = lista.filter((ev) => ev.fecha && diasPendiente({ created_at: ev.created_at, fecha: ev.fecha }) > DIAS_PENDIENTE_AVISO).length
+    return n > 0 ? `${n} con más de ${DIAS_PENDIENTE_AVISO} días` : ''
+  }
+  const unir = (hab: string, atraso: string) => [hab, atraso].filter(Boolean).join(' · ')
   if (caidas.length > 0) {
     const n = caidas.length
     lineas.push({
       id: 'caidas',
       texto: `${n} ${plural(n, 'caída pendiente', 'caídas pendientes')} de completar`,
-      detalle: detalle([...new Set(caidas.map((c) => c.ingreso_id))]),
+      detalle: unir(detalle([...new Set(caidas.map((c) => c.ingreso_id))]), atrasadas(caidas)),
       accion: { tipo: 'ruta', ruta: '/eventos?incidencias=pendiente&tipo_incidencia=caida' },
     })
   }
@@ -125,7 +132,7 @@ export function calcularPendientes(e: EntradaPendientes): LineaPendiente[] {
     lineas.push({
       id: 'incidencias',
       texto: `${n} ${nombre} de completar`,
-      detalle: detalle([...new Set(otras.map((c) => c.ingreso_id))]),
+      detalle: unir(detalle([...new Set(otras.map((c) => c.ingreso_id))]), atrasadas(otras)),
       accion: { tipo: 'ruta', ruta: '/eventos?incidencias=pendiente' },
     })
   }

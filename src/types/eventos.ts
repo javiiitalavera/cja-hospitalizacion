@@ -1,3 +1,5 @@
+import { diasEntre } from '../lib/fechas'
+
 export type TipoEvento =
   | 'caida'
   | 'ulcera'
@@ -6,6 +8,7 @@ export type TipoEvento =
   | 'infeccion_nosocomial'
   | 'agresividad_fisica'
   | 'fuga'
+  | 'atragantamiento'
 
 export const TIPO_EVENTO_LABEL: Record<TipoEvento, string> = {
   caida: 'Caída',
@@ -15,6 +18,7 @@ export const TIPO_EVENTO_LABEL: Record<TipoEvento, string> = {
   infeccion_nosocomial: 'Infección nosocomial',
   agresividad_fisica: 'Agresividad física grave',
   fuga: 'Fuga',
+  atragantamiento: 'Atragantamiento',
 }
 
 // Las úlceras por presión ya no son una incidencia: se registran en Plan de
@@ -32,6 +36,7 @@ export const TIPO_EVENTO_COLOR: Record<TipoEvento, string> = {
   infeccion_nosocomial: 'bg-yellow-100 text-yellow-700 border-yellow-200',
   agresividad_fisica: 'bg-rose-100 text-rose-700 border-rose-200',
   fuga: 'bg-slate-100 text-slate-700 border-slate-200',
+  atragantamiento: 'bg-cyan-100 text-cyan-700 border-cyan-200',
 }
 
 export interface Evento {
@@ -86,6 +91,18 @@ export interface CampoEvento {
 const LUGARES = ['Habitación', 'Baño', 'Pasillo', 'Sala común', 'Comedor', 'Gimnasio', 'Sala de terapia', 'Exterior']
 const DETALLES_LUGAR = ['Azul', 'Verde', 'Violeta', 'Gris', 'Sala 1', 'Sala 2']
 
+// Campo común: si el paciente tuvo que salir del centro por lo ocurrido. Se pide en las incidencias que pueden
+// acabar en urgencias (caída, agresión, efecto adverso, infección, atragantamiento).
+export const DERIVACION: CampoEvento = {
+  key: 'derivacion', label: 'Derivación a urgencias / hospital', tipo: 'select',
+  opciones: ['No', 'Urgencias, sin ingreso', 'Ingreso hospitalario'], requerido: true,
+}
+export const DERIVACIONES_A_HOSPITAL = ['Urgencias, sin ingreso', 'Ingreso hospitalario']
+
+// Campos que se añadieron después de que ya hubiera incidencias registradas: al editar una incidencia antigua que no
+// los tiene no se exigen (obligarían a inventar el dato de algo que ocurrió hace tiempo).
+export const CAMPOS_AÑADIDOS_DESPUES = ['derivacion', 'presenciada', 'mecanismo']
+
 export const CAMPOS_POR_TIPO: Record<TipoEvento, CampoEvento[]> = {
   caida: [
     { key: 'con_lesion', label: 'Con lesión', tipo: 'select', opciones: ['Sí', 'No', 'Pendiente de valoración'], requerido: true },
@@ -93,8 +110,11 @@ export const CAMPOS_POR_TIPO: Record<TipoEvento, CampoEvento[]> = {
     { key: 'lugar', label: 'Lugar', tipo: 'select', opciones: LUGARES, requerido: true },
     // Solo se pide si el lugar es un pasillo o la sala de terapia (ver DETALLE_LUGAR).
     { key: 'lugar_detalle', label: 'Pasillo / sala', tipo: 'select', opciones: DETALLES_LUGAR },
+    { key: 'presenciada', label: 'Presenciada', tipo: 'select', opciones: ['Presenciada por el personal', 'No presenciada (hallado en el suelo)'], requerido: true },
+    { key: 'mecanismo', label: 'Mecanismo', tipo: 'select', opciones: ['Levantándose de la cama', 'Levantándose del sillón / silla', 'Caminando', 'Sentándose', 'Cayó de la cama', 'En el aseo / ducha', 'Durante una transferencia', 'Otro / se desconoce'], requerido: true },
     { key: 'circunstancias', label: 'Circunstancias', tipo: 'select', opciones: ['Solo', 'Supervisado', 'Con sujeción activa'] },
     { key: 'consecuencias', label: 'Consecuencias', tipo: 'select', opciones: ['Sin lesión', 'Contusión', 'Herida', 'Fractura', 'TCE', 'Otro', 'Pendiente de valoración'] },
+    DERIVACION,
   ],
 
   ulcera: [
@@ -116,12 +136,14 @@ export const CAMPOS_POR_TIPO: Record<TipoEvento, CampoEvento[]> = {
     { key: 'tipo_reaccion', label: 'Tipo de reacción', tipo: 'select', opciones: ['Alérgica', 'Tóxica', 'Idiosincrática', 'Interacción farmacológica'], requerido: true },
     { key: 'gravedad', label: 'Gravedad', tipo: 'select', opciones: ['Leve', 'Moderada', 'Grave'], requerido: true },
     { key: 'medidas', label: 'Medidas tomadas', tipo: 'text' },
+    DERIVACION,
   ],
 
   infeccion_nosocomial: [
     { key: 'tipo', label: 'Tipo de infección', tipo: 'select', opciones: ['Urinaria (ITU)', 'Respiratoria', 'Herida quirúrgica', 'Gastrointestinal', 'Piel / partes blandas', 'Otra'], requerido: true },
     { key: 'agente', label: 'Agente causal (si conocido)', tipo: 'text' },
     { key: 'confirmacion', label: 'Confirmación diagnóstica', tipo: 'select', opciones: ['Sospecha clínica', 'Confirmada por microbiología'], requerido: true },
+    DERIVACION,
   ],
 
   agresividad_fisica: [
@@ -131,12 +153,22 @@ export const CAMPOS_POR_TIPO: Record<TipoEvento, CampoEvento[]> = {
     { key: 'lugar', label: 'Lugar', tipo: 'select', opciones: LUGARES, requerido: true },
     { key: 'lugar_detalle', label: 'Pasillo / sala', tipo: 'select', opciones: DETALLES_LUGAR },
     { key: 'medidas', label: 'Medidas adoptadas', tipo: 'select', opciones: ['Contención verbal', 'Rescate farmacológico', 'Contención física', 'Notificación a dirección', 'Varias'], requerido: true },
+    DERIVACION,
   ],
 
   fuga: [
     { key: 'resolucion', label: 'Resolución', tipo: 'select', opciones: ['Regreso voluntario', 'Recuperado por personal', 'Recuperado por familia', 'Intervención policial'], requerido: true },
     { key: 'duracion', label: 'Duración de la ausencia', tipo: 'text' },
     { key: 'destino_conocido', label: 'Destino conocido', tipo: 'select', opciones: ['Sí', 'No'] },
+  ],
+
+  atragantamiento: [
+    { key: 'situacion', label: 'Situación', tipo: 'select', opciones: ['Durante una comida', 'Durante la toma de medicación', 'Fuera de las comidas'], requerido: true },
+    { key: 'material', label: 'Qué lo provocó', tipo: 'select', opciones: ['Sólido', 'Líquido', 'Saliva / secreciones', 'Medicación'], requerido: true },
+    { key: 'textura', label: 'Textura de la dieta en ese momento', tipo: 'select', opciones: ['Normal', 'Blanda', 'Triturada', 'Líquidos espesados', 'No consta'] },
+    { key: 'actuacion', label: 'Actuación', tipo: 'select', opciones: ['Tos eficaz, sin intervención', 'Maniobra de desobstrucción (Heimlich)', 'Aspiración de la vía aérea', 'Soporte vital / emergencias'], requerido: true },
+    { key: 'consecuencias', label: 'Consecuencias', tipo: 'select', opciones: ['Sin consecuencias', 'Sospecha de aspiración (vigilar)', 'Aspiración confirmada'], requerido: true },
+    DERIVACION,
   ],
 }
 
@@ -158,4 +190,12 @@ export const TURNO_LABEL: Record<string, string> = {
   manana: 'Mañana',
   tarde: 'Tarde',
   noche: 'Noche',
+}
+
+// Una incidencia «pendiente de completar» que lleva abierta más de este número de días se destaca.
+export const DIAS_PENDIENTE_AVISO = 7
+
+// Días que lleva abierta una incidencia pendiente: desde que se registró (created_at) o, si no se tiene, desde el suceso.
+export function diasPendiente(ev: { created_at?: string | null; fecha: string }): number {
+  return Math.max(0, diasEntre(ev.created_at ?? ev.fecha) ?? 0)
 }

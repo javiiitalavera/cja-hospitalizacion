@@ -6,7 +6,7 @@ import { TarjetaMetrica, EstadoCargando, EstadoError, EstadoSinDatos } from './C
 const TIPO_LABEL: Record<string, string> = {
   caida: 'Caída', ulcera: 'Úlcera por presión', error_medicacion: 'Error de medicación',
   efecto_adverso_medicacion: 'Efecto adverso', infeccion_nosocomial: 'Infección nosocomial',
-  agresividad_fisica: 'Agresividad física', fuga: 'Fuga',
+  agresividad_fisica: 'Agresividad física', fuga: 'Fuga', atragantamiento: 'Atragantamiento',
 }
 
 interface Seguridad {
@@ -14,7 +14,9 @@ interface Seguridad {
   caidas: { total: number; con_lesion: number; pendientes_valoracion: number; graves: number; tasa_total_1000: number | null; tasa_con_lesion_1000: number | null }
   // sin_origen y pacientes_afectados son opcionales: no existen hasta que se ejecuta el SQL de úlceras en Curas.
   ulceras: { presentes_al_ingreso: number; aparecidas_durante: number; grado_iii_iv: number; tasa_aparecidas_1000: number | null; sin_origen?: number; pacientes_afectados?: number }
-  otras: { errores_medicacion: number; efectos_adversos: number; infecciones_nosocomiales: number; agresiones: number; fugas: number; pendientes_completar: number }
+  otras: { errores_medicacion: number; efectos_adversos: number; infecciones_nosocomiales: number; agresiones: number; fugas: number; pendientes_completar: number
+    // Opcionales: no existen hasta que se ejecuta el SQL de atragantamiento y derivación (20261015).
+    atragantamientos?: number; derivaciones_urgencias?: number; ingresos_hospitalarios?: number }
   contenciones: { pacientes_con_contencion_activa: number; pacientes_con_si_precisa: number; pendientes_confirmacion: number; cambios_pauta_periodo: number }
 }
 
@@ -131,6 +133,9 @@ export function SeguridadDashboard({ filtros, desde, hasta, onExplorar, onExplor
               <TarjetaMetrica etiqueta="Infecciones nosocomiales" valor={datos.otras.infecciones_nosocomiales} onClick={() => irATipo('infeccion_nosocomial')} />
               <TarjetaMetrica etiqueta="Agresiones" valor={datos.otras.agresiones} onClick={() => irATipo('agresividad_fisica')} />
               <TarjetaMetrica etiqueta="Fugas" valor={datos.otras.fugas} onClick={() => irATipo('fuga')} />
+              <TarjetaMetrica etiqueta="Atragantamientos" valor={datos.otras.atragantamientos ?? '—'} onClick={() => irATipo('atragantamiento')} />
+              <TarjetaMetrica etiqueta="Derivaciones a urgencias" valor={datos.otras.derivaciones_urgencias ?? '—'} subvalor="Sin ingreso, de caídas, agresiones, efectos adversos, infecciones y atragantamientos" />
+              <TarjetaMetrica etiqueta="Ingresos hospitalarios" valor={datos.otras.ingresos_hospitalarios ?? '—'} subvalor="Por esas mismas incidencias" />
               <TarjetaMetrica etiqueta="Pendientes de completar" valor={datos.otras.pendientes_completar} subvalor="De todos los tipos del periodo" onClick={() => onExplorar({ desde, hasta, incidencias: 'pendiente' })} />
             </div>
           </section>
