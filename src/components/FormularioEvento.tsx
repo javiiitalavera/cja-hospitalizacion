@@ -369,7 +369,8 @@ export default function FormularioEvento({ ingresoId, eventoExistente, onClose, 
                       onChange={(e) => setDato(campo.key, e.target.value)}
                     >
                       <option value="">—</option>
-                      {campo.opciones?.map((op) => (
+                      {/* Si la incidencia guardada tiene un valor que ya no se ofrece (p. ej. «Herida quirúrgica»), se conserva como opción. */}
+                      {[...(campo.opciones ?? []), ...(datos[campo.key] && !campo.opciones?.includes(datos[campo.key]) ? [datos[campo.key]] : [])].map((op) => (
                         <option key={op} value={op}>
                           {op}
                         </option>

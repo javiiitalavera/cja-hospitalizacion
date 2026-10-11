@@ -140,7 +140,7 @@ export const CAMPOS_POR_TIPO: Record<TipoEvento, CampoEvento[]> = {
   ],
 
   infeccion_nosocomial: [
-    { key: 'tipo', label: 'Tipo de infección', tipo: 'select', opciones: ['Urinaria (ITU)', 'Respiratoria', 'Herida quirúrgica', 'Gastrointestinal', 'Piel / partes blandas', 'Otra'], requerido: true },
+    { key: 'tipo', label: 'Tipo de infección', tipo: 'select', opciones: ['Urinaria (ITU)', 'Respiratoria', 'Gastrointestinal', 'Piel / partes blandas', 'Otra'], requerido: true },
     { key: 'agente', label: 'Agente causal (si conocido)', tipo: 'text' },
     { key: 'confirmacion', label: 'Confirmación diagnóstica', tipo: 'select', opciones: ['Sospecha clínica', 'Confirmada por microbiología'], requerido: true },
     DERIVACION,
