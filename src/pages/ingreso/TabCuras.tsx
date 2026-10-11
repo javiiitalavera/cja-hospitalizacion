@@ -104,8 +104,8 @@ function aEntero(s: string): number | null {
 
 // ── Formulario de lesión (crear / editar) ────────────────────
 export function FormularioLesion({
-  ingresoId, editando, onClose, onGuardado,
-}: { ingresoId: string; editando: Lesion | null; onClose: () => void; onGuardado: () => void }) {
+  ingresoId, editando, onClose, onGuardado, pacienteInfo,
+}: { ingresoId: string; editando: Lesion | null; onClose: () => void; onGuardado: () => void; pacienteInfo?: string }) {
   const { profesional } = useAuth()
   const [f, setF] = useState({
     caracteristicas: (editando?.caracteristicas ?? 'upp') as Caracteristica,
@@ -195,6 +195,7 @@ export function FormularioLesion({
   return (
     <Modal titulo={editando ? 'Editar lesión o cuidado' : 'Añadir lesión o cuidado'} onClose={onClose}>
       <div className="space-y-3">
+        {pacienteInfo && <p className="text-sm font-medium text-slate-700">{pacienteInfo}</p>}
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="label">Tipo *</label>

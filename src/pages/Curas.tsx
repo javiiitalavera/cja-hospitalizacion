@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { CabeceraPagina } from '../components/CabeceraPagina'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, Check, X, Printer, Pencil } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Check, X, Printer, Pencil, Plus } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import { hoyLocal } from '../lib/fechas'
@@ -14,12 +14,19 @@ import {
 } from './curas/tipos'
 import { ModalCura } from './curas/ModalCura'
 import { MarcaCuraModal } from './curas/MarcaCuraModal'
+import { FormularioLesion } from './ingreso/TabCuras'
 
 interface PacienteConCuras {
   id: string            // id del ingreso
   habitacion: number | null
   paciente: { nombre: string; primer_apellido: string; segundo_apellido?: string | null }
   lesiones: Lesion[]    // solo las activas
+}
+
+interface IngresoActivo {
+  id: string
+  habitacion: number | null
+  paciente: { nombre: string; primer_apellido: string; segundo_apellido?: string | null }
 }
 
 // ── Impresión: tabla semanal + tabla de cuidados, en una hoja ────
@@ -69,6 +76,33 @@ export default function Curas() {
   // Celda de la tabla semanal que se está registrando (paciente + día).
   const [celda, setCelda] = useState<{ p: PacienteConCuras; fecha: string } | null>(null)
   const [abierta, setAbierta] = useState<{ ingresoId: string; lesionId: string } | null>(null)
+
+  // ── Añadir una cura nueva desde esta página (como "Registrar incidencia") ──
+  const [selectorPaciente, setSelectorPaciente] = useState(false)
+  const [busquedaPaciente, setBusquedaPaciente] = useState('')
+  const [ingresosActivos, setIngresosActivos] = useState<IngresoActivo[]>([])
+  const [errorSelector, setErrorSelector] = useState('')
+  const [ingresoNuevaCura, setIngresoNuevaCura] = useState<IngresoActivo | null>(null)
+
+  useEffect(() => {
+    if (!selectorPaciente) return
+    setErrorSelector('')
+    supabase
+      .from('ingresos')
+      .select('id, habitacion, paciente:pacientes(nombre, primer_apellido, segundo_apellido)')
+      .eq('estado', 'activo')
+      .order('habitacion', { ascending: true })
+      .then(({ data, error: err }) => {
+        if (err) setErrorSelector('No se pudo cargar la lista de pacientes: ' + err.message)
+        else setIngresosActivos((data ?? []) as unknown as IngresoActivo[])
+      })
+  }, [selectorPaciente])
+
+  const ingresosFiltrados = ingresosActivos.filter((i) => {
+    const q = busquedaPaciente.toLowerCase().trim()
+    if (!q) return true
+    return nombreCompleto(i.paciente).toLowerCase().includes(q) || String(i.habitacion ?? '').includes(q)
+  })
 
   const semana = useMemo(() => Array.from({ length: 7 }, (_, i) => sumarDias(lunes, i)), [lunes])
 
@@ -153,6 +187,9 @@ export default function Curas() {
           <button onClick={() => imprimirHoja(pacientes, semana, registros, tocaEse)} disabled={pacientes.length === 0} className="btn-secondary text-sm">
             <Printer className="w-4 h-4" />Imprimir
           </button>
+          <button onClick={() => { setBusquedaPaciente(''); setSelectorPaciente(true) }} className="btn-primary text-sm">
+            <Plus className="w-4 h-4" />Añadir cura
+          </button>
       </CabeceraPagina>
 
       {error && (
@@ -165,7 +202,7 @@ export default function Curas() {
 
       {!loading && !error && pacientes.length === 0 && (
         <div className="card p-8 text-center text-sm text-slate-500">
-          No hay pacientes con curas activas. Las lesiones y cuidados se añaden en la ficha de cada paciente, pestaña Plan de cuidados → Pauta de curas.
+          No hay pacientes con curas activas. Pulsa «Añadir cura» para registrar una lesión o cuidado (también se puede hacer desde la ficha del paciente, Plan de cuidados → Pauta de curas).
         </div>
       )}
 
@@ -273,6 +310,56 @@ export default function Curas() {
             </table>
           </div>
         </>
+      )}
+
+      {selectorPaciente && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setSelectorPaciente(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5 space-y-3" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-bold text-slate-800">¿De qué paciente?</h3>
+            <input
+              autoFocus
+              className="input"
+              placeholder="Buscar por nombre o nº de habitación…"
+              value={busquedaPaciente}
+              onChange={(e) => setBusquedaPaciente(e.target.value)}
+            />
+            {errorSelector && <p className="text-sm text-red-600">{errorSelector}</p>}
+            <div className="max-h-64 overflow-y-auto -mx-1 px-1">
+              {ingresosFiltrados.length === 0 ? (
+                <p className="text-sm text-slate-500 text-center py-6">Sin resultados.</p>
+              ) : (
+                ingresosFiltrados.map((i) => {
+                  const n = pacientes.find((p) => p.id === i.id)?.lesiones.length ?? 0
+                  return (
+                    <button
+                      key={i.id}
+                      onClick={() => { setIngresoNuevaCura(i); setSelectorPaciente(false) }}
+                      className="w-full flex items-center justify-between gap-2 text-left px-3 py-2 rounded-lg hover:bg-slate-50 text-sm"
+                    >
+                      <span className="font-medium text-slate-700">{nombreCompleto(i.paciente)}</span>
+                      <span className="text-slate-500 text-xs shrink-0">
+                        {n > 0 && <span className="mr-2 text-primary-700">{n} cura{n === 1 ? '' : 's'}</span>}Hab. {i.habitacion ?? '—'}
+                      </span>
+                    </button>
+                  )
+                })
+              )}
+            </div>
+            <button onClick={() => setSelectorPaciente(false)} className="text-xs text-slate-500 hover:text-slate-600">
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {ingresoNuevaCura && (
+        <FormularioLesion
+          ingresoId={ingresoNuevaCura.id}
+          editando={null}
+          pacienteInfo={`${nombreCompleto(ingresoNuevaCura.paciente)} · Hab. ${ingresoNuevaCura.habitacion ?? '—'}`}
+          onClose={() => setIngresoNuevaCura(null)}
+          onGuardado={() => { setIngresoNuevaCura(null); cargar() }}
+        />
       )}
 
       {celda && (
