@@ -7,7 +7,7 @@ import { Check, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { ChipsTurno } from '../../components/ChipsTurno'
 import { useAvisoSalida } from '../../lib/avisoSalida'
 import { useConfirmar } from '../../components/useConfirmar'
-import { MAX_TEXTO_PAUTA, TURNOS, textoVias, type Turno } from '../../types/pautaCuidados'
+import { MAX_TEXTO_PAUTA, textoVias, type Turno } from '../../types/pautaCuidados'
 import { colorSemaforo, textoDiuresis, type IndicacionHoja, type PacienteHoja } from './hoja'
 
 export interface AccionesFila {
@@ -15,8 +15,6 @@ export interface AccionesFila {
   cambiar: (ingresoId: string, id: string, cambios: { texto: string; turnos: Turno[] }) => Promise<boolean>
   borrar: (ingresoId: string, id: string) => Promise<boolean>
 }
-
-const etiquetaTurno = (t: Turno) => TURNOS.find((x) => x.clave === t)?.etiqueta ?? t
 
 export function FilaPaciente({ n, p, turno, columnas, acciones }: {
   n: number
@@ -145,16 +143,12 @@ export function FilaPaciente({ n, p, turno, columnas, acciones }: {
                 </div>
               )
             }
-            const otros = i.turnos.filter((t) => t !== turno)
             return (
               // Cada indicación va resaltada (fondo ámbar y borde a la izquierda) para que no se confunda con el botón
               // «Añadir indicación», que es un botón discreto de borde punteado.
               <div key={key} data-testid="indicacion" className="flex items-start justify-between gap-2 rounded-md bg-amber-50 border border-amber-200 border-l-4 border-l-amber-400 pl-2.5 pr-1.5 py-1.5">
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-slate-900 whitespace-pre-wrap break-words">{i.texto}</p>
-                  {otros.length > 0 && (
-                    <p className="text-[0.7rem] text-slate-500">También: {otros.map(etiquetaTurno).join(', ')}</p>
-                  )}
                 </div>
                 {editable && i.id && (
                   <div className="flex items-center gap-0.5 shrink-0">

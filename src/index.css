@@ -13,7 +13,7 @@
     font-size: 110%;
   }
   body {
-    @apply bg-slate-100 text-slate-800 font-sans;
+    @apply bg-slate-50 text-slate-800 font-sans;
   }
   /* El gris por defecto de los placeholders es demasiado claro. */
   input::placeholder,
@@ -39,24 +39,34 @@
     @apply bg-primary-600 hover:bg-primary-700 text-white font-medium px-4 py-2 rounded-lg transition-colors duration-150 flex items-center gap-2 text-sm;
   }
   .btn-secondary {
-    @apply bg-white hover:bg-slate-50 text-slate-700 font-medium px-4 py-2 rounded-lg border border-slate-300 transition-colors duration-150 flex items-center gap-2 text-sm;
+    @apply bg-white hover:bg-slate-50 text-slate-700 font-medium px-4 py-2 rounded-lg border transition-colors duration-150 flex items-center gap-2 text-sm;
   }
   .btn-danger {
     @apply bg-red-600 hover:bg-red-700 text-white font-medium px-4 py-2 rounded-lg transition-colors duration-150 flex items-center gap-2 text-sm;
   }
   .input {
-    @apply w-full border border-slate-400 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white;
+    @apply w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white;
   }
   .label {
     @apply block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1;
   }
   .card {
-    @apply bg-white rounded-xl border border-slate-300 shadow-sm;
+    @apply bg-white rounded-xl border shadow-sm;
   }
   .section-title {
     @apply text-xs font-bold uppercase tracking-widest text-primary-600 mb-3;
   }
   .textarea {
-    @apply w-full border border-slate-400 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white resize-none;
+    @apply w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white resize-none;
   }
+}
+
+/* Monitores antiguos (baja densidad, ~1x): ahí los bordes finos y los fondos pálidos se funden entre sí, así que
+   se refuerzan un paso. En pantallas modernas (Retina, 2x) se mantiene el aspecto suave de siempre.
+   Va al final del archivo a propósito: tiene que ganar a las reglas anteriores. Para quitarlo basta con borrar el bloque. */
+@media (max-resolution: 1.25dppx) {
+  body, .app-fondo { background-color: #f1f5f9; }          /* slate-100 */
+  .app-lateral { border-color: #cbd5e1; }                    /* slate-300 */
+  .card, .btn-secondary { border-color: #cbd5e1; }           /* slate-300 */
+  .input, .textarea { border-color: #94a3b8; }               /* slate-400 */
 }

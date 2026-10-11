@@ -34,8 +34,8 @@ export default function Layout() {
   const items = navItems.filter((i) => !i.soloAdmin || esAdmin)
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-100">
-      <aside className={`bg-white border-r border-slate-300 flex flex-col shrink-0 transition-all duration-200 ${collapsed ? 'w-14' : 'w-56'}`}>
+    <div className="app-fondo flex h-screen overflow-hidden bg-slate-50">
+      <aside className={`app-lateral bg-white border-r flex flex-col shrink-0 transition-all duration-200 ${collapsed ? 'w-14' : 'w-56'}`}>
         {/* Cabecera */}
         <div className="border-b px-3 py-4 flex items-center justify-between gap-2">
           {/* Logo — siempre visible, expande si colapsado */}
@@ -71,7 +71,7 @@ export default function Layout() {
               end={end}
               title={collapsed ? label : undefined}
               className={({ isActive }) =>
-                `flex items-center gap-3 px-2 py-2 rounded-lg text-sm transition-colors duration-100 ${
+                `flex items-center gap-3 px-2 py-2 rounded-lg text-sm transition-colors duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300 ${
                   collapsed ? 'justify-center' : ''
                 } ${
                   isActive
