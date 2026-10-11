@@ -145,7 +145,7 @@ export function ActividadDashboard({ filtros, desde, hasta, onExplorar }: {
           </div>
         )}
         <div className="card p-4">
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Distribución por bandas de estancia (altas del periodo)</p>
+          <p className="text-xs font-semibold text-slate-500 mb-3">Distribución por bandas de estancia (altas del periodo)</p>
           {estadoDetalle === 'cargando' && <EstadoCargando />}
           {estadoDetalle === 'error' && <EstadoError mensaje={errorDetalle} onReintentar={cargar} />}
           {estadoDetalle === 'listo' && detalle && (
@@ -192,7 +192,7 @@ export function ActividadDashboard({ filtros, desde, hasta, onExplorar }: {
           {estadoDetalle === 'listo' && detalle && detalle.por_medico.length > 0 && (
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b bg-slate-50 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                <tr className="border-b bg-slate-50 text-left text-xs font-semibold text-slate-500">
                   <th className="px-4 py-2">Médico</th>
                   <th className="px-4 py-2 text-right">Ingresos nuevos</th>
                 </tr>

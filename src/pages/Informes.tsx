@@ -3,7 +3,8 @@ import { CabeceraPagina } from '../components/CabeceraPagina'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { Search, FileText, LogOut, HeartPulse, Ambulance, ClipboardList, FilePen, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react'
-import { ESTADO_INGRESO_LABEL as ESTADO_LABEL, ESTADO_INGRESO_COLOR as ESTADO_COLOR, nombreCompleto } from '../types'
+import { ESTADO_INGRESO_LABEL as ESTADO_LABEL, nombreCompleto } from '../types'
+import { EstadoIngreso } from '../components/EstadoIngreso'
 import { quitarTildes } from '../lib/busqueda'
 import { estaVacio } from '../lib/informesEstado'
 import { formatFechaLocal } from '../lib/fechas'
@@ -286,13 +287,13 @@ export function Informes() {
                   <th
                     key={clave}
                     aria-sort={activa ? (orden.asc ? 'ascending' : 'descending') : 'none'}
-                    className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide"
+                    className="px-4 py-3 text-left text-xs font-semibold"
                   >
                     <button
                       type="button"
                       data-orden={clave}
                       onClick={() => ordenarPor(clave)}
-                      className={`inline-flex items-center gap-1 uppercase tracking-wide hover:text-slate-800 ${activa ? 'text-slate-800' : 'text-slate-500'}`}
+                      className={`inline-flex items-center gap-1 hover:text-slate-800 ${activa ? 'text-slate-800' : 'text-slate-500'}`}
                     >
                       {titulo}
                       <Flecha className={`w-3 h-3 ${activa ? '' : 'opacity-40'}`} />
@@ -342,9 +343,7 @@ export function Informes() {
                   </td>
                   <td className="px-4 py-3 text-slate-500 text-xs">{r.medico}</td>
                   <td className="px-4 py-3">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${ESTADO_COLOR[r.estadoIngreso] ?? 'bg-slate-100 text-slate-500'}`}>
-                      {ESTADO_LABEL[r.estadoIngreso] ?? r.estadoIngreso}
-                    </span>
+                    <EstadoIngreso estado={r.estadoIngreso} className="text-xs" />
                   </td>
                 </tr>
               )

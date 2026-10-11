@@ -15,7 +15,7 @@ export function BannerPendientes({
   if (lineas.length === 0) return null
   return (
     <div className="mb-5 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3" role="region" aria-label="Pendiente">
-      <p className="text-xs font-semibold text-amber-800 uppercase tracking-wide mb-1.5">Pendiente</p>
+      <p className="text-xs font-semibold text-amber-800 mb-1.5">Pendiente</p>
       <div className="space-y-1">
         {lineas.map((l) => (
           <button

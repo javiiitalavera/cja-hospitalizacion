@@ -191,7 +191,7 @@ export function ResumenDashboard({ filtros, desde, hasta, onExplorar, onExplorar
         {/* Gráficos: solo los dos que pide esta vista */}
         <div className="grid md:grid-cols-2 gap-4 mt-4">
           <div className="card p-4">
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Ocupación</p>
+            <p className="text-xs font-semibold text-slate-500 mb-2">Ocupación</p>
             {estadoSeries === 'cargando' && <EstadoCargando />}
             {estadoSeries === 'error' && <EstadoError mensaje={errorSeries} onReintentar={cargarResumenYSeries} />}
             {estadoSeries === 'listo' && series && series.ocupacion_diaria.length > 0 && (
@@ -207,7 +207,7 @@ export function ResumenDashboard({ filtros, desde, hasta, onExplorar, onExplorar
             )}
           </div>
           <div className="card p-4">
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Ingresos y salidas</p>
+            <p className="text-xs font-semibold text-slate-500 mb-2">Ingresos y salidas</p>
             {estadoSeries === 'cargando' && <EstadoCargando />}
             {estadoSeries === 'error' && <EstadoError mensaje={errorSeries} onReintentar={cargarResumenYSeries} />}
             {estadoSeries === 'listo' && series && series.movimientos.length > 0 && (

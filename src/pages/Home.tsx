@@ -428,7 +428,7 @@ export default function Home() {
                     {e != null ? `${e} años` : '—'} · ingreso {fingreso}
                     {dias != null && (
                       <span className={`ml-1.5 font-medium px-1.5 py-0.5 rounded-full ${
-                        dias > 60 ? 'bg-amber-100 text-amber-700' : dias > 30 ? 'bg-yellow-50 text-yellow-600' : 'text-slate-500'
+                        dias > 60 ? 'bg-amber-100 text-amber-700' : dias > 30 ? 'text-slate-700' : 'text-slate-500'
                       }`}>{dias}d</span>
                     )}
                   </p>
@@ -452,10 +452,12 @@ export default function Home() {
   return (
     <div className="p-6 md:p-8">
       <CabeceraPagina titulo="Unidad de Hospitalización" subtitulo={<span className="inline-block first-letter:uppercase">{today}</span>}>
-        <span className="px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full text-sm font-medium">
-          {ocupadas} ingresados
+        <span className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-700">
+          <span aria-hidden className="w-2 h-2 rounded-full bg-emerald-500" />{ocupadas} ingresados
         </span>
-        <span className="px-3 py-1 bg-slate-100 text-slate-500 rounded-full text-sm font-medium">{libres} libres</span>
+        <span className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500">
+          <span aria-hidden className="w-2 h-2 rounded-full bg-slate-300" />{libres} libres
+        </span>
         <div className="flex rounded-lg border bg-white overflow-hidden text-sm" role="group" aria-label="Vista">
           {([['filas', 'Filas', LayoutList], ['tarjetas', 'Tarjetas', LayoutGrid]] as const).map(([v, et, Icono]) => (
             <button key={v} type="button" onClick={() => cambiarVista(v)} aria-pressed={vista === v} title={`Vista de ${et.toLowerCase()}`}
@@ -487,7 +489,7 @@ export default function Home() {
           del día a día. */}
       {!loading && sinHabitacion.length > 0 && (
         <div className="mb-4 border border-amber-200 bg-amber-50 rounded-lg px-4 py-3">
-          <p className="text-xs font-semibold text-amber-800 uppercase tracking-wide mb-2">
+          <p className="text-xs font-semibold text-amber-800 mb-2">
             {sinHabitacion.length} paciente{sinHabitacion.length !== 1 ? 's' : ''} ingresado{sinHabitacion.length !== 1 ? 's' : ''} sin habitación asignada
           </p>
           <div className="space-y-1">
@@ -526,7 +528,7 @@ export default function Home() {
         <div className="grid grid-cols-1 gap-1">
           {/* Cabecera */}
           <div
-            className="grid gap-x-3 text-xs font-semibold text-slate-500 uppercase tracking-wide px-3 pb-1"
+            className="grid gap-x-3 text-xs font-semibold text-slate-500 px-3 pb-1"
             style={{ gridTemplateColumns: COLUMNAS_TABLA }}
           >
             <div>Hab.</div>
@@ -621,7 +623,7 @@ export default function Home() {
                           dias > 60
                             ? 'bg-amber-100 text-amber-700'
                             : dias > 30
-                              ? 'bg-yellow-50 text-yellow-600'
+                              ? 'text-slate-700'
                               : 'text-slate-500'
                         }`}
                       >

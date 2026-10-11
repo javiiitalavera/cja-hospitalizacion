@@ -35,7 +35,7 @@ function DetalleDesplegado({ f }: { f: FilaAuditoria }) {
   if (d.tipo === 'contenido') {
     return (
       <div className="text-xs">
-        <p className="font-semibold text-slate-500 uppercase tracking-wide mb-1">{d.titulo}</p>
+        <p className="font-semibold text-slate-500 mb-1">{d.titulo}</p>
         {d.lineas.length === 0 ? <p className="text-slate-500 italic">Sin datos.</p> : (
           <dl className="grid grid-cols-[minmax(8rem,12rem)_1fr] gap-x-4 gap-y-1 bg-white rounded-lg border p-2">
             {d.lineas.map((l) => (
@@ -60,7 +60,7 @@ function DetalleDesplegado({ f }: { f: FilaAuditoria }) {
         <p className="text-slate-500 italic">Sin cambios netos: lo que se tocó volvió a quedar como estaba.</p>
       ) : (
         <div className="bg-white rounded-lg border overflow-hidden">
-          <div className="grid grid-cols-[minmax(8rem,12rem)_1fr_1fr] bg-slate-50 text-slate-500 font-semibold uppercase tracking-wide">
+          <div className="grid grid-cols-[minmax(8rem,12rem)_1fr_1fr] bg-slate-50 text-slate-500 font-semibold">
             <div className="px-2 py-1">Campo</div><div className="px-2 py-1">Antes</div><div className="px-2 py-1">Después</div>
           </div>
           {d.lineas.map((l) => (

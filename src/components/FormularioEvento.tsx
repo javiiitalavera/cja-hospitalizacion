@@ -352,7 +352,7 @@ export default function FormularioEvento({ ingresoId, eventoExistente, onClose, 
           {/* Campos específicos del tipo */}
           {tipo && (
             <div className="space-y-3 pt-1">
-              <p className="text-xs font-bold text-primary-600 uppercase tracking-widest">{TIPO_EVENTO_LABEL[tipo]}</p>
+              <p className="text-xs font-bold text-primary-600">{TIPO_EVENTO_LABEL[tipo]}</p>
               {camposActuales.map((base) => {
                 const campo = campoVisible(base, datos)
                 if (!campo) return null

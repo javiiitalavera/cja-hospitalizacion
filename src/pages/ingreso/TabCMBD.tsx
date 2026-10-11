@@ -447,7 +447,7 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide">CMBD · Conjunto Mínimo Básico de Datos</h2>
+          <h2 className="text-sm font-bold text-slate-700">CMBD · Conjunto Mínimo Básico de Datos</h2>
           <p className="text-xs text-slate-500 mt-0.5">Registro al alta · {nombreDelPaciente}</p>
         </div>
         <div className="flex items-center gap-2">

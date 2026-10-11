@@ -61,7 +61,7 @@ export default function RevisionTrasIncidencia({
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4" role="dialog" aria-modal="true" data-testid="revision-tras-incidencia">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5 space-y-4">
         <div>
-          <p className="text-xs font-semibold text-emerald-700 uppercase tracking-wide">
+          <p className="text-xs font-semibold text-emerald-700">
             {tipo === 'semaforo' ? 'Caída registrada' : 'Agresividad registrada'}
           </p>
           <h3 className="font-bold text-slate-800 mt-0.5">

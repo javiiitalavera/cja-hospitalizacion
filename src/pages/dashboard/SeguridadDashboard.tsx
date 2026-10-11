@@ -71,7 +71,7 @@ export function SeguridadDashboard({ filtros, desde, hasta, onExplorar, onExplor
               {datos.por_tipo.length === 0 ? <EstadoSinDatos mensaje="Sin incidencias en este periodo." /> : (
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b bg-slate-50 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                    <tr className="border-b bg-slate-50 text-left text-xs font-semibold text-slate-500">
                       <th className="px-4 py-2">Tipo</th>
                       <th className="px-4 py-2 text-right">Incidencias</th>
                       <th className="px-4 py-2 text-right">Pacientes afectados</th>

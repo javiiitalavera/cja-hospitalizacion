@@ -283,7 +283,7 @@ export default function ModalContencion({ ingresoId, onClose, onGuardado, pacien
 
               {/* DÍA */}
               <div>
-                <p className="text-xs font-bold text-primary-600 uppercase tracking-widest mb-2">Día</p>
+                <p className="text-xs font-bold text-primary-600 mb-2">Día</p>
                 <div className="space-y-1.5">
                   {DIA_OPCIONES.map((opt) => {
                     const activo = dia === opt
@@ -312,7 +312,7 @@ export default function ModalContencion({ ingresoId, onClose, onGuardado, pacien
 
               {/* NOCHE */}
               <div>
-                <p className="text-xs font-bold text-primary-600 uppercase tracking-widest mb-2">Noche</p>
+                <p className="text-xs font-bold text-primary-600 mb-2">Noche</p>
                 <p className="text-xs text-slate-500 mb-2">Se pueden marcar varias a la vez.</p>
                 <div className="flex flex-wrap gap-1.5">
                   {/* "Normal" es excluyente: lo mismo que dejar todo lo demás sin marcar */}

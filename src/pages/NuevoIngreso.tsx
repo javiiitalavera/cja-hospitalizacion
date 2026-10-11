@@ -525,7 +525,7 @@ export default function NuevoIngreso() {
           <div className="card p-6 mb-5">
             <p className="section-title">Datos del paciente</p>
 
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Identidad</p>
+            <p className="text-xs font-semibold text-slate-500 mb-2">Identidad</p>
             <div className="grid grid-cols-2 gap-4 mb-5">
               <div>
                 <label className="label">Nombre *</label>
@@ -575,7 +575,7 @@ export default function NuevoIngreso() {
               </div>
             </div>
 
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2 pt-4 border-t">Identificación</p>
+            <p className="text-xs font-semibold text-slate-500 mb-2 pt-4 border-t">Identificación</p>
             <div className="grid grid-cols-2 gap-4 mb-5">
               <div>
                 <label className="label">CIPNA</label>
@@ -611,7 +611,7 @@ export default function NuevoIngreso() {
               </div>
             </div>
 
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2 pt-4 border-t">Contacto</p>
+            <p className="text-xs font-semibold text-slate-500 mb-2 pt-4 border-t">Contacto</p>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="label">Médico de cabecera</label>

@@ -618,7 +618,7 @@ export function TarjetaLesion({
 
       {!curada && (
         <div className="mt-3 rounded-lg bg-primary-50/60 border border-primary-100 px-3 py-2" data-testid="bloque-pauta">
-          <p className="text-xs font-semibold uppercase tracking-wide text-primary-700">Pauta de cura</p>
+          <p className="text-xs font-semibold text-primary-700">Pauta de cura</p>
           {vigente ? (
             <p className="text-sm text-slate-800">
               <span className="font-medium">{vigente.tipo_cura}</span>

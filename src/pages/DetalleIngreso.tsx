@@ -5,7 +5,8 @@ import { supabase } from '../lib/supabase'
 import { hoyLocal, edad } from '../lib/fechas'
 import { useAuth } from '../lib/AuthContext'
 import type { Ingreso } from '../types'
-import { ESTADO_INGRESO_LABEL as ESTADO_LABEL, ESTADO_INGRESO_COLOR as ESTADO_COLOR, nombreCompleto } from '../types'
+import { ESTADO_INGRESO_LABEL as ESTADO_LABEL, nombreCompleto } from '../types'
+import { EstadoIngreso } from '../components/EstadoIngreso'
 import { ChevronLeft, User, FileText, ClipboardList, Activity, LogOut, Database, Lock, RotateCcw, Construction } from 'lucide-react'
 import { TabDatos } from './ingreso/TabDatos'
 import { TabInformeIngreso } from './ingreso/TabInformeIngreso'
@@ -297,11 +298,7 @@ export default function DetalleIngreso() {
                 ) : (
                   <span>· {new Date(ingreso.fecha_ingreso).toLocaleDateString('es-ES')}</span>
                 )}
-                <span
-                  className={`px-2 py-0.5 rounded-full font-medium ${ESTADO_COLOR[ingreso.estado] ?? 'bg-slate-100'}`}
-                >
-                  {ESTADO_LABEL[ingreso.estado] ?? ingreso.estado}
-                </span>
+                <EstadoIngreso estado={ingreso.estado} />
               </div>
             </div>
           </div>
@@ -323,7 +320,7 @@ export default function DetalleIngreso() {
           {ingreso.estado !== 'activo' && esMedico && dentroDeVentanaReapertura && (
             <button
               onClick={() => setConfirmarReabrir(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-medium transition-colors shrink-0"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium transition-colors shrink-0"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               Reabrir episodio
@@ -369,7 +366,7 @@ export default function DetalleIngreso() {
               <Icon className="w-3.5 h-3.5" />
               {label}
               {enConstruccion && (
-                <span className="ml-1 text-xs font-medium px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                <span className="ml-1 text-xs font-medium px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600">
                   en construcción
                 </span>
               )}
@@ -445,7 +442,7 @@ export default function DetalleIngreso() {
               >
                 {s.label}
                 {s.enConstruccion && (
-                  <span className="text-xs font-medium px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                  <span className="text-xs font-medium px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600">
                     en construcción
                   </span>
                 )}

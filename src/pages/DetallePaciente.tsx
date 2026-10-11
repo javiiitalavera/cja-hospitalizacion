@@ -5,7 +5,8 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import { edad, diasEntre } from '../lib/fechas'
 import { ChevronLeft, ChevronRight, Plus, FileText, AlertTriangle, History, Pencil, Save, X } from 'lucide-react'
-import { ESTADO_INGRESO_LABEL as ESTADO_LABEL, ESTADO_INGRESO_COLOR as ESTADO_COLOR, nombreCompleto } from '../types'
+import { nombreCompleto } from '../types'
+import { EstadoIngreso } from '../components/EstadoIngreso'
 import { registrarAcceso } from '../lib/accesos'
 import { FILTRO_TIPOS_RETIRADOS } from '../types/eventos'
 
@@ -206,9 +207,7 @@ export default function DetallePaciente() {
                 {paciente.nhc && <span>· NHC: {paciente.nhc}</span>}
                 {paciente.cipna && <span>· CIPNA: {paciente.cipna}</span>}
                 {ingresoActivo ? (
-                  <span className="px-2 py-0.5 rounded-full font-medium bg-emerald-100 text-emerald-700">
-                    Ingresado · Hab. {ingresoActivo.habitacion ?? '—'}
-                  </span>
+                  <EstadoIngreso estado="activo">Ingresado · Hab. {ingresoActivo.habitacion ?? '—'}</EstadoIngreso>
                 ) : (
                   <span className="px-2 py-0.5 rounded-full font-medium bg-slate-100 text-slate-500">
                     No ingresado
@@ -274,9 +273,7 @@ export default function DetallePaciente() {
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 flex-wrap mb-2">
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${ESTADO_COLOR[ing.estado] ?? 'bg-slate-100'}`}>
-                          {ESTADO_LABEL[ing.estado] ?? ing.estado}
-                        </span>
+                        <EstadoIngreso estado={ing.estado} className="text-xs font-semibold" />
                         {idx === 0 && ingresos.length > 1 && (
                           <span className="text-xs text-slate-500">Más reciente</span>
                         )}

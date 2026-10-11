@@ -17,6 +17,15 @@ export const ESTADO_INGRESO_COLOR: Record<string, string> = {
   exitus: 'bg-red-100 text-red-600',
 }
 
+// Color del punto que acompaña al estado (la etiqueta va en texto normal: se escanea mejor en listas largas
+// que una píldora rellena).
+export const ESTADO_INGRESO_PUNTO: Record<string, string> = {
+  activo: 'bg-emerald-500',
+  alta: 'bg-slate-400',
+  alta_traslado: 'bg-blue-500',
+  exitus: 'bg-red-500',
+}
+
 // Colores del semáforo de caídas: único sitio que los define, usado
 // en Home.tsx, HojaItems.tsx y Dashboard.tsx.
 export const SEMAFORO_CAIDAS_COLOR: Record<string, string> = {

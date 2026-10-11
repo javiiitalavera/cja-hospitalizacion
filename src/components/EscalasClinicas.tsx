@@ -290,7 +290,7 @@ export function EscalaGDSFAST({ gds, fast, onCambiarGds, onChangeFast, disabled 
           resuelto sin preguntar dos veces lo mismo. */}
       {subestadios.length > 0 && (
         <div>
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Subestadio FAST {gds}</p>
+          <p className="text-xs font-semibold text-slate-500 mb-2">Subestadio FAST {gds}</p>
           <div className="bg-white rounded-lg border divide-y">
             {subestadios.map((e) => (
               <label key={e.estadio} className={`flex items-center gap-2.5 px-3 py-2 text-sm ${disabled ? 'text-slate-500' : 'text-slate-600 cursor-pointer hover:bg-slate-50'}`}>
