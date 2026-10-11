@@ -52,7 +52,16 @@ export const EXTRAS_VACIOS: ExtrasPendientes = { lesiones: [], curasHoy: [], inf
 
 export interface EntradaPendientes {
   hoy: string
+  // Avisos de médico: confirmar contenciones, informes de ingreso y de alta. Médicos y administración.
   esMedico: boolean
+  // Quién ve qué (la administración lo ve todo). Todos reciben: incidencias pendientes y pacientes sin pauta de
+  // contención. Además:
+  //   · verCuras:    curas de hoy sin hacer               → enfermería y auxiliares
+  //   · verLesiones: lesiones sin valoración >7 días      → todos menos el técnico
+  //   · verSemaforo: pacientes sin semáforo de caídas     → todos menos los médicos (técnico incluido)
+  verCuras: boolean
+  verLesiones: boolean
+  verSemaforo: boolean
   ingresos: IngresoPendientes[]
   // null = no se pudo cargar: esas líneas no se muestran (un fallo no debe
   // parecer "ningún paciente tiene pauta")
@@ -159,9 +168,9 @@ export function calcularPendientes(e: EntradaPendientes): LineaPendiente[] {
     }
   }
 
-  // ── Curas (solo quien las hace) ───────────────────────────────
+  // ── Curas (quien las hace, y la administración) ───────────────
   const lesionesActivas = e.extras.lesiones.filter((l) => activos.has(l.ingreso_id))
-  if (!e.esMedico && e.extras.curasHoy) {
+  if (e.verCuras && e.extras.curasHoy) {
     const hechas = new Set(e.extras.curasHoy)
     const fechasHechas = new Map<string, Set<string>>()
     for (const r of e.extras.curasRecientes ?? []) {
@@ -191,9 +200,9 @@ export function calcularPendientes(e: EntradaPendientes): LineaPendiente[] {
     }
   }
 
-  // Lesiones sin valoración nueva en más de DIAS_SIN_VALORACION días (todos).
+  // Lesiones sin valoración nueva en más de DIAS_SIN_VALORACION días (todos menos el técnico).
   const limiteValoracion = sumarDias(e.hoy, -DIAS_SIN_VALORACION)
-  const sinValorar = lesionesActivas.filter((l) => {
+  const sinValorar = !e.verLesiones ? [] : lesionesActivas.filter((l) => {
     const ultima = ordenarValoraciones(l.valoraciones as Valoracion[])[0]?.fecha ?? l.fecha_inicio
     return ultima < limiteValoracion
   })
@@ -208,8 +217,8 @@ export function calcularPendientes(e: EntradaPendientes): LineaPendiente[] {
     })
   }
 
-  // ── Semáforo de caídas (solo quien rellena la hoja de ítems) ──
-  if (!e.esMedico && e.semaforos) {
+  // ── Semáforo de caídas (quien rellena la hoja de ítems, y la administración) ──
+  if (e.verSemaforo && e.semaforos) {
     const semaforos = e.semaforos
     const sinSemaforo = porHab(e.ingresos.filter((i) => !semaforos[i.id]).map((i) => i.id))
     if (sinSemaforo.length > 0) {
@@ -259,9 +268,11 @@ export function calcularPendientes(e: EntradaPendientes): LineaPendiente[] {
 export async function cargarExtrasPendientes(
   ingresos: IngresoPendientes[],
   hoy: string,
-  esMedico: boolean
+  esMedico: boolean,
+  verCuras: boolean,
+  verLesiones: boolean
 ): Promise<{ extras: ExtrasPendientes; error: string | null }> {
-  const extras: ExtrasPendientes = { lesiones: [], curasHoy: esMedico ? [] : null, informesIngresoVacios: [], altasRecientes: [] }
+  const extras: ExtrasPendientes = { lesiones: [], curasHoy: verCuras ? null : [], informesIngresoVacios: [], altasRecientes: [] }
   const errores: string[] = []
   const ids = ingresos.map((i) => i.id)
   if (ids.length === 0 && !esMedico) return { extras: { ...extras, curasHoy: [] }, error: null }
@@ -270,14 +281,14 @@ export async function cargarExtrasPendientes(
   const idsAntiguos = ingresos.filter((i) => i.fecha_ingreso <= limiteIngreso).map((i) => i.id)
 
   const [lesiones, registros, informesIngreso, altas] = await Promise.all([
-    ids.length > 0
+    ids.length > 0 && (verCuras || verLesiones)
       ? supabase
           .from('curas_lesiones')
           .select('ingreso_id, fecha_inicio, valoraciones:curas_valoraciones(fecha, created_at, tipo_cura, frecuencia_horas, dias_semana)')
           .in('ingreso_id', ids)
           .is('fecha_fin', null)
       : Promise.resolve({ data: [], error: null }),
-    !esMedico && ids.length > 0
+    verCuras && ids.length > 0
       ? supabase.from('curas_registro').select('ingreso_id, fecha, estado').in('ingreso_id', ids).gte('fecha', sumarDias(hoy, -DIAS_HISTORIAL_CURAS)).lte('fecha', hoy).order('fecha', { ascending: false })
       : Promise.resolve({ data: [], error: null }),
     esMedico && idsAntiguos.length > 0
@@ -296,7 +307,7 @@ export async function cargarExtrasPendientes(
   else extras.lesiones = (lesiones.data ?? []) as unknown as LesionPendientes[]
 
   if (registros.error) errores.push(registros.error.message)
-  else if (!esMedico) {
+  else if (verCuras) {
     const filas = (registros.data ?? []) as { ingreso_id: string; fecha: string; estado: string }[]
     extras.curasHoy = filas.filter((r) => r.fecha === hoy).map((r) => r.ingreso_id)
     extras.curasRecientes = filas.filter((r) => r.estado === 'hecha').map(({ ingreso_id, fecha }) => ({ ingreso_id, fecha }))

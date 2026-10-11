@@ -93,7 +93,11 @@ export default function Home() {
   const [errorAuxiliar, setErrorAuxiliar] = useState('')
   const [vista, setVista] = useState<VistaInicio>(vistaGuardada)
   const navigate = useNavigate()
-  const { esMedico } = useAuth()
+  const { esMedico, esAdmin, rol } = useAuth()
+  // Qué avisos de Inicio le tocan a cada perfil (la administración los ve todos; ver calcularPendientes).
+  const verCuras = esAdmin || rol === 'enfermeria' || rol === 'auxiliar'
+  const verLesiones = esAdmin || rol !== 'tecnico'
+  const verSemaforo = esAdmin || rol !== 'medico'
 
   const today = new Date().toLocaleDateString('es-ES', {
     weekday: 'long',
@@ -177,7 +181,9 @@ export default function Home() {
         const { extras, error: errExtras } = await cargarExtrasPendientes(
           list.map((i) => ({ id: i.id, habitacion: i.habitacion ?? null, fecha_ingreso: i.fecha_ingreso })),
           hoyLocal(),
-          esMedico
+          esMedico,
+          verCuras,
+          verLesiones
         )
         if (errExtras) {
           setErrorAuxiliar('Algunos datos (incidencias, contención, pendientes) podrían no estar actualizados.')
@@ -235,6 +241,9 @@ export default function Home() {
     ? calcularPendientes({
         hoy: hoyLocal(),
         esMedico,
+        verCuras,
+        verLesiones,
+        verSemaforo,
         ingresos: ingresos.map((i) => ({ id: i.id, habitacion: i.habitacion ?? null, fecha_ingreso: i.fecha_ingreso })),
         contenciones: datosPendientes.contencionesOk ? contencionesPorIngreso : null,
         semaforos: datosPendientes.semaforosOk
