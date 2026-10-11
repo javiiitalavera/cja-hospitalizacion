@@ -128,11 +128,6 @@ export function TabPautaCuidados({ ingresoId, episodioActivo }: { ingresoId: str
 
   return (
     <div className="space-y-6 max-w-3xl">
-      <p className="text-sm text-slate-500">
-        Indicaciones de enfermería para las auxiliares: salen en la hoja de trabajo de cada turno marcado
-        (Hojas de turno, en el menú). Se escriben una sola vez.
-      </p>
-
       {!puedeEditar && (
         <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
           <Lock className="w-4 h-4 shrink-0" />
