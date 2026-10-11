@@ -19,7 +19,7 @@ import { TabOtrosInformes } from './ingreso/TabOtrosInformes'
 import { TabInformeEnfermeria } from './ingreso/TabInformeEnfermeria'
 import { NavegadorPacientes } from './ingreso/NavegadorPacientes'
 import { BadgeHabitacion } from './ingreso/BadgeHabitacion'
-import { SemaforoCaidas, EVENTO_SEMAFORO } from '../components/SemaforoCaidas'
+import { EVENTO_SEMAFORO } from '../components/SemaforoCaidas'
 import { TIPALT_LABEL } from '../lib/alta'
 import { registrarAcceso } from '../lib/accesos'
 
@@ -155,8 +155,8 @@ export default function DetalleIngreso() {
     if (ingreso?.id) registrarAcceso('expediente', { ingresoId: ingreso.id, pacienteId: ingreso.paciente_id })
   }, [ingreso?.id])
 
-  // Semáforo de caídas del paciente (se cambia desde la cabecera de la ficha o en la hoja de
-  // ítems). Se vuelve a leer al cambiar de pestaña por si ha cambiado.
+  // Semáforo de caídas del paciente (se cambia en la Hoja de ítems, dentro de «Seguridad y conducta», o al revisarlo
+  // tras registrar una caída). Se vuelve a leer al cambiar de pestaña por si ha cambiado.
   const [semaforo, setSemaforo] = useState<string | null>(null)
   useEffect(() => {
     if (!id) return
@@ -302,13 +302,6 @@ export default function DetalleIngreso() {
                 >
                   {ESTADO_LABEL[ingreso.estado] ?? ingreso.estado}
                 </span>
-                {/* El semáforo de caídas se cambia desde aquí, sin ir a la Hoja de ítems (lo puede hacer cualquier perfil). */}
-                {!episodioCerrado && id && (
-                  <span className="flex items-center gap-1.5" data-testid="semaforo-ficha">
-                    <span>Semáforo de caídas</span>
-                    <SemaforoCaidas ingresoId={id} valor={semaforo} onCambio={setSemaforo} />
-                  </span>
-                )}
               </div>
             </div>
           </div>

@@ -330,6 +330,8 @@ export default function PanelEdicion({
         </div>
 
         <p className="section-title mt-3">Seguridad y conducta</p>
+        <span className="text-xs text-slate-600 block">Pauta de contención</span>
+        <p className="text-[11px] text-slate-500 mb-1.5">Contención pautada para el día y la noche; cada cambio queda en su historial.</p>
         {errorContencion && (
           <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded px-2 py-1 mb-1.5">{errorContencion}</p>
         )}

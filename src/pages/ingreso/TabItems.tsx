@@ -7,6 +7,8 @@ import { BloqueOxigeno, BloqueSonda, SelectorAislamiento, SelectorVias } from '.
 import type { DatosDispositivos } from '../../types/pautaCuidados'
 import ModalContencion from '../../components/ModalContencion'
 import { severidadDia, severidadNoche, SEVERIDAD_ESTILO } from '../../types/contenciones'
+import { SEMAFORO_CAIDAS_COLOR } from '../../types'
+import { EVENTO_SEMAFORO, SEMAFOROS } from '../../components/SemaforoCaidas'
 
 function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo?: { nombre: string; habitacion?: number | null } }) {
   const [data, setData] = useState<Partial<ItemsPaciente & { version: number }>>({})
@@ -84,6 +86,8 @@ function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo
     // Solo se toma la versión nueva: lo que se haya cambiado mientras se guardaba se queda en pantalla
     // y sigue pendiente de guardar (antes la respuesta del servidor lo borraba sin avisar).
     setData((d) => ({ ...d, version: guardado.version, updated_at: guardado.updated_at }))
+    // La cabecera del paciente muestra el color del semáforo: se le avisa del valor ya guardado.
+    window.dispatchEvent(new CustomEvent(EVENTO_SEMAFORO, { detail: { ingresoId, valor: guardado.semaforo_caidas ?? null } }))
     if (revRef.current === miRev) {
       setSucio(false)
       setEstado('guardado')
@@ -129,6 +133,33 @@ function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo
       )}
       <div className="card p-6 space-y-3">
         <p className="section-title">Seguridad y conducta</p>
+
+        {/* Semáforo de caídas: como el resto del formulario, no se guarda hasta pulsar «Guardar cambios». */}
+        <div>
+          <label className="label">Semáforo de caídas</label>
+          <div className="flex gap-2" role="group" aria-label="Semáforo de caídas">
+            {SEMAFOROS.map((color) => {
+              const activo = (data as any).semaforo_caidas === color
+              return (
+                <button key={color} type="button" aria-pressed={activo} aria-label={`Semáforo de caídas ${color}`}
+                  onClick={() => editar(d => ({ ...d, semaforo_caidas: activo ? null : color } as any))}
+                  className={`min-w-[5.5rem] py-1.5 rounded-lg text-xs font-semibold border-2 transition-all ${activo ? 'border-slate-700 scale-105' : 'border-transparent opacity-70 hover:opacity-100'}`}
+                  style={{ backgroundColor: SEMAFORO_CAIDAS_COLOR[color], color: color === 'rojo' ? '#fff' : '#000' }}>
+                  {color.charAt(0).toUpperCase() + color.slice(1)}
+                </button>
+              )
+            })}
+          </div>
+          <p className="text-xs text-slate-500 mt-1">Riesgo de caída del paciente. Pulsa el color activo para quitarlo.</p>
+        </div>
+
+        <div className="border-t border-slate-100 pt-3 space-y-2">
+          <div>
+            <p className="label !mb-0">Pauta de contención</p>
+            <p className="text-xs text-slate-500">
+              Contención pautada para el día y para la noche. Se cambia en «Ver / editar contención» y cada cambio queda en su historial.
+            </p>
+          </div>
         {estadoContencion === 'cargando' ? (
           <Cargando />
         ) : (
@@ -155,6 +186,7 @@ function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo
             pacienteInfo={pacienteInfo}
           />
         )}
+        </div>
         <div>
           <label className="label">Alerta de conducta</label>
           <div className="flex flex-wrap gap-2">
