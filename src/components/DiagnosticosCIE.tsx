@@ -10,6 +10,7 @@ import { useAuth } from '../lib/AuthContext'
 import { encadenar } from '../lib/colaGuardado'
 import { avisoCodigoCIE10, buscarCIE10, cargarCatalogoCIE10, infoCIE10, normalizarCodigo, useCatalogoCIE10 } from '../lib/cie10'
 import { IndicadorGuardado } from './IndicadorGuardado'
+import { AvisoFicha } from './AvisoFicha'
 
 // ─── Buscador de códigos ─────────────────────────────────────
 
@@ -297,10 +298,11 @@ export function BloqueDiagnosticosCMBD({ ingresoId }: { ingresoId: string }) {
       </div>
 
       {estado === 'conflicto' && (
-        <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-lg px-4 py-3 flex items-center justify-between gap-3">
-          <span>Alguien más ha guardado cambios en el CMBD mientras lo editabas. Lo que has escrito sigue aquí, sin guardar.</span>
+        <AvisoFicha tono="atencion" accion={
           <button onClick={recargar} className="btn-secondary text-xs shrink-0">Ver la versión más reciente</button>
-        </div>
+        }>
+          Alguien más ha guardado cambios en el CMBD mientras lo editabas. Lo que has escrito sigue aquí, sin guardar.
+        </AvisoFicha>
       )}
 
       {fila(0, 'Principal', true)}

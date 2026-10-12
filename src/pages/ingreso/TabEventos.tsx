@@ -7,6 +7,7 @@ import { Plus, Pencil, Trash2 } from 'lucide-react'
 import FormularioEvento from '../../components/FormularioEvento'
 import { AntiguedadPendiente } from '../../components/AntiguedadPendiente'
 import { TIPO_EVENTO_LABEL, TIPO_EVENTO_COLOR, TURNO_LABEL, CAMPOS_POR_TIPO, FILTRO_TIPOS_RETIRADOS, type Evento } from '../../types/eventos'
+import { TituloSeccion } from '../../components/TituloSeccion'
 
 function TabEventos({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo?: { nombre: string; habitacion?: number | null } }) {
   const { profesional, esAdmin } = useAuth()
@@ -87,7 +88,7 @@ function TabEventos({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteIn
         <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-2.5">{errorBorrar}</div>
       )}
       <div className="flex justify-between items-center">
-        <p className="text-sm text-slate-500">{eventos.length} incidencia{eventos.length !== 1 ? 's' : ''} registrada{eventos.length !== 1 ? 's' : ''}</p>
+        <TituloSeccion titulo="Incidencias" subtitulo={<>{eventos.length} registrada{eventos.length !== 1 ? 's' : ''} en este ingreso</>} />
         <button onClick={() => setModal(true)} className="btn-primary">
           <Plus className="w-4 h-4" />
           Registrar incidencia

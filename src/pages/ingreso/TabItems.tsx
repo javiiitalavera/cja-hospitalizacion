@@ -9,6 +9,7 @@ import ModalContencion from '../../components/ModalContencion'
 import { severidadDia, severidadNoche, SEVERIDAD_ESTILO, SEVERIDAD_BOTON_ESTILO } from '../../types/contenciones'
 import { SEMAFORO_CAIDAS_COLOR } from '../../types'
 import { EVENTO_SEMAFORO, SEMAFOROS } from '../../components/SemaforoCaidas'
+import { AvisoFicha } from '../../components/AvisoFicha'
 
 
 function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo?: { nombre: string; habitacion?: number | null } }) {
@@ -350,10 +351,11 @@ function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo
       </div>
 
       {estado === 'conflicto' && (
-        <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-lg px-4 py-3 flex items-center justify-between gap-3">
-          <span>Alguien más ha guardado cambios en esta hoja mientras la editabas. Lo que has marcado sigue aquí, sin guardar todavía.</span>
+        <AvisoFicha tono="atencion" accion={
           <button onClick={recargarTrasConflicto} className="btn-secondary text-xs shrink-0">Ver la versión más reciente</button>
-        </div>
+        }>
+          Alguien más ha guardado cambios en esta hoja mientras la editabas. Lo que has marcado sigue aquí, sin guardar todavía.
+        </AvisoFicha>
       )}
 
       <div className="flex justify-between items-center">

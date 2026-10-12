@@ -15,6 +15,8 @@ import { GRUPOS_ENFERMERIA, MAX_TEXTO_ENFERMERIA } from '../informes/enfermeria'
 import type { InformeEnfermeria } from '../informes/enfermeria'
 import { AutoTextarea } from './AutoTextarea'
 import { IndicadorGuardado } from '../../components/IndicadorGuardado'
+import { AvisoFicha } from '../../components/AvisoFicha'
+import { TituloSeccion } from '../../components/TituloSeccion'
 
 const SELECT_INFORME = '*, elaborado_por:profesionales!elaborado_por_id(nombre, apellidos)'
 
@@ -187,24 +189,21 @@ export function TabInformeEnfermeria({ ingresoId, ingreso }: { ingresoId: string
     <div className="max-w-3xl space-y-6">
       <AvisoGuardado avisos={[{ estado, etiqueta: 'Informe', error: errorGuardado }]} />
       <div className="flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-base font-bold text-slate-800">Informe de enfermería</h2>
-          <p className="text-sm text-slate-500">Continuidad de cuidados: lo que necesita el paciente al alta o al traslado.</p>
-        </div>
+        <TituloSeccion titulo="Informe de enfermería" subtitulo="Continuidad de cuidados: lo que necesita el paciente al alta o al traslado." />
         <IndicadorGuardado estado={estado} detalle={errorGuardado || undefined} className="shrink-0 pt-1" />
       </div>
 
       {estado === 'conflicto' && (
-        <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-lg px-4 py-3 flex items-center justify-between gap-3">
-          <span>Alguien más ha guardado este informe. Lo que has escrito sigue aquí, sin guardar.</span>
+        <AvisoFicha tono="atencion" accion={
           <button onClick={recargarTrasConflicto} className="btn-secondary text-xs shrink-0">Ver la versión más reciente</button>
-        </div>
+        }>
+          Alguien más ha guardado este informe. Lo que has escrito sigue aquí, sin guardar.
+        </AvisoFicha>
       )}
       {!puedeEditar && (
-        <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
-          <Lock className="w-4 h-4 shrink-0" />
+        <AvisoFicha icono={Lock}>
           Solo lectura: solo enfermería (o un administrador) puede editar este informe.
-        </div>
+        </AvisoFicha>
       )}
 
       {GRUPOS_ENFERMERIA.map((g) => (

@@ -12,6 +12,9 @@ import type { EscalaClinica } from '../../types/escalas'
 import { AvisoGuardado } from '../../components/AvisoGuardado'
 import { encadenar } from '../../lib/colaGuardado'
 import { IndicadorGuardado, TEXTO_GUARDADO, TEXTO_GUARDANDO } from '../../components/IndicadorGuardado'
+import { AvisoFicha } from '../../components/AvisoFicha'
+import { Info } from 'lucide-react'
+import { TituloSeccion } from '../../components/TituloSeccion'
 
 // Apartados que no siempre existen: salen plegados («+ añadir») salvo que ya tengan texto.
 // Se muestran siempre en este orden, se abran cuando se abran.
@@ -312,18 +315,20 @@ function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
         { estado: estadoEscalas, etiqueta: 'Escalas', texto: 'Escalas guardadas' },
       ]} />
 
-      <div className="flex items-center justify-between">
-        <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-xs text-blue-700">
-          Los antecedentes e informe de ingreso se heredan al exportar. La medicación al alta se pre-rellena desde el tratamiento al ingreso.
-        </div>
-        <IndicadorGuardado estado={estado} className="shrink-0 ml-3" />
+      <div className="flex items-start justify-between gap-4">
+        <TituloSeccion titulo="Informe de alta" subtitulo="Evolución, juicios clínicos y medicación al alta." />
+        <IndicadorGuardado estado={estado} className="shrink-0 pt-1" />
       </div>
+      <AvisoFicha icono={Info}>
+        Los antecedentes e informe de ingreso se heredan al exportar. La medicación al alta se pre-rellena desde el tratamiento al ingreso.
+      </AvisoFicha>
 
       {estado === 'conflicto' && (
-        <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-lg px-4 py-3 flex items-center justify-between gap-3">
-          <span>Alguien más ha guardado cambios en este informe mientras lo editabas. Lo que has escrito sigue aquí, sin guardar todavía.</span>
+        <AvisoFicha tono="atencion" accion={
           <button onClick={recargarTrasConflicto} className="btn-secondary text-xs shrink-0">Ver la versión más reciente</button>
-        </div>
+        }>
+          Alguien más ha guardado cambios en este informe mientras lo editabas. Lo que has escrito sigue aquí, sin guardar todavía.
+        </AvisoFicha>
       )}
 
       <div className="card p-6 space-y-4">
@@ -343,10 +348,11 @@ function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
           <IndicadorGuardado estado={estadoEscalas} />
         </div>
         {estadoEscalas === 'conflicto' && (
-          <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-lg px-4 py-3 flex items-center justify-between gap-3">
-            <span>Alguien más ha guardado cambios en las escalas mientras las editabas. Lo marcado sigue aquí, sin guardar todavía.</span>
+          <AvisoFicha tono="atencion" accion={
             <button onClick={recargarEscalaAltaTrasConflicto} className="btn-secondary text-xs shrink-0">Ver la versión más reciente</button>
-          </div>
+          }>
+            Alguien más ha guardado cambios en las escalas mientras las editabas. Lo marcado sigue aquí, sin guardar todavía.
+          </AvisoFicha>
         )}
 
         {/* Comparación — y también el punto donde se completa cada

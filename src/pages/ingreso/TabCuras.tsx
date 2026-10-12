@@ -8,6 +8,8 @@ import { hoyLocal } from '../../lib/fechas'
 import { Plus, Pencil, Trash2, CheckCircle2, Circle, ChevronDown, ChevronRight, XCircle, Lock } from 'lucide-react'
 import { Modal } from '../curas/Modal'
 import { MarcaCuraModal } from '../curas/MarcaCuraModal'
+import { AvisoFicha } from '../../components/AvisoFicha'
+import { TituloSeccion } from '../../components/TituloSeccion'
 import {
   CARACTERISTICA_LABEL, GRADO_LABEL, LOCALIZACIONES_SUGERIDAS, CURAS_SUGERIDAS, DIAS_CORTO,
   ordenarValoraciones, pautaVigente, textoPauta, fechaLarga, esValoracionClinica, partesValoracion, textoCalendario, sumarDias, fechasQueTocaLesion, DIAS_HISTORIAL_CURAS,
@@ -93,14 +95,14 @@ function CamposPauta({ valor, onChange }: { valor: PautaForm; onChange: (v: Paut
       </div>
       {/* El calendario de la tabla semanal sale solo de la frecuencia o de los días: se avisa si no hay ninguno o si chocan. */}
       {valor.dias_semana.length > 0 && valor.frecuencia_horas.trim() !== '' && (
-        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2" data-testid="aviso-pauta">
+        <AvisoFicha tono="atencion" data-testid="aviso-pauta">
           Has indicado frecuencia y días de la semana: la tabla semanal solo usa los días. Quita uno de los dos.
-        </p>
+        </AvisoFicha>
       )}
       {valor.tipo_cura.trim() !== '' && valor.dias_semana.length === 0 && valor.frecuencia_horas.trim() === '' && (
-        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2" data-testid="aviso-pauta">
+        <AvisoFicha tono="atencion" data-testid="aviso-pauta">
           Sin frecuencia ni días: esta cura no aparecerá como pendiente en la tabla semanal ni en los pendientes de Inicio.
-        </p>
+        </AvisoFicha>
       )}
     </div>
   )
@@ -749,17 +751,13 @@ export function TabCuras({ ingresoId, episodioActivo }: { ingresoId: string; epi
     <div className="max-w-3xl space-y-5">
       {dialogo}
       {!episodioActivo && (
-        <div className="flex items-center gap-2 text-sm text-slate-600 bg-slate-100 border border-slate-200 rounded-lg px-3 py-2">
-          <Lock className="w-4 h-4 shrink-0" />
+        <AvisoFicha icono={Lock}>
           Episodio cerrado: las curas quedan solo en lectura.
-        </div>
+        </AvisoFicha>
       )}
 
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div>
-          <h2 className="text-sm font-semibold text-slate-700">Curas y cuidados de la piel</h2>
-          <p className="text-xs text-slate-500">{activas.length} activa{activas.length === 1 ? '' : 's'}{curadas.length > 0 && ` · ${curadas.length} curada${curadas.length === 1 ? '' : 's'}`}</p>
-        </div>
+        <TituloSeccion titulo="Curas y cuidados de la piel" subtitulo={<>{activas.length} activa{activas.length === 1 ? '' : 's'}{curadas.length > 0 && ` · ${curadas.length} curada${curadas.length === 1 ? '' : 's'}`}</>} />
         {puedeEditar && (
           <div className="flex items-center gap-2">
             {activas.length > 0 && (

@@ -11,6 +11,8 @@ import { avisoCodigoCIE10, cargarCatalogoCIE10, infoCIE10, useCatalogoCIE10 } fr
 import { FilaDx } from '../../components/DiagnosticosCIE'
 import { CheckCircle, Circle, Download, Save } from 'lucide-react'
 import { IndicadorGuardado } from '../../components/IndicadorGuardado'
+import { AvisoFicha } from '../../components/AvisoFicha'
+import { TituloSeccion } from '../../components/TituloSeccion'
 
 const N_SECUNDARIOS = 8
 const N_PROCEDIMIENTOS = 8
@@ -447,10 +449,7 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
 
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-sm font-bold text-slate-700">CMBD · Conjunto Mínimo Básico de Datos</h2>
-          <p className="text-xs text-slate-500 mt-0.5">Registro al alta · {nombreDelPaciente}</p>
-        </div>
+        <TituloSeccion titulo="CMBD · Conjunto Mínimo Básico de Datos" subtitulo={<>Registro al alta · {nombreDelPaciente}</>} />
         <div className="flex items-center gap-2">
           <IndicadorGuardado estado={estado} />
           <button type="button" onClick={handleGuardar} className="btn-secondary text-xs py-1.5">
@@ -465,10 +464,11 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
       </div>
 
       {estado === 'conflicto' && (
-        <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-lg px-4 py-3 flex items-center justify-between gap-3">
-          <span>Alguien más ha guardado cambios en el CMBD mientras lo editabas. Lo que has escrito sigue aquí, sin guardar todavía.</span>
+        <AvisoFicha tono="atencion" accion={
           <button onClick={recargarTrasConflicto} className="btn-secondary text-xs shrink-0">Ver la versión más reciente</button>
-        </div>
+        }>
+          Alguien más ha guardado cambios en el CMBD mientras lo editabas. Lo que has escrito sigue aquí, sin guardar todavía.
+        </AvisoFicha>
       )}
 
       {/* Datos del episodio — pre-rellenados */}

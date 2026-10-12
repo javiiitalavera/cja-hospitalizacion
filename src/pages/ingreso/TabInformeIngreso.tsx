@@ -15,6 +15,8 @@ import { AvisoGuardado } from '../../components/AvisoGuardado'
 import { IndicadorGuardado, TEXTO_GUARDADO, TEXTO_GUARDANDO } from '../../components/IndicadorGuardado'
 import { encadenar } from '../../lib/colaGuardado'
 import { useConfirmar } from '../../components/useConfirmar'
+import { AvisoFicha } from '../../components/AvisoFicha'
+import { TituloSeccion } from '../../components/TituloSeccion'
 
 // Apartados que no se rellenan siempre: salen plegados ("+ añadir") salvo que ya tengan texto.
 const OPCIONALES_VGI: [keyof InformeIngreso, string][] = [
@@ -338,24 +340,22 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
         { estado, etiqueta: 'Informe' },
         { estado: estadoEscalas, etiqueta: 'Escalas', texto: 'Escalas guardadas' },
       ]} />
-      <div className="flex items-center justify-between gap-3">
-        {soloLectura ? (
-          <span className="flex items-center gap-1.5 text-xs text-slate-500">
-            <Lock className="w-3.5 h-3.5" /> Solo lectura: solo un médico puede editar este informe.
-          </span>
-        ) : episodioCerrado ? (
-          <span className="flex items-center gap-1.5 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-full px-2.5 py-1">
-            <Lock className="w-3.5 h-3.5" /> Episodio cerrado. Las modificaciones realizadas quedarán registradas en Auditoría.
-          </span>
-        ) : <span />}
-        <IndicadorGuardado estado={estado} />
+      <div className="flex items-start justify-between gap-4">
+        <TituloSeccion titulo="Informe de ingreso" subtitulo="Antecedentes, medicación y valoración al ingreso." />
+        <IndicadorGuardado estado={estado} className="shrink-0 pt-1" />
       </div>
+      {soloLectura ? (
+        <AvisoFicha icono={Lock}>Solo lectura: solo un médico puede editar este informe.</AvisoFicha>
+      ) : episodioCerrado ? (
+        <AvisoFicha tono="atencion" icono={Lock}>Episodio cerrado. Las modificaciones realizadas quedarán registradas en Auditoría.</AvisoFicha>
+      ) : null}
 
       {estado === 'conflicto' && (
-        <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-lg px-4 py-3 flex items-center justify-between gap-3">
-          <span>Alguien más ha guardado cambios en este informe mientras lo editabas. Lo que has escrito sigue aquí, sin guardar todavía.</span>
+        <AvisoFicha tono="atencion" accion={
           <button onClick={recargarTrasConflicto} className="btn-secondary text-xs shrink-0">Ver la versión más reciente</button>
-        </div>
+        }>
+          Alguien más ha guardado cambios en este informe mientras lo editabas. Lo que has escrito sigue aquí, sin guardar todavía.
+        </AvisoFicha>
       )}
 
       <div className="card p-6 space-y-4">
@@ -402,10 +402,11 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
           <IndicadorGuardado estado={estadoEscalas} />
         </div>
         {estadoEscalas === 'conflicto' && (
-          <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-lg px-4 py-3 flex items-center justify-between gap-3">
-            <span>Alguien más ha guardado cambios en las escalas mientras las editabas. Lo marcado sigue aquí, sin guardar todavía.</span>
+          <AvisoFicha tono="atencion" accion={
             <button onClick={recargarEscalasTrasConflicto} className="btn-secondary text-xs shrink-0">Ver la versión más reciente</button>
-          </div>
+          }>
+            Alguien más ha guardado cambios en las escalas mientras las editabas. Lo marcado sigue aquí, sin guardar todavía.
+          </AvisoFicha>
         )}
         {/* Tarjetas, no las cuatro escalas desplegadas — cada una se
             rellena en su propio modal, sin convertir el informe en

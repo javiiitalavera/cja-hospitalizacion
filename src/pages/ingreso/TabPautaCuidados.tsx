@@ -16,6 +16,7 @@ import { ChipsTurno } from '../../components/ChipsTurno'
 import { AvisoGuardado, useAvisoGuardado } from '../../components/AvisoGuardado'
 import { useConfirmar } from '../../components/useConfirmar'
 import { BloqueOxigeno, BloqueSonda, SelectorAislamiento, SelectorVias } from '../../components/ViasDispositivos'
+import { AvisoFicha } from '../../components/AvisoFicha'
 import {
   anadirIndicacion, borrarIndicacion, cambiarIndicacion, guardarDispositivos, type ResultadoPauta,
 } from '../hojasTurno/operaciones'
@@ -139,52 +140,49 @@ export function TabPautaCuidados({ ingresoId, episodioActivo }: { ingresoId: str
   return (
     <div className="space-y-6 max-w-3xl">
       {!puedeEditar && (
-        <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
-          <Lock className="w-4 h-4 shrink-0" />
+        <AvisoFicha icono={Lock}>
           {!episodioActivo
             ? 'Episodio cerrado: la pauta queda en solo lectura.'
             : puedeEditarDispositivos
               ? 'Las indicaciones de turno las escribe enfermería (o un administrador); tú puedes editar el aislamiento, las vías y los dispositivos.'
               : 'Solo lectura: las indicaciones las escribe enfermería, y el aislamiento, las vías y los dispositivos, enfermería y médicos (o un administrador).'}
-        </div>
+        </AvisoFicha>
       )}
       <AvisoGuardado avisos={avisos} />
       {dialogo}
 
       {/* 1 · Precauciones */}
-      <section>
+      <section className="card p-6">
         <p className="section-title">Aislamiento</p>
-        <div className="card p-4">
-          <SelectorAislamiento datos={dispositivos} onCambio={cambiarDispositivos} deshabilitado={!puedeEditarDispositivos || ocupado} />
-        </div>
+        <SelectorAislamiento datos={dispositivos} onCambio={cambiarDispositivos} deshabilitado={!puedeEditarDispositivos || ocupado} />
       </section>
 
       {/* 2 · Vías y dispositivos (las mismas casillas de la hoja de ítems) */}
-      <section>
-        <p className="section-title">Vías y dispositivos</p>
-        <div className="card divide-y">
-          <div className="p-4 space-y-2.5">
+      <section className="card">
+        <p className="section-title px-6 pt-6">Vías y dispositivos</p>
+        <div className="divide-y">
+          <div className="px-6 pb-4 space-y-2.5">
             <p className="text-sm font-medium text-slate-800">Vías</p>
             <SelectorVias datos={dispositivos} onCambio={cambiarDispositivos} deshabilitado={!puedeEditarDispositivos || ocupado} />
           </div>
-          <div className="p-4">
+          <div className="px-6 py-4">
             <BloqueSonda datos={dispositivos} onCambio={cambiarDispositivos} deshabilitado={!puedeEditarDispositivos || ocupado} />
           </div>
-          <div className="p-4">
+          <div className="px-6 py-4">
             <BloqueOxigeno datos={dispositivos} onCambio={cambiarDispositivos} deshabilitado={!puedeEditarDispositivos || ocupado} />
           </div>
         </div>
       </section>
 
       {/* 3 · Indicaciones para las hojas de trabajo */}
-      <section>
-        <p className="section-title">Indicaciones para las auxiliares</p>
-        <div className="card divide-y">
+      <section className="card">
+        <p className="section-title px-6 pt-6">Indicaciones para las auxiliares</p>
+        <div className="divide-y border-t">
           {indicaciones.length === 0 && (
-            <p className="px-4 py-6 text-sm text-slate-500 text-center">Todavía no hay indicaciones para este paciente.</p>
+            <p className="px-6 py-6 text-sm text-slate-500 text-center">Todavía no hay indicaciones para este paciente.</p>
           )}
           {indicaciones.map((i) => (
-            <div key={i.id} className="px-4 py-3 space-y-2">
+            <div key={i.id} className="px-6 py-3 space-y-2">
               {editando === i.id ? (
                 <div className="space-y-2">
                   <textarea
@@ -228,9 +226,9 @@ export function TabPautaCuidados({ ingresoId, episodioActivo }: { ingresoId: str
 
       {/* Nueva indicación */}
       {puedeEditar && (
-        <section>
+        <section className="card p-6">
           <p className="section-title">Añadir indicación</p>
-          <div className="card p-4 space-y-3">
+          <div className="space-y-3">
             <textarea
               className="textarea"
               rows={2}
@@ -254,8 +252,8 @@ export function TabPautaCuidados({ ingresoId, episodioActivo }: { ingresoId: str
 
       {/* 4 · Lo que sigue en Aegerus */}
       <section>
-        <p className="section-title">Se gestiona en Aegerus</p>
-        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-6 space-y-3">
+          <p className="section-title !mb-0">Se gestiona en Aegerus</p>
           <ul className="space-y-2">
             {EN_AEGERUS.map((x) => (
               <li key={x.titulo} className="text-sm">

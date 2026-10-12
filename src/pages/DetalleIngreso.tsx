@@ -24,6 +24,7 @@ import { EVENTO_SEMAFORO } from '../components/SemaforoCaidas'
 import { TIPALT_LABEL } from '../lib/alta'
 import { registrarAcceso } from '../lib/accesos'
 import { useConfirmarSalida } from '../components/useConfirmarSalida'
+import { AvisoFicha } from '../components/AvisoFicha'
 
 // Estructura de la ficha: pestañas principales y, dentro de algunas,
 // subpestañas. Cada contenido tiene un identificador de "sección"
@@ -461,10 +462,9 @@ export default function DetalleIngreso() {
         )}
         {/* Aviso de sección en construcción */}
         {seccion === 'cmbd' && (
-          <div className="mb-4 flex items-center gap-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-            <Construction className="w-4 h-4 shrink-0" />
+          <AvisoFicha tono="atencion" icono={Construction} className="mb-4 max-w-3xl">
             El CMBD está en construcción: puede cambiar y no debe usarse todavía como registro definitivo.
-          </div>
+          </AvisoFicha>
         )}
         {/* Episodio cerrado: Datos e Ítems pasan a solo lectura para
             todos — corregir algo ahí requiere un mecanismo explícito,
@@ -475,10 +475,9 @@ export default function DetalleIngreso() {
             editables tras el cierre — cada uno gestiona su propio
             aviso de solo lectura si corresponde por rol. */}
         {episodioCerrado && ['datos', 'items'].includes(seccion) && (
-          <div className="mb-4 flex items-center gap-2 text-sm text-slate-600 bg-slate-100 border border-slate-200 rounded-lg px-3 py-2">
-            <Lock className="w-4 h-4 shrink-0" />
+          <AvisoFicha icono={Lock} className="mb-4 max-w-3xl">
             Episodio cerrado ({ESTADO_LABEL[ingreso.estado] ?? ingreso.estado}): solo lectura, ya no se puede editar.
-          </div>
+          </AvisoFicha>
         )}
         {/* Aviso de solo lectura por rol (independiente de si el episodio
             sigue activo o ya está cerrado: siempre es cosa del médico) */}

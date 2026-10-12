@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Cargando } from '../../components/Cargando'
 import { useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Download, FileText, Lock, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, Download, FileText, Info, Lock, Plus, Trash2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { AvisoGuardado } from '../../components/AvisoGuardado'
 import { useConfirmar } from '../../components/useConfirmar'
@@ -13,6 +13,8 @@ import { MAX_TEXTO, PLANTILLAS, PLANTILLA_LABEL, plantillaPorId } from '../infor
 import type { InformePuntual, PlantillaId } from '../informes/plantillas'
 import { AutoTextarea } from './AutoTextarea'
 import { IndicadorGuardado } from '../../components/IndicadorGuardado'
+import { AvisoFicha } from '../../components/AvisoFicha'
+import { TituloSeccion } from '../../components/TituloSeccion'
 
 const SELECT_INFORME = '*, registrado_por:profesionales!registrado_por_id(nombre, apellidos)'
 
@@ -122,7 +124,7 @@ export function TabOtrosInformes({ ingresoId, ingreso }: { ingresoId: string; in
   return (
     <div className="max-w-3xl space-y-4">
       <div className="flex items-start justify-between gap-4">
-        <h2 className="text-base font-bold text-slate-800">Otros informes</h2>
+        <TituloSeccion titulo="Otros informes" subtitulo="Informes libres o con plantilla, además de los de ingreso, alta y enfermería." />
         {esMedico && (
           <button onClick={() => { setErrorCrear(''); setEligiendo(true) }} className="btn-primary shrink-0">
             <Plus className="w-4 h-4" /> Nuevo informe
@@ -131,10 +133,9 @@ export function TabOtrosInformes({ ingresoId, ingreso }: { ingresoId: string; in
       </div>
 
       {!esMedico && (
-        <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
-          <Lock className="w-4 h-4 shrink-0" />
+        <AvisoFicha icono={Lock}>
           Solo lectura: solo un médico puede redactar informes.
-        </div>
+        </AvisoFicha>
       )}
 
       {loading && <Cargando />}
@@ -306,28 +307,25 @@ function EditorInforme({
         <IndicadorGuardado estado={estado} detalle={errorGuardado || undefined} />
       </div>
 
-      <div>
-        <h2 className="text-base font-bold text-slate-800">{plantilla.titulo}</h2>
-        <p className="text-sm text-slate-500">{plantilla.subtitulo}</p>
-      </div>
+      <TituloSeccion titulo={plantilla.titulo} subtitulo={plantilla.subtitulo} />
 
       {plantilla.avisoHeredados && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-xs text-blue-700">
+        <AvisoFicha icono={Info}>
           {plantilla.avisoHeredados}
-        </div>
+        </AvisoFicha>
       )}
 
       {estado === 'conflicto' && (
-        <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-lg px-4 py-3 flex items-center justify-between gap-3">
-          <span>Alguien más ha guardado este informe. Lo que has escrito sigue aquí, sin guardar.</span>
+        <AvisoFicha tono="atencion" accion={
           <button onClick={recargarTrasConflicto} className="btn-secondary text-xs shrink-0">Ver la versión más reciente</button>
-        </div>
+        }>
+          Alguien más ha guardado este informe. Lo que has escrito sigue aquí, sin guardar.
+        </AvisoFicha>
       )}
       {!esMedico && (
-        <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
-          <Lock className="w-4 h-4 shrink-0" />
+        <AvisoFicha icono={Lock}>
           Solo lectura: solo un médico puede editar.
-        </div>
+        </AvisoFicha>
       )}
 
       {plantilla.campos.map((c) => (

@@ -17,7 +17,7 @@ interface Props {
 
 const chip = (activo: boolean, deshabilitado?: boolean) =>
   `text-sm px-3 py-1.5 rounded-lg border transition-colors ${
-    activo ? 'bg-primary-50 border-primary-300 text-primary-800 font-semibold' : 'bg-white border-slate-200 text-slate-500'
+    activo ? 'bg-primary-50 border-primary-300 text-primary-800 font-semibold' : 'bg-white border-slate-300 text-slate-700'
   } ${deshabilitado ? 'cursor-default' : 'hover:border-primary-300'}`
 
 function alternar<T extends string>(lista: readonly T[] | null | undefined, valor: T, orden: readonly T[]): T[] {

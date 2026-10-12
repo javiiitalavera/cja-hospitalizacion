@@ -81,8 +81,8 @@ function TabDatos({ ingreso, onUpdate, iniciarEditando = false }: { ingreso: Ing
   // Datos del paciente: siempre en modo lectura aquí. Se editan desde su
   // propia ficha (/pacientes/:id), para que solo haya un sitio donde tocarlos.
   const filaPaciente = (
-    <div className="card p-6 space-y-4">
-      <div className="flex items-center justify-between">
+    <div className="card p-6">
+      <div className="flex items-center justify-between mb-3">
         <p className="section-title mb-0">Datos del paciente</p>
         <Link
           to={`/pacientes/${ingreso.paciente_id}`}
@@ -120,7 +120,7 @@ function TabDatos({ ingreso, onUpdate, iniciarEditando = false }: { ingreso: Ing
     return (
       <div className="max-w-3xl space-y-5">
         {filaPaciente}
-        <div className="card p-6 space-y-4">
+        <div className="card p-6">
           <p className="section-title">Datos del ingreso</p>
           <div className="grid grid-cols-2 gap-4">
             {inp('Fecha de ingreso', ingresoEdit.fecha_ingreso, v => setIngresoEdit(i => ({ ...i, fecha_ingreso: v })), 'date')}
@@ -190,17 +190,18 @@ function TabDatos({ ingreso, onUpdate, iniciarEditando = false }: { ingreso: Ing
   return (
     <div className="max-w-3xl space-y-5">
       {filaPaciente}
-      <div className="flex justify-end">
-        <button onClick={() => setEditando(true)} className="btn-secondary">
-          Editar datos del ingreso
-        </button>
-      </div>
-      <div className="card overflow-hidden">
-        <div className="divide-y">
+      <div className="card p-6">
+        <div className="flex items-center justify-between mb-3">
+          <p className="section-title mb-0">Datos del ingreso</p>
+          <button type="button" onClick={() => setEditando(true)} className="btn-secondary text-xs">
+            Editar datos del ingreso
+          </button>
+        </div>
+        <div className="grid grid-cols-1 gap-y-1 text-sm">
           {rowsIngreso.map(([k, v]) => (
-            <div key={k} className="flex px-5 py-3 text-sm">
-              <span className="w-44 text-slate-500 shrink-0">{k}</span>
-              <span className="text-slate-800">{v || <span className="text-slate-500">—</span>}</span>
+            <div key={k} className="flex py-1">
+              <span className="w-40 text-slate-500 shrink-0">{k}</span>
+              <span className="text-slate-700">{v || <span className="text-slate-500">—</span>}</span>
             </div>
           ))}
         </div>
