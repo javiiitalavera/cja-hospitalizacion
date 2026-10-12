@@ -5,6 +5,7 @@ import { TarjetaMetrica, EstadoCargando, EstadoError, EstadoSinDatos } from './C
 import {
   COLUMNAS_EVOLUCION, episodioEscalasDesdeFila, resumenEvolucion, type EpisodioEscalas, type ResumenEscala,
 } from './evolucion'
+import { useAporteExportacion, type AporteExport } from './exportar'
 
 const PAGINA = 1000
 const POCOS_CASOS = 10
@@ -71,24 +72,42 @@ export function EvolucionDashboard({ filtros, desde, hasta }: { filtros: Filtros
 
   const r = useMemo(() => resumenEvolucion(episodios), [episodios])
 
+  // Lo que se lleva el botón «Exportar datos de esta vista».
+  const aporte = useMemo<AporteExport | null>(() => {
+    if (estado !== 'listo') return null
+    return {
+      orden: 0,
+      base: [{ etiqueta: 'Salidas del periodo (altas, traslados y éxitus)', valor: r.altas }],
+      hojas: [{
+        nombre: 'Cambio ingreso-alta',
+        columnas: ['Escala', 'Tema', 'Rango', 'Sentido', 'Con valoración al ingreso', 'Con valoración al alta', 'Con ambas', 'Media al ingreso', 'Media al alta',
+          'Cambio medio', 'Cambio mediano', 'Mejoran', 'Igual', 'Empeoran'],
+        filas: r.escalas.map((e) => [e.def.etiqueta, e.def.tema, e.def.rango, e.def.sentido, e.conIngreso, e.conAlta, e.conAmbas,
+          e.mediaIngreso, e.mediaAlta, e.cambioMedio, e.cambioMediano, e.mejoran, e.igual, e.empeoran]),
+        nota: 'Medias y cambios solo con las salidas que tienen la escala en los dos momentos. «Mejoran»: menos puntos en NPI-Q, más en Barthel y Lawton. Lawton cuenta solo cuando está completo.',
+      }],
+    }
+  }, [estado, r])
+  useAporteExportacion('evolucion', aporte)
+
   if (estado === 'cargando') return <EstadoCargando />
   if (estado === 'error') return <EstadoError mensaje={error} onReintentar={cargar} />
-  if (estado === 'sin_datos') return <EstadoSinDatos mensaje="No hay altas en este periodo." />
+  if (estado === 'sin_datos') return <EstadoSinDatos mensaje="No hay salidas (altas, traslados o éxitus) en este periodo." />
 
   const poco = r.escalas.some((e) => e.conAmbas < POCOS_CASOS)
 
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <TarjetaMetrica etiqueta="Altas del periodo" valor={r.altas}
-          subvalor="Cada escala se compara solo en las altas que la tienen al ingreso y al alta" />
+        <TarjetaMetrica etiqueta="Salidas del periodo" valor={r.altas}
+          subvalor="Altas, traslados y éxitus. Cada escala se compara solo en las que la tienen al ingreso y al alta" />
         {r.escalas.map((e) => (
           <TarjetaMetrica
             key={e.def.clave}
             etiqueta={`${e.def.tema} · ${e.def.etiqueta}`}
             valor={e.cambioMedio != null ? signo(e.cambioMedio) : '—'}
             subvalor={e.conAmbas > 0
-              ? `Cambio medio ingreso → alta · ${e.conAmbas} de ${r.altas} altas con ambas valoraciones`
+              ? `Cambio medio ingreso → alta · ${e.conAmbas} de ${r.altas} salidas con ambas valoraciones`
               : `Ninguna alta con ambas valoraciones (${e.conIngreso} al ingreso, ${e.conAlta} al alta)`}
           />
         ))}
@@ -147,12 +166,12 @@ export function EvolucionDashboard({ filtros, desde, hasta }: { filtros: Filtros
         <div className="text-xs text-slate-500 mt-2 space-y-1">
           <p>
             «Mejoran» significa puntuación menor en NPI-Q y mayor en Barthel y Lawton; «igual», exactamente la misma puntuación.
-            La media y el cambio se calculan solo con las altas que tienen la escala en los dos momentos.
+            La media y el cambio se calculan solo con las salidas que tienen la escala en los dos momentos.
             Lawton cuenta únicamente cuando está completo.
           </p>
           <p>
             Conducta y autonomía se muestran por separado a propósito: no se combinan en una puntuación única.
-            {poco && ' Con menos de 10 altas comparables en alguna escala, las cifras son orientativas.'}
+            {poco && ' Con menos de 10 salidas comparables en alguna escala, las cifras son orientativas.'}
           </p>
         </div>
       </section>

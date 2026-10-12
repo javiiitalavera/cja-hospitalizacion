@@ -6,6 +6,7 @@ import {
   COLUMNAS_CMBD_DX, TIPOS_DEMENCIA, episodioDesdeFila, masFrecuentes, resumenDemencias,
   type EpisodioDx,
 } from './diagnosticos'
+import { porcentajeNum, useAporteExportacion, type AporteExport } from './exportar'
 
 const PAGINA = 1000
 
@@ -22,7 +23,7 @@ function Barra({ valor, max }: { valor: number; max: number }) {
 }
 
 export function DiagnosticosDashboard({ filtros, desde, hasta }: { filtros: Filtros; desde: string; hasta: string }) {
-  const [altas, setAltas] = useState(0)                  // altas del periodo
+  const [altas, setAltas] = useState(0)                  // salidas del periodo (altas, traslados y éxitus)
   const [episodios, setEpisodios] = useState<EpisodioDx[]>([])   // con diagnóstico principal codificado
   const [estado, setEstado] = useState<EstadoCarga>('cargando')
   const [error, setError] = useState('')
@@ -66,21 +67,56 @@ export function DiagnosticosDashboard({ filtros, desde, hasta }: { filtros: Filt
   const maxTipo = Math.max(1, ...demencias.porTipo.map((t) => t.n))
   const sinCodificar = altas - episodios.length
 
+  // Lo que se lleva el botón «Exportar datos de esta vista».
+  const aporte = useMemo<AporteExport | null>(() => {
+    if (estado !== 'listo') return null
+    const filasFrecuentes = (modo: 'principal' | 'todos') => masFrecuentes(episodios, modo, 50)
+      .map((f) => [f.codigo, f.descripcion, f.n, porcentajeNum(f.n, episodios.length)] as (string | number | null)[])
+    const cols = ['Código', 'Descripción', 'Salidas', '% sobre las salidas con diagnóstico principal codificado']
+    return {
+      orden: 0,
+      base: [
+        { etiqueta: 'Salidas del periodo (altas, traslados y éxitus)', valor: altas },
+        { etiqueta: 'Con diagnóstico principal codificado', valor: episodios.length },
+        { etiqueta: 'Sin codificar', valor: altas - episodios.length },
+      ],
+      hojas: [
+        { nombre: 'Frecuentes (principal)', columnas: cols, filas: filasFrecuentes('principal'), nota: 'Los 50 códigos más frecuentes como diagnóstico principal.' },
+        { nombre: 'Frecuentes (todos)', columnas: cols, filas: filasFrecuentes('todos'), nota: 'Los 50 códigos más frecuentes en cualquier posición; cada salida cuenta una vez por código.' },
+        {
+          nombre: 'Demencias por tipo',
+          columnas: ['Tipo', 'Códigos', 'Salidas', '% sobre las salidas con demencia'],
+          filas: [
+            ...TIPOS_DEMENCIA.map((t) => {
+              const n = demencias.porTipo.find((x) => x.clave === t.clave)?.n ?? 0
+              return [t.etiqueta, t.codigos, n, porcentajeNum(n, demencias.conDemencia)] as (string | number | null)[]
+            }),
+            ['Total con demencia codificada', '', demencias.conDemencia, porcentajeNum(demencias.conDemencia, demencias.episodios)],
+            ['Con código de demencia de la OMS que no existe en la CIE-10-ES', demencias.codigosOMS.join(', '), demencias.conCodigoOMS, null],
+            ['… de ellas, sin demencia contada por ese motivo', '', demencias.omsSinContar, null],
+          ],
+          nota: 'Cada salida se clasifica una sola vez según todos sus códigos. El deterioro cognitivo leve (G31.84) no cuenta como demencia.',
+        },
+      ],
+    }
+  }, [estado, altas, episodios, demencias])
+  useAporteExportacion('diagnosticos', aporte)
+
   if (estado === 'cargando') return <EstadoCargando />
   if (estado === 'error') return <EstadoError mensaje={error} onReintentar={cargar} />
-  if (estado === 'sin_datos') return <EstadoSinDatos mensaje="No hay altas en este periodo." />
+  if (estado === 'sin_datos') return <EstadoSinDatos mensaje="No hay salidas (altas, traslados o éxitus) en este periodo." />
 
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-3 gap-3">
-        <TarjetaMetrica etiqueta="Altas del periodo" valor={altas} />
+        <TarjetaMetrica etiqueta="Salidas del periodo" valor={altas} subvalor="Altas, traslados y éxitus" />
         <TarjetaMetrica etiqueta="Con diagnóstico principal codificado" valor={episodios.length} subvalor={pct(episodios.length, altas)} />
         <TarjetaMetrica etiqueta="Sin codificar" valor={sinCodificar}
           subvalor={sinCodificar > 0 ? 'Los códigos se ponen al alta, en el informe de alta o en la pestaña CMBD' : undefined} />
       </div>
       {sinCodificar > 0 && (
         <p className="text-xs text-slate-500 -mt-3">
-          Las cifras de abajo cuentan solo las altas con diagnóstico principal codificado: cuantas más altas se codifiquen, más fiables.
+          Las cifras de abajo cuentan solo las salidas con diagnóstico principal codificado: cuantas más se codifiquen, más fiables.
         </p>
       )}
 
@@ -112,8 +148,8 @@ export function DiagnosticosDashboard({ filtros, desde, hasta }: { filtros: Filt
           )}
           <p className="text-xs text-slate-500 mt-3">
             {modo === 'principal'
-              ? 'Porcentaje sobre las altas con diagnóstico principal codificado.'
-              : 'Cada alta cuenta una vez por código, esté como principal o como secundario. Porcentaje sobre las altas con diagnóstico principal codificado.'}
+              ? 'Porcentaje sobre las salidas con diagnóstico principal codificado.'
+              : 'Cada salida cuenta una vez por código, esté como principal o como secundario. Porcentaje sobre las salidas con diagnóstico principal codificado.'}
           </p>
         </div>
       </section>
@@ -122,15 +158,23 @@ export function DiagnosticosDashboard({ filtros, desde, hasta }: { filtros: Filt
       <section>
         <p className="section-title">Demencias por tipo</p>
         <div className="grid grid-cols-2 gap-3 mb-4">
-          <TarjetaMetrica etiqueta="Altas con demencia codificada" valor={demencias.conDemencia}
-            subvalor={`${pct(demencias.conDemencia, demencias.episodios)} de las altas codificadas`} />
+          <TarjetaMetrica etiqueta="Salidas con demencia codificada" valor={demencias.conDemencia}
+            subvalor={`${pct(demencias.conDemencia, demencias.episodios)} de las salidas codificadas`} />
           <TarjetaMetrica etiqueta="Tipo más frecuente"
             valor={tiposConDatos.length > 0
               ? TIPOS_DEMENCIA.find((t) => t.clave === [...tiposConDatos].sort((a, b) => b.n - a.n)[0].clave)!.etiqueta
               : '—'} />
         </div>
+        {demencias.conCodigoOMS > 0 && (
+          <p data-codigos-oms className="text-xs text-amber-700 mb-3">
+            {demencias.conCodigoOMS} {demencias.conCodigoOMS === 1 ? 'salida tiene' : 'salidas tienen'} un código de demencia de la CIE-10 de la OMS
+            ({demencias.codigosOMS.slice(0, 4).join(', ')}) que no existe en la CIE-10-ES con la que se codifica el CMBD. Hay que corregirlo en la pestaña CMBD
+            (por ejemplo, Alzheimer: G30.x + F02.8x).
+            {demencias.omsSinContar > 0 && <> {demencias.omsSinContar === 1 ? 'Esa salida no cuenta' : `${demencias.omsSinContar} de ellas no cuentan`} como demencia en este recuento hasta que se corrija.</>}
+          </p>
+        )}
         <div className="card p-4">
-          {demencias.conDemencia === 0 ? <EstadoSinDatos mensaje="Ninguna alta de este periodo tiene una demencia codificada." /> : (
+          {demencias.conDemencia === 0 ? <EstadoSinDatos mensaje="Ninguna salida de este periodo tiene una demencia codificada con la CIE-10-ES." /> : (
             <div className="space-y-2.5">
               {TIPOS_DEMENCIA.map((t) => {
                 const n = demencias.porTipo.find((x) => x.clave === t.clave)?.n ?? 0
@@ -151,7 +195,7 @@ export function DiagnosticosDashboard({ filtros, desde, hasta }: { filtros: Filt
           )}
           <p className="text-xs text-slate-500 mt-3">
             Cada alta se clasifica una sola vez según todos sus códigos (principal y secundarios): p. ej. G30.1 + F02.811 es una demencia de Alzheimer.
-            Porcentajes sobre las altas con demencia. El deterioro cognitivo leve (G31.84) no cuenta como demencia.
+            Porcentajes sobre las salidas con demencia. El deterioro cognitivo leve (G31.84) no cuenta como demencia.
           </p>
         </div>
       </section>

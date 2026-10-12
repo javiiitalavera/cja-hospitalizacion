@@ -164,7 +164,7 @@ export function ExploradorEpisodios() {
     if (filtros.busqueda) partes.push(`Paciente/NHC: "${filtros.busqueda}"`)
     if (filtros.desdeIngreso || filtros.hastaIngreso) partes.push(`Ingreso: ${filtros.desdeIngreso || '…'} a ${filtros.hastaIngreso || '…'}`)
     if (filtros.desdeAlta || filtros.hastaAlta) partes.push(`Alta: ${filtros.desdeAlta || '…'} a ${filtros.hastaAlta || '…'}`)
-    if (filtros.solapaDesde || filtros.solapaHasta) partes.push(`Solapa: ${filtros.solapaDesde || '…'} a ${filtros.solapaHasta || '…'}`)
+    if (filtros.solapaDesde || filtros.solapaHasta) partes.push(`Estuvo ingresado: ${filtros.solapaDesde || '…'} a ${filtros.solapaHasta || '…'}`)
     if (filtros.estado) partes.push(ESTADO_LABEL[filtros.estado] ?? filtros.estado)
     if (filtros.medicoId) { const m = medicos.find((x) => x.id === filtros.medicoId); if (m) partes.push(`Médico: ${m.nombre} ${m.apellidos}`) }
     if (filtros.estanciaMin) partes.push(`Estancia ≥ ${filtros.estanciaMin} d`)
@@ -249,8 +249,8 @@ export function ExploradorEpisodios() {
           <div><label className="label">Alta desde</label><InputFecha value={filtros.desdeAlta} onChange={(f) => set({ desdeAlta: f })} /></div>
           <div><label className="label">Alta hasta</label><InputFecha value={filtros.hastaAlta} onChange={(f) => set({ hastaAlta: f })} /></div>
 
-          <div><label className="label">Solapa periodo desde</label><InputFecha value={filtros.solapaDesde} onChange={(f) => set({ solapaDesde: f })} /></div>
-          <div><label className="label">Solapa periodo hasta</label><InputFecha value={filtros.solapaHasta} onChange={(f) => set({ solapaHasta: f })} /></div>
+          <div><label className="label">Estuvo ingresado desde</label><InputFecha value={filtros.solapaDesde} onChange={(f) => set({ solapaDesde: f })} /></div>
+          <div><label className="label">Estuvo ingresado hasta</label><InputFecha value={filtros.solapaHasta} onChange={(f) => set({ solapaHasta: f })} /></div>
           <div><label className="label">Estancia mínima (días)</label><input type="number" min={0} className="input" value={filtros.estanciaMin} onChange={(e) => set({ estanciaMin: e.target.value })} /></div>
           <div><label className="label">Estancia máxima (días)</label><input type="number" min={0} className="input" value={filtros.estanciaMax} onChange={(e) => set({ estanciaMax: e.target.value })} /></div>
 

@@ -5,7 +5,7 @@ import { MOTIVOS_DEMORA, type MotivoDemora } from '../../lib/demora'
 
 export const COLUMNAS_DEMORA = 'id, cmbd(demora_alta, demora_alta_motivo, demora_alta_dias)'
 
-// Un episodio (un alta). `demora`: true = hubo, false = no hubo, null = sin valorar (o sin CMBD).
+// Un episodio (una salida: alta o traslado). `demora`: true = hubo, false = no hubo, null = sin valorar (o sin CMBD).
 export interface AltaDemora { demora: boolean | null; motivo: string | null; dias: number | null }
 
 export function altaDemoraDesdeFila(f: Record<string, any>): AltaDemora {
@@ -17,7 +17,8 @@ export function altaDemoraDesdeFila(f: Record<string, any>): AltaDemora {
 export interface FilaMotivo { clave: string; etiqueta: string; pacientes: number; dias: number; conDias: number }
 
 export interface ResumenDemora {
-  altas: number
+  altas: number                       // salidas evaluadas (el Dashboard excluye los éxitus)
+  valoradas: number                   // con la pregunta contestada (sí o no): la base del porcentaje
   conDemora: number
   sinDemora: number
   sinValorar: number                  // altas con la casilla sin contestar
@@ -56,7 +57,7 @@ export function resumenDemora(altas: AltaDemora[]): ResumenDemora {
   }
   const total = dias.reduce((s, d) => s + d, 0)
   return {
-    altas: altas.length, conDemora: con, sinDemora: sin, sinValorar, conDemoraSinDias: sinDias,
+    altas: altas.length, valoradas: con + sin, conDemora: con, sinDemora: sin, sinValorar, conDemoraSinDias: sinDias,
     mediaDias: dias.length ? total / dias.length : null,
     medianaDias: mediana(dias),
     diasTotales: total,

@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import type { Filtros, SituacionActual, ResumenPeriodo, SerieDashboard, EstadoCarga } from './tipos'
 import { calcularRangoComparacion, variacion } from './metricas'
 import { TarjetaMetrica, EstadoCargando, EstadoError } from './ComponentesDashboard'
+import { hojaIndicadoresPeriodo, hojaSituacionActual, hojasSeries, useAporteExportacion, type AporteExport } from './exportar'
 
 export function ResumenDashboard({ filtros, desde, hasta, onExplorar, onExplorarEpisodios }: {
   filtros: Filtros
@@ -102,6 +103,24 @@ export function ResumenDashboard({ filtros, desde, hasta, onExplorar, onExplorar
 
   useEffect(() => { cargarSituacion() }, [filtros.medicoId])
   useEffect(() => { cargarResumenYSeries() }, [desde, hasta, filtros.medicoId, filtros.comparar, filtros.periodo])
+
+  // Lo que se lleva el botón «Exportar datos de esta vista». Solo cuando lo que hay en pantalla es del filtro actual.
+  const aporte = useMemo<AporteExport | null>(() => {
+    if (estadoResumen !== 'listo' || !resumen) return null
+    return {
+      orden: 0,
+      base: [
+        { etiqueta: 'Ingresos nuevos del periodo', valor: resumen.ingresos_nuevos },
+        { etiqueta: 'Salidas del periodo (altas, traslados y éxitus)', valor: resumen.salidas_totales },
+      ],
+      hojas: [
+        ...(estadoSituacion === 'listo' && situacion ? [hojaSituacionActual(situacion)] : []),
+        hojaIndicadoresPeriodo(resumen, filtros.comparar ? resumenAnterior : null),
+        ...(estadoSeries === 'listo' && series ? hojasSeries(series) : []),
+      ],
+    }
+  }, [estadoResumen, resumen, resumenAnterior, estadoSituacion, situacion, estadoSeries, series, filtros.comparar])
+  useAporteExportacion('resumen', aporte)
 
   function comparacionTexto(actual: number, etiqueta: string, esPct = false): string | undefined {
     if (!resumenAnterior) return undefined

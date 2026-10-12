@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import type { Filtros, ResumenPeriodo, SerieDashboard, EstadoCarga } from './tipos'
 import { TarjetaMetrica, EstadoCargando, EstadoError, EstadoSinDatos } from './ComponentesDashboard'
 import { DemorasDashboard } from './DemorasDashboard'
+import { hojaIndicadoresPeriodo, hojasSeries, useAporteExportacion, type AporteExport } from './exportar'
 
 interface ActividadDetalle {
   distribucion_estancia: Record<string, number>
@@ -74,6 +75,51 @@ export function ActividadDashboard({ filtros, desde, hasta, onExplorar }: {
   const balance = resumen ? resumen.ingresos_nuevos - resumen.salidas_totales : null
   const maxBanda = detalle ? Math.max(1, ...BANDAS_ESTANCIA.map((b) => detalle.distribucion_estancia[b.clave] ?? 0)) : 1
   const totalPorSexo = detalle ? Object.values(detalle.por_sexo).reduce((a, b) => a + b, 0) : 0
+
+  // Lo que se lleva el botón «Exportar datos de esta vista» (la demora al alta aporta la suya).
+  const aporte = useMemo<AporteExport | null>(() => {
+    if (estadoResumen !== 'listo' || !resumen) return null
+    const hojas = [hojaIndicadoresPeriodo(resumen)]
+    if (estadoDetalle === 'listo' && detalle) {
+      hojas.push({
+        nombre: 'Estancia',
+        columnas: ['Indicador', 'Valor'],
+        filas: [
+          ...BANDAS_ESTANCIA.map((b): [string, number] => [`Salidas con estancia de ${b.etiqueta.toLowerCase()}`, detalle.distribucion_estancia[b.clave] ?? 0]),
+          ['Episodios activos con 30 días o más', detalle.activos_mas_30],
+          ['Episodios activos con 60 días o más', detalle.activos_mas_60],
+          ['Episodios activos con 90 días o más', detalle.activos_mas_90],
+        ],
+        nota: 'Las bandas cuentan las salidas del periodo (altas, traslados y éxitus). Los episodios activos son los de hoy.',
+      }, {
+        nombre: 'Ingresos por médico',
+        columnas: ['Médico', 'Ingresos nuevos'],
+        filas: detalle.por_medico.map((m) => [m.nombre, m.ingresos]),
+        nota: 'Un recuento, no una medida de productividad. No refleja cambios de médico responsable durante el ingreso.',
+      }, {
+        nombre: 'Edad y sexo',
+        columnas: ['Indicador', 'Valor'],
+        filas: [
+          ['Edad media de los pacientes ingresados (años)', detalle.edad_media],
+          ['Hombres', detalle.por_sexo.hombre ?? 0],
+          ['Mujeres', detalle.por_sexo.mujer ?? 0],
+          ['Otro', detalle.por_sexo.otro ?? 0],
+          ['Sin dato', detalle.por_sexo.sin_dato ?? 0],
+        ],
+        nota: 'Pacientes distintos con algún ingreso en el periodo, con la edad de su primer ingreso del periodo.',
+      })
+    }
+    if (estadoSeries === 'listo' && series) hojas.push(...hojasSeries(series))
+    return {
+      orden: 0,
+      base: [
+        { etiqueta: 'Ingresos nuevos del periodo', valor: resumen.ingresos_nuevos },
+        { etiqueta: 'Salidas del periodo (altas, traslados y éxitus)', valor: resumen.salidas_totales },
+      ],
+      hojas,
+    }
+  }, [estadoResumen, resumen, estadoDetalle, detalle, estadoSeries, series])
+  useAporteExportacion('actividad', aporte)
 
   return (
     <div className="space-y-6">
@@ -146,7 +192,7 @@ export function ActividadDashboard({ filtros, desde, hasta, onExplorar }: {
           </div>
         )}
         <div className="card p-4">
-          <p className="text-xs font-semibold text-slate-500 mb-3">Distribución por bandas de estancia (altas del periodo)</p>
+          <p className="text-xs font-semibold text-slate-500 mb-3">Distribución por bandas de estancia (salidas del periodo: altas, traslados y éxitus)</p>
           {estadoDetalle === 'cargando' && <EstadoCargando />}
           {estadoDetalle === 'error' && <EstadoError mensaje={errorDetalle} onReintentar={cargar} />}
           {estadoDetalle === 'listo' && detalle && (

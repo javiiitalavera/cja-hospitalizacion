@@ -92,21 +92,43 @@ export function tipoDemencia(codigos: string[]): TipoDemencia | null {
   return null
 }
 
+// Códigos de demencia de la CIE-10 de la OMS que NO existen (o no así) en la CIE-10-ES con la que se codifica el CMBD:
+// F00.x (Alzheimer: en la CIE-10-ES es G30.x + F02.8x), F01.0-F01.3/F01.8/F01.9 (vascular: F01.5x), F02.0-F02.7/F02.9/F02.8
+// sin cuarto carácter (demencia en otra enfermedad: F02.8x) y F03 a secas (F03.9x). Se avisa de ellos para que se corrijan.
+// Los F01, F02 y F03 se siguen clasificando por su prefijo (son demencias aunque el código esté mal escrito); los F00.x no
+// los reconoce el clasificador (no son Alzheimer en la CIE-10-ES), así que no cuentan como demencia hasta que se corrijan.
+const DEMENCIA_OMS: RegExp[] = [/^F00(\.\d+)?$/, /^F01(\.[0-389]\d*)?$/, /^F02(\.([0-79]\d*|8))?$/, /^F03$/]
+
+export function esCodigoOMSDemencia(c: string): boolean {
+  const k = c.trim().toUpperCase()
+  return DEMENCIA_OMS.some((re) => re.test(k))
+}
+
 export interface ResumenDemencias {
   episodios: number                          // con diagnóstico principal codificado (la base del cálculo)
+  conCodigoOMS: number                       // episodios con algún código de demencia de la OMS que no existe en la CIE-10-ES
+  omsSinContar: number                       // … y de ellos, los que por eso no cuentan como demencia (p. ej. F00.9 solo)
+  codigosOMS: string[]                       // esos códigos (distintos), de más a menos frecuentes
   conDemencia: number
   porTipo: { clave: TipoDemencia; n: number }[]   // en el orden de TIPOS_DEMENCIA, incluso los de 0
 }
 
 export function resumenDemencias(episodios: EpisodioDx[]): ResumenDemencias {
   const cuenta = new Map<TipoDemencia, number>()
-  let con = 0
+  const oms = new Map<string, number>()
+  let con = 0, conOMS = 0, omsSinContar = 0
   for (const e of episodios) {
-    const t = tipoDemencia(codigosDe(e))
+    const cs = codigosDe(e)
+    const t = tipoDemencia(cs)
     if (t) { con++; cuenta.set(t, (cuenta.get(t) ?? 0) + 1) }
+    const malos = [...new Set(cs.filter(esCodigoOMSDemencia).map((c) => c.toUpperCase()))]
+    if (malos.length > 0) { conOMS++; if (!t) omsSinContar++; for (const m of malos) oms.set(m, (oms.get(m) ?? 0) + 1) }
   }
   return {
     episodios: episodios.length,
+    conCodigoOMS: conOMS,
+    omsSinContar,
+    codigosOMS: [...oms.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([c]) => c),
     conDemencia: con,
     porTipo: TIPOS_DEMENCIA.map(({ clave }) => ({ clave, n: cuenta.get(clave) ?? 0 })),
   }

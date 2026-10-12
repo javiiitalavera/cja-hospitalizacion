@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import type { Filtros, EstadoCarga } from './tipos'
 import { TarjetaMetrica, EstadoCargando, EstadoError, EstadoSinDatos } from './ComponentesDashboard'
 import { atajoDeRaton, FOCO_CELDA } from '../../lib/accesibilidad'
+import { porcentajeNum, useAporteExportacion, type AporteExport, type Celda } from './exportar'
 
 const TIPO_LABEL: Record<string, string> = {
   caida: 'Caída', ulcera: 'Úlcera por presión', error_medicacion: 'Error de medicación',
@@ -37,6 +38,7 @@ interface Seguridad {
     pacientes_con_contencion_activa: number; pacientes_con_si_precisa: number; pendientes_confirmacion: number
     pacientes_ingresados?: number
   }
+  dias_estancia?: number
 }
 
 function porcentaje(n: number, total: number | undefined): string | undefined {
@@ -87,6 +89,86 @@ export function SeguridadDashboard({ filtros, desde, hasta, onExplorar, onExplor
   }
 
   useEffect(() => { cargar() }, [desde, hasta, filtros.medicoId])
+
+  // Lo que se lleva el botón «Exportar datos de esta vista». Sin nombres de pacientes (de las caídas repetidas, solo el recuento).
+  const aporte = useMemo<AporteExport | null>(() => {
+    if (estado !== 'listo' || !datos) return null
+    const { caidas, ulceras, otras, contenciones, por_tipo } = datos
+    const v = (x: number | null | undefined): Celda => x ?? null
+    const ing = contenciones.pacientes_ingresados
+    return {
+      orden: 0,
+      base: datos.dias_estancia != null ? [{ etiqueta: 'Días-estancia del periodo (denominador de las tasas)', valor: datos.dias_estancia }] : [],
+      hojas: [
+        {
+          nombre: 'Pendiente de revisar',
+          columnas: ['Indicador', 'Valor', 'Referencia'],
+          filas: [
+            ['Incidencias sin completar', otras.pendientes_completar, 'Todos los tipos, en el periodo'],
+            ['Caídas pendientes de valoración', caidas.pendientes_valoracion, 'En el periodo'],
+            ['Úlceras sin origen indicado', v(ulceras.sin_origen), 'En el periodo'],
+            ['Úlceras sin grado valorado', v(ulceras.sin_grado), 'En el periodo'],
+            ['Pautas de contención sin confirmar', contenciones.pendientes_confirmacion, 'Hoy'],
+          ],
+        },
+        {
+          nombre: 'Incidencias por tipo',
+          columnas: ['Tipo', 'Incidencias', 'Pacientes afectados', 'Pendientes', 'Tasa por 1.000 días-estancia'],
+          filas: por_tipo.map((t) => [TIPO_LABEL[t.tipo] ?? t.tipo, t.total, t.pacientes_afectados, t.pendientes, t.tasa_1000]),
+          nota: 'Por la fecha en que ocurrió la incidencia. Las úlceras por presión y las infecciones nosocomiales no son incidencias.',
+        },
+        {
+          nombre: 'Caídas',
+          columnas: ['Indicador', 'Valor'],
+          filas: [
+            ['Caídas (total)', caidas.total],
+            ['Con lesión', caidas.con_lesion],
+            ['Graves (gravedad grave, fractura o TCE)', caidas.graves],
+            ['Pendientes de valoración', caidas.pendientes_valoracion],
+            ['Pacientes con 2 o más caídas', v(caidas.pacientes_con_caidas_repetidas)],
+            ['Tasa total por 1.000 días-estancia', caidas.tasa_total_1000],
+            ['Tasa con lesión por 1.000 días-estancia', caidas.tasa_con_lesion_1000],
+          ],
+        },
+        {
+          nombre: 'Úlceras por presión',
+          columnas: ['Indicador', 'Valor'],
+          filas: [
+            ['Producidas en el centro', ulceras.aparecidas_durante],
+            ['Presentes al ingreso', ulceras.presentes_al_ingreso],
+            ['Pacientes afectados', v(ulceras.pacientes_afectados)],
+            ['Sin origen indicado', v(ulceras.sin_origen)],
+            ['Grados III-IV (grado máximo registrado)', ulceras.grado_iii_iv],
+            ['Sin grado valorado', v(ulceras.sin_grado)],
+            ['No clasificables', v(ulceras.grado_no_clasificable)],
+            ['Tasa de aparición por 1.000 días-estancia (solo las producidas en el centro)', ulceras.tasa_aparecidas_1000],
+          ],
+          nota: 'Se registran en Curas, no como incidencia. El periodo se cuenta por la fecha de inicio o detección.',
+        },
+        {
+          nombre: 'Consecuencias e infecciones',
+          columnas: ['Indicador', 'Valor'],
+          filas: [
+            ['Derivaciones a urgencias, sin ingreso', v(otras.derivaciones_urgencias)],
+            ['Ingresos hospitalarios', v(otras.ingresos_hospitalarios)],
+            ['Episodios con infección nosocomial', otras.infecciones_nosocomiales],
+          ],
+          nota: 'Derivaciones e ingresos: de caídas, agresiones, efectos adversos y atragantamientos. Infecciones: episodios del periodo con la casilla del CMBD marcada, no infecciones nuevas fechadas en el periodo.',
+        },
+        {
+          nombre: 'Contenciones (hoy)',
+          columnas: ['Indicador', 'Pacientes', '% de los ingresados'],
+          filas: [
+            ['Con pauta de contención activa', contenciones.pacientes_con_contencion_activa, ing ? porcentajeNum(contenciones.pacientes_con_contencion_activa, ing) : null],
+            ['Con pauta «si precisa»', contenciones.pacientes_con_si_precisa, ing ? porcentajeNum(contenciones.pacientes_con_si_precisa, ing) : null],
+            ['Pacientes ingresados hoy', v(ing), null],
+          ],
+          nota: 'Situación de hoy: no depende de las fechas del filtro. Mide la pauta registrada, no cuántas veces se ha aplicado.',
+        },
+      ],
+    }
+  }, [estado, datos])
+  useAporteExportacion('seguridad', aporte)
 
   function irATipo(tipo: string) {
     onExplorar({ desde, hasta, tipo_incidencia: tipo })

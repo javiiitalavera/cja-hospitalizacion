@@ -1,23 +1,15 @@
-import { useEffect, useState } from 'react'
-import { supabase } from '../../lib/supabase'
 import type { Filtros, Periodo } from './tipos'
 import { RotateCcw } from 'lucide-react'
 import { InputFecha } from '../../components/InputFecha'
 
-export function DashboardFiltros({ filtros, onCambiar, mostrarComparar }: {
+export function DashboardFiltros({ filtros, medicos, onCambiar, mostrarComparar }: {
   filtros: Filtros
+  medicos: { id: string; nombre: string; apellidos: string }[]
   onCambiar: (f: Filtros) => void
   // "Comparar" solo tiene sentido donde de verdad se usa — Actividad
   // y Seguridad mostraban el selector y lo ignoraban por completo.
   mostrarComparar: boolean
 }) {
-  const [medicos, setMedicos] = useState<{ id: string; nombre: string; apellidos: string }[]>([])
-
-  useEffect(() => {
-    supabase.from('profesionales').select('id, nombre, apellidos').eq('rol', 'medico').order('apellidos')
-      .then(({ data }) => setMedicos(data ?? []))
-  }, [])
-
   function set(cambios: Partial<Filtros>) {
     onCambiar({ ...filtros, ...cambios })
   }

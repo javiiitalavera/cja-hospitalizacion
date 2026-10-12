@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { LayoutDashboard } from 'lucide-react'
+import { Download, LayoutDashboard } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/AuthContext'
 import type { Filtros, Periodo } from './tipos'
@@ -13,6 +13,7 @@ import { SeguridadDashboard } from './SeguridadDashboard'
 import { DiagnosticosDashboard } from './DiagnosticosDashboard'
 import { MedicacionDashboard } from './MedicacionDashboard'
 import { EvolucionDashboard } from './EvolucionDashboard'
+import { ContextoExportar, descargarExcel, etiquetaIntervalo, type AporteExport } from './exportar'
 
 type Vista = 'resumen' | 'actividad' | 'diagnosticos' | 'evolucion' | 'medicacion' | 'seguridad' | 'explorador'
 
@@ -42,6 +43,21 @@ export function Dashboard() {
   useEffect(() => {
     supabase.from('ingresos').select('fecha_ingreso').order('fecha_ingreso', { ascending: true }).limit(1)
       .then(({ data }) => setPrimeraFecha(data?.[0]?.fecha_ingreso ?? null))
+  }, [])
+
+  // Médicos (para el filtro y para escribir su nombre en el intervalo y en los Excel exportados).
+  const [medicos, setMedicos] = useState<{ id: string; nombre: string; apellidos: string }[]>([])
+  useEffect(() => {
+    supabase.from('profesionales').select('id, nombre, apellidos').eq('rol', 'medico').order('apellidos')
+      .then(({ data }) => setMedicos(data ?? []))
+  }, [])
+
+  // Lo que aportan los apartados que están en pantalla al botón «Exportar datos de esta vista».
+  const aportes = useRef(new Map<string, AporteExport>())
+  const [nAportes, setNAportes] = useState(0)
+  const registrar = useCallback((id: string, aporte: AporteExport | null) => {
+    if (aporte) aportes.current.set(id, aporte); else aportes.current.delete(id)
+    setNAportes(aportes.current.size)
   }, [])
 
   const { desde, hasta } = calcularRango(filtros.periodo, filtros.desde, filtros.hasta, primeraFecha)
@@ -119,6 +135,14 @@ export function Dashboard() {
   // todos los hooks a propósito: un "return" antes de un useState o
   // useEffect rompería las reglas de hooks de React en cuanto
   // esAdmin cambiara de valor entre renderizados.
+  const nombreVista = vistas.find((v) => v.valor === vista)?.etiqueta ?? 'Dashboard'
+  const medicoElegido = medicos.find((m) => m.id === filtros.medicoId)
+  const medicoTexto = !filtros.medicoId ? 'Todos los médicos' : medicoElegido ? `${medicoElegido.nombre} ${medicoElegido.apellidos}` : 'Médico elegido'
+  const contextoExportar = useMemo(
+    () => ({ vista: nombreVista, desde, hasta, medico: medicoTexto, registrar }),
+    [nombreVista, desde, hasta, medicoTexto, registrar],
+  )
+
   if (!esAdmin) {
     return (
       <div className="p-8">
@@ -163,8 +187,22 @@ export function Dashboard() {
           falsa impresión de que "Este mes" o "Restablecer filtros"
           deberían hacer algo en esta pantalla. */}
       {vista !== 'explorador' && (
-        <DashboardFiltros filtros={filtros} onCambiar={actualizarFiltros} mostrarComparar={vista === 'resumen'} />
+        <DashboardFiltros filtros={filtros} medicos={medicos} onCambiar={actualizarFiltros} mostrarComparar={vista === 'resumen'} />
       )}
+
+      {/* El intervalo exacto que se está viendo (útil al copiar cifras) y la exportación de lo que hay en pantalla. */}
+      {vista !== 'explorador' && (
+        <div className="flex flex-wrap items-center justify-between gap-2 -mt-3">
+          <p className="text-xs text-slate-600" data-intervalo>{etiquetaIntervalo(desde, hasta, medicoTexto)}</p>
+          <button type="button" className="btn-secondary text-xs gap-1" disabled={nAportes === 0} data-exportar
+            title={nAportes === 0 ? 'Espera a que se carguen los datos' : 'Descarga un Excel con las tablas de esta pestaña'}
+            onClick={() => descargarExcel(contextoExportar, [...aportes.current.values()])}>
+            <Download className="w-3.5 h-3.5" /> Exportar datos de esta vista
+          </button>
+        </div>
+      )}
+
+      <ContextoExportar.Provider value={contextoExportar}>
 
       {vista === 'resumen' && (
         <ResumenDashboard filtros={filtros} desde={desde} hasta={hasta} onExplorar={irAIncidencias} onExplorarEpisodios={irAExplorador} />
@@ -184,6 +222,7 @@ export function Dashboard() {
       {vista === 'seguridad' && (
         <SeguridadDashboard filtros={filtros} desde={desde} hasta={hasta} onExplorar={irAIncidencias} onExplorarEpisodios={irAExplorador} />
       )}
+      </ContextoExportar.Provider>
       {vista === 'explorador' && <ExploradorEpisodios />}
       {vista !== 'resumen' && vista !== 'actividad' && vista !== 'diagnosticos' && vista !== 'evolucion' && vista !== 'medicacion' && vista !== 'explorador' && vista !== 'seguridad' && (
         <div className="card p-10 text-center text-slate-500 text-sm">
