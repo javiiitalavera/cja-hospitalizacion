@@ -2,6 +2,7 @@
 // indicaciones de enfermería del turno (editables por enfermería y administración). La vía y la diuresis salen
 // de la Pauta de cuidados y de la Hoja de ítems: aquí no se editan.
 
+import { DistintivoAislamiento } from '../../components/DistintivoAislamiento'
 import { useState } from 'react'
 import { Check, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { ChipsTurno } from '../../components/ChipsTurno'
@@ -120,6 +121,7 @@ export function FilaPaciente({ n, p, turno, columnas, acciones }: {
             {p.nombre}
           </Link>
         ) : p.nombre}
+        <DistintivoAislamiento aislamiento={p.aislamiento} className="ml-2 align-middle" />
       </td>
       {columnas.map((c) => (
         <td key={c} className="px-0.5 py-2 text-center text-[0.65rem] text-slate-500 bg-slate-50/70 border-l border-dashed border-slate-200">

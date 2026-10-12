@@ -95,6 +95,8 @@ const Bloque = memo(function Bloque({
               // La alerta de conducta debe saltar a la vista: fondo
               // rojo fuerte en la celda si hay algo marcado.
               const esAlerta = fila.key === 'alerta'
+              // Igual con el aislamiento (violeta, el mismo de Inicio): no se confunde con la alerta ni con el semáforo.
+              const esAislamiento = fila.key === 'aislamiento'
               return (
                 <tr key={fila.key}>
                   <td className={labelCls} style={{ fontWeight: LABEL_BOLD_ROWS.has(fila.key) ? 700 : 500 }}>
@@ -107,8 +109,11 @@ const Bloque = memo(function Bloque({
                     const val = ingreso ? fila.get(it as any, ingreso as any) : ''
                     const bg = habBg(ingreso)
                     const alertaActiva = esAlerta && !!val
+                    const aislamientoActivo = esAislamiento && !!val
                     const cellBg = alertaActiva
                       ? '#dc2626'
+                      : aislamientoActivo
+                        ? '#6d28d9'
                       : ingreso && tenirPorSemaforo
                         ? bg === '#FF0000'
                           ? '#ffcccc'
@@ -122,13 +127,13 @@ const Bloque = memo(function Bloque({
                         : '#fff'
                     // El fondo de la celda es el tono claro del semáforo (o rojo intenso si hay alerta), no el color saturado de `bg`:
                     // el contraste se calcula sobre lo que realmente se ve.
-                    const color = alertaActiva ? '#fff' : '#000'
+                    const color = alertaActiva || aislamientoActivo ? '#fff' : '#000'
                     const isSelected = ingreso?.id === selectedId
                     return (
                       <td
                         key={n}
                         className={`${cellCls} ${ingreso && !readOnly ? 'cursor-pointer hover:brightness-95' : !ingreso && !readOnly ? 'cursor-pointer hover:bg-primary-50/40' : ''} ${isSelected ? 'ring-2 ring-inset ring-primary-500' : ''}`}
-                        style={{ backgroundColor: cellBg, color, fontWeight: alertaActiva ? 700 : (BOLD_ROWS.has(fila.key) ? 600 : 400), ...(fila.key === 'nombre' ? { fontSize: '8.5pt', hyphens: 'auto' as const } : {}) }}
+                        style={{ backgroundColor: cellBg, color, fontWeight: alertaActiva || aislamientoActivo ? 700 : (BOLD_ROWS.has(fila.key) ? 600 : 400), ...(fila.key === 'nombre' ? { fontSize: '8.5pt', hyphens: 'auto' as const } : {}) }}
                         onClick={atajoDeRaton(() => {
                           if (ingreso && !readOnly) onSelect(ingreso)
                           else if (!ingreso && !readOnly && onSelectVacia && fila.key === 'nombre') onSelectVacia(n)

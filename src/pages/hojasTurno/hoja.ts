@@ -4,7 +4,7 @@
 
 import { documentoImpresion, escapeHtml } from '../../lib/imprimir'
 import { SEMAFORO_CAIDAS_COLOR } from '../../types'
-import { textoVias, type Turno } from '../../types/pautaCuidados'
+import { AISLAMIENTOS, textoVias, type Aislamiento, type Turno } from '../../types/pautaCuidados'
 
 export interface IndicacionHoja { id?: string; texto: string; turnos: Turno[]; updated_at?: string }
 
@@ -16,6 +16,7 @@ export interface PacienteHoja {
   sondaVesical: boolean
   colector: boolean
   vias: string[]                                   // vías y dispositivos de acceso (de la Hoja de ítems): IV, SC, ostomía…
+  aislamiento?: Aislamiento[]                      // contacto y/o gotas (de la Hoja de ítems); las copias antiguas del histórico no lo traen
   indicaciones: IndicacionHoja[]
 }
 
@@ -63,6 +64,8 @@ const ESTILO = `
   .noche td { height: 6.1mm; }   /* la noche lleva además la lista de reposición: tiene que caber en la misma hoja */
   .c-hab { width: 6mm; text-align: center; font-weight: 700; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .c-nom { width: 30mm; font-weight: 600; }
+  /* Aislamiento: una sola etiqueta bajo el nombre, violeta con letra blanca (el mismo marcador de Inicio y de la hoja de ítems). */
+  .aisl { display: block; width: fit-content; margin-top: 0.4mm; padding: 0 1.2mm; border-radius: 1mm; background: #6d28d9; color: #fff; font-size: 6pt; font-weight: 700; letter-spacing: 0.2px; text-transform: uppercase; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .c-m { width: 14mm; }
   .c-via { font-size: 7pt; }
   .c-cui { font-size: 7.5pt; line-height: 1.15; }
@@ -76,6 +79,16 @@ const ESTILO = `
   .ctrl li { margin-bottom: 0.8mm; break-inside: avoid; }
   .ctrl li::before { content: '☐ '; }
 `
+
+// Texto del aislamiento: «Contacto», «Gotas» o «Contacto + Gotas» (vacío si no lo hay).
+export function textoAislamiento(p: PacienteHoja): string {
+  return AISLAMIENTOS.filter((a) => (p.aislamiento ?? []).includes(a.clave)).map((a) => a.corta).join(' + ')
+}
+const aislamientoHTML = (p: PacienteHoja) => {
+  const t = textoAislamiento(p)
+  // En la columna estrecha del nombre, «Contacto + Gotas» no cabe en una línea: se abrevia.
+  return t ? `<span class="aisl">Aisl. ${escapeHtml(t.includes('+') ? 'Cont.+Gotas' : t)}</span>` : ''
+}
 
 function filaHTML(n: number, p: PacienteHoja | undefined, turno: Turno): string {
   const cols = COLUMNAS[turno]
@@ -94,7 +107,7 @@ function filaHTML(n: number, p: PacienteHoja | undefined, turno: Turno): string 
   const via = `<td class="c-m c-via">${escapeHtml(textoVias(p.vias))}</td>`
   const sem = colorSemaforo(p)
   const estiloHab = sem ? ` style="background:${sem.fondo};color:${sem.texto}"` : ''
-  return `<tr><td class="c-hab"${estiloHab}>${n}</td><td class="c-nom">${escapeHtml(p.nombre)}</td>${celdas}${via}<td class="c-cui">${cuidados}</td></tr>`
+  return `<tr><td class="c-hab"${estiloHab}>${n}</td><td class="c-nom">${escapeHtml(p.nombre)}${aislamientoHTML(p)}</td>${celdas}${via}<td class="c-cui">${cuidados}</td></tr>`
 }
 
 // Documento HTML completo de la hoja de un turno (sirve para imprimir la de hoy y la del histórico).
@@ -142,6 +155,7 @@ export function pacienteDesdeHistorico(f: FilaHistorico): PacienteHoja | null {
     colector: !!d.colector,
     // Las copias anteriores a las vías múltiples guardaban un solo valor en «via».
     vias: Array.isArray(d.vias) ? d.vias : d.via ? [d.via] : [],
+    aislamiento: Array.isArray(d.aislamiento) ? d.aislamiento : [],
     indicaciones: Array.isArray(d.indicaciones) ? d.indicaciones.map((i: any) => ({ texto: i.texto, turnos: i.turnos })) : [],
   }
 }

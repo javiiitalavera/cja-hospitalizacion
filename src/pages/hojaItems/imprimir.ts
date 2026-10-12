@@ -36,9 +36,11 @@ function buildPrintHTML(data: IngresoConItems[], today: string): string {
           const valor = ing
             ? (fila.key === 'nombre' && ing.paciente ? nombreYApellido(ing.paciente) : fila.get(ing.items, ing))
             : ''
-          const esNegritaCelda = BOLD_ROWS.has(fila.key)
-          const bg = fila.key === 'nombre' ? habBg(ing ?? null) : ''
-          const color = bg ? textColor(bg) : ''
+          // Aislamiento (violeta, como en pantalla): letra blanca sobre fondo violeta.
+          const aislado = fila.key === 'aislamiento' && !!valor
+          const esNegritaCelda = BOLD_ROWS.has(fila.key) || aislado
+          const bg = fila.key === 'nombre' ? habBg(ing ?? null) : aislado ? '#6d28d9' : ''
+          const color = aislado ? '#ffffff' : bg ? textColor(bg) : ''
           const estilo = bg ? ` style="background:${bg};color:${color}"` : ''
           html += `<td${estilo}${esNegritaCelda ? ' class="bold"' : ''}>${escapeHtml(String(valor ?? ''))}</td>`
         })
