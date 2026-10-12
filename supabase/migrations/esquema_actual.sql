@@ -2131,12 +2131,33 @@ begin
   where e.tipo = 'caida' and e.fecha between p_desde and p_hasta
     and (p_medico_id is null or i.medico_responsable_id = p_medico_id);
 
+  -- Pacientes con 2 o más caídas en el periodo (cuenta por paciente, aunque tenga más de un episodio). Cada fila lleva el
+  -- episodio de su caída más reciente, para poder abrir su ficha.
+  with rep as (
+    select (array_agg(i.id order by e.fecha desc, i.fecha_ingreso desc))[1] as ingreso_id,
+           (p.primer_apellido || case when p.segundo_apellido is not null and p.segundo_apellido <> '' then ' ' || p.segundo_apellido else '' end
+             || ', ' || p.nombre) as paciente,
+           count(*) as caidas
+    from public.eventos e
+    inner join public.ingresos i on i.id = e.ingreso_id
+    inner join public.pacientes p on p.id = i.paciente_id
+    where e.tipo = 'caida' and e.fecha between p_desde and p_hasta
+      and (p_medico_id is null or i.medico_responsable_id = p_medico_id)
+    group by p.id, p.primer_apellido, p.segundo_apellido, p.nombre
+    having count(*) >= 2
+  )
+  select v_caidas || jsonb_build_object(
+    'pacientes_con_caidas_repetidas', (select count(*) from rep),
+    'repetidas', coalesce((select jsonb_agg(jsonb_build_object('ingreso_id', r.ingreso_id, 'paciente', r.paciente, 'caidas', r.caidas)
+                                            order by r.caidas desc, r.paciente) from rep r), '[]'::jsonb)
+  ) into v_caidas;
+
   -- Úlceras por presión: salen de Curas (curas_lesiones con tipo 'upp'),
   -- no de las incidencias. Periodo = fecha de inicio/detección.
   --   producidas en el centro  -> origen 'centro'  (las que cuentan para la tasa)
   --   presentes al ingreso     -> origen 'fuera'
   --   sin origen indicado      -> origen null (pendiente de completar en Curas)
-  -- Grado III-IV: el grado MÁXIMO que haya llegado a registrarse.
+  -- Grado III-IV: el grado MÁXIMO que haya llegado a registrarse. «Sin grado»: úlceras que aún no tienen ninguna valoración.
   with upp as (
     select l.id, l.ingreso_id, i.paciente_id, l.origen,
            (select max(case v.grado when 'I' then 1 when 'II' then 2 when 'III' then 3 when 'IV' then 4 end)
@@ -2152,6 +2173,7 @@ begin
     'aparecidas_durante', count(*) filter (where origen = 'centro'),
     'sin_origen', count(*) filter (where origen is null),
     'grado_iii_iv', count(*) filter (where grado_max >= 3),
+    'sin_grado', count(*) filter (where grado_max is null),
     'pacientes_afectados', count(distinct paciente_id),
     'tasa_aparecidas_1000', case when v_dias_estancia > 0 then round(
       count(*) filter (where origen = 'centro')::numeric / v_dias_estancia * 1000, 2
@@ -2207,12 +2229,10 @@ begin
     'pacientes_con_contencion_activa', (select count(*) from pauta where activa),
     'pacientes_con_si_precisa', (select count(*) from pauta where si_precisa and not activa),
     'pendientes_confirmacion', (select count(*) from pauta where (activa or si_precisa) and confirmado_por_id is null),
-    'cambios_pauta_periodo', (
-      select count(*) from public.contenciones_historial ch
-      inner join public.ingresos i2 on i2.id = ch.ingreso_id
-      where ch.tipo_accion in ('pauta_creada', 'pauta_modificada')
-        and (ch.cambiado_en at time zone 'Europe/Madrid')::date between p_desde and p_hasta
-        and (p_medico_id is null or i2.medico_responsable_id = p_medico_id)
+    -- Denominador del porcentaje: todos los pacientes ingresados hoy, tengan o no pauta de contención.
+    'pacientes_ingresados', (
+      select count(*) from public.ingresos i3
+      where i3.estado = 'activo' and (p_medico_id is null or i3.medico_responsable_id = p_medico_id)
     )
   ) into v_contenciones;
 

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import type { Filtros, EstadoCarga } from './tipos'
 import { TarjetaMetrica, EstadoCargando, EstadoError, EstadoSinDatos } from './ComponentesDashboard'
@@ -10,15 +11,54 @@ const TIPO_LABEL: Record<string, string> = {
   agresividad_fisica: 'Agresividad física', fuga: 'Fuga', atragantamiento: 'Atragantamiento',
 }
 
+// Cuántos pacientes con caídas repetidas se listan; el resto se resume en una línea.
+const MAX_REPETIDAS = 10
+
+// Los campos marcados como opcionales no existen hasta que se ejecuta el SQL correspondiente (migración 20261018 y
+// anteriores): la pantalla no se rompe sin ellos, enseña «—».
 interface Seguridad {
   por_tipo: { tipo: string; total: number; pacientes_afectados: number; pendientes: number; tasa_1000: number | null }[]
-  caidas: { total: number; con_lesion: number; pendientes_valoracion: number; graves: number; tasa_total_1000: number | null; tasa_con_lesion_1000: number | null }
-  // sin_origen y pacientes_afectados son opcionales: no existen hasta que se ejecuta el SQL de úlceras en Curas.
-  ulceras: { presentes_al_ingreso: number; aparecidas_durante: number; grado_iii_iv: number; tasa_aparecidas_1000: number | null; sin_origen?: number; pacientes_afectados?: number }
-  otras: { errores_medicacion: number; efectos_adversos: number; infecciones_nosocomiales: number; agresiones: number; fugas: number; pendientes_completar: number
-    // Opcionales: no existen hasta que se ejecuta el SQL de atragantamiento y derivación (20261015).
-    atragantamientos?: number; derivaciones_urgencias?: number; ingresos_hospitalarios?: number }
-  contenciones: { pacientes_con_contencion_activa: number; pacientes_con_si_precisa: number; pendientes_confirmacion: number; cambios_pauta_periodo: number }
+  caidas: {
+    total: number; con_lesion: number; pendientes_valoracion: number; graves: number
+    tasa_total_1000: number | null; tasa_con_lesion_1000: number | null
+    pacientes_con_caidas_repetidas?: number
+    repetidas?: { ingreso_id: string; paciente: string; caidas: number }[]
+  }
+  ulceras: {
+    presentes_al_ingreso: number; aparecidas_durante: number; grado_iii_iv: number; tasa_aparecidas_1000: number | null
+    sin_origen?: number; pacientes_afectados?: number; sin_grado?: number
+  }
+  otras: {
+    errores_medicacion: number; efectos_adversos: number; infecciones_nosocomiales: number; agresiones: number; fugas: number
+    pendientes_completar: number
+    atragantamientos?: number; derivaciones_urgencias?: number; ingresos_hospitalarios?: number
+  }
+  contenciones: {
+    pacientes_con_contencion_activa: number; pacientes_con_si_precisa: number; pendientes_confirmacion: number
+    pacientes_ingresados?: number
+  }
+}
+
+function porcentaje(n: number, total: number | undefined): string | undefined {
+  if (!total) return undefined
+  return `${((n / total) * 100).toLocaleString('es-ES', { maximumFractionDigits: 1 })} % de los ingresados`
+}
+
+// Un hueco de la franja «Pendiente de revisar»: cada pendiente conserva su nombre, no se suman entre sí.
+function Pendiente({ etiqueta, valor, nota, onClick }: { etiqueta: string; valor: number | string; nota?: string; onClick?: () => void }) {
+  const Contenedor = onClick ? 'button' : 'div'
+  const hayPendiente = typeof valor === 'number' && valor > 0
+  return (
+    <Contenedor
+      type={onClick ? 'button' : undefined}
+      onClick={onClick}
+      className={`px-4 py-3 text-left flex flex-col items-start justify-start ${onClick ? 'hover:bg-primary-50/30 transition-colors cursor-pointer' : ''}`}
+    >
+      <p className="text-xs text-slate-500 font-medium">{etiqueta}</p>
+      <p className={`text-xl font-bold mt-0.5 tabular-nums ${hayPendiente ? 'text-amber-700' : 'text-slate-800'}`}>{valor}</p>
+      {nota && <p className="text-xs text-slate-500 mt-0.5">{nota}</p>}
+    </Contenedor>
+  )
 }
 
 export function SeguridadDashboard({ filtros, desde, hasta, onExplorar, onExplorarEpisodios }: {
@@ -52,8 +92,9 @@ export function SeguridadDashboard({ filtros, desde, hasta, onExplorar, onExplor
     onExplorar({ desde, hasta, tipo_incidencia: tipo })
   }
 
-  // Las úlceras por presión viven en Curas, no en Incidencias: el listado
-  // que las explica es el de episodios con alguna úlcera, no el de incidencias.
+  // Las úlceras por presión viven en Curas, no en Incidencias: el listado que las explica es el de episodios con
+  // alguna úlcera. Ese listado no filtra por la fecha de la úlcera ni por su categoría, así que solo hay UN enlace
+  // (con el aviso escrito) y no uno por tarjeta, para que ninguna cifra abra un listado que no cuadra con ella.
   function irAEpisodiosConUPP() {
     onExplorarEpisodios({ solapa_desde: desde, solapa_hasta: hasta, con_incidencias: 'si', tipo_incidencia: 'ulcera' })
   }
@@ -63,101 +104,166 @@ export function SeguridadDashboard({ filtros, desde, hasta, onExplorar, onExplor
       {estado === 'cargando' && <EstadoCargando />}
       {estado === 'error' && <EstadoError mensaje={error} onReintentar={cargar} />}
 
-      {estado === 'listo' && datos && (
-        <>
-          {/* ── Tabla por tipo ──────────────────────────────── */}
-          <section>
-            <p className="section-title">Incidencias por tipo</p>
-            <div className="card overflow-hidden">
-              {datos.por_tipo.length === 0 ? <EstadoSinDatos mensaje="Sin incidencias en este periodo." /> : (
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b bg-slate-50 text-left text-xs font-semibold text-slate-500">
-                      <th className="px-4 py-2">Tipo</th>
-                      <th className="px-4 py-2 text-right">Incidencias</th>
-                      <th className="px-4 py-2 text-right">Pacientes afectados</th>
-                      <th className="px-4 py-2 text-right">Pendientes</th>
-                      <th className="px-4 py-2 text-right">Tasa / 1.000 días-estancia</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {datos.por_tipo.map((t) => (
-                      <tr key={t.tipo} className="hover:bg-slate-50 cursor-pointer" onClick={atajoDeRaton(() => irATipo(t.tipo))}>
-                        <td className="px-4 py-2 font-medium text-slate-700">
-                          <button type="button" onClick={() => irATipo(t.tipo)} className={`text-left hover:text-primary-700 hover:underline ${FOCO_CELDA}`}>{TIPO_LABEL[t.tipo] ?? t.tipo}</button>
-                        </td>
-                        <td className="px-4 py-2 text-right tabular-nums">{t.total}</td>
-                        <td className="px-4 py-2 text-right tabular-nums">{t.pacientes_afectados}</td>
-                        <td className="px-4 py-2 text-right tabular-nums">{t.pendientes || <span className="text-slate-500">—</span>}</td>
-                        <td className="px-4 py-2 text-right tabular-nums text-slate-500">{t.tasa_1000 ?? '—'}</td>
+      {estado === 'listo' && datos && (() => {
+        const { caidas, ulceras, otras, contenciones } = datos
+        const repetidas = caidas.repetidas ?? []
+        const ingresados = contenciones.pacientes_ingresados
+        return (
+          <>
+            {/* ── Pendiente de revisar ────────────────────────── */}
+            <section>
+              <p className="section-title">Pendiente de revisar</p>
+              <div className="card overflow-hidden grid grid-cols-2 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x" data-pendientes>
+                <Pendiente etiqueta="Incidencias sin completar" valor={otras.pendientes_completar} nota="Todos los tipos, en el periodo"
+                  onClick={() => onExplorar({ desde, hasta, incidencias: 'pendiente' })} />
+                <Pendiente etiqueta="Caídas con lesión sin valorar" valor={caidas.pendientes_valoracion} nota="En el periodo" />
+                <Pendiente etiqueta="Úlceras sin origen indicado" valor={ulceras.sin_origen ?? '—'} nota="Se completa en Curas" />
+                <Pendiente etiqueta="Pautas de contención sin confirmar" valor={contenciones.pendientes_confirmacion} nota="Hoy" />
+              </div>
+            </section>
+
+            {/* ── Tabla por tipo ──────────────────────────────── */}
+            <section>
+              <p className="section-title">Incidencias por tipo</p>
+              <div className="card overflow-hidden">
+                {datos.por_tipo.length === 0 ? <EstadoSinDatos mensaje="Sin incidencias en este periodo." /> : (
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-slate-50 text-left text-xs font-semibold text-slate-500">
+                        <th className="px-4 py-2">Tipo</th>
+                        <th className="px-4 py-2 text-right">Incidencias</th>
+                        <th className="px-4 py-2 text-right">Pacientes afectados</th>
+                        <th className="px-4 py-2 text-right">Pendientes</th>
+                        <th className="px-4 py-2 text-right">Tasa / 1.000 días-estancia</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y">
+                      {datos.por_tipo.map((t) => (
+                        <tr key={t.tipo} className="hover:bg-slate-50 cursor-pointer" onClick={atajoDeRaton(() => irATipo(t.tipo))}>
+                          <td className="px-4 py-2 font-medium text-slate-700">
+                            <button type="button" onClick={() => irATipo(t.tipo)} className={`text-left hover:text-primary-700 hover:underline ${FOCO_CELDA}`}>{TIPO_LABEL[t.tipo] ?? t.tipo}</button>
+                          </td>
+                          <td className="px-4 py-2 text-right tabular-nums">{t.total}</td>
+                          <td className="px-4 py-2 text-right tabular-nums">{t.pacientes_afectados}</td>
+                          <td className="px-4 py-2 text-right tabular-nums">{t.pendientes}</td>
+                          <td className="px-4 py-2 text-right tabular-nums text-slate-500">{t.tasa_1000 ?? '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+              <p className="text-xs text-slate-500 mt-2">
+                Se cuenta por la fecha en que ocurrió la incidencia. Las úlceras por presión y las infecciones nosocomiales no son incidencias: se muestran más abajo.
+              </p>
+            </section>
+
+            {/* ── Caídas ──────────────────────────────────────── */}
+            <section>
+              <p className="section-title">Caídas</p>
+              <p className="text-xs text-slate-500 -mt-3 mb-2">El total y la tasa de caídas están en la tabla de arriba.</p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <TarjetaMetrica etiqueta="Con lesión" valor={caidas.con_lesion}
+                  subvalor={caidas.tasa_con_lesion_1000 != null ? `${caidas.tasa_con_lesion_1000} / 1.000 días-estancia` : undefined} />
+                <TarjetaMetrica etiqueta="Graves" valor={caidas.graves} subvalor="Gravedad grave, fractura o TCE" />
+                <TarjetaMetrica etiqueta="Con lesión sin valorar" valor={caidas.pendientes_valoracion} subvalor="Marcadas «Pendiente de valoración»" />
+                <TarjetaMetrica etiqueta="Pacientes con 2 o más caídas" valor={caidas.pacientes_con_caidas_repetidas ?? '—'} subvalor="En el periodo" />
+              </div>
+              {repetidas.length > 0 && (
+                <div className="card overflow-hidden mt-3" data-caidas-repetidas>
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-slate-50 text-left text-xs font-semibold text-slate-500">
+                        <th className="px-4 py-2">Paciente</th>
+                        <th className="px-4 py-2 text-right">Caídas en el periodo</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {repetidas.slice(0, MAX_REPETIDAS).map((r) => (
+                        <tr key={r.ingreso_id} className="hover:bg-slate-50">
+                          <td className="px-4 py-2 font-medium text-slate-700">
+                            <Link to={`/ingresos/${r.ingreso_id}`} className={`hover:text-primary-700 hover:underline ${FOCO_CELDA}`}>{r.paciente}</Link>
+                          </td>
+                          <td className="px-4 py-2 text-right tabular-nums">{r.caidas}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {repetidas.length > MAX_REPETIDAS && (
+                    <p className="text-xs text-slate-500 px-4 py-2 border-t">
+                      Y {repetidas.length - MAX_REPETIDAS} pacientes más con 2 o más caídas. Se ordenan de más a menos caídas.
+                    </p>
+                  )}
+                </div>
               )}
-            </div>
-          </section>
+            </section>
 
-          {/* ── Caídas ──────────────────────────────────────── */}
-          <section>
-            <p className="section-title">Caídas</p>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              <TarjetaMetrica etiqueta="Total" valor={datos.caidas.total} onClick={() => irATipo('caida')} />
-              <TarjetaMetrica etiqueta="Con lesión" valor={datos.caidas.con_lesion} subvalor={datos.caidas.tasa_con_lesion_1000 != null ? `${datos.caidas.tasa_con_lesion_1000} / 1.000 días` : undefined} />
-              <TarjetaMetrica etiqueta="Pendientes de valoración" valor={datos.caidas.pendientes_valoracion} />
-              <TarjetaMetrica etiqueta="Graves" valor={datos.caidas.graves} subvalor="Gravedad grave, fractura o TCE" />
-              <TarjetaMetrica etiqueta="Tasa total" valor={datos.caidas.tasa_total_1000 ?? '—'} subvalor="por 1.000 días-estancia" />
-            </div>
-          </section>
+            {/* ── Úlceras ─────────────────────────────────────── */}
+            <section>
+              <p className="section-title">Úlceras por presión</p>
+              <p className="text-xs text-slate-500 -mt-3 mb-2">
+                Se registran en Plan de cuidados → Pauta de curas (no como incidencia). El periodo se cuenta por la fecha de inicio o detección.
+              </p>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3" data-ulceras>
+                <TarjetaMetrica etiqueta="Producidas en el centro" valor={ulceras.aparecidas_durante}
+                  subvalor={ulceras.tasa_aparecidas_1000 != null ? `${ulceras.tasa_aparecidas_1000} / 1.000 días-estancia` : 'Origen: dentro del centro'} />
+                <TarjetaMetrica etiqueta="Presentes al ingreso" valor={ulceras.presentes_al_ingreso} subvalor="Origen: fuera del centro" />
+                <TarjetaMetrica etiqueta="Pacientes afectados" valor={ulceras.pacientes_afectados ?? '—'} />
+                <TarjetaMetrica etiqueta="Grados III-IV" valor={ulceras.grado_iii_iv} subvalor="Grado máximo registrado" />
+                <TarjetaMetrica etiqueta="Sin grado valorado" valor={ulceras.sin_grado ?? '—'} subvalor="Sin ninguna valoración, o «no clasificable»" />
+                <TarjetaMetrica etiqueta="Sin origen indicado" valor={ulceras.sin_origen ?? '—'} subvalor="Pendientes de completar en Curas" />
+              </div>
+              <button type="button" onClick={irAEpisodiosConUPP}
+                className="text-xs text-primary-700 underline hover:text-primary-800 mt-2 text-left" data-ver-episodios-upp>
+                Ver los episodios del periodo con alguna úlcera por presión
+              </button>
+              <p className="text-xs text-slate-500">
+                Ese listado incluye episodios con úlceras que empezaron en otra fecha, así que puede mostrar más casos que las cifras de arriba.
+              </p>
+            </section>
 
-          {/* ── Úlceras ─────────────────────────────────────── */}
-          <section>
-            <p className="section-title">Úlceras por presión</p>
-            <p className="text-xs text-slate-500 mb-3">
-              Se registran en Plan de cuidados → Pauta de curas (no como incidencia). El periodo se cuenta por la fecha de inicio o detección.
-              Al pulsar una tarjeta se abre el listado de episodios del periodo con alguna úlcera por presión.
-            </p>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              <TarjetaMetrica etiqueta="Producidas en el centro" valor={datos.ulceras.aparecidas_durante} subvalor="Origen: dentro del centro" onClick={irAEpisodiosConUPP} />
-              <TarjetaMetrica etiqueta="Presentes al ingreso" valor={datos.ulceras.presentes_al_ingreso} subvalor="Origen: fuera del centro" onClick={irAEpisodiosConUPP} />
-              <TarjetaMetrica etiqueta="Sin origen indicado" valor={datos.ulceras.sin_origen ?? '—'} subvalor="Pendientes de completar en Curas" onClick={irAEpisodiosConUPP} />
-              <TarjetaMetrica etiqueta="Grados III-IV" valor={datos.ulceras.grado_iii_iv} subvalor="Grado máximo registrado" onClick={irAEpisodiosConUPP} />
-              <TarjetaMetrica etiqueta="Pacientes afectados" valor={datos.ulceras.pacientes_afectados ?? '—'} onClick={irAEpisodiosConUPP} />
-              <TarjetaMetrica etiqueta="Tasa de aparición" valor={datos.ulceras.tasa_aparecidas_1000 ?? '—'} subvalor="por 1.000 días-estancia, solo las producidas en el centro" />
-            </div>
-          </section>
+            {/* ── Consecuencias ───────────────────────────────── */}
+            <section>
+              <p className="section-title">Consecuencias de las incidencias</p>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                <TarjetaMetrica etiqueta="Derivaciones a urgencias" valor={otras.derivaciones_urgencias ?? '—'}
+                  subvalor="Sin ingreso. De caídas, agresiones, efectos adversos y atragantamientos" />
+                <TarjetaMetrica etiqueta="Ingresos hospitalarios" valor={otras.ingresos_hospitalarios ?? '—'} subvalor="Por esas mismas incidencias" />
+              </div>
+            </section>
 
-          {/* ── Otras incidencias ───────────────────────────── */}
-          <section>
-            <p className="section-title">Otras incidencias</p>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              <TarjetaMetrica etiqueta="Errores de medicación" valor={datos.otras.errores_medicacion} onClick={() => irATipo('error_medicacion')} />
-              <TarjetaMetrica etiqueta="Efectos adversos" valor={datos.otras.efectos_adversos} onClick={() => irATipo('efecto_adverso_medicacion')} />
-              <TarjetaMetrica etiqueta="Infecciones nosocomiales" valor={datos.otras.infecciones_nosocomiales} subvalor="Episodios del periodo con la casilla del CMBD marcada" onClick={() => irATipo('infeccion_nosocomial')} />
-              <TarjetaMetrica etiqueta="Agresiones" valor={datos.otras.agresiones} onClick={() => irATipo('agresividad_fisica')} />
-              <TarjetaMetrica etiqueta="Fugas" valor={datos.otras.fugas} onClick={() => irATipo('fuga')} />
-              <TarjetaMetrica etiqueta="Atragantamientos" valor={datos.otras.atragantamientos ?? '—'} onClick={() => irATipo('atragantamiento')} />
-              <TarjetaMetrica etiqueta="Derivaciones a urgencias" valor={datos.otras.derivaciones_urgencias ?? '—'} subvalor="Sin ingreso, de caídas, agresiones, efectos adversos, infecciones y atragantamientos" />
-              <TarjetaMetrica etiqueta="Ingresos hospitalarios" valor={datos.otras.ingresos_hospitalarios ?? '—'} subvalor="Por esas mismas incidencias" />
-              <TarjetaMetrica etiqueta="Pendientes de completar" valor={datos.otras.pendientes_completar} subvalor="De todos los tipos del periodo" onClick={() => onExplorar({ desde, hasta, incidencias: 'pendiente' })} />
-            </div>
-          </section>
+            {/* ── Infecciones ─────────────────────────────────── */}
+            <section>
+              <p className="section-title">Infecciones nosocomiales</p>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                <TarjetaMetrica etiqueta="Episodios con infección nosocomial" valor={otras.infecciones_nosocomiales}
+                  subvalor="Episodios del periodo con la casilla del CMBD marcada, no infecciones nuevas fechadas en el periodo"
+                  onClick={() => irATipo('infeccion_nosocomial')} />
+              </div>
+            </section>
 
-          {/* ── Contenciones ────────────────────────────────── */}
-          <section>
-            <p className="section-title">Contenciones</p>
-            <p className="text-xs text-slate-500 -mt-3 mb-2">
-              Pacientes ingresados hoy. «Activa» es continua por seguridad o contención fija; «si precisa» solo cuenta a quien no tiene ninguna activa.
-            </p>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <TarjetaMetrica etiqueta="Con contención activa" valor={datos.contenciones.pacientes_con_contencion_activa} />
-              <TarjetaMetrica etiqueta="Con contención «si precisa»" valor={datos.contenciones.pacientes_con_si_precisa} />
-              <TarjetaMetrica etiqueta="Pendientes de confirmación" valor={datos.contenciones.pendientes_confirmacion} />
-              <TarjetaMetrica etiqueta="Cambios de pauta en el periodo" valor={datos.contenciones.cambios_pauta_periodo} />
-            </div>
-          </section>
-        </>
-      )}
+            {/* ── Contenciones: situación de hoy ─────────────── */}
+            <section className="border-t pt-6" data-contenciones-hoy>
+              <div className="flex items-center gap-2 mb-3">
+                <p className="section-title !mb-0">Contenciones</p>
+                <span className="text-xs font-semibold bg-white border text-slate-700 rounded-full px-2 py-0.5">Hoy</span>
+              </div>
+              <p className="text-xs text-slate-500 mb-2">
+                Es la situación de los pacientes ingresados hoy: no cambia con las fechas del filtro. Mide la pauta registrada, no cuántas veces se ha aplicado.
+                «Activa» es continua por seguridad o contención fija; «si precisa» solo cuenta a quien no tiene ninguna activa.
+              </p>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                <TarjetaMetrica etiqueta="Con pauta de contención activa"
+                  valor={ingresados ? `${contenciones.pacientes_con_contencion_activa} de ${ingresados}` : contenciones.pacientes_con_contencion_activa}
+                  subvalor={porcentaje(contenciones.pacientes_con_contencion_activa, ingresados)} />
+                <TarjetaMetrica etiqueta="Con pauta «si precisa»"
+                  valor={ingresados ? `${contenciones.pacientes_con_si_precisa} de ${ingresados}` : contenciones.pacientes_con_si_precisa}
+                  subvalor={porcentaje(contenciones.pacientes_con_si_precisa, ingresados)} />
+              </div>
+            </section>
+          </>
+        )
+      })()}
     </div>
   )
 }
