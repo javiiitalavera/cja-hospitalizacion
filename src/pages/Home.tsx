@@ -52,9 +52,9 @@ function fechaCorta(f: string): string {
 
 const MAX_LINEAS_TOOLTIP = 6
 
-// Hab., Paciente, Edad, NHC, Días, Ingreso, Médico, Contención, Incidencias, flecha. Contención e Incidencias van
+// Hab., Paciente, Edad, Días, Ingreso, Médico, Contención, Incidencias, flecha. Contención e Incidencias van
 // separadas por un hueco propio (la columna de Incidencias lleva relleno a la izquierda) para que no se lean como un solo grupo.
-const COLUMNAS_TABLA = '2.5rem minmax(0,1.6fr) 2.5rem 4rem 3rem 5rem minmax(0,0.7fr) 6rem 11.5rem 2rem'
+const COLUMNAS_TABLA = '2.5rem minmax(0,1.6fr) 2.5rem 3rem 5rem minmax(0,0.9fr) 6rem 11.5rem 2rem'
 // Enlace que ocupa toda la fila (o tarjeta): se navega con un enlace de verdad, que se puede tabular, abrir en otra
 // pestaña y leen los lectores de pantalla. Los botones de dentro (contención, incidencias) quedan por encima.
 const ENLACE_FILA = 'after:absolute after:inset-0 after:content-[\'\'] focus:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-primary-400 focus-visible:after:rounded-[inherit]'
@@ -430,7 +430,7 @@ export default function Home() {
                     <Link to={`/ingresos/${ingreso.id}`} data-fila-paciente={ingreso.id} className={`rounded-xl ${ENLACE_FILA}`}>{p ? nombreCompleto(p) : '—'}</Link>
                   </p>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    {e != null ? `${e} años` : '—'}{p?.nhc ? ` · NHC ${p.nhc}` : ''} · ingreso {fingreso}
+                    {e != null ? `${e} años` : '—'} · ingreso {fingreso}
                     {dias != null && (
                       <span className={`ml-1.5 font-medium px-1.5 py-0.5 rounded-full ${
                         dias > 60 ? 'bg-amber-100 text-amber-700' : dias > 30 ? 'text-slate-700' : 'text-slate-500'
@@ -540,7 +540,6 @@ export default function Home() {
             <div>Hab.</div>
             <div>Paciente</div>
             <div>Edad</div>
-            <div>NHC</div>
             <div>Días</div>
             <div>Ingreso</div>
             <div>Médico</div>
@@ -582,7 +581,6 @@ export default function Home() {
                   ) : (
                     <span className="text-xs text-slate-500">— libre —</span>
                   )}
-                  <span />
                   <span />
                   <span />
                   <span />
@@ -638,8 +636,6 @@ export default function Home() {
                   </div>
                   {/* Edad */}
                   <div className="text-slate-500 text-xs">{e != null ? `${e}a` : '—'}</div>
-                  {/* NHC: el identificador del paciente en el centro */}
-                  <div className="text-slate-600 text-xs tabular-nums truncate" title={p?.nhc ? `NHC ${p.nhc}` : 'Sin NHC'}>{p?.nhc || '—'}</div>
                   {/* Días */}
                   <div>
                     {dias != null && (
