@@ -19,8 +19,9 @@ Estado verificado:
 - `npm run lint` no está limpio actualmente: da errores y avisos. Esto no impide el build, pero debe constar como deuda técnica y no debe presentarse el lint como una comprobación superada.
 - `npm audit --omit=dev` conserva un aviso de severidad alta en `xlsx` para el
   que npm no ofrece una versión corregida. En esta aplicación la biblioteca se
-  usa para generar el XLSX del CMBD a partir de datos internos, no para abrir
-  ficheros subidos por usuarios; aun así, debe revisarse o sustituirse antes de
+  usa para generar los XLSX (CMBD y exportación de datos agregados del
+  Dashboard) a partir de datos internos, no para abrir ficheros subidos por
+  usuarios; aun así, debe revisarse o sustituirse antes de
   considerar cerrada la deuda de dependencias.
 
 ## 2. Estructura relevante
@@ -33,8 +34,9 @@ Estado verificado:
 │   ├── functions/                    # Edge Functions
 │   └── migrations/
 │       ├── esquema_actual.sql        # Esquema completo para una BD vacía
-│       └── 20260908_correcciones_finales.sql
-│                                      # Cambio incremental para la BD actual
+│       └── aaaammdd_*.sql            # Cambios incrementales para la BD actual,
+│                                      # desde 20260908_correcciones_finales.sql
+│                                      # hasta 20261019_dashboard_ulceras_no_clasificables.sql
 ├── .env.example                      # Variables públicas necesarias
 ├── package.json
 ├── package-lock.json
@@ -45,8 +47,10 @@ En el estado actual no existen:
 
 - `supabase/config.toml`;
 - una dependencia de Supabase CLI fijada en `package.json`;
-- un historial completo de migraciones incrementales (solo se conserva la
-  corrección final de 2026-09-08 como migración aplicable al proyecto actual);
+- un historial de migraciones conciliado con el esquema alojado real: las
+  migraciones fechadas de la carpeta son los cambios entregados desde
+  2026-09-08, pero no sustituyen a una baseline verificada contra la base
+  actual;
 - datos ficticios de prueba o cuentas de prueba automatizadas;
 - pruebas automáticas de RLS;
 - un proceso CI que reconstruya la base y ejecute la regresión.
@@ -134,12 +138,13 @@ Tras cambiar cualquiera de las dos variables hay que volver a desplegar el front
 
 **No ejecutar `esquema_actual.sql` sobre el proyecto Supabase actual.** El propio archivo crea tablas, funciones, políticas y disparadores desde cero. Su destino es exclusivamente un proyecto vacío de prueba o una reconstrucción futura planificada.
 
-Para actualizar el proyecto actual con las correcciones finales de esta ronda,
-el único archivo previsto para ejecutarse es
-`supabase/migrations/20260908_correcciones_finales.sql`. Es una migración
-incremental: corrige el orden de los disparadores de contenciones y obliga a
-que las altas y reaperturas pasen por sus RPC transaccionales. Debe probarse
-primero en un entorno de prueba o con una copia recuperable de la base.
+Para actualizar el proyecto actual, cada cambio se entrega como una migración
+fechada (`supabase/migrations/aaaammdd_nombre.sql`) que se ejecuta una sola vez,
+en el SQL Editor y en orden de fecha, y `esquema_actual.sql` se actualiza con
+ella. La primera, `20260908_correcciones_finales.sql`, corrige el orden de los
+disparadores de contenciones y obliga a que las altas y reaperturas pasen por
+sus RPC transaccionales. Toda migración debe probarse primero en un entorno de
+prueba o con una copia recuperable de la base.
 
 La base alojada actualmente sigue siendo la fuente efectiva de verdad. El archivo SQL es la representación que pretende reproducirla, pero esa equivalencia deberá confirmarse mediante una instalación limpia y una comparación contra el esquema remoto antes de una migración real.
 
@@ -267,7 +272,8 @@ No se deben anotar valores secretos en este documento. Basta con registrar dónd
    - incidencia, edición y eliminación conforme a permisos;
    - informe de alta y CMBD;
    - cerrar y, dentro del plazo previsto, reabrir el episodio;
-   - consultar Auditoría y Dashboard.
+   - consultar Auditoría y Dashboard (filtros, iconos «i» con las definiciones
+     y «Exportar datos de esta vista» a Excel en cada pestaña).
 6. Confirmar que las siete acciones administrativas de Personal responden correctamente.
 7. Eliminar los datos y cuentas ficticias creados para la prueba cuando sea seguro hacerlo.
 

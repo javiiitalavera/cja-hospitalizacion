@@ -1,5 +1,10 @@
 # Cómo aplicar este paquete
 
+> **Documento histórico.** Describe solo la ronda de correcciones del 2026-09-08.
+> No refleja el estado actual del repositorio: para la instalación, las
+> migraciones y el despliegue vigentes, véanse `README.md` y
+> `DOCUMENTACION_INSTALACION_Y_DESPLIEGUE.md`.
+
 Los archivos del paquete conservan la misma estructura de carpetas que el
 repositorio. Copia cada uno sobre su ruta equivalente.
 
