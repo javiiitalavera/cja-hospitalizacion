@@ -14,9 +14,24 @@ import { registrarAcceso } from './accesos'
 // Formato común a TODOS los informes Word (ingreso, alta, enfermería y
 // "Otros informes"): se cambia aquí y cambia en todos.
 
+// Word rechaza el documento entero («contenido no legible») si el XML lleva caracteres que XML 1.0 no admite: los de
+// control (salto vertical, avance de página… que llegan al copiar y pegar de Word o de otras aplicaciones), los
+// caracteres no válidos y los pares sustitutos sueltos. Aquí se limpian siempre antes de escribir texto.
+const CARACTERES_INVALIDOS = /[\u0000-\u0008\u000E-\u001F\uFFFE\uFFFF]|[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g
+
+// Saltos de línea «raros» (retorno de carro, salto vertical o de página, separadores Unicode) pasan a \n normal.
+function saltosNormales(texto: string): string {
+  return texto.replace(/\r\n?|[\u000B\u000C\u0085\u2028\u2029]/g, '\n')
+}
+
+// Texto de usuario listo para dividir en líneas (una por párrafo) y escapar.
+function textoLimpio(texto: string | null | undefined): string {
+  return saltosNormales(texto ?? '').replace(CARACTERES_INVALIDOS, '')
+}
+
 function esc(val: string | null | undefined): string {
   if (!val) return ''
-  return val
+  return textoLimpio(val)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
@@ -166,13 +181,13 @@ function tablaEscalasXml(escalaIngreso: EscalaClinica | null | undefined, escala
 // Etiqueta en negrita con la primera línea del texto a su lado y el resto
 // debajo (un salto de línea dentro de un párrafo de Word no se vería).
 function campoXml(label: string, texto: string | null | undefined, font = 'Calibri', o: OpcionesParrafo = {}): string {
-  const lineas = (texto ?? '').trim().split('\n')
+  const lineas = textoLimpio(texto).trim().split('\n')
   return parrafoBoldXml(label, lineas[0], font, o) + lineas.slice(1).map((l) => parrafoXml(l, font, o)).join('')
 }
 
 function lineasXml(texto: string | null | undefined, font = 'Calibri'): string {
   if (!texto?.trim()) return parrafoXml('', font)
-  return texto
+  return textoLimpio(texto)
     .split('\n')
     .map((l) => parrafoXml(l, font))
     .join('')
@@ -235,7 +250,7 @@ function pieXml(font = 'Calibri'): string {
 }
 
 function inyectarPie(footerXml: string): string {
-  return footerXml.replace(/(<w:ftr\b[^>]*>)[\s\S]*(<\/w:ftr>)/, `$1${pieXml()}$2`)
+  return footerXml.replace(/(<w:ftr\b[^>]*>)[\s\S]*(<\/w:ftr>)/, (_m, a, b) => `${a}${pieXml()}${b}`)
 }
 
 // Escribe en la plantilla el cuerpo, la cabecera (ya con los datos del
@@ -243,7 +258,7 @@ function inyectarPie(footerXml: string): string {
 async function componerDocumento(zip: JSZip, cuerpo: string, cabecera: string): Promise<void> {
   const xmlRaw = await zip.file('word/document.xml')!.async('string')
   const sectPr = xmlRaw.match(/<w:sectPr[\s\S]*<\/w:sectPr>/)?.[0] ?? ''
-  zip.file('word/document.xml', xmlRaw.replace(/<w:body>[\s\S]*<\/w:body>/, `<w:body>${cuerpo}${sectPr}</w:body>`))
+  zip.file('word/document.xml', xmlRaw.replace(/<w:body>[\s\S]*<\/w:body>/, () => `<w:body>${cuerpo}${sectPr}</w:body>`))
   zip.file('word/header1.xml', cabecera)
   const pie = zip.file('word/footer1.xml')
   if (pie) zip.file('word/footer1.xml', inyectarPie(await pie.async('string')))
@@ -278,17 +293,17 @@ function inyectarHeader(
   falta: string
 ): string {
   return headerXml
-    .replace(/(<w:t[^>]*>)Nombre: (<\/w:t>)/, `$1Nombre: ${esc(p.nombre)}$2`)
-    .replace(/(<w:t[^>]*>)Primer Apellido: (<\/w:t>)/, `$1Primer Apellido: ${esc(p.primer_apellido)}$2`)
-    .replace(/(<w:t[^>]*>)Segundo Apellido:(?: )?(<\/w:t>)/, `$1Segundo Apellido: ${esc(p.segundo_apellido ?? '')}$2`)
+    .replace(/(<w:t[^>]*>)Nombre: (<\/w:t>)/, (_m, a, b) => `${a}Nombre: ${esc(p.nombre)}${b}`)
+    .replace(/(<w:t[^>]*>)Primer Apellido: (<\/w:t>)/, (_m, a, b) => `${a}Primer Apellido: ${esc(p.primer_apellido)}${b}`)
+    .replace(/(<w:t[^>]*>)Segundo Apellido:(?: )?(<\/w:t>)/, (_m, a, b) => `${a}Segundo Apellido: ${esc(p.segundo_apellido ?? '')}${b}`)
     .replace(
       /(<w:t[^>]*>)Fecha de nacimiento: (<\/w:t>)/,
-      `$1Fecha de nacimiento: ${p.fecha_nacimiento ? new Date(p.fecha_nacimiento).toLocaleDateString('es-ES') : ''}$2`
+      (_m, a, b) => `${a}Fecha de nacimiento: ${p.fecha_nacimiento ? new Date(p.fecha_nacimiento).toLocaleDateString('es-ES') : ''}${b}`
     )
-    .replace(/(<w:t[^>]*>)Fecha de ingreso: (<\/w:t>)/, `$1Fecha de ingreso: ${esc(fingreso)}$2`)
-    .replace(/(<w:t[^>]*>)Fecha de alta: (<\/w:t>)/, `$1Fecha de alta: ${esc(falta)}$2`)
-    .replace(/CIPNA:(?: )?(<\/w:t>)/, `CIPNA: ${esc(p.cipna ?? '')}$1`)
-    .replace(/(<w:t[^>]*>)NHC:(<\/w:t>)/, `$1NHC: ${esc(p.nhc ?? '')}$2`)
+    .replace(/(<w:t[^>]*>)Fecha de ingreso: (<\/w:t>)/, (_m, a, b) => `${a}Fecha de ingreso: ${esc(fingreso)}${b}`)
+    .replace(/(<w:t[^>]*>)Fecha de alta: (<\/w:t>)/, (_m, a, b) => `${a}Fecha de alta: ${esc(falta)}${b}`)
+    .replace(/CIPNA:(?: )?(<\/w:t>)/, (_m, a) => `CIPNA: ${esc(p.cipna ?? '')}${a}`)
+    .replace(/(<w:t[^>]*>)NHC:(<\/w:t>)/, (_m, a, b) => `${a}NHC: ${esc(p.nhc ?? '')}${b}`)
 }
 
 // ─── DATOS COMUNES ────────────────────────────────────────────────────────────
@@ -518,8 +533,8 @@ export async function exportarInformePuntual(ingreso: Ingreso, inf: InformePuntu
     zip,
     cuerpo,
     inyectarHeader(headerRaw, p, fingreso, '')
-      .replace(/(<w:t[^>]*>)INFORME DE ALTA(<\/w:t>)/g, `$1${esc(plantillaPorId(inf.plantilla).tituloCabecera)}$2`)
-      .replace(/(<w:t[^>]*>)Fecha de alta: (<\/w:t>)/g, `$1Fecha del informe: ${new Date().toLocaleDateString('es-ES')}$2`)
+      .replace(/(<w:t[^>]*>)INFORME DE ALTA(<\/w:t>)/g, (_m, a, b) => `${a}${esc(plantillaPorId(inf.plantilla).tituloCabecera)}${b}`)
+      .replace(/(<w:t[^>]*>)Fecha de alta: (<\/w:t>)/g, (_m, a, b) => `${a}Fecha del informe: ${new Date().toLocaleDateString('es-ES')}${b}`)
   )
   registrarAcceso('exportacion_word', { ingresoId: ingreso.id, pacienteId: ingreso.paciente_id, detalle: `Otro informe: ${inf.plantilla}` })
   descargar(zip, `Informe_${inf.plantilla === 'estado_actual' ? 'clinico' : inf.plantilla}_${p.primer_apellido ?? 'paciente'}_${hoyLocal()}.docx`)
@@ -547,7 +562,7 @@ export function cuerpoInformeEnfermeriaXml(
     // Un grupo es corto: se mantiene entero en la misma página.
     rellenos.forEach((c, i) => {
       const ultimo = i === rellenos.length - 1
-      const lineas = campos[c.key].trim().split('\n')
+      const lineas = textoLimpio(campos[c.key]).trim().split('\n')
       partes.push(
         parrafoBoldXml(`${c.label}: `, lineas[0], font, { junto: !ultimo || lineas.length > 1 }),
         ...lineas.slice(1).map((l, j) => parrafoXml(l, font, { junto: !ultimo || j < lineas.length - 2 }))
@@ -578,8 +593,8 @@ export async function exportarInformeEnfermeria(
     zip,
     cuerpo,
     inyectarHeader(headerRaw, p, fingreso, '')
-      .replace(/(<w:t[^>]*>)INFORME DE ALTA(<\/w:t>)/g, `$1INFORME DE ENFERMERÍA$2`)
-      .replace(/(<w:t[^>]*>)Fecha de alta: (<\/w:t>)/g, `$1Fecha del informe: ${new Date().toLocaleDateString('es-ES')}$2`)
+      .replace(/(<w:t[^>]*>)INFORME DE ALTA(<\/w:t>)/g, (_m, a, b) => `${a}INFORME DE ENFERMERÍA${b}`)
+      .replace(/(<w:t[^>]*>)Fecha de alta: (<\/w:t>)/g, (_m, a, b) => `${a}Fecha del informe: ${new Date().toLocaleDateString('es-ES')}${b}`)
   )
   registrarAcceso('exportacion_word', { ingresoId: ingreso.id, pacienteId: ingreso.paciente_id, detalle: 'Informe de enfermería' })
   descargar(zip, `Informe_Enfermeria_${p.primer_apellido ?? 'paciente'}_${hoyLocal()}.docx`)
