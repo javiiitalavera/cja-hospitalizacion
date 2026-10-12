@@ -2157,11 +2157,13 @@ begin
   --   producidas en el centro  -> origen 'centro'  (las que cuentan para la tasa)
   --   presentes al ingreso     -> origen 'fuera'
   --   sin origen indicado      -> origen null (pendiente de completar en Curas)
-  -- Grado III-IV: el grado MÁXIMO que haya llegado a registrarse. «Sin grado»: úlceras que aún no tienen ninguna valoración.
+  -- Grado III-IV: el grado MÁXIMO que haya llegado a registrarse. «Sin grado» = trabajo pendiente: ninguna valoración
+  -- con grado (no hay valoración, o ninguna lo tiene escrito). «No clasificable» se cuenta aparte: ya se valoró y no se puede graduar.
   with upp as (
     select l.id, l.ingreso_id, i.paciente_id, l.origen,
            (select max(case v.grado when 'I' then 1 when 'II' then 2 when 'III' then 3 when 'IV' then 4 end)
-              from public.curas_valoraciones v where v.lesion_id = l.id) as grado_max
+              from public.curas_valoraciones v where v.lesion_id = l.id) as grado_max,
+           exists (select 1 from public.curas_valoraciones v where v.lesion_id = l.id and v.grado = 'no_clasificable') as no_clasificable
     from public.curas_lesiones l
     inner join public.ingresos i on i.id = l.ingreso_id
     where l.caracteristicas = 'upp'
@@ -2173,7 +2175,8 @@ begin
     'aparecidas_durante', count(*) filter (where origen = 'centro'),
     'sin_origen', count(*) filter (where origen is null),
     'grado_iii_iv', count(*) filter (where grado_max >= 3),
-    'sin_grado', count(*) filter (where grado_max is null),
+    'sin_grado', count(*) filter (where grado_max is null and not no_clasificable),
+    'grado_no_clasificable', count(*) filter (where grado_max is null and no_clasificable),
     'pacientes_afectados', count(distinct paciente_id),
     'tasa_aparecidas_1000', case when v_dias_estancia > 0 then round(
       count(*) filter (where origen = 'centro')::numeric / v_dias_estancia * 1000, 2

@@ -26,7 +26,7 @@ interface Seguridad {
   }
   ulceras: {
     presentes_al_ingreso: number; aparecidas_durante: number; grado_iii_iv: number; tasa_aparecidas_1000: number | null
-    sin_origen?: number; pacientes_afectados?: number; sin_grado?: number
+    sin_origen?: number; pacientes_afectados?: number; sin_grado?: number; grado_no_clasificable?: number
   }
   otras: {
     errores_medicacion: number; efectos_adversos: number; infecciones_nosocomiales: number; agresiones: number; fugas: number
@@ -113,11 +113,12 @@ export function SeguridadDashboard({ filtros, desde, hasta, onExplorar, onExplor
             {/* ── Pendiente de revisar ────────────────────────── */}
             <section>
               <p className="section-title">Pendiente de revisar</p>
-              <div className="card overflow-hidden grid grid-cols-2 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x" data-pendientes>
+              <div className="card overflow-hidden grid grid-cols-2 md:grid-cols-5 divide-y md:divide-y-0 md:divide-x" data-pendientes>
                 <Pendiente etiqueta="Incidencias sin completar" valor={otras.pendientes_completar} nota="Todos los tipos, en el periodo"
                   onClick={() => onExplorar({ desde, hasta, incidencias: 'pendiente' })} />
-                <Pendiente etiqueta="Caídas con lesión sin valorar" valor={caidas.pendientes_valoracion} nota="En el periodo" />
+                <Pendiente etiqueta="Caídas pendientes de valoración" valor={caidas.pendientes_valoracion} nota="En el periodo" />
                 <Pendiente etiqueta="Úlceras sin origen indicado" valor={ulceras.sin_origen ?? '—'} nota="Se completa en Curas" />
+                <Pendiente etiqueta="Úlceras sin grado valorado" valor={ulceras.sin_grado ?? '—'} nota="Se completa en Curas" />
                 <Pendiente etiqueta="Pautas de contención sin confirmar" valor={contenciones.pendientes_confirmacion} nota="Hoy" />
               </div>
             </section>
@@ -166,7 +167,7 @@ export function SeguridadDashboard({ filtros, desde, hasta, onExplorar, onExplor
                 <TarjetaMetrica etiqueta="Con lesión" valor={caidas.con_lesion}
                   subvalor={caidas.tasa_con_lesion_1000 != null ? `${caidas.tasa_con_lesion_1000} / 1.000 días-estancia` : undefined} />
                 <TarjetaMetrica etiqueta="Graves" valor={caidas.graves} subvalor="Gravedad grave, fractura o TCE" />
-                <TarjetaMetrica etiqueta="Con lesión sin valorar" valor={caidas.pendientes_valoracion} subvalor="Marcadas «Pendiente de valoración»" />
+                <TarjetaMetrica etiqueta="Pendientes de valoración" valor={caidas.pendientes_valoracion} subvalor="Aún no se ha confirmado si hubo lesión" />
                 <TarjetaMetrica etiqueta="Pacientes con 2 o más caídas" valor={caidas.pacientes_con_caidas_repetidas ?? '—'} subvalor="En el periodo" />
               </div>
               {repetidas.length > 0 && (
@@ -204,14 +205,15 @@ export function SeguridadDashboard({ filtros, desde, hasta, onExplorar, onExplor
               <p className="text-xs text-slate-500 -mt-3 mb-2">
                 Se registran en Plan de cuidados → Pauta de curas (no como incidencia). El periodo se cuenta por la fecha de inicio o detección.
               </p>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3" data-ulceras>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3" data-ulceras>
                 <TarjetaMetrica etiqueta="Producidas en el centro" valor={ulceras.aparecidas_durante}
                   subvalor={ulceras.tasa_aparecidas_1000 != null ? `${ulceras.tasa_aparecidas_1000} / 1.000 días-estancia` : 'Origen: dentro del centro'} />
                 <TarjetaMetrica etiqueta="Presentes al ingreso" valor={ulceras.presentes_al_ingreso} subvalor="Origen: fuera del centro" />
                 <TarjetaMetrica etiqueta="Pacientes afectados" valor={ulceras.pacientes_afectados ?? '—'} />
-                <TarjetaMetrica etiqueta="Grados III-IV" valor={ulceras.grado_iii_iv} subvalor="Grado máximo registrado" />
-                <TarjetaMetrica etiqueta="Sin grado valorado" valor={ulceras.sin_grado ?? '—'} subvalor="Sin ninguna valoración, o «no clasificable»" />
                 <TarjetaMetrica etiqueta="Sin origen indicado" valor={ulceras.sin_origen ?? '—'} subvalor="Pendientes de completar en Curas" />
+                <TarjetaMetrica etiqueta="Grados III-IV" valor={ulceras.grado_iii_iv} subvalor="Grado máximo registrado" />
+                <TarjetaMetrica etiqueta="Sin grado valorado" valor={ulceras.sin_grado ?? '—'} subvalor="Ninguna valoración con grado: pendientes de completar en Curas" />
+                <TarjetaMetrica etiqueta="No clasificables" valor={ulceras.grado_no_clasificable ?? '—'} subvalor="Ya valoradas como «no clasificable»; no son trabajo pendiente" />
               </div>
               <button type="button" onClick={irAEpisodiosConUPP}
                 className="text-xs text-primary-700 underline hover:text-primary-800 mt-2 text-left" data-ver-episodios-upp>
