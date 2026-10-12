@@ -300,9 +300,9 @@ export default function Home() {
                   type="button"
                   aria-label={`Contención de ${eje === 'dia' ? 'día' : 'noche'}: ${etiqueta}${pendienteConfirmar ? ' (pendiente de confirmación médica)' : ''}. Abrir`}
                   onClick={() => setModalContencion(ingreso.id)}
-                  className={`relative flex items-center justify-center w-6 h-6 rounded-md border transition-colors ${estilo.bg} ${estilo.border} ${estilo.text} hover:opacity-80 ${pendienteConfirmar ? 'animate-pulse ring-2 ring-amber-400' : ''}`}
+                  className={`relative flex items-center justify-center w-8 h-8 rounded-lg border transition-colors ${estilo.bg} ${estilo.border} ${estilo.text} hover:opacity-80 ${pendienteConfirmar ? 'animate-pulse ring-2 ring-amber-400' : ''}`}
                 >
-                  <Icono className="w-3.5 h-3.5" />
+                  <Icono className="w-4 h-4" />
                   {sev === 'sin_revisar' && (
                     <AlertCircle className="w-2.5 h-2.5 text-slate-500 absolute -top-1 -right-1 bg-white rounded-full" />
                   )}
@@ -342,9 +342,9 @@ export default function Home() {
             aria-label="Registrar incidencia"
             data-registrar={ingreso.id}
             onClick={() => setModalEvento(ingreso.id)}
-            className="p-1 rounded-md border border-slate-200 text-slate-500 hover:bg-amber-50 hover:border-amber-200 hover:text-amber-700 transition-colors"
+            className="flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 text-slate-500 hover:bg-amber-50 hover:border-amber-200 hover:text-amber-700 transition-colors"
           >
-            <Plus className="w-3.5 h-3.5" />
+            <Plus className="w-4 h-4" />
           </button>
           <Tooltip titulo="Registrar incidencia">
             <p className="text-xs text-slate-100">Caída, fuga, agresividad…</p>
@@ -356,9 +356,9 @@ export default function Home() {
               <Link
                 to={`/ingresos/${ingreso.id}?tab=eventos`}
                 data-incidencias={ingreso.id}
-                className={`flex items-center gap-1 px-2 py-1 rounded-lg border text-xs font-medium whitespace-nowrap transition-colors ${color}`}
+                className={`flex items-center gap-1.5 px-2.5 h-8 rounded-lg border text-sm font-medium whitespace-nowrap transition-colors ${color}`}
               >
-                <AlertTriangle className="w-3 h-3 shrink-0" />
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
                 {lista.length}
                 {pendientes > 0 && ` · ${pendientes} pendiente${pendientes > 1 ? 's' : ''}`}
               </Link>
