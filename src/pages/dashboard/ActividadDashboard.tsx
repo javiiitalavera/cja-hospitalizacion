@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import type { Filtros, ResumenPeriodo, SerieDashboard, EstadoCarga } from './tipos'
 import { TarjetaMetrica, EstadoCargando, EstadoError, EstadoSinDatos } from './ComponentesDashboard'
+import { DemorasDashboard } from './DemorasDashboard'
 
 interface ActividadDetalle {
   distribucion_estancia: Record<string, number>
@@ -178,6 +179,9 @@ export function ActividadDashboard({ filtros, desde, hasta, onExplorar }: {
           </div>
         )}
       </section>
+
+      {/* ── Demora al alta (del CMBD): lo que explica parte de las estancias largas ── */}
+      <DemorasDashboard filtros={filtros} desde={desde} hasta={hasta} />
 
       {/* ── Reparto por médico responsable ───────────────────── */}
       <section>

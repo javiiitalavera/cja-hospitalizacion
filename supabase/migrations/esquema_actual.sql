@@ -372,6 +372,11 @@ create table public.cmbd (
     infeccion_nosocomial boolean,
     infeccion_nosocomial_tipos text[] not null default '{}',
     infeccion_nosocomial_agente text,
+    -- Demora al alta (se anota a mano al alta; desde 20261017): sí / no / sin valorar. El motivo y los días solo valen si
+    -- la casilla es «sí».
+    demora_alta boolean,
+    demora_alta_motivo text,
+    demora_alta_dias integer,
     version integer not null default 1,
     created_at timestamptz default now(),
     updated_at timestamptz default now()
@@ -383,7 +388,14 @@ alter table public.cmbd
     add constraint cmbd_infeccion_detalle_coherente check (
         coalesce(infeccion_nosocomial, false) or (infeccion_nosocomial_tipos = '{}' and infeccion_nosocomial_agente is null)),
     add constraint cmbd_infeccion_agente_longitud check (
-        infeccion_nosocomial_agente is null or length(infeccion_nosocomial_agente) <= 200);
+        infeccion_nosocomial_agente is null or length(infeccion_nosocomial_agente) <= 200),
+    add constraint cmbd_demora_motivo_valido check (
+        demora_alta_motivo is null or demora_alta_motivo in (
+            'plaza_residencia', 'apoyos_domicilio', 'familia', 'tramite_legal', 'transporte', 'otro')),
+    add constraint cmbd_demora_dias_validos check (
+        demora_alta_dias is null or demora_alta_dias between 1 and 999),
+    add constraint cmbd_demora_detalle_coherente check (
+        coalesce(demora_alta, false) or (demora_alta_motivo is null and demora_alta_dias is null));
 
 -- Escalas clínicas: Barthel, Lawton, NPI-Q (solo gravedad) y
 -- GDS-FAST, una fila por ingreso y momento (ingreso/alta). Se

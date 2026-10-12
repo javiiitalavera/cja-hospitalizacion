@@ -104,6 +104,7 @@ const CAMPO_LABEL: Record<string, string> = {
   alerta_conducta: 'Alertas de conducta', objetos_calma: 'Objetos que le calman', tipo: 'Tipo', notas: 'Notas', hora: 'Hora',
   turno: 'Turno', fecha: 'Fecha', dia: 'Día', noche: 'Noche', dni: 'DNI', sexo: 'Sexo', municipio: 'Municipio',
   infeccion_nosocomial: 'Infección nosocomial', infeccion_nosocomial_tipos: 'Infección nosocomial: foco', infeccion_nosocomial_agente: 'Infección nosocomial: agente',
+  demora_alta: 'Demora al alta', demora_alta_motivo: 'Demora al alta: motivo', demora_alta_dias: 'Demora al alta: días',
   vias: 'Vías', aislamiento: 'Aislamiento', sonda_fecha: 'Sonda: fecha de colocación', sonda_calibre: 'Sonda: calibre',
   oxigenoterapia: 'Oxigenoterapia', oxigeno_dispositivo: 'Oxígeno: dispositivo', oxigeno_flujo: 'Oxígeno: flujo (l/min)',
 }

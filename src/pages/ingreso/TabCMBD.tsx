@@ -5,7 +5,8 @@ import { AvisoGuardado } from '../../components/AvisoGuardado'
 import { encadenar } from '../../lib/colaGuardado'
 import type { Ingreso } from '../../types'
 import { nombreCompleto } from '../../types'
-import { edad } from '../../lib/fechas'
+import { diasEntre, edad } from '../../lib/fechas'
+import { MOTIVOS_DEMORA } from '../../lib/demora'
 import { estadoSegunCircunstancia } from '../../lib/alta'
 import { avisoCodigoCIE10, cargarCatalogoCIE10, infoCIE10, useCatalogoCIE10 } from '../../lib/cie10'
 import { FilaDx } from '../../components/DiagnosticosCIE'
@@ -110,6 +111,10 @@ interface CMBDData {
   infeccion_nosocomial?: boolean | null
   infeccion_nosocomial_tipos?: string[]
   infeccion_nosocomial_agente?: string | null
+  // Demora al alta: null = sin valorar. El motivo y los días solo valen si es true.
+  demora_alta?: boolean | null
+  demora_alta_motivo?: string | null
+  demora_alta_dias?: number | null
   procedencia?: string
   servicio?: string
   notas?: string
@@ -597,6 +602,68 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
             </div>
           </div>
         )}
+      </div>
+
+      {/* Demora al alta: dato que se anota a mano al alta, junto con el resto del CMBD. */}
+      <div className="card p-5 space-y-3" data-testid="cmbd-demora">
+        <div>
+          <p className="section-title mb-0">Demora al alta</p>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Días que el paciente siguió ingresado estando ya clínicamente listo para el alta, porque esperaba algo (una plaza, apoyos en casa, la familia…).
+          </p>
+        </div>
+        <div className={`grid gap-4 ${data.demora_alta === true ? 'sm:grid-cols-[11rem_minmax(0,1fr)_8rem]' : 'sm:grid-cols-2'}`}>
+          <div>
+            <label className="label" htmlFor="cmbd-demora-alta">¿Hubo demora al alta?</label>
+            <select id="cmbd-demora-alta" className="input"
+              value={data.demora_alta == null ? '' : data.demora_alta ? 'si' : 'no'}
+              onChange={e => {
+                const v = e.target.value
+                // Sin demora (o sin valorar) se vacían motivo y días: la base de datos no admite detalles sin demora.
+                updateFields(v === 'si'
+                  ? { demora_alta: true }
+                  : { demora_alta: v === 'no' ? false : null, demora_alta_motivo: null, demora_alta_dias: null })
+              }}>
+              <option value="">— Sin valorar —</option>
+              <option value="no">No</option>
+              <option value="si">Sí</option>
+            </select>
+          </div>
+          {data.demora_alta === true && (
+            <>
+              <div>
+                <label className="label" htmlFor="cmbd-demora-motivo">Motivo</label>
+                <select id="cmbd-demora-motivo" className="input" value={data.demora_alta_motivo ?? ''}
+                  onChange={e => update('demora_alta_motivo', e.target.value || null)}>
+                  <option value="">— Seleccionar —</option>
+                  {Object.entries(MOTIVOS_DEMORA).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="label" htmlFor="cmbd-demora-dias">Días de demora</label>
+                <input id="cmbd-demora-dias" className="input tabular-nums" type="number" inputMode="numeric" min={1} max={999} step={1}
+                  value={data.demora_alta_dias ?? ''}
+                  onChange={e => {
+                    const n = parseInt(e.target.value, 10)
+                    update('demora_alta_dias', Number.isFinite(n) ? Math.min(999, Math.max(1, n)) : null)
+                  }} />
+              </div>
+            </>
+          )}
+        </div>
+        {data.demora_alta === true && (!data.demora_alta_motivo || !data.demora_alta_dias) && (
+          <p data-testid="cmbd-demora-falta" className="text-xs text-amber-700">
+            Falta {!data.demora_alta_motivo && !data.demora_alta_dias ? 'el motivo y los días' : !data.demora_alta_motivo ? 'el motivo' : 'el número de días'} de la demora.
+          </p>
+        )}
+        {data.demora_alta === true && ingreso?.fecha_ingreso && (() => {
+          const estancia = diasEntre(ingreso.fecha_ingreso, ingreso.fecha_alta ?? null)
+          return data.demora_alta_dias && estancia != null && data.demora_alta_dias > estancia ? (
+            <p data-testid="cmbd-demora-excede" className="text-xs text-amber-700">
+              Son más días que los que lleva ingresado ({estancia}). Revisa el número.
+            </p>
+          ) : null
+        })()}
       </div>
 
       {/* Diagnósticos */}
