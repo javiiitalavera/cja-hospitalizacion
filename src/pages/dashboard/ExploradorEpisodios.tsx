@@ -92,7 +92,8 @@ export function ExploradorEpisodios() {
       p_tipo_incidencia: filtros.tipoIncidencia || null,
       p_orden: orden,
       p_orden_dir: ordenDir,
-      p_pagina: pagina,
+      // Sin paginar (exportar, imprimir) siempre desde el principio: con otra página el SQL saltaría los primeros episodios.
+      p_pagina: paginar ? pagina : 1,
       p_por_pagina: POR_PAGINA,
       p_paginar: paginar,
     }

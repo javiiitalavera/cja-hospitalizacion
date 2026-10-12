@@ -6,7 +6,8 @@ import {
   GRUPOS_PSICO, resumirMedicacion, type GrupoPsico, type ResumenMedicacion,
 } from '../../lib/farmacos'
 
-// Un episodio (un alta). `null` = ese informe no tiene ningún fármaco escrito.
+// Un episodio (un alta). `null` = la medicación de ese informe está SIN RELLENAR (campo sin tocar, o solo filas en blanco).
+// Una lista vacía que el médico ha dejado así a propósito es «sin medicación»: un resumen con 0 fármacos, que sí cuenta.
 export interface EpisodioMed { ingreso: ResumenMedicacion | null; alta: ResumenMedicacion | null }
 
 export const COLUMNAS_MED = 'informe_ingreso(tratamiento_ingreso_estructurado), informe_alta(medicacion_estructurada)'
@@ -15,10 +16,13 @@ function unico<T>(x: T | T[] | null | undefined): T | null {
   return Array.isArray(x) ? (x[0] ?? null) : (x ?? null)
 }
 
+// - Campo sin tocar (null) → null: sin rellenar.
+// - Lista vacía ([]) → resumen con 0 fármacos: el médico la ha dejado vacía, «sin medicación».
+// - Lista con filas pero ninguna con fármaco escrito (filas en blanco) → null: sin rellenar, no se puede asegurar que no tome nada.
 function resumenOnull(filas: unknown): ResumenMedicacion | null {
   if (!Array.isArray(filas)) return null
   const r = resumirMedicacion(filas as { farmaco?: string; atc?: string; psico?: 'si' | 'no' }[])
-  return r.total > 0 ? r : null
+  return r.total > 0 || filas.length === 0 ? r : null
 }
 
 // Fila de la base de datos (un ingreso con sus dos informes) → episodio.
@@ -35,7 +39,8 @@ export function episodioMedDesdeFila(f: Record<string, any>): EpisodioMed {
 
 export type Momento = 'ingreso' | 'alta'
 
-export interface Medias { episodios: number; farmacos: number; psicofarmacos: number }   // medias, sobre los episodios con medicación
+// Medias sobre los informes con medicación rellenada (incluidos los «sin medicación», que cuentan 0). null = ninguno rellenado.
+export interface Medias { episodios: number; farmacos: number | null; psicofarmacos: number | null }
 export interface PorcentajeGrupo { clave: string; etiqueta: string; n: Record<Momento, number> }
 
 // Cómo cambia, entre el ingreso y el alta, el número de fármacos de un grupo (solo altas con medicación en los dos informes).
@@ -52,9 +57,11 @@ export interface CambioGrupo {
 
 export interface ResumenPeriodo {
   altas: number
-  conMedicacion: Record<Momento, number>             // altas con algún fármaco escrito en ese informe
+  rellenados: Record<Momento, number>                // altas con la medicación de ese informe rellenada (con o sin fármacos): la base de medias y porcentajes
+  sinMedicacion: Record<Momento, number>             // … de ellas, las dejadas vacías a propósito («sin medicación»)
+  sinRellenar: Record<Momento, number>               // altas con la medicación de ese informe sin rellenar: fuera de todos los cálculos
   medias: Record<Momento, Medias>
-  conAmbos: number                                    // altas con medicación al ingreso y al alta
+  conAmbos: number                                    // altas con medicación rellenada al ingreso y al alta
   cambioMedio: { farmacos: number; psicofarmacos: number } | null   // alta − ingreso, solo en las que tienen ambos
   polifarmacia: Record<Momento, { cinco: number; diez: number }>     // nº de altas con ≥5 y ≥10 fármacos
   grupos: PorcentajeGrupo[]                           // nº de altas con ≥1 fármaco del grupo
@@ -72,6 +79,7 @@ export function resumenPeriodo(episodios: EpisodioMed[]): ResumenPeriodo {
   const sumF = { ingreso: 0, alta: 0 }
   const sumP = { ingreso: 0, alta: 0 }
   const con = { ...NINGUNO }
+  const vacia = { ...NINGUNO }
   const poli = { ingreso: { cinco: 0, diez: 0 }, alta: { cinco: 0, diez: 0 } }
   const grupos: PorcentajeGrupo[] = [
     ...GRUPOS_PSICO.map((g) => ({ clave: g.clave as string, etiqueta: g.plural, n: { ...NINGUNO } })),
@@ -95,6 +103,7 @@ export function resumenPeriodo(episodios: EpisodioMed[]): ResumenPeriodo {
       const r = e[m]
       if (!r) continue
       con[m]++
+      if (r.total === 0) vacia[m]++
       sumF[m] += r.total
       sumP[m] += r.psicofarmacos
       if (r.total >= 5) poli[m].cinco++
@@ -132,10 +141,12 @@ export function resumenPeriodo(episodios: EpisodioMed[]): ResumenPeriodo {
       difP += e.alta.psicofarmacos - e.ingreso.psicofarmacos
     }
   }
-  const media = (s: number, n: number) => (n > 0 ? s / n : 0)
+  const media = (s: number, n: number) => (n > 0 ? s / n : null)
   return {
     altas: episodios.length,
-    conMedicacion: con,
+    rellenados: con,
+    sinMedicacion: vacia,
+    sinRellenar: { ingreso: episodios.length - con.ingreso, alta: episodios.length - con.alta },
     medias: {
       ingreso: { episodios: con.ingreso, farmacos: media(sumF.ingreso, con.ingreso), psicofarmacos: media(sumP.ingreso, con.ingreso) },
       alta: { episodios: con.alta, farmacos: media(sumF.alta, con.alta), psicofarmacos: media(sumP.alta, con.alta) },

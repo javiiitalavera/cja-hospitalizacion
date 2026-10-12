@@ -100,7 +100,7 @@ export function ActividadDashboard({ filtros, desde, hasta, onExplorar }: {
         nombre: 'Edad y sexo',
         columnas: ['Indicador', 'Valor'],
         filas: [
-          ['Edad media de los pacientes ingresados (años)', detalle.edad_media],
+          ['Edad media de los pacientes ingresados (años)', totalPorSexo > 0 ? detalle.edad_media : null],
           ['Hombres', detalle.por_sexo.hombre ?? 0],
           ['Mujeres', detalle.por_sexo.mujer ?? 0],
           ['Otro', detalle.por_sexo.otro ?? 0],
@@ -187,8 +187,10 @@ export function ActividadDashboard({ filtros, desde, hasta, onExplorar }: {
         {estadoResumen === 'listo' && resumen && (
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
             <TarjetaMetrica info="dias_estancia" etiqueta="Días-estancia" valor={resumen.dias_estancia} />
-            <TarjetaMetrica info="estancia_media" etiqueta="Estancia media" valor={`${resumen.estancia_media_dias} d`} />
-            <TarjetaMetrica info="estancia_mediana" etiqueta="Estancia mediana" valor={`${resumen.estancia_mediana_dias} d`} />
+            <TarjetaMetrica info="estancia_media" etiqueta="Estancia media" valor={resumen.salidas_totales > 0 ? `${resumen.estancia_media_dias} d` : '—'}
+              subvalor={resumen.salidas_totales > 0 ? undefined : 'Sin datos suficientes: no hay salidas en el periodo'} />
+            <TarjetaMetrica info="estancia_mediana" etiqueta="Estancia mediana" valor={resumen.salidas_totales > 0 ? `${resumen.estancia_mediana_dias} d` : '—'}
+              subvalor={resumen.salidas_totales > 0 ? undefined : 'Sin datos suficientes: no hay salidas en el periodo'} />
           </div>
         )}
         <div className="card p-4">
@@ -268,7 +270,9 @@ export function ActividadDashboard({ filtros, desde, hasta, onExplorar }: {
         </p>
         {estadoDetalle === 'listo' && detalle && (
           <div className="card p-4 flex flex-wrap items-center gap-6 text-sm text-slate-600">
-            <span>Edad media de los pacientes ingresados: <strong className="text-slate-800">{detalle.edad_media} años</strong></span>
+            <span>Edad media de los pacientes ingresados: {totalPorSexo > 0
+              ? <strong className="text-slate-800">{detalle.edad_media} años</strong>
+              : <><strong className="text-slate-800">—</strong> <span className="text-slate-500">Sin datos suficientes: no hay ingresos en el periodo</span></>}</span>
             {totalPorSexo > 0 && (
               <span>
                 Hombres: <strong className="text-slate-800">{detalle.por_sexo.hombre ?? 0}</strong> ·{' '}

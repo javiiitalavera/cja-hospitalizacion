@@ -101,7 +101,7 @@ export const DEFINICIONES = definiciones({
     titulo: 'Estancia media',
     queCuenta: 'Duración media de los episodios que terminan en el periodo.',
     formula: 'Media de (fecha de alta − fecha de ingreso) de las salidas con alta en el periodo.',
-    ojo: 'Incluye altas, traslados y éxitus. No incluye a quienes siguen ingresados.',
+    ojo: 'Incluye altas, traslados y éxitus. No incluye a quienes siguen ingresados. Sin salidas en el periodo se muestra «—».',
   },
   estancia_mediana: {
     titulo: 'Estancia mediana',
@@ -125,15 +125,15 @@ export const DEFINICIONES = definiciones({
   // ── Demora al alta ──────────────────────────────────────────
   demora_pacientes: {
     titulo: 'Pacientes con demora al alta',
-    queCuenta: 'Salidas con la casilla «Demora al alta» marcada en el CMBD.',
+    queCuenta: 'Pacientes con la casilla «Demora al alta» marcada en el CMBD de su alta.',
     formula: 'Pacientes con demora ÷ salidas con la pregunta contestada (sí o no) × 100.',
-    ojo: 'Altas y traslados con fecha de alta en el periodo, sin éxitus. Las salidas con la pregunta sin contestar no cuentan ni como demora ni como no demora.',
+    ojo: 'Altas y traslados con fecha de alta en el periodo, sin éxitus. Se cuenta por episodio: un paciente que reingresa en el periodo puede contar más de una vez. Las salidas con la pregunta sin contestar no cuentan ni como demora ni como no demora.',
   },
   demora_media: {
     titulo: 'Demora media',
     queCuenta: 'Días de demora medios entre los pacientes con demora.',
     formula: 'Suma de los días de demora ÷ nº de pacientes con demora que tienen los días escritos.',
-    ojo: 'Un paciente con demora pero sin los días escritos no entra.',
+    ojo: 'Un paciente con demora pero sin los días escritos no entra. Sin ninguno con días se muestra «—».',
   },
   demora_mediana: {
     titulo: 'Demora mediana',
@@ -179,49 +179,49 @@ export const DEFINICIONES = definiciones({
     titulo: 'Pacientes que mejoran · igual · empeoran',
     queCuenta: 'Cuántos pacientes terminan mejor, igual o peor que al ingreso en esa escala.',
     formula: 'Se compara la puntuación al alta con la del ingreso en cada salida con ambas valoraciones. Mejora: baja el NPI-Q, o suben Barthel o Lawton. Igual: misma puntuación.',
-    ojo: 'Cualquier cambio cuenta, por pequeño que sea: no se aplica ningún umbral clínico.',
+    ojo: 'Se cuenta por episodio: un paciente que reingresa puede contar más de una vez. Cualquier cambio cuenta, por pequeño que sea: no se aplica ningún umbral clínico.',
   },
 
   // ── Medicación ──────────────────────────────────────────────
   med_farmacos: {
     titulo: 'Fármacos por paciente',
-    queCuenta: 'Número medio de fármacos en el informe de ingreso y en el de alta.',
-    formula: 'Media de fármacos (un principio activo cuenta una vez) entre los informes con medicación escrita, por separado al ingreso y al alta.',
-    ojo: 'La media de ingreso y la de alta pueden salir de salidas distintas; para comparar las mismas salidas está el cambio medio.',
+    queCuenta: 'Número medio de fármacos por paciente en el informe de ingreso y en el de alta.',
+    formula: 'Media de fármacos (un principio activo cuenta una vez) entre los pacientes con la medicación rellenada en ese informe, por separado al ingreso y al alta.',
+    ojo: 'Una lista vacía que el médico ha dejado así («sin medicación») cuenta con 0 fármacos. Si la medicación está sin tocar, ese paciente queda fuera. Se cuenta por episodio: un paciente que reingresa puede contar más de una vez. La media de ingreso y la de alta pueden salir de pacientes distintos; para comparar los mismos está el cambio medio. Sin ninguna salida rellenada se muestra «—».',
   },
   med_psicofarmacos: {
     titulo: 'Psicofármacos por paciente',
-    queCuenta: 'Número medio de psicofármacos en el informe de ingreso y en el de alta.',
-    formula: 'Media de psicofármacos entre los informes con medicación escrita, por separado al ingreso y al alta.',
-    ojo: 'Psicofármaco: grupos N05 y N06 de la clasificación ATC, más lo que el médico marca a mano como «Sí» (la marca manual manda sobre el catálogo).',
+    queCuenta: 'Número medio de psicofármacos por paciente en el informe de ingreso y en el de alta.',
+    formula: 'Media de psicofármacos entre los pacientes con la medicación rellenada en ese informe, por separado al ingreso y al alta.',
+    ojo: 'Psicofármaco: grupos N05 y N06 de la clasificación ATC, más lo que el médico marca a mano como «Sí» (la marca manual manda sobre el catálogo). Los pacientes «sin medicación» cuentan con 0. Se cuenta por episodio: un paciente que reingresa puede contar más de una vez.',
   },
   med_cambio: {
     titulo: 'Cambio medio ingreso → alta',
     queCuenta: 'Cuántos fármacos y psicofármacos más o menos tiene el paciente al alta que al ingreso.',
-    formula: 'Media de (nº al alta − nº al ingreso) en las salidas con medicación en los dos informes.',
+    formula: 'Media de (nº al alta − nº al ingreso) en los pacientes con la medicación rellenada en los dos informes.',
     ojo: 'Menos fármacos no demuestra por sí solo una mejor atención: hay que leerlo junto con la evolución clínica.',
   },
   med_polifarmacia: {
     titulo: 'Polifarmacia',
     queCuenta: 'Pacientes con 5 o más (o 10 o más) fármacos en el informe de ingreso o en el de alta.',
-    formula: 'Informes con ≥ 5 (o ≥ 10) fármacos ÷ informes con medicación escrita en ese momento × 100.',
-    ojo: 'Ingreso y alta se calculan por separado, cada uno sobre sus propios informes.',
+    formula: 'Informes con ≥ 5 (o ≥ 10) fármacos ÷ informes con la medicación rellenada en ese momento × 100.',
+    ojo: 'Ingreso y alta se calculan por separado, cada uno sobre sus propios informes. Se cuenta por episodio: un paciente que reingresa puede contar más de una vez.',
   },
   med_dos_antipsicoticos: {
     titulo: '2 o más antipsicóticos',
     queCuenta: 'Pacientes con dos o más antipsicóticos distintos a la vez.',
-    formula: 'Informes con ≥ 2 antipsicóticos ÷ informes con medicación escrita en ese momento × 100.',
+    formula: 'Informes con ≥ 2 antipsicóticos ÷ informes con la medicación rellenada en ese momento × 100.',
   },
   med_cambio_grupo: {
     titulo: 'Cambio por grupo',
-    queCuenta: 'Cómo cambia el número de antipsicóticos o de benzodiacepinas de cada paciente entre el ingreso y el alta.',
-    formula: 'En las salidas con medicación en los dos informes: aumentan / igual / reducen según el nº de fármacos del grupo. «Empiezan»: de 0 a 1 o más. «Se retiran»: de 1 o más a 0.',
+    queCuenta: 'Cómo cambia el número de antipsicóticos o de benzodiacepinas entre el ingreso y el alta.',
+    formula: 'En los pacientes con la medicación rellenada en los dos informes: aumentan / igual / reducen según el nº de fármacos del grupo. «Empiezan»: de 0 a 1 o más. «Se retiran»: de 1 o más a 0.',
     ojo: 'Cambiar un antipsicótico por otro cuenta como «igual». «Empiezan» y «Se retiran» ya están dentro de «aumentan» y «reducen».',
   },
   med_grupos: {
     titulo: 'Pacientes con al menos un fármaco del grupo',
     queCuenta: 'Pacientes con uno o más fármacos de cada grupo en el informe de ingreso y en el de alta.',
-    formula: 'Informes con ≥ 1 fármaco del grupo ÷ informes con medicación escrita en ese momento × 100.',
+    formula: 'Informes con ≥ 1 fármaco del grupo ÷ informes con la medicación rellenada en ese momento × 100.',
     ojo: 'Un paciente puede estar en varios grupos.',
   },
 

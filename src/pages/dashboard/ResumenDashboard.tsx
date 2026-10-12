@@ -191,8 +191,9 @@ export function ResumenDashboard({ filtros, desde, hasta, onExplorar, onExplorar
             <TarjetaMetrica info="ocupacion_media" etiqueta="Ocupación media" valor={`${resumen.ocupacion_media_pct}%`}
               subvalor={`Mín. ${resumen.ocupacion_min_pct}% · Máx. ${resumen.ocupacion_max_pct}%`}
               comparacion={comparacionTexto(resumen.ocupacion_media_pct, 'ocupacion_media_pct', true)} />
-            <TarjetaMetrica info="estancia_media" etiqueta="Estancia media" valor={`${resumen.estancia_media_dias} d`}
-              subvalor={`Mediana: ${resumen.estancia_mediana_dias} d`} />
+            <TarjetaMetrica info="estancia_media" etiqueta="Estancia media"
+              valor={resumen.salidas_totales > 0 ? `${resumen.estancia_media_dias} d` : '—'}
+              subvalor={resumen.salidas_totales > 0 ? `Mediana: ${resumen.estancia_mediana_dias} d` : 'Sin datos suficientes: no hay salidas en el periodo'} />
             {/* Proporción sobre los ingresos nuevos del periodo (cuántos de
                 ellos son reingresos), no la tasa clásica sobre las altas. */}
             <TarjetaMetrica info="reingresos" etiqueta="Ingresos que son reingresos (≤30 días)" valor={`${resumen.reingresos_30d} de ${resumen.ingresos_nuevos}`}

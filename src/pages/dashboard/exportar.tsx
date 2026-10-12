@@ -176,12 +176,19 @@ const INDICADORES_PERIODO: [string, keyof ResumenPeriodo][] = [
   ['Incidencias por 1.000 días-estancia', 'incidencias_tasa_1000'],
 ]
 
+// Las medias de estancia no tienen sentido sin salidas: el SQL devuelve 0, aquí se deja la celda vacía.
+const SIN_SALIDAS: (keyof ResumenPeriodo)[] = ['estancia_media_dias', 'estancia_mediana_dias']
+function valorIndicador(r: ResumenPeriodo, k: keyof ResumenPeriodo): Celda {
+  return SIN_SALIDAS.includes(k) && r.salidas_totales === 0 ? null : (r[k] ?? null)
+}
+
 // Una fila por indicador; con la columna «Periodo anterior» si se está comparando.
 export function hojaIndicadoresPeriodo(r: ResumenPeriodo, anterior?: ResumenPeriodo | null, nombre = 'Actividad del periodo'): HojaExport {
   return {
     nombre,
     columnas: anterior ? ['Indicador', 'Valor', 'Periodo anterior'] : ['Indicador', 'Valor'],
-    filas: INDICADORES_PERIODO.map(([et, k]) => anterior ? [et, r[k] ?? null, anterior[k] ?? null] : [et, r[k] ?? null]),
+    filas: INDICADORES_PERIODO.map(([et, k]) => anterior ? [et, valorIndicador(r, k), valorIndicador(anterior, k)] : [et, valorIndicador(r, k)]),
+    nota: r.salidas_totales === 0 || anterior?.salidas_totales === 0 ? 'Celda vacía = sin datos suficientes (sin salidas en el periodo).' : undefined,
   }
 }
 

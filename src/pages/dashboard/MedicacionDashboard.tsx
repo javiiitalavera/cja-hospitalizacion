@@ -12,8 +12,8 @@ const PAGINA = 1000
 function pct(n: number, total: number): string {
   return total > 0 ? `${Math.round((n / total) * 1000) / 10}%`.replace('.', ',') : '—'
 }
-function num(x: number, dec = 1): string {
-  return x.toFixed(dec).replace('.', ',')
+function num(x: number | null, dec = 1): string {
+  return x == null ? '—' : x.toFixed(dec).replace('.', ',')
 }
 function signo(x: number): string {
   return `${x > 0 ? '+' : ''}${num(x)}`
@@ -58,16 +58,20 @@ export function MedicacionDashboard({ filtros, desde, hasta }: { filtros: Filtro
   const aporte = useMemo<AporteExport | null>(() => {
     if (estado !== 'listo' || !catalogoListo) return null
     const trio = (n: { ingreso: number; alta: number }): (string | number | null)[] =>
-      [n.ingreso, porcentajeNum(n.ingreso, r.conMedicacion.ingreso), n.alta, porcentajeNum(n.alta, r.conMedicacion.alta)]
+      [n.ingreso, porcentajeNum(n.ingreso, r.rellenados.ingreso), n.alta, porcentajeNum(n.alta, r.rellenados.alta)]
     const colsMomento = ['Al ingreso (salidas)', '% al ingreso', 'Al alta (salidas)', '% al alta']
     return {
       orden: 0,
       definiciones: ['salidas', 'med_farmacos', 'med_psicofarmacos', 'med_cambio', 'med_polifarmacia', 'med_dos_antipsicoticos', 'med_cambio_grupo', 'med_grupos'],
       base: [
         { etiqueta: 'Salidas del periodo (altas, traslados y éxitus)', valor: r.altas },
-        { etiqueta: 'Con medicación escrita en el informe de ingreso', valor: r.conMedicacion.ingreso },
-        { etiqueta: 'Con medicación escrita en el informe de alta', valor: r.conMedicacion.alta },
-        { etiqueta: 'Con medicación en los dos informes', valor: r.conAmbos },
+        { etiqueta: 'Con la medicación rellenada en el informe de ingreso', valor: r.rellenados.ingreso },
+        { etiqueta: '… de ellas, declaradas sin medicación (cuentan 0 fármacos)', valor: r.sinMedicacion.ingreso },
+        { etiqueta: 'Con la medicación sin rellenar en el informe de ingreso (fuera de los cálculos)', valor: r.sinRellenar.ingreso },
+        { etiqueta: 'Con la medicación rellenada en el informe de alta', valor: r.rellenados.alta },
+        { etiqueta: '… de ellas, declaradas sin medicación (cuentan 0 fármacos)', valor: r.sinMedicacion.alta },
+        { etiqueta: 'Con la medicación sin rellenar en el informe de alta (fuera de los cálculos)', valor: r.sinRellenar.alta },
+        { etiqueta: 'Con la medicación rellenada en los dos informes', valor: r.conAmbos },
       ],
       hojas: [
         {
@@ -79,7 +83,7 @@ export function MedicacionDashboard({ filtros, desde, hasta }: { filtros: Filtro
             ['Cambio medio ingreso → alta: fármacos', r.cambioMedio?.farmacos ?? null, null],
             ['Cambio medio ingreso → alta: psicofármacos', r.cambioMedio?.psicofarmacos ?? null, null],
           ],
-          nota: 'Las medias cuentan solo las salidas con fármacos escritos en ese informe. El cambio medio, solo las que tienen los dos.',
+          nota: 'Las medias cuentan las salidas con la medicación rellenada en ese informe (también las declaradas sin medicación, con 0 fármacos); celda vacía = ninguna rellenada. Las sin rellenar quedan fuera. El cambio medio, solo las que tienen los dos informes rellenados.',
         },
         {
           nombre: 'Polifarmacia',
@@ -89,7 +93,7 @@ export function MedicacionDashboard({ filtros, desde, hasta }: { filtros: Filtro
             ['10 o más fármacos', ...trio({ ingreso: r.polifarmacia.ingreso.diez, alta: r.polifarmacia.alta.diez })],
             ['2 o más antipsicóticos', ...trio(r.dosOMasAntipsicoticos)],
           ],
-          nota: 'Porcentaje sobre las salidas con medicación en ese informe.',
+          nota: 'Porcentaje sobre las salidas con la medicación rellenada en ese informe.',
         },
         {
           nombre: 'Cambio antipsicóticos y benzo',
@@ -102,7 +106,7 @@ export function MedicacionDashboard({ filtros, desde, hasta }: { filtros: Filtro
           nombre: 'Fármacos por grupo',
           columnas: ['Grupo', ...colsMomento],
           filas: r.grupos.filter((g) => !(['estabilizador', 'otro'].includes(g.clave) && g.n.ingreso + g.n.alta === 0)).map((g) => [g.etiqueta, ...trio(g.n)]),
-          nota: 'Salidas con al menos un fármaco del grupo. Los grupos se solapan.',
+          nota: 'Salidas con al menos un fármaco del grupo; porcentaje sobre las salidas con la medicación rellenada en ese informe. Los grupos se solapan.',
         },
         ...(r.sinClasificar.length + r.dudosos.length > 0 ? [{
           nombre: 'Pendientes de marcar',
@@ -127,15 +131,25 @@ export function MedicacionDashboard({ filtros, desde, hasta }: { filtros: Filtro
     <div className="space-y-6">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <TarjetaMetrica info="salidas" etiqueta="Salidas del periodo" valor={r.altas}
-          subvalor={`${r.conMedicacion.ingreso} con medicación al ingreso · ${r.conMedicacion.alta} al alta`} />
+          subvalor={`Medicación rellenada: ${r.rellenados.ingreso} al ingreso · ${r.rellenados.alta} al alta`} />
         <TarjetaMetrica info="med_farmacos" etiqueta="Fármacos por paciente" valor={`${num(r.medias.ingreso.farmacos)} → ${num(r.medias.alta.farmacos)}`}
-          subvalor="Media al ingreso → al alta" />
+          subvalor={r.rellenados.ingreso === 0 && r.rellenados.alta === 0 ? 'Sin datos suficientes' : 'Media al ingreso → al alta'} />
         <TarjetaMetrica info="med_psicofarmacos" etiqueta="Psicofármacos por paciente" valor={`${num(r.medias.ingreso.psicofarmacos)} → ${num(r.medias.alta.psicofarmacos)}`}
-          subvalor="Media al ingreso → al alta" />
+          subvalor={r.rellenados.ingreso === 0 && r.rellenados.alta === 0 ? 'Sin datos suficientes' : 'Media al ingreso → al alta'} />
         <TarjetaMetrica info="med_cambio" etiqueta="Cambio medio ingreso → alta"
           valor={r.cambioMedio ? `${signo(r.cambioMedio.farmacos)} fármacos` : '—'}
-          subvalor={r.cambioMedio ? `${signo(r.cambioMedio.psicofarmacos)} psicofármacos · ${r.conAmbos} salidas con ambos informes` : 'Faltan salidas con medicación en los dos informes'} />
+          subvalor={r.cambioMedio ? `${signo(r.cambioMedio.psicofarmacos)} psicofármacos · ${r.conAmbos} salidas con ambos informes` : 'Sin datos suficientes: faltan salidas con la medicación rellenada en los dos informes'} />
       </div>
+      {(r.sinRellenar.ingreso > 0 || r.sinRellenar.alta > 0 || r.sinMedicacion.ingreso > 0 || r.sinMedicacion.alta > 0) && (
+        <p data-med-cobertura className={`text-xs -mt-3 ${r.sinRellenar.ingreso + r.sinRellenar.alta > 0 ? 'text-amber-700' : 'text-slate-500'}`}>
+          {r.sinRellenar.ingreso + r.sinRellenar.alta > 0 && <>
+            Medicación sin rellenar: {r.sinRellenar.ingreso} {r.sinRellenar.ingreso === 1 ? 'salida' : 'salidas'} en el informe de ingreso y {r.sinRellenar.alta} en el de alta; no entran en ningún cálculo.{' '}
+          </>}
+          {r.sinMedicacion.ingreso + r.sinMedicacion.alta > 0 && <>
+            Declaradas sin medicación (lista vacía): {r.sinMedicacion.ingreso} al ingreso y {r.sinMedicacion.alta} al alta; cuentan con 0 fármacos.
+          </>}
+        </p>
+      )}
 
       <section>
         <p className="section-title">Polifarmacia y antipsicóticos</p>
@@ -155,7 +169,7 @@ export function MedicacionDashboard({ filtros, desde, hasta }: { filtros: Filtro
                   {(['ingreso', 'alta'] as const).map((m) => (
                     <td key={m} className="py-2 text-right tabular-nums text-slate-700">
                       <span className="font-semibold">{r.polifarmacia[m][k]}</span>
-                      <span className="text-slate-500"> · {pct(r.polifarmacia[m][k], r.conMedicacion[m])}</span>
+                      <span className="text-slate-500"> · {pct(r.polifarmacia[m][k], r.rellenados[m])}</span>
                     </td>
                   ))}
                 </tr>
@@ -165,7 +179,7 @@ export function MedicacionDashboard({ filtros, desde, hasta }: { filtros: Filtro
                 {(['ingreso', 'alta'] as const).map((m) => (
                   <td key={m} className="py-2 text-right tabular-nums text-slate-700">
                     <span className="font-semibold">{r.dosOMasAntipsicoticos[m]}</span>
-                    <span className="text-slate-500"> · {pct(r.dosOMasAntipsicoticos[m], r.conMedicacion[m])}</span>
+                    <span className="text-slate-500"> · {pct(r.dosOMasAntipsicoticos[m], r.rellenados[m])}</span>
                   </td>
                 ))}
               </tr>
@@ -225,7 +239,7 @@ export function MedicacionDashboard({ filtros, desde, hasta }: { filtros: Filtro
                   {(['ingreso', 'alta'] as const).map((m) => (
                     <td key={m} className="py-2 text-right tabular-nums text-slate-700">
                       <span className="font-semibold">{g.n[m]}</span>
-                      <span className="text-slate-500"> · {pct(g.n[m], r.conMedicacion[m])}</span>
+                      <span className="text-slate-500"> · {pct(g.n[m], r.rellenados[m])}</span>
                     </td>
                   ))}
                 </tr>
