@@ -300,11 +300,11 @@ export default function Home() {
                   type="button"
                   aria-label={`Contención de ${eje === 'dia' ? 'día' : 'noche'}: ${etiqueta}${pendienteConfirmar ? ' (pendiente de confirmación médica)' : ''}. Abrir`}
                   onClick={() => setModalContencion(ingreso.id)}
-                  className={`relative flex items-center justify-center w-8 h-8 rounded-lg border transition-colors ${estilo.bg} ${estilo.border} ${estilo.text} hover:opacity-80 ${pendienteConfirmar ? 'animate-pulse ring-2 ring-amber-400' : ''}`}
+                  className={`relative flex items-center justify-center w-6 h-6 rounded-md border transition-colors ${estilo.bg} ${estilo.border} ${estilo.text} hover:opacity-80 ${pendienteConfirmar ? 'animate-pulse ring-2 ring-amber-400' : ''}`}
                 >
-                  <Icono className="w-4 h-4" />
+                  <Icono strokeWidth={2.4} className="w-3.5 h-3.5" />
                   {sev === 'sin_revisar' && (
-                    <AlertCircle className="w-2.5 h-2.5 text-slate-500 absolute -top-1 -right-1 bg-white rounded-full" />
+                    <AlertCircle className="w-2.5 h-2.5 text-slate-700 absolute -top-1 -right-1 bg-white rounded-full" />
                   )}
                   {pendienteConfirmar && (
                     <span className="w-2 h-2 rounded-full bg-amber-500 absolute -top-0.5 -right-0.5 animate-ping" />
@@ -329,10 +329,10 @@ export default function Home() {
     const pendientes = lista.filter((e) => e.estado === 'pendiente').length
     const hayReciente = lista.some((e) => e.fecha >= hace7dias())
     const color = pendientes > 0
-      ? 'bg-red-50 border-red-200 text-red-700 hover:bg-red-100'
+      ? 'bg-red-50 border-red-300 text-red-800 hover:bg-red-100'
       : hayReciente
-        ? 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100'
-        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+        ? 'bg-amber-50 border-amber-300 text-amber-800 hover:bg-amber-100'
+        : 'bg-slate-50 border-slate-300 text-slate-700 hover:bg-slate-100'
     const visibles = lista.slice(0, MAX_LINEAS_TOOLTIP)
     return (
       <div className="flex items-center gap-2">
@@ -342,9 +342,9 @@ export default function Home() {
             aria-label="Registrar incidencia"
             data-registrar={ingreso.id}
             onClick={() => setModalEvento(ingreso.id)}
-            className="flex items-center justify-center w-8 h-8 rounded-lg border border-slate-200 text-slate-500 hover:bg-amber-50 hover:border-amber-200 hover:text-amber-700 transition-colors"
+            className="p-1 rounded-md border border-slate-300 text-slate-700 hover:bg-amber-50 hover:border-amber-300 hover:text-amber-800 transition-colors"
           >
-            <Plus className="w-4 h-4" />
+            <Plus strokeWidth={2.4} className="w-3.5 h-3.5" />
           </button>
           <Tooltip titulo="Registrar incidencia">
             <p className="text-xs text-slate-100">Caída, fuga, agresividad…</p>
@@ -356,9 +356,9 @@ export default function Home() {
               <Link
                 to={`/ingresos/${ingreso.id}?tab=eventos`}
                 data-incidencias={ingreso.id}
-                className={`flex items-center gap-1.5 px-2.5 h-8 rounded-lg border text-sm font-medium whitespace-nowrap transition-colors ${color}`}
+                className={`flex items-center gap-1 px-2 py-1 rounded-lg border text-xs font-medium whitespace-nowrap transition-colors ${color}`}
               >
-                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                <AlertTriangle strokeWidth={2.4} className="w-3 h-3 shrink-0" />
                 {lista.length}
                 {pendientes > 0 && ` · ${pendientes} pendiente${pendientes > 1 ? 's' : ''}`}
               </Link>

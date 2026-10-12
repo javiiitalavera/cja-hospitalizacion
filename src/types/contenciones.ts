@@ -122,11 +122,11 @@ export const SEVERIDAD_BOTON_ESTILO: Record<SeveridadContencion, string> = {
 export const SEVERIDAD_ESTILO: Record<SeveridadContencion, {
   bg: string; text: string; border: string; label: string
 }> = {
-  sin_revisar: { bg: 'bg-slate-100', text: 'text-slate-500', border: 'border-slate-200', label: 'Sin revisar' },
-  ninguna: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', label: 'Ninguna' },
-  seguridad: { bg: 'bg-blue-50', text: 'text-blue-600', border: 'border-blue-200', label: 'Medida de seguridad' },
-  si_precisa: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', label: 'Si precisa' },
-  activa: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200', label: 'Activa' },
+  sin_revisar: { bg: 'bg-slate-100', text: 'text-slate-700', border: 'border-slate-300', label: 'Sin revisar' },
+  ninguna: { bg: 'bg-emerald-50', text: 'text-emerald-800', border: 'border-emerald-300', label: 'Ninguna' },
+  seguridad: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-300', label: 'Medida de seguridad' },
+  si_precisa: { bg: 'bg-amber-50', text: 'text-amber-800', border: 'border-amber-300', label: 'Si precisa' },
+  activa: { bg: 'bg-red-50', text: 'text-red-800', border: 'border-red-300', label: 'Activa' },
 }
 
 // Solo una contención de verdad necesita el visto bueno de un
