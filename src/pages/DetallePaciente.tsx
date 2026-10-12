@@ -346,7 +346,7 @@ export default function DetallePaciente() {
 
         {/* DATOS PERSONALES */}
         {tab === 'datos' && (
-          <div className="max-w-xl">
+          <div className="max-w-3xl">
             <div className="flex justify-end mb-3">
               {!esMedico ? null : editando ? (
                 <div className="flex gap-2">
