@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import type { Filtros, EstadoCarga } from './tipos'
 import { TarjetaMetrica, EstadoCargando, EstadoError, EstadoSinDatos } from './ComponentesDashboard'
+import InfoIndicador from './InfoIndicador'
 import {
   COLUMNAS_EVOLUCION, episodioEscalasDesdeFila, resumenEvolucion, type EpisodioEscalas, type ResumenEscala,
 } from './evolucion'
@@ -77,6 +78,7 @@ export function EvolucionDashboard({ filtros, desde, hasta }: { filtros: Filtros
     if (estado !== 'listo') return null
     return {
       orden: 0,
+      definiciones: ['salidas', 'escala_ambas', 'escala_media', 'escala_cambio', 'escala_mejoran'],
       base: [{ etiqueta: 'Salidas del periodo (altas, traslados y éxitus)', valor: r.altas }],
       hojas: [{
         nombre: 'Cambio ingreso-alta',
@@ -99,11 +101,12 @@ export function EvolucionDashboard({ filtros, desde, hasta }: { filtros: Filtros
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <TarjetaMetrica etiqueta="Salidas del periodo" valor={r.altas}
+        <TarjetaMetrica info="salidas" etiqueta="Salidas del periodo" valor={r.altas}
           subvalor="Altas, traslados y éxitus. Cada escala se compara solo en las que la tienen al ingreso y al alta" />
         {r.escalas.map((e) => (
           <TarjetaMetrica
             key={e.def.clave}
+            info="escala_cambio"
             etiqueta={`${e.def.tema} · ${e.def.etiqueta}`}
             valor={e.cambioMedio != null ? signo(e.cambioMedio) : '—'}
             subvalor={e.conAmbas > 0
@@ -120,10 +123,10 @@ export function EvolucionDashboard({ filtros, desde, hasta }: { filtros: Filtros
             <thead>
               <tr className="border-b bg-slate-50 text-left text-xs font-semibold text-slate-500">
                 <th className="px-4 py-2 w-60">Escala</th>
-                <th className="px-4 py-2 text-right whitespace-nowrap">Con ambas valoraciones</th>
-                <th className="px-4 py-2 text-right whitespace-nowrap">Media ingreso → alta</th>
-                <th className="px-4 py-2 text-right whitespace-nowrap">Cambio medio (mediana)</th>
-                <th className="px-4 py-2 w-72">Pacientes que mejoran · igual · empeoran</th>
+                <th className="px-4 py-2 text-right whitespace-nowrap">Con ambas valoraciones <InfoIndicador clave="escala_ambas" /></th>
+                <th className="px-4 py-2 text-right whitespace-nowrap">Media ingreso → alta <InfoIndicador clave="escala_media" /></th>
+                <th className="px-4 py-2 text-right whitespace-nowrap">Cambio medio (mediana) <InfoIndicador clave="escala_cambio" /></th>
+                <th className="px-4 py-2 w-72">Pacientes que mejoran · igual · empeoran <InfoIndicador clave="escala_mejoran" /></th>
               </tr>
             </thead>
             <tbody>

@@ -112,6 +112,7 @@ export function ActividadDashboard({ filtros, desde, hasta, onExplorar }: {
     if (estadoSeries === 'listo' && series) hojas.push(...hojasSeries(series))
     return {
       orden: 0,
+      definiciones: ['ocupacion_media', 'ocupacion_min_max', 'altas', 'salidas', 'balance', 'dias_estancia', 'estancia_media', 'estancia_mediana', 'activos_mas_dias', 'reingresos', 'incidencias'],
       base: [
         { etiqueta: 'Ingresos nuevos del periodo', valor: resumen.ingresos_nuevos },
         { etiqueta: 'Salidas del periodo (altas, traslados y éxitus)', valor: resumen.salidas_totales },
@@ -130,9 +131,9 @@ export function ActividadDashboard({ filtros, desde, hasta, onExplorar }: {
         {estadoResumen === 'error' && <EstadoError mensaje={errorResumen} onReintentar={cargar} />}
         {estadoResumen === 'listo' && resumen && (
           <div className="grid grid-cols-3 gap-3 mb-4">
-            <TarjetaMetrica etiqueta="Ocupación media" valor={`${resumen.ocupacion_media_pct}%`} />
-            <TarjetaMetrica etiqueta="Ocupación mínima" valor={`${resumen.ocupacion_min_pct}%`} />
-            <TarjetaMetrica etiqueta="Ocupación máxima" valor={`${resumen.ocupacion_max_pct}%`} />
+            <TarjetaMetrica info="ocupacion_media" etiqueta="Ocupación media" valor={`${resumen.ocupacion_media_pct}%`} />
+            <TarjetaMetrica info="ocupacion_min_max" etiqueta="Ocupación mínima" valor={`${resumen.ocupacion_min_pct}%`} />
+            <TarjetaMetrica info="ocupacion_min_max" etiqueta="Ocupación máxima" valor={`${resumen.ocupacion_max_pct}%`} />
           </div>
         )}
         <div className="card p-4">
@@ -158,10 +159,10 @@ export function ActividadDashboard({ filtros, desde, hasta, onExplorar }: {
         {estadoResumen === 'listo' && resumen && (
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
             <TarjetaMetrica etiqueta="Ingresos nuevos" valor={resumen.ingresos_nuevos} onClick={() => onExplorar({ desde_ingreso: desde, hasta_ingreso: hasta })} />
-            <TarjetaMetrica etiqueta="Altas" valor={resumen.altas} onClick={() => onExplorar({ desde_alta: desde, hasta_alta: hasta, estado: 'alta' })} />
+            <TarjetaMetrica info="altas" etiqueta="Altas" valor={resumen.altas} onClick={() => onExplorar({ desde_alta: desde, hasta_alta: hasta, estado: 'alta' })} />
             <TarjetaMetrica etiqueta="Traslados" valor={resumen.traslados} onClick={() => onExplorar({ desde_alta: desde, hasta_alta: hasta, estado: 'alta_traslado' })} />
             <TarjetaMetrica etiqueta="Éxitus" valor={resumen.exitus} onClick={() => onExplorar({ desde_alta: desde, hasta_alta: hasta, estado: 'exitus' })} />
-            <TarjetaMetrica etiqueta="Balance" valor={balance != null ? (balance > 0 ? `+${balance}` : balance) : '—'}
+            <TarjetaMetrica info="balance" etiqueta="Balance" valor={balance != null ? (balance > 0 ? `+${balance}` : balance) : '—'}
               subvalor="Ingresos − salidas, sin signo de bueno o malo" />
           </div>
         )}
@@ -186,9 +187,9 @@ export function ActividadDashboard({ filtros, desde, hasta, onExplorar }: {
         <p className="section-title">Estancia</p>
         {estadoResumen === 'listo' && resumen && (
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
-            <TarjetaMetrica etiqueta="Días-estancia" valor={resumen.dias_estancia} />
-            <TarjetaMetrica etiqueta="Estancia media" valor={`${resumen.estancia_media_dias} d`} />
-            <TarjetaMetrica etiqueta="Estancia mediana" valor={`${resumen.estancia_mediana_dias} d`} />
+            <TarjetaMetrica info="dias_estancia" etiqueta="Días-estancia" valor={resumen.dias_estancia} />
+            <TarjetaMetrica info="estancia_media" etiqueta="Estancia media" valor={`${resumen.estancia_media_dias} d`} />
+            <TarjetaMetrica info="estancia_mediana" etiqueta="Estancia mediana" valor={`${resumen.estancia_mediana_dias} d`} />
           </div>
         )}
         <div className="card p-4">
@@ -219,9 +220,9 @@ export function ActividadDashboard({ filtros, desde, hasta, onExplorar }: {
         <p className="section-title">Episodios activos de larga duración</p>
         {estadoDetalle === 'listo' && detalle && (
           <div className="grid grid-cols-3 gap-3">
-            <TarjetaMetrica etiqueta="30 días o más" valor={detalle.activos_mas_30} onClick={() => onExplorar({ estancia_min: '30', estado: 'activo' })} />
-            <TarjetaMetrica etiqueta="60 días o más" valor={detalle.activos_mas_60} onClick={() => onExplorar({ estancia_min: '60', estado: 'activo' })} />
-            <TarjetaMetrica etiqueta="90 días o más" valor={detalle.activos_mas_90} onClick={() => onExplorar({ estancia_min: '90', estado: 'activo' })} />
+            <TarjetaMetrica info="activos_mas_dias" etiqueta="30 días o más" valor={detalle.activos_mas_30} onClick={() => onExplorar({ estancia_min: '30', estado: 'activo' })} />
+            <TarjetaMetrica info="activos_mas_dias" etiqueta="60 días o más" valor={detalle.activos_mas_60} onClick={() => onExplorar({ estancia_min: '60', estado: 'activo' })} />
+            <TarjetaMetrica info="activos_mas_dias" etiqueta="90 días o más" valor={detalle.activos_mas_90} onClick={() => onExplorar({ estancia_min: '90', estado: 'activo' })} />
           </div>
         )}
       </section>

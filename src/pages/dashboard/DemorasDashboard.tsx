@@ -46,6 +46,7 @@ export function DemorasDashboard({ filtros, desde, hasta }: { filtros: Filtros; 
     if (estado !== 'listo') return null
     return {
       orden: 10,
+      definiciones: ['demora_pacientes', 'demora_media', 'demora_mediana'],
       base: [
         { etiqueta: 'Salidas del periodo sin éxitus (base de la demora al alta)', valor: r.altas },
         { etiqueta: 'Con la pregunta «¿Hubo demora al alta?» contestada', valor: r.valoradas },
@@ -89,15 +90,15 @@ export function DemorasDashboard({ filtros, desde, hasta }: { filtros: Filtros; 
       {estado === 'listo' && (
         <div className="space-y-4">
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            <TarjetaMetrica etiqueta="Pacientes con demora al alta" valor={r.valoradas > 0 ? r.conDemora : '—'}
+            <TarjetaMetrica info="demora_pacientes" etiqueta="Pacientes con demora al alta" valor={r.valoradas > 0 ? r.conDemora : '—'}
               subvalor={r.altas === 0
                 ? 'Sin salidas en este periodo'
                 : r.valoradas === 0
                   ? `Sin datos evaluados: la pregunta no está contestada en ninguna de las ${r.altas} ${r.altas === 1 ? 'salida' : 'salidas'}`
                   : `de ${r.valoradas} con la pregunta contestada (${r.altas} ${r.altas === 1 ? 'salida' : 'salidas'}) · ${Math.round((r.conDemora / r.valoradas) * 100)}%`} />
-            <TarjetaMetrica etiqueta="Demora media" valor={r.mediaDias != null ? `${num(r.mediaDias)} días` : '—'}
+            <TarjetaMetrica info="demora_media" etiqueta="Demora media" valor={r.mediaDias != null ? `${num(r.mediaDias)} días` : '—'}
               subvalor={r.mediaDias != null ? `${r.diasTotales} días en total` : 'Ninguna demora con días indicados'} />
-            <TarjetaMetrica etiqueta="Demora mediana" valor={r.medianaDias != null ? `${num(r.medianaDias)} días` : '—'}
+            <TarjetaMetrica info="demora_mediana" etiqueta="Demora mediana" valor={r.medianaDias != null ? `${num(r.medianaDias)} días` : '—'}
               subvalor="Mitad de las demoras por debajo de este valor" />
           </div>
 

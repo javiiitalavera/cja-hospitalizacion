@@ -75,6 +75,7 @@ export function DiagnosticosDashboard({ filtros, desde, hasta }: { filtros: Filt
     const cols = ['Código', 'Descripción', 'Salidas', '% sobre las salidas con diagnóstico principal codificado']
     return {
       orden: 0,
+      definiciones: ['salidas', 'dx_codificadas', 'dx_demencia'],
       base: [
         { etiqueta: 'Salidas del periodo (altas, traslados y éxitus)', valor: altas },
         { etiqueta: 'Con diagnóstico principal codificado', valor: episodios.length },
@@ -109,8 +110,8 @@ export function DiagnosticosDashboard({ filtros, desde, hasta }: { filtros: Filt
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-3 gap-3">
-        <TarjetaMetrica etiqueta="Salidas del periodo" valor={altas} subvalor="Altas, traslados y éxitus" />
-        <TarjetaMetrica etiqueta="Con diagnóstico principal codificado" valor={episodios.length} subvalor={pct(episodios.length, altas)} />
+        <TarjetaMetrica info="salidas" etiqueta="Salidas del periodo" valor={altas} subvalor="Altas, traslados y éxitus" />
+        <TarjetaMetrica info="dx_codificadas" etiqueta="Con diagnóstico principal codificado" valor={episodios.length} subvalor={pct(episodios.length, altas)} />
         <TarjetaMetrica etiqueta="Sin codificar" valor={sinCodificar}
           subvalor={sinCodificar > 0 ? 'Los códigos se ponen al alta, en el informe de alta o en la pestaña CMBD' : undefined} />
       </div>
@@ -158,7 +159,7 @@ export function DiagnosticosDashboard({ filtros, desde, hasta }: { filtros: Filt
       <section>
         <p className="section-title">Demencias por tipo</p>
         <div className="grid grid-cols-2 gap-3 mb-4">
-          <TarjetaMetrica etiqueta="Salidas con demencia codificada" valor={demencias.conDemencia}
+          <TarjetaMetrica info="dx_demencia" etiqueta="Salidas con demencia codificada" valor={demencias.conDemencia}
             subvalor={`${pct(demencias.conDemencia, demencias.episodios)} de las salidas codificadas`} />
           <TarjetaMetrica etiqueta="Tipo más frecuente"
             valor={tiposConDatos.length > 0

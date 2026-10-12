@@ -10,6 +10,7 @@
 import { createContext, useContext, useEffect } from 'react'
 import * as XLSX from 'xlsx'
 import type { ResumenPeriodo, SerieDashboard, SituacionActual } from './tipos'
+import { DEFINICIONES, type ClaveDefinicion } from './definiciones'
 
 export type Celda = string | number | null
 
@@ -24,6 +25,7 @@ export interface AporteExport {
   orden: number                                       // posición entre los apartados de la misma pestaña
   base?: { etiqueta: string; valor: number | string }[]   // «Base de cálculo» de la hoja de cabecera
   hojas: HojaExport[]
+  definiciones?: ClaveDefinicion[]                    // indicadores que enseña este apartado: van a la hoja «Definiciones»
 }
 
 export interface ContextoExportacion {
@@ -90,6 +92,8 @@ export function construirLibro(ctx: Pick<ContextoExportacion, 'vista' | 'desde' 
 
   const cabecera = nombreHoja('Datos de la vista', usados)
   const hojasFinales = ordenados.flatMap((a) => a.hojas).map((h) => ({ h, nombre: nombreHoja(h.nombre, usados) }))
+  const claves = [...new Set(ordenados.flatMap((a) => a.definiciones ?? []))]
+  const hojaDef = claves.length > 0 ? nombreHoja('Definiciones', usados) : null
   const base = ordenados.flatMap((a) => a.base ?? [])
   const generado = `${ahora.toLocaleDateString('es-ES')} ${ahora.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}`
 
@@ -107,6 +111,7 @@ export function construirLibro(ctx: Pick<ContextoExportacion, 'vista' | 'desde' 
     [],
     ['Hojas incluidas'],
     ...hojasFinales.map(({ nombre }): Celda[] => [nombre]),
+    ...(hojaDef ? [[hojaDef]] : []),
     [],
     ['Son cifras agregadas, sin datos identificativos de pacientes.'],
   ]
@@ -120,6 +125,19 @@ export function construirLibro(ctx: Pick<ContextoExportacion, 'vista' | 'desde' 
     const ws = XLSX.utils.aoa_to_sheet(filas)
     ws['!cols'] = ajustarColumnas([h.columnas, ...h.filas.map((f) => f.map(redondear))])
     XLSX.utils.book_append_sheet(wb, ws, nombre)
+  }
+
+  // Cómo se calcula cada indicador de la vista. El texto va en la última columna para que pueda extenderse a la derecha.
+  if (hojaDef) {
+    const filas: Celda[][] = [['Indicador', 'Apartado', 'Definición']]
+    for (const k of claves) {
+      const d = DEFINICIONES[k]
+      filas.push([d.titulo, 'Qué cuenta', d.queCuenta], ['', 'Fórmula', d.formula])
+      if (d.ojo) filas.push(['', 'Ojo', d.ojo])
+    }
+    const ws = XLSX.utils.aoa_to_sheet(filas)
+    ws['!cols'] = [{ wch: 42 }, { wch: 12 }, { wch: 120 }]
+    XLSX.utils.book_append_sheet(wb, ws, hojaDef)
   }
   return wb
 }

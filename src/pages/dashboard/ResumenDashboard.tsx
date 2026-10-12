@@ -109,6 +109,7 @@ export function ResumenDashboard({ filtros, desde, hasta, onExplorar, onExplorar
     if (estadoResumen !== 'listo' || !resumen) return null
     return {
       orden: 0,
+      definiciones: ['estancia_60', 'semaforo_riesgo', 'contencion_activa', 'contencion_si_precisa', 'contencion_sin_confirmar', 'incidencias_pendientes', 'altas', 'salidas', 'dias_estancia', 'ocupacion_media', 'ocupacion_min_max', 'estancia_media', 'estancia_mediana', 'reingresos', 'incidencias'],
       base: [
         { etiqueta: 'Ingresos nuevos del periodo', valor: resumen.ingresos_nuevos },
         { etiqueta: 'Salidas del periodo (altas, traslados y éxitus)', valor: resumen.salidas_totales },
@@ -151,19 +152,19 @@ export function ResumenDashboard({ filtros, desde, hasta, onExplorar, onExplorar
         {estadoSituacion === 'listo' && situacion && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <TarjetaMetrica etiqueta="Ingresados ahora" valor={situacion.pacientes_ingresados} subvalor={`${situacion.ocupacion_actual_pct}% de ocupación`} />
-            <TarjetaMetrica etiqueta="Estancia ≥ 60 días" valor={situacion.estancia_larga_60} />
+            <TarjetaMetrica info="estancia_60" etiqueta="Estancia ≥ 60 días" valor={situacion.estancia_larga_60} />
             {/* Sin onClick a propósito: Incidencias no puede explicar
                 qué pacientes componen el semáforo de caídas — eso es
                 un dato de Hoja de Ítems, no de eventos. Una tarjeta
                 que no puede abrir exactamente lo que representa no
                 debería ser pulsable. */}
-            <TarjetaMetrica etiqueta="Semáforo rojo/naranja" valor={situacion.semaforo_riesgo} />
-            <TarjetaMetrica etiqueta="Con contención activa" valor={situacion.contencion_activa}
+            <TarjetaMetrica info="semaforo_riesgo" etiqueta="Semáforo rojo/naranja" valor={situacion.semaforo_riesgo} />
+            <TarjetaMetrica info="contencion_activa" etiqueta="Con contención activa" valor={situacion.contencion_activa}
               subvalor="Continua por seguridad o contención fija" />
-            <TarjetaMetrica etiqueta="Con contención «si precisa»" valor={situacion.contencion_si_precisa}
+            <TarjetaMetrica info="contencion_si_precisa" etiqueta="Con contención «si precisa»" valor={situacion.contencion_si_precisa}
               subvalor="Sin ninguna activa" />
-            <TarjetaMetrica etiqueta="Contención sin confirmar" valor={situacion.contencion_pendiente_confirmacion} />
-            <TarjetaMetrica etiqueta="Incidencias pendientes" valor={situacion.incidencias_pendientes} onClick={() => onExplorar({ incidencias: 'pendiente' })} />
+            <TarjetaMetrica info="contencion_sin_confirmar" etiqueta="Contención sin confirmar" valor={situacion.contencion_pendiente_confirmacion} />
+            <TarjetaMetrica info="incidencias_pendientes" etiqueta="Incidencias pendientes" valor={situacion.incidencias_pendientes} onClick={() => onExplorar({ incidencias: 'pendiente' })} />
           </div>
         )}
       </section>
@@ -178,7 +179,7 @@ export function ResumenDashboard({ filtros, desde, hasta, onExplorar, onExplorar
             <TarjetaMetrica etiqueta="Ingresos nuevos" valor={resumen.ingresos_nuevos}
               comparacion={comparacionTexto(resumen.ingresos_nuevos, 'ingresos_nuevos')}
               onClick={() => onExplorarEpisodios({ desde_ingreso: desde, hasta_ingreso: hasta })} />
-            <TarjetaMetrica etiqueta="Altas" valor={resumen.altas}
+            <TarjetaMetrica info="altas" etiqueta="Altas" valor={resumen.altas}
               comparacion={comparacionTexto(resumen.altas, 'altas')}
               onClick={() => onExplorarEpisodios({ desde_alta: desde, hasta_alta: hasta, estado: 'alta' })} />
             <TarjetaMetrica etiqueta="Traslados" valor={resumen.traslados}
@@ -187,20 +188,20 @@ export function ResumenDashboard({ filtros, desde, hasta, onExplorar, onExplorar
             <TarjetaMetrica etiqueta="Éxitus" valor={resumen.exitus}
               comparacion={comparacionTexto(resumen.exitus, 'exitus')}
               onClick={() => onExplorarEpisodios({ desde_alta: desde, hasta_alta: hasta, estado: 'exitus' })} />
-            <TarjetaMetrica etiqueta="Días-estancia" valor={resumen.dias_estancia}
+            <TarjetaMetrica info="dias_estancia" etiqueta="Días-estancia" valor={resumen.dias_estancia}
               comparacion={comparacionTexto(resumen.dias_estancia, 'dias_estancia')} />
-            <TarjetaMetrica etiqueta="Ocupación media" valor={`${resumen.ocupacion_media_pct}%`}
+            <TarjetaMetrica info="ocupacion_media" etiqueta="Ocupación media" valor={`${resumen.ocupacion_media_pct}%`}
               subvalor={`Mín. ${resumen.ocupacion_min_pct}% · Máx. ${resumen.ocupacion_max_pct}%`}
               comparacion={comparacionTexto(resumen.ocupacion_media_pct, 'ocupacion_media_pct', true)} />
-            <TarjetaMetrica etiqueta="Estancia media" valor={`${resumen.estancia_media_dias} d`}
+            <TarjetaMetrica info="estancia_media" etiqueta="Estancia media" valor={`${resumen.estancia_media_dias} d`}
               subvalor={`Mediana: ${resumen.estancia_mediana_dias} d`} />
             {/* Proporción sobre los ingresos nuevos del periodo (cuántos de
                 ellos son reingresos), no la tasa clásica sobre las altas. */}
-            <TarjetaMetrica etiqueta="Ingresos que son reingresos (≤30 días)" valor={`${resumen.reingresos_30d} de ${resumen.ingresos_nuevos}`}
+            <TarjetaMetrica info="reingresos" etiqueta="Ingresos que son reingresos (≤30 días)" valor={`${resumen.reingresos_30d} de ${resumen.ingresos_nuevos}`}
               subvalor={resumen.ingresos_nuevos > 0
                 ? `${Math.round(resumen.reingresos_30d / resumen.ingresos_nuevos * 1000) / 10}% de los ingresos nuevos · alta o traslado previo en 30 días`
                 : 'Alta o traslado previo en los 30 días anteriores'} />
-            <TarjetaMetrica etiqueta="Incidencias" valor={resumen.incidencias_total}
+            <TarjetaMetrica info="incidencias" etiqueta="Incidencias" valor={resumen.incidencias_total}
               subvalor={(resumen.incidencias_tasa_1000 != null ? `${resumen.incidencias_tasa_1000} por 1.000 días-estancia · ` : '') + 'sin úlceras por presión (ver Seguridad)'}
               comparacion={comparacionTexto(resumen.incidencias_total, 'incidencias_total')}
               onClick={() => onExplorar({ incidencias: 'todas', desde, hasta })} />

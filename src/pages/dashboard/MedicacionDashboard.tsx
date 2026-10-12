@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { useCatalogoFarmacos } from '../../lib/farmacos'
 import type { Filtros, EstadoCarga } from './tipos'
 import { TarjetaMetrica, EstadoCargando, EstadoError, EstadoSinDatos } from './ComponentesDashboard'
+import InfoIndicador from './InfoIndicador'
 import { COLUMNAS_MED, episodioMedDesdeFila, resumenPeriodo, type EpisodioMed } from './medicacion'
 import { porcentajeNum, useAporteExportacion, type AporteExport } from './exportar'
 
@@ -61,6 +62,7 @@ export function MedicacionDashboard({ filtros, desde, hasta }: { filtros: Filtro
     const colsMomento = ['Al ingreso (salidas)', '% al ingreso', 'Al alta (salidas)', '% al alta']
     return {
       orden: 0,
+      definiciones: ['salidas', 'med_farmacos', 'med_psicofarmacos', 'med_cambio', 'med_polifarmacia', 'med_dos_antipsicoticos', 'med_cambio_grupo', 'med_grupos'],
       base: [
         { etiqueta: 'Salidas del periodo (altas, traslados y éxitus)', valor: r.altas },
         { etiqueta: 'Con medicación escrita en el informe de ingreso', valor: r.conMedicacion.ingreso },
@@ -124,13 +126,13 @@ export function MedicacionDashboard({ filtros, desde, hasta }: { filtros: Filtro
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <TarjetaMetrica etiqueta="Salidas del periodo" valor={r.altas}
+        <TarjetaMetrica info="salidas" etiqueta="Salidas del periodo" valor={r.altas}
           subvalor={`Altas, traslados y éxitus · ${r.conMedicacion.ingreso} con medicación al ingreso · ${r.conMedicacion.alta} al alta`} />
-        <TarjetaMetrica etiqueta="Fármacos por paciente" valor={`${num(r.medias.ingreso.farmacos)} → ${num(r.medias.alta.farmacos)}`}
+        <TarjetaMetrica info="med_farmacos" etiqueta="Fármacos por paciente" valor={`${num(r.medias.ingreso.farmacos)} → ${num(r.medias.alta.farmacos)}`}
           subvalor="Media al ingreso → al alta" />
-        <TarjetaMetrica etiqueta="Psicofármacos por paciente" valor={`${num(r.medias.ingreso.psicofarmacos)} → ${num(r.medias.alta.psicofarmacos)}`}
+        <TarjetaMetrica info="med_psicofarmacos" etiqueta="Psicofármacos por paciente" valor={`${num(r.medias.ingreso.psicofarmacos)} → ${num(r.medias.alta.psicofarmacos)}`}
           subvalor="Media al ingreso → al alta" />
-        <TarjetaMetrica etiqueta="Cambio medio ingreso → alta"
+        <TarjetaMetrica info="med_cambio" etiqueta="Cambio medio ingreso → alta"
           valor={r.cambioMedio ? `${signo(r.cambioMedio.farmacos)} fármacos` : '—'}
           subvalor={r.cambioMedio ? `${signo(r.cambioMedio.psicofarmacos)} psicofármacos · ${r.conAmbos} salidas con ambos informes` : 'Faltan salidas con medicación en los dos informes'} />
       </div>
@@ -153,7 +155,7 @@ export function MedicacionDashboard({ filtros, desde, hasta }: { filtros: Filtro
             <tbody>
               {([['cinco', '5 o más fármacos'], ['diez', '10 o más fármacos']] as const).map(([k, et]) => (
                 <tr key={k} className="border-b last:border-0">
-                  <td className="py-2 text-slate-700">{et}</td>
+                  <td className="py-2 text-slate-700">{et} <InfoIndicador clave="med_polifarmacia" /></td>
                   {(['ingreso', 'alta'] as const).map((m) => (
                     <td key={m} className="py-2 text-right tabular-nums text-slate-700">
                       <span className="font-semibold">{r.polifarmacia[m][k]}</span>
@@ -163,7 +165,7 @@ export function MedicacionDashboard({ filtros, desde, hasta }: { filtros: Filtro
                 </tr>
               ))}
               <tr className="border-b last:border-0" data-dos-antipsicoticos>
-                <td className="py-2 text-slate-700">2 o más antipsicóticos</td>
+                <td className="py-2 text-slate-700">2 o más antipsicóticos <InfoIndicador clave="med_dos_antipsicoticos" /></td>
                 {(['ingreso', 'alta'] as const).map((m) => (
                   <td key={m} className="py-2 text-right tabular-nums text-slate-700">
                     <span className="font-semibold">{r.dosOMasAntipsicoticos[m]}</span>
@@ -182,7 +184,7 @@ export function MedicacionDashboard({ filtros, desde, hasta }: { filtros: Filtro
           <table className="w-full text-sm" data-cambio-psicofarmacos>
             <thead>
               <tr className="text-xs text-slate-500 border-b">
-                <th className="text-left font-semibold py-2">Grupo</th>
+                <th className="text-left font-semibold py-2">Grupo <InfoIndicador clave="med_cambio_grupo" /></th>
                 <th className="text-right font-semibold py-2 whitespace-nowrap">Con ambos informes</th>
                 <th className="text-right font-semibold py-2">Aumentan</th>
                 <th className="text-right font-semibold py-2">Igual</th>
@@ -220,7 +222,7 @@ export function MedicacionDashboard({ filtros, desde, hasta }: { filtros: Filtro
           <table className="w-full text-sm">
             <thead>
               <tr className="text-xs text-slate-500 border-b">
-                <th className="text-left font-semibold py-2">Grupo</th>
+                <th className="text-left font-semibold py-2">Grupo <InfoIndicador clave="med_grupos" /></th>
                 <th className="text-right font-semibold py-2 w-40">Al ingreso</th>
                 <th className="text-right font-semibold py-2 w-40">Al alta</th>
               </tr>

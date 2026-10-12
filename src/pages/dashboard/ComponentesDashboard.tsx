@@ -1,5 +1,7 @@
 import { AlertCircle, RefreshCw } from 'lucide-react'
 import { Cargando } from '../../components/Cargando'
+import InfoIndicador from './InfoIndicador'
+import type { ClaveDefinicion } from './definiciones'
 
 // Los cuatro estados que puede tener cualquier apartado — nunca se
 // convierte un fallo en un cero, ni un "sin datos todavía" se
@@ -27,7 +29,7 @@ export function EstadoError({ mensaje, onReintentar }: { mensaje: string; onRein
   )
 }
 
-export function TarjetaMetrica({ etiqueta, valor, subvalor, comparacion, onClick }: {
+export function TarjetaMetrica({ etiqueta, valor, subvalor, comparacion, onClick, info }: {
   etiqueta: string
   valor: string | number
   subvalor?: string
@@ -35,17 +37,27 @@ export function TarjetaMetrica({ etiqueta, valor, subvalor, comparacion, onClick
   // dirección del cambio no se puede juzgar en automático.
   comparacion?: string
   onClick?: () => void
+  // Clave de la definición (definiciones.ts): añade el icono «i» con la fórmula del indicador.
+  info?: ClaveDefinicion
 }) {
   const Contenedor = onClick ? 'button' : 'div'
-  return (
+  const tarjeta = (
     <Contenedor
       onClick={onClick}
-      className={`card p-4 text-left ${onClick ? 'hover:border-primary-300 hover:bg-primary-50/20 transition-colors cursor-pointer' : ''}`}
+      className={`card p-4 text-left ${info ? 'block w-full h-full' : ''} ${onClick ? 'hover:border-primary-300 hover:bg-primary-50/20 transition-colors cursor-pointer' : ''}`}
     >
-      <p className="text-xs text-slate-500 font-medium">{etiqueta}</p>
+      <p className={`text-xs text-slate-500 font-medium ${info ? 'pr-6' : ''}`}>{etiqueta}</p>
       <p className="text-2xl font-bold text-slate-800 mt-1">{valor}</p>
       {subvalor && <p className="text-xs text-slate-500 mt-0.5">{subvalor}</p>}
       {comparacion && <p className="text-xs text-slate-500 mt-1.5">{comparacion}</p>}
     </Contenedor>
+  )
+  if (!info) return tarjeta
+  // El icono va al lado de la tarjeta, no dentro: una tarjeta que se pulsa es un <button> y no puede contener otro.
+  return (
+    <div className="relative" data-tarjeta-info>
+      {tarjeta}
+      <span className="absolute top-2.5 right-2.5"><InfoIndicador clave={info} /></span>
+    </div>
   )
 }
