@@ -36,6 +36,7 @@ interface EventoActivo {
   notas?: string
   estado?: 'pendiente' | 'completa'
   created_at?: string
+  habitacion_evento?: number | null   // habitación del paciente cuando ocurrió (la fija la base de datos; un traslado posterior no la cambia)
   registrado_por?: { nombre: string; apellidos: string }
   ingreso: {
     id: string
@@ -45,6 +46,12 @@ interface EventoActivo {
 }
 
 const MAYUS = (t: string) => t.charAt(0).toUpperCase() + t.slice(1)
+
+// Confirmación médica de la pauta de contención: quién la ha confirmado, o «Pendiente».
+function textoConfirmacion(c: { confirmado_por_id?: string | null; confirmado_por?: { nombre: string; apellidos: string } | null }): string {
+  if (!c.confirmado_por_id) return 'Pendiente'
+  return c.confirmado_por ? `Confirmada · ${c.confirmado_por.nombre} ${c.confirmado_por.apellidos}` : 'Confirmada'
+}
 
 function escaparCsv(v: string): string {
   return `"${v.replace(/"/g, '""')}"`
@@ -97,7 +104,8 @@ export function Eventos() {
       const { data, error } = await supabase
         .from('contenciones')
         .select(`
-          ingreso_id, dia, noche, actualizado_en,
+          ingreso_id, dia, noche, actualizado_en, confirmado_por_id,
+          confirmado_por:profesionales!confirmado_por_id(nombre, apellidos),
           ingreso:ingresos!inner(id, habitacion, estado, paciente:pacientes(nombre, primer_apellido, segundo_apellido))
         `)
         .eq('ingreso.estado', 'activo')
@@ -133,13 +141,14 @@ export function Eventos() {
         <td>${escapeHtml(semaforos[c.ingreso_id] ? MAYUS(semaforos[c.ingreso_id]!) : '—')}</td>
         <td>${escapeHtml(dia)}</td>
         <td>${escapeHtml(noche)}</td>
+        <td>${escapeHtml(textoConfirmacion(c))}</td>
         <td>${c.actualizado_en ? new Date(c.actualizado_en).toLocaleDateString('es-ES') : '—'}</td>
       </tr>`
     }).join('')
     imprimirTablaHTML(
       'Contenciones activas',
       `${ordenadas.length} paciente${ordenadas.length === 1 ? '' : 's'} con contención pautada · ingresos activos`,
-      '<tr><th>Hab.</th><th>Paciente</th><th>Semáforo</th><th>Día</th><th>Noche</th><th>Última revisión</th></tr>',
+      '<tr><th>Hab.</th><th>Paciente</th><th>Semáforo</th><th>Día</th><th>Noche</th><th>Confirmación médica</th><th>Última revisión</th></tr>',
       tbody,
     )
   }
@@ -159,7 +168,7 @@ export function Eventos() {
       const { data, error: err } = await supabase
         .from('eventos')
         .select(`
-          id, tipo, fecha, hora, turno, datos, notas, estado, created_at,
+          id, tipo, fecha, hora, turno, datos, notas, estado, created_at, habitacion_evento,
           registrado_por:profesionales!registrado_por_id(nombre, apellidos),
           ingreso:ingresos!inner(id, habitacion, estado, paciente:pacientes(nombre, primer_apellido, segundo_apellido))
         `)
@@ -206,7 +215,7 @@ export function Eventos() {
   const resumenPorTipo = TIPOS_ORDEN.map((tipo) => {
     const delTipo = eventosActivos.filter((e) => e.tipo === tipo)
     const pacientesAfectados = new Set(delTipo.map((e) => e.ingreso.id)).size
-    return { tipo, pacientesAfectados, totalIncidencias: delTipo.length }
+    return { tipo, pacientesAfectados, totalIncidencias: delTipo.length, pendientes: delTipo.filter((e) => e.estado === 'pendiente').length }
   })
 
   function filasDelTipo(tipo: TipoEvento): EventoActivo[] {
@@ -528,6 +537,7 @@ export function Eventos() {
                   <th className="px-4 py-2.5">Semáforo</th>
                   <th className="px-4 py-2.5">Día</th>
                   <th className="px-4 py-2.5">Noche</th>
+                  <th className="px-4 py-2.5">Confirmación médica</th>
                   <th className="px-4 py-2.5">Última revisión</th>
                 </tr>
               </thead>
@@ -539,7 +549,7 @@ export function Eventos() {
                   return (
                     <tr key={c.ingreso_id} className="hover:bg-slate-50 cursor-pointer" onClick={() => setModalContencion(c.ingreso_id)}>
                       <td className="px-4 py-2.5">{c.ingreso.habitacion ?? '—'}</td>
-                      <td className="px-4 py-2.5 font-medium text-slate-700">
+                      <td className="px-4 py-2.5 font-medium text-slate-700 whitespace-nowrap">
                         {/* La acción va dentro de la celda, como botón de verdad: se alcanza con el teclado. Pulsar en cualquier
                             otra parte de la fila sigue abriendo lo mismo, como comodidad para el ratón. */}
                         <button type="button" data-contencion-paciente={c.ingreso_id} onClick={() => setModalContencion(c.ingreso_id)}
@@ -571,6 +581,11 @@ export function Eventos() {
                           </span>
                         ) : <span className="text-slate-500">—</span>}
                       </td>
+                      <td className="px-4 py-2.5 text-xs" data-confirmacion-contencion={c.ingreso_id}>
+                        {c.confirmado_por_id
+                          ? <span className="text-emerald-700">{textoConfirmacion(c)}</span>
+                          : <span className="text-amber-700 font-medium">Pendiente</span>}
+                      </td>
                       <td className="px-4 py-2.5 text-slate-500 text-xs">
                         {c.actualizado_en ? new Date(c.actualizado_en).toLocaleDateString('es-ES') : '—'}
                       </td>
@@ -601,13 +616,15 @@ export function Eventos() {
       <section>
         <p className="section-title">Incidencias de ingresos activos</p>
         <div className="card overflow-hidden">
-          <table className="w-full text-sm">
+          {/* table-fixed: el ancho de la tabla es el de la tarjeta, y el detalle desplegable (que puede ser más ancho, como el de
+              caídas) hace scroll horizontal dentro de su propio recuadro en vez de ensanchar la tabla y quedar cortado. */}
+          <table className="w-full table-fixed text-sm">
             <thead>
               <tr className="border-b bg-slate-50 text-left text-xs font-semibold text-slate-500">
-                <th className="px-4 py-2.5 w-8"></th>
+                <th className="px-4 py-2.5 w-10"></th>
                 <th className="px-4 py-2.5">Tipo</th>
-                <th className="px-4 py-2.5 text-right">Pacientes afectados</th>
-                <th className="px-4 py-2.5 text-right">Incidencias</th>
+                <th className="px-4 py-2.5 text-right w-44">Pacientes afectados</th>
+                <th className="px-4 py-2.5 text-right w-48">Incidencias</th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -792,7 +809,7 @@ export function Eventos() {
 // ─── Fila de tipo: resumen + tabla de detalle desplegable ─────
 
 function FilaTipo({ resumen, filas, abierto, onToggle }: {
-  resumen: { tipo: TipoEvento; pacientesAfectados: number; totalIncidencias: number }
+  resumen: { tipo: TipoEvento; pacientesAfectados: number; totalIncidencias: number; pendientes: number }
   filas: EventoActivo[]
   abierto: boolean
   onToggle: () => void
@@ -819,17 +836,19 @@ function FilaTipo({ resumen, filas, abierto, onToggle }: {
         </td>
         <td className="px-4 py-2.5 text-right tabular-nums text-slate-500">
           {resumen.totalIncidencias || <span className="text-slate-500">—</span>}
+          {resumen.pendientes > 0 && <span className="ml-2 text-xs font-medium text-amber-700">· {resumen.pendientes} pendiente{resumen.pendientes === 1 ? '' : 's'}</span>}
         </td>
       </tr>
       {abierto && filas.length > 0 && (
         <tr>
           <td colSpan={4} className="bg-slate-50 px-4 py-3">
-            <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+            <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white" tabIndex={0} role="region" aria-label={`Detalle de ${TIPO_EVENTO_LABEL[resumen.tipo].toLowerCase()}: tabla con desplazamiento horizontal`}>
               <table className="w-full text-xs">
                 <thead>
-                  <tr className="border-b bg-slate-100 text-left text-xs font-semibold text-slate-500">
+                  <tr className="border-b bg-slate-100 text-left text-xs font-semibold text-slate-500 whitespace-nowrap">
                     <th className="px-3 py-2">Fecha</th>
                     <th className="px-3 py-2">Turno</th>
+                    <th className="px-3 py-2">Estado</th>
                     <th className="px-3 py-2">Paciente</th>
                     <th className="px-3 py-2">Hab.</th>
                     {campos.map((c) => <th key={c.key} className="px-3 py-2">{c.label}</th>)}
@@ -840,16 +859,27 @@ function FilaTipo({ resumen, filas, abierto, onToggle }: {
                 <tbody className="divide-y">
                   {filas.map((ev) => (
                     <tr key={ev.id} className="hover:bg-slate-50">
-                      <td className="px-3 py-2 whitespace-nowrap">{new Date(ev.fecha).toLocaleDateString('es-ES')}</td>
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        {new Date(ev.fecha).toLocaleDateString('es-ES')}
+                        {ev.hora && <span className="text-slate-500"> · {ev.hora.slice(0, 5)}</span>}
+                      </td>
                       <td className="px-3 py-2 whitespace-nowrap">{ev.turno ? TURNO_LABEL[ev.turno as keyof typeof TURNO_LABEL] : '—'}</td>
-                      <td className="px-3 py-2 font-medium text-slate-700">
+                      {/* Una incidencia pendiente tiene campos sin rellenar: sin esta marca, esos «—» parecerían datos que no existen. */}
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        {ev.estado === 'pendiente'
+                          ? <span className="font-medium text-amber-700">Pendiente</span>
+                          : <span className="text-slate-500">Completa</span>}
+                      </td>
+                      <td className="px-3 py-2 font-medium text-slate-700 whitespace-nowrap">
                         <Link to={`/ingresos/${ev.ingreso.id}?tab=eventos`} className={`hover:text-primary-700 hover:underline ${FOCO_CELDA}`}>{nombreCompleto(ev.ingreso.paciente)}</Link>
                       </td>
-                      <td className="px-3 py-2">{ev.ingreso.habitacion ?? '—'}</td>
+                      <td className="px-3 py-2" title={ev.habitacion_evento != null && ev.ingreso.habitacion != null && ev.habitacion_evento !== ev.ingreso.habitacion ? `Habitación en el momento del suceso (ahora está en la ${ev.ingreso.habitacion})` : undefined}>
+                        {ev.habitacion_evento ?? ev.ingreso.habitacion ?? '—'}
+                      </td>
                       {campos.map((c) => (
                         <td key={c.key} className="px-3 py-2">{ev.datos?.[c.key] ?? '—'}</td>
                       ))}
-                      <td className="px-3 py-2 max-w-[160px] truncate">{ev.notas ?? ''}</td>
+                      <td className="px-3 py-2 max-w-[160px] truncate" title={ev.notas ?? undefined}>{ev.notas ?? ''}</td>
                       <td className="px-3 py-2 whitespace-nowrap">
                         {ev.registrado_por ? `${ev.registrado_por.nombre} ${ev.registrado_por.apellidos}` : '—'}
                       </td>
