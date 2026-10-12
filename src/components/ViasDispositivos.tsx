@@ -3,6 +3,7 @@
 // se marca en uno se ve en los demás. Cada selector avisa con `onCambio` de las columnas que hay que guardar.
 
 import { useEffect, useState } from 'react'
+import { ShieldAlert } from 'lucide-react'
 import {
   AISLAMIENTOS, DISPOSITIVOS_OXIGENO, VIAS, cambiosDispositivo,
   type Aislamiento, type DatosDispositivos, type Via,
@@ -26,6 +27,10 @@ function alternar<T extends string>(lista: readonly T[] | null | undefined, valo
   return orden.filter((x) => siguiente.includes(x))
 }
 
+// El aislamiento es un dato de seguridad: marcado, se ve claramente distinto a cualquier otra casilla (relleno violeta
+// sólido con icono). Los mismos colores los usa el distintivo de Inicio.
+export const AISLAMIENTO_MARCADO = 'bg-violet-700 border-violet-700 text-white'
+
 export function SelectorAislamiento({ datos, onCambio, deshabilitado }: Props) {
   const orden = AISLAMIENTOS.map((a) => a.clave)
   return (
@@ -33,8 +38,12 @@ export function SelectorAislamiento({ datos, onCambio, deshabilitado }: Props) {
       {AISLAMIENTOS.map((a) => {
         const activo = (datos.aislamiento ?? []).includes(a.clave)
         return (
-          <button key={a.clave} type="button" disabled={deshabilitado} aria-pressed={activo} className={chip(activo, deshabilitado)}
+          <button key={a.clave} type="button" disabled={deshabilitado} aria-pressed={activo}
+            className={`inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border transition-colors ${
+              activo ? `${AISLAMIENTO_MARCADO} font-semibold` : 'bg-white border-slate-300 text-slate-700'
+            } ${deshabilitado ? 'cursor-default' : activo ? 'hover:bg-violet-800' : 'hover:border-violet-300'}`}
             onClick={() => onCambio({ aislamiento: alternar<Aislamiento>(datos.aislamiento, a.clave, orden) })}>
+            {activo && <ShieldAlert aria-hidden className="w-4 h-4" />}
             {a.etiqueta}
           </button>
         )

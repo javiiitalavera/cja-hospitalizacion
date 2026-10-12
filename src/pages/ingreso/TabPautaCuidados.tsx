@@ -17,6 +17,7 @@ import { AvisoGuardado, useAvisoGuardado } from '../../components/AvisoGuardado'
 import { useConfirmar } from '../../components/useConfirmar'
 import { BloqueOxigeno, BloqueSonda, SelectorAislamiento, SelectorVias } from '../../components/ViasDispositivos'
 import { AvisoFicha } from '../../components/AvisoFicha'
+import { TituloSeccion } from '../../components/TituloSeccion'
 import {
   anadirIndicacion, borrarIndicacion, cambiarIndicacion, guardarDispositivos, type ResultadoPauta,
 } from '../hojasTurno/operaciones'
@@ -139,6 +140,8 @@ export function TabPautaCuidados({ ingresoId, episodioActivo }: { ingresoId: str
 
   return (
     <div className="space-y-6 max-w-3xl">
+      <TituloSeccion titulo="Pauta de cuidados"
+        subtitulo="Lo que necesita el paciente en el día a día: aislamiento, vías y dispositivos, e indicaciones para las auxiliares. Las lesiones van en Curas; los registros diarios, en Hoja de ítems." />
       {!puedeEditar && (
         <AvisoFicha icono={Lock}>
           {!episodioActivo
@@ -152,7 +155,7 @@ export function TabPautaCuidados({ ingresoId, episodioActivo }: { ingresoId: str
       {dialogo}
 
       {/* 1 · Precauciones */}
-      <section className="card p-6">
+      <section className={`card p-6 ${(dispositivos.aislamiento ?? []).length > 0 ? 'border-violet-300 bg-violet-50/50' : ''}`}>
         <p className="section-title">Aislamiento</p>
         <SelectorAislamiento datos={dispositivos} onCambio={cambiarDispositivos} deshabilitado={!puedeEditarDispositivos || ocupado} />
       </section>

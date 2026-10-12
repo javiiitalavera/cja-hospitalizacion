@@ -32,7 +32,7 @@ export const GRUPOS_ENFERMERIA: GrupoEnfermeria[] = [
   {
     titulo: 'Alimentación',
     campos: [
-      { key: 'alimentacion_tipo', label: 'Tipo de alimentación', filas: 2 },
+      { key: 'alimentacion_tipo', label: 'Tipo de alimentación', filas: 1 },
       { key: 'alimentacion_dependiente', label: 'Dependiente', filas: 1, atajos: NO },
     ],
   },
@@ -43,13 +43,13 @@ export const GRUPOS_ENFERMERIA: GrupoEnfermeria[] = [
   {
     titulo: 'Movilización',
     campos: [
-      { key: 'deambulacion', label: 'Deambulación', filas: 2 },
+      { key: 'deambulacion', label: 'Deambulación', filas: 1 },
       { key: 'cambios_posturales', label: 'Cambios posturales en cama', filas: 1, atajos: NO_PRECISA },
     ],
   },
   {
     titulo: 'Reposo y sueño',
-    campos: [{ key: 'sueno', label: 'Cómo duerme', filas: 2, atajos: ['Duerme adecuadamente.'] }],
+    campos: [{ key: 'sueno', label: 'Cómo duerme', filas: 1, atajos: ['Duerme adecuadamente.'] }],
   },
   {
     titulo: 'Contenciones',
@@ -61,14 +61,14 @@ export const GRUPOS_ENFERMERIA: GrupoEnfermeria[] = [
   {
     titulo: 'Integridad cutánea',
     campos: [
-      { key: 'piel', label: 'Integridad de la piel', filas: 2 },
-      { key: 'ulceras', label: 'Úlceras (localización y tratamiento)', filas: 2, atajos: NO },
-      { key: 'lesiones', label: 'Lesiones cutáneas', filas: 2, atajos: NO },
+      { key: 'piel', label: 'Integridad de la piel', filas: 1 },
+      { key: 'ulceras', label: 'Úlceras (localización y tratamiento)', filas: 1, atajos: NO },
+      { key: 'lesiones', label: 'Lesiones cutáneas', filas: 1, atajos: NO },
     ],
   },
   {
     titulo: 'Higiene',
-    campos: [{ key: 'higiene', label: 'Dependiente', filas: 2 }],
+    campos: [{ key: 'higiene', label: 'Dependiente', filas: 1 }],
   },
   {
     titulo: 'Técnicas',
@@ -84,21 +84,21 @@ export const GRUPOS_ENFERMERIA: GrupoEnfermeria[] = [
   {
     titulo: 'Comunicación y conducta',
     campos: [
-      { key: 'comunicacion', label: 'Comunicación (orientación, lenguaje)', filas: 2 },
-      { key: 'conducta', label: 'Conducta (agitación, errancia, otras)', filas: 2 },
+      { key: 'comunicacion', label: 'Comunicación (orientación, lenguaje)', filas: 1 },
+      { key: 'conducta', label: 'Conducta (agitación, errancia, otras)', filas: 1 },
     ],
   },
   {
     titulo: 'Prótesis y ayudas técnicas',
-    campos: [{ key: 'protesis', label: 'Dentadura, gafas, audífonos, ayudas para caminar', filas: 2, atajos: NO_PRECISA }],
+    campos: [{ key: 'protesis', label: 'Dentadura, gafas, audífonos, ayudas para caminar', filas: 1, atajos: NO_PRECISA }],
   },
   {
     titulo: 'Seguridad',
-    campos: [{ key: 'riesgo_caidas', label: 'Riesgo de caídas y medidas', filas: 2 }],
+    campos: [{ key: 'riesgo_caidas', label: 'Riesgo de caídas y medidas', filas: 1 }],
   },
   {
     titulo: 'Observaciones',
-    campos: [{ key: 'observaciones', label: 'Otras indicaciones para la continuidad de cuidados', filas: 3 }],
+    campos: [{ key: 'observaciones', label: 'Otras indicaciones para la continuidad de cuidados', filas: 2 }],
   },
 ]
 

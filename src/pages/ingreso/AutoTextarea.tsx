@@ -17,7 +17,8 @@ export const FILAS_CAMPO: Record<string, number> = {
   evolucion_clinica: 8, juicios_clinicos: 4, recomendaciones_conductuales: 4, cuidados_enfermeria: 4, otras_recomendaciones: 3,
 }
 
-function AutoTextarea({ value, onChange, disabled, filas, autoFocus }: {
+function AutoTextarea({ value, onChange, disabled, filas, autoFocus, id }: {
+  id?: string
   value: string
   onChange: (v: string) => void
   disabled?: boolean
@@ -37,6 +38,8 @@ function AutoTextarea({ value, onChange, disabled, filas, autoFocus }: {
   return (
     <textarea
       ref={ref}
+      id={id}
+      rows={filas ? 1 : undefined}
       className={`textarea ${disabled ? 'bg-slate-50 text-slate-500 cursor-not-allowed' : ''}`}
       style={{ minHeight, overflow: 'hidden', resize: 'none' }}
       value={value}

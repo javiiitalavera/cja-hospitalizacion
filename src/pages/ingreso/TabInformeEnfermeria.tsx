@@ -206,34 +206,41 @@ export function TabInformeEnfermeria({ ingresoId, ingreso }: { ingresoId: string
         </AvisoFicha>
       )}
 
-      {GRUPOS_ENFERMERIA.map((g) => (
-        <div key={g.titulo} className="card p-6 space-y-4">
-          <p className="section-title">{g.titulo}</p>
-          {g.campos.map((c) => {
-            const valor = campos[c.key] ?? ''
-            return (
-              <label key={c.key} className="block">
-                <span className="label">{c.label}</span>
-                {puedeEditar && c.atajos && !valor.trim() && (
-                  <span className="flex flex-wrap gap-1.5 mb-1.5">
-                    {c.atajos.map((a) => (
-                      <button
-                        key={a}
-                        type="button"
-                        onClick={() => cambiar(c.key, a)}
-                        className="text-xs px-2 py-0.5 rounded-full border border-slate-200 text-slate-600 hover:bg-primary-50 hover:border-primary-200 hover:text-primary-700"
-                      >
-                        {a.replace(/\.$/, '')}
-                      </button>
-                    ))}
-                  </span>
-                )}
-                <AutoTextarea disabled={!puedeEditar} filas={c.filas} value={valor} onChange={(v) => cambiar(c.key, v)} />
-              </label>
-            )
-          })}
-        </div>
-      ))}
+      {/* Una sola tarjeta: cada grupo es una fila (nombre a la izquierda, campos a la derecha, de dos en dos), para que
+          lo que se rellena en una o dos líneas no obligue a recorrer una pantalla por apartado. */}
+      <div className="card px-6 divide-y divide-slate-100">
+        {GRUPOS_ENFERMERIA.map((g) => (
+          <div key={g.titulo} className="grid grid-cols-1 sm:grid-cols-[8.5rem_minmax(0,1fr)] gap-x-6 gap-y-2 py-3">
+            <p className="text-sm font-semibold text-primary-700 sm:pt-5">{g.titulo}</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
+              {g.campos.map((c, i) => {
+                const valor = campos[c.key] ?? ''
+                const atajos = puedeEditar && c.atajos && !valor.trim() ? c.atajos : null
+                // Si un grupo tiene un solo campo, o el último queda solo en su fila, ocupa todo el ancho.
+                const ancho = g.campos.length === 1 || (g.campos.length % 2 === 1 && i === g.campos.length - 1) ? 'sm:col-span-2' : ''
+                return (
+                  <div key={c.key} className={ancho}>
+                    <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 min-h-[1.75rem]">
+                      <label htmlFor={`enf-${c.key}`} className="label mb-0">{c.label}</label>
+                      {atajos && (
+                        <span className="flex flex-wrap gap-1.5">
+                          {atajos.map((a) => (
+                            <button key={a} type="button" onClick={() => cambiar(c.key, a)}
+                              className="text-xs px-2 py-0.5 rounded-full border border-slate-200 text-slate-600 hover:bg-primary-50 hover:border-primary-200 hover:text-primary-700">
+                              {a.replace(/\.$/, '')}
+                            </button>
+                          ))}
+                        </span>
+                      )}
+                    </div>
+                    <AutoTextarea id={`enf-${c.key}`} disabled={!puedeEditar} filas={c.filas} value={valor} onChange={(v) => cambiar(c.key, v)} />
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
 
       {informe && (
         <p className="text-xs text-slate-500">

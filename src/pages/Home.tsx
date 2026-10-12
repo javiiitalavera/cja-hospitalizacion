@@ -4,6 +4,8 @@ import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import type { Ingreso } from '../types'
+import type { Aislamiento } from '../types/pautaCuidados'
+import { DistintivoAislamiento } from '../components/DistintivoAislamiento'
 import { SEMAFORO_CAIDAS_COLOR as SEMAFORO, nombreCompleto, nombreYApellido } from '../types'
 import { edad, diasEntre, formatFechaLocal, hoyLocal } from '../lib/fechas'
 import { Plus, ChevronRight, AlertTriangle, AlertCircle, Sun, Moon, Printer, LayoutList, LayoutGrid } from 'lucide-react'
@@ -54,7 +56,7 @@ const MAX_LINEAS_TOOLTIP = 6
 
 // Hab., Paciente, Edad, Días, Ingreso, Médico, Contención, Incidencias, flecha. Contención e Incidencias van
 // separadas por un hueco propio (la columna de Incidencias lleva relleno a la izquierda) para que no se lean como un solo grupo.
-const COLUMNAS_TABLA = '2.5rem minmax(0,1.6fr) 2.5rem 3rem 5rem minmax(0,0.9fr) 6rem 11.5rem 2rem'
+const COLUMNAS_TABLA = '2.5rem minmax(0,2.1fr) 2.5rem 3rem 5rem minmax(0,0.8fr) 6rem 11.5rem 2rem'
 // Enlace que ocupa toda la fila (o tarjeta): se navega con un enlace de verdad, que se puede tabular, abrir en otra
 // pestaña y leen los lectores de pantalla. Los botones de dentro (contención, incidencias) quedan por encima.
 const ENLACE_FILA = 'after:absolute after:inset-0 after:content-[\'\'] focus:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-primary-400 focus-visible:after:rounded-[inherit]'
@@ -78,7 +80,7 @@ function vistaGuardada(): VistaInicio {
 
 export default function Home() {
   const [ingresos, setIngresos] = useState<IngresoConPaciente[]>([])
-  const [items, setItems] = useState<Record<string, { semaforo_caidas?: string }>>({})
+  const [items, setItems] = useState<Record<string, { semaforo_caidas?: string; aislamiento?: Aislamiento[] | null }>>({})
   const [eventosPorIngreso, setEventosPorIngreso] = useState<Record<string, EventoResumen[]>>({})
   const [contencionesPorIngreso, setContencionesPorIngreso] = useState<Record<string, { dia: ContencionDia | null; noche: ContencionNoche[] | null; confirmado_por_id: string | null }>>({})
   // Todo lo que alimenta el recuadro "Pendiente". Hasta que no se ha
@@ -146,7 +148,7 @@ export default function Home() {
           { mapa: contencionesPorIngresoMapa, error: errPautas },
           { data: pendientesData, error: errPendientes },
         ] = await Promise.all([
-          supabase.from('items_paciente').select('ingreso_id,semaforo_caidas').in('ingreso_id', ids),
+          supabase.from('items_paciente').select('ingreso_id,semaforo_caidas,aislamiento').in('ingreso_id', ids),
           // Todas las incidencias del ingreso (el mismo número que ve
           // quien abre la ficha). Lo reciente se distingue por el color
           // de la insignia, no recortando la lista.
@@ -166,7 +168,7 @@ export default function Home() {
           setErrorAuxiliar('Algunos datos (incidencias, contención) podrían no estar actualizados.')
         }
 
-        const itemsMap: Record<string, { semaforo_caidas?: string }> = {}
+        const itemsMap: Record<string, { semaforo_caidas?: string; aislamiento?: Aislamiento[] | null }> = {}
         ;(itemsData ?? []).forEach((it: any) => {
           itemsMap[it.ingreso_id] = it
         })
@@ -429,6 +431,7 @@ export default function Home() {
                   <p className="font-semibold text-slate-800 text-sm leading-tight">
                     <Link to={`/ingresos/${ingreso.id}`} data-fila-paciente={ingreso.id} className={`rounded-xl ${ENLACE_FILA}`}>{p ? nombreCompleto(p) : '—'}</Link>
                   </p>
+                  <DistintivoAislamiento aislamiento={items[ingreso.id]?.aislamiento} className="mt-1" />
                   <p className="text-xs text-slate-500 mt-0.5">
                     {e != null ? `${e} años` : '—'} · ingreso {fingreso}
                     {dias != null && (
@@ -630,9 +633,12 @@ export default function Home() {
                   </div>
                   {/* Nombre */}
                   <div className="min-w-0 pr-2">
-                    <p className="font-semibold text-slate-800 text-sm leading-tight truncate">
-                      <Link to={`/ingresos/${ingreso.id}`} data-fila-paciente={ingreso.id} className={ENLACE_FILA}>{nombreDelPaciente}</Link>
-                    </p>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <p className="font-semibold text-slate-800 text-sm leading-tight truncate min-w-0">
+                        <Link to={`/ingresos/${ingreso.id}`} data-fila-paciente={ingreso.id} className={ENLACE_FILA}>{nombreDelPaciente}</Link>
+                      </p>
+                      <DistintivoAislamiento aislamiento={items[ingreso.id]?.aislamiento} className="shrink-0" />
+                    </div>
                   </div>
                   {/* Edad */}
                   <div className="text-slate-500 text-xs">{e != null ? `${e}a` : '—'}</div>
