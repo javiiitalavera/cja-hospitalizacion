@@ -262,6 +262,21 @@ async function componerDocumento(zip: JSZip, cuerpo: string, cabecera: string): 
   zip.file('word/header1.xml', cabecera)
   const pie = zip.file('word/footer1.xml')
   if (pie) zip.file('word/footer1.xml', inyectarPie(await pie.async('string')))
+  await comprobarXml(zip, ['word/document.xml', 'word/header1.xml', 'word/footer1.xml'])
+}
+
+// Última red de seguridad: si alguna parte del documento no es XML correcto, Word diría «contenido no legible» al
+// abrirlo. Mejor no descargar nada y avisar aquí, con la parte que falla.
+async function comprobarXml(zip: JSZip, partes: string[]): Promise<void> {
+  if (typeof DOMParser === 'undefined') return
+  for (const parte of partes) {
+    const f = zip.file(parte)
+    if (!f) continue
+    const doc = new DOMParser().parseFromString(await f.async('string'), 'application/xml')
+    if (doc.getElementsByTagName('parsererror').length > 0) {
+      throw new Error(`el documento generado no es válido (${parte}). Avísame con el informe y el paciente para revisarlo.`)
+    }
+  }
 }
 
 async function cargarPlantilla(nombre: string): Promise<JSZip> {
@@ -382,11 +397,6 @@ function parteIngresoXml(ii: InformeIngreso, escalaIngreso: EscalaClinica | null
   ]
 }
 
-// Aviso visible en el informe de alta exportado antes de que exista el alta.
-function borradorXml(font: string): string {
-  return `<w:p><w:pPr><w:keepNext/><w:pBdr><w:top w:val="single" w:sz="8" w:space="4" w:color="C00000"/><w:bottom w:val="single" w:sz="8" w:space="4" w:color="C00000"/></w:pBdr><w:spacing w:before="0" w:after="200" w:line="276" w:lineRule="auto"/><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="${font}" w:hAnsi="${font}"/><w:b/><w:color w:val="C00000"/></w:rPr><w:t xml:space="preserve">BORRADOR — el episodio todavía no tiene alta registrada. Este documento no es válido como informe de alta.</w:t></w:r></w:p>`
-}
-
 function introPacienteXml(ingreso: Ingreso, fechaRef: string | null | undefined, font: string): string {
   const p = ingreso.paciente!
   // Edad EN LA FECHA DEL INFORME (ingreso o alta), no en la fecha en que se
@@ -430,8 +440,6 @@ export async function exportarInformeAlta(ingreso: Ingreso, ii: InformeIngreso, 
   const num = () => ++apartado   // numeración de «Tratamiento y recomendaciones»
 
   const cuerpo = unir([
-    // Episodio todavía sin alta: se puede preparar el informe, pero el documento sale marcado como borrador.
-    ...(ingreso.fecha_alta ? [] : [borradorXml(font)]),
     // La edad que sale es la de la fecha de alta (o de ingreso si aún no hay alta).
     introPacienteXml(ingreso, ingreso.fecha_alta ?? ingreso.fecha_ingreso, font),
     ...parteIngresoXml(ii, escalaIngreso, font, true),
