@@ -431,7 +431,7 @@ export default function Home() {
                   <p className="font-semibold text-slate-800 text-sm leading-tight">
                     <Link to={`/ingresos/${ingreso.id}`} data-fila-paciente={ingreso.id} className={`rounded-xl ${ENLACE_FILA}`}>{p ? nombreCompleto(p) : '—'}</Link>
                   </p>
-                  <DistintivoAislamiento aislamiento={items[ingreso.id]?.aislamiento} className="mt-1" />
+                  <DistintivoAislamiento aislamiento={items[ingreso.id]?.aislamiento} ingresoId={ingreso.id} className="mt-1" />
                   <p className="text-xs text-slate-500 mt-0.5">
                     {e != null ? `${e} años` : '—'} · ingreso {fingreso}
                     {dias != null && (
@@ -637,7 +637,7 @@ export default function Home() {
                       <p className="font-semibold text-slate-800 text-sm leading-tight truncate min-w-0">
                         <Link to={`/ingresos/${ingreso.id}`} data-fila-paciente={ingreso.id} className={ENLACE_FILA}>{nombreDelPaciente}</Link>
                       </p>
-                      <DistintivoAislamiento aislamiento={items[ingreso.id]?.aislamiento} className="shrink-0" />
+                      <DistintivoAislamiento aislamiento={items[ingreso.id]?.aislamiento} ingresoId={ingreso.id} className="shrink-0" />
                     </div>
                   </div>
                   {/* Edad */}
