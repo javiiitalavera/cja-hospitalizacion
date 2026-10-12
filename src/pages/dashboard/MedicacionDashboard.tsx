@@ -127,7 +127,7 @@ export function MedicacionDashboard({ filtros, desde, hasta }: { filtros: Filtro
     <div className="space-y-6">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <TarjetaMetrica info="salidas" etiqueta="Salidas del periodo" valor={r.altas}
-          subvalor={`Altas, traslados y éxitus · ${r.conMedicacion.ingreso} con medicación al ingreso · ${r.conMedicacion.alta} al alta`} />
+          subvalor={`${r.conMedicacion.ingreso} con medicación al ingreso · ${r.conMedicacion.alta} al alta`} />
         <TarjetaMetrica info="med_farmacos" etiqueta="Fármacos por paciente" valor={`${num(r.medias.ingreso.farmacos)} → ${num(r.medias.alta.farmacos)}`}
           subvalor="Media al ingreso → al alta" />
         <TarjetaMetrica info="med_psicofarmacos" etiqueta="Psicofármacos por paciente" valor={`${num(r.medias.ingreso.psicofarmacos)} → ${num(r.medias.alta.psicofarmacos)}`}
@@ -136,10 +136,6 @@ export function MedicacionDashboard({ filtros, desde, hasta }: { filtros: Filtro
           valor={r.cambioMedio ? `${signo(r.cambioMedio.farmacos)} fármacos` : '—'}
           subvalor={r.cambioMedio ? `${signo(r.cambioMedio.psicofarmacos)} psicofármacos · ${r.conAmbos} salidas con ambos informes` : 'Faltan salidas con medicación en los dos informes'} />
       </div>
-      <p className="text-xs text-slate-500 -mt-3">
-        Las medias cuentan solo las salidas que tienen fármacos escritos en ese informe. Un mismo principio activo se cuenta una vez.
-        Psicofármacos: antipsicóticos, litio, ansiolíticos, hipnóticos, antidepresivos, psicoestimulantes/nootrópicos y antidemencia (grupos N05 y N06 de la clasificación ATC).
-      </p>
 
       <section>
         <p className="section-title">Polifarmacia y antipsicóticos</p>
@@ -208,11 +204,6 @@ export function MedicacionDashboard({ filtros, desde, hasta }: { filtros: Filtro
               ))}
             </tbody>
           </table>
-          <p className="text-xs text-slate-500 mt-3">
-            Se compara cuántos fármacos del grupo tiene cada paciente en el informe de ingreso y en el de alta, solo en las salidas con medicación escrita en los dos.
-            «Empiezan»: sin ninguno al ingreso y con alguno al alta. «Se retiran»: con alguno al ingreso y ninguno al alta; ambos ya están contados dentro de «aumentan» o «reducen».
-            Cambiar un antipsicótico por otro cuenta como «igual». Reducir fármacos no demuestra por sí solo una mejor atención: hay que interpretarlo junto con la evolución clínica.
-          </p>
         </div>
       </section>
 
@@ -241,9 +232,6 @@ export function MedicacionDashboard({ filtros, desde, hasta }: { filtros: Filtro
               ))}
             </tbody>
           </table>
-          <p className="text-xs text-slate-500 mt-3">
-            Porcentaje sobre las salidas con medicación en ese informe. Los grupos se solapan: un paciente con un antipsicótico y una benzodiacepina cuenta en las dos filas.
-          </p>
         </div>
       </section>
 

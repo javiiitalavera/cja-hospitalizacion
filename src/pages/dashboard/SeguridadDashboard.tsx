@@ -238,20 +238,16 @@ export function SeguridadDashboard({ filtros, desde, hasta, onExplorar, onExplor
                   </table>
                 )}
               </div>
-              <p className="text-xs text-slate-500 mt-2">
-                Se cuenta por la fecha en que ocurrió la incidencia. Las úlceras por presión y las infecciones nosocomiales no son incidencias: se muestran más abajo.
-              </p>
             </section>
 
             {/* ── Caídas ──────────────────────────────────────── */}
             <section>
               <p className="section-title">Caídas</p>
-              <p className="text-xs text-slate-500 -mt-3 mb-2">El total y la tasa de caídas están en la tabla de arriba.</p>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <TarjetaMetrica info="caidas_con_lesion" etiqueta="Con lesión" valor={caidas.con_lesion}
                   subvalor={caidas.tasa_con_lesion_1000 != null ? `${caidas.tasa_con_lesion_1000} / 1.000 días-estancia` : undefined} />
-                <TarjetaMetrica info="caidas_graves" etiqueta="Graves" valor={caidas.graves} subvalor="Gravedad grave, fractura o TCE" />
-                <TarjetaMetrica info="caidas_pendientes" etiqueta="Pendientes de valoración" valor={caidas.pendientes_valoracion} subvalor="Aún no se ha confirmado si hubo lesión" />
+                <TarjetaMetrica info="caidas_graves" etiqueta="Graves" valor={caidas.graves} />
+                <TarjetaMetrica info="caidas_pendientes" etiqueta="Pendientes de valoración" valor={caidas.pendientes_valoracion} />
                 <TarjetaMetrica info="caidas_repetidas" etiqueta="Pacientes con 2 o más caídas" valor={caidas.pacientes_con_caidas_repetidas ?? '—'} subvalor="En el periodo" />
               </div>
               {repetidas.length > 0 && (
@@ -287,7 +283,7 @@ export function SeguridadDashboard({ filtros, desde, hasta, onExplorar, onExplor
             <section>
               <p className="section-title">Úlceras por presión</p>
               <p className="text-xs text-slate-500 -mt-3 mb-2">
-                Se registran en Plan de cuidados → Pauta de curas (no como incidencia). El periodo se cuenta por la fecha de inicio o detección.
+                Se registran en Plan de cuidados → Pauta de curas.
               </p>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3" data-ulceras>
                 <TarjetaMetrica info="upp_producidas" etiqueta="Producidas en el centro" valor={ulceras.aparecidas_durante}
@@ -295,8 +291,8 @@ export function SeguridadDashboard({ filtros, desde, hasta, onExplorar, onExplor
                 <TarjetaMetrica etiqueta="Presentes al ingreso" valor={ulceras.presentes_al_ingreso} subvalor="Origen: fuera del centro" />
                 <TarjetaMetrica etiqueta="Pacientes afectados" valor={ulceras.pacientes_afectados ?? '—'} />
                 <TarjetaMetrica etiqueta="Sin origen indicado" valor={ulceras.sin_origen ?? '—'} subvalor="Pendientes de completar en Curas" />
-                <TarjetaMetrica info="upp_grado" etiqueta="Grados III-IV" valor={ulceras.grado_iii_iv} subvalor="Grado máximo registrado" />
-                <TarjetaMetrica info="upp_sin_grado" etiqueta="Sin grado valorado" valor={ulceras.sin_grado ?? '—'} subvalor="Ninguna valoración con grado: pendientes de completar en Curas" />
+                <TarjetaMetrica info="upp_grado" etiqueta="Grados III-IV" valor={ulceras.grado_iii_iv} />
+                <TarjetaMetrica info="upp_sin_grado" etiqueta="Sin grado valorado" valor={ulceras.sin_grado ?? '—'} />
                 <TarjetaMetrica etiqueta="No clasificables" valor={ulceras.grado_no_clasificable ?? '—'} subvalor="Ya valoradas como «no clasificable»; no son trabajo pendiente" />
               </div>
               <button type="button" onClick={irAEpisodiosConUPP}
@@ -312,9 +308,8 @@ export function SeguridadDashboard({ filtros, desde, hasta, onExplorar, onExplor
             <section>
               <p className="section-title">Consecuencias de las incidencias</p>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                <TarjetaMetrica info="derivaciones" etiqueta="Derivaciones a urgencias" valor={otras.derivaciones_urgencias ?? '—'}
-                  subvalor="Sin ingreso. De caídas, agresiones, efectos adversos y atragantamientos" />
-                <TarjetaMetrica info="derivaciones" etiqueta="Ingresos hospitalarios" valor={otras.ingresos_hospitalarios ?? '—'} subvalor="Por esas mismas incidencias" />
+                <TarjetaMetrica info="derivaciones" etiqueta="Derivaciones a urgencias" valor={otras.derivaciones_urgencias ?? '—'} />
+                <TarjetaMetrica info="derivaciones" etiqueta="Ingresos hospitalarios" valor={otras.ingresos_hospitalarios ?? '—'} />
               </div>
             </section>
 
@@ -323,7 +318,6 @@ export function SeguridadDashboard({ filtros, desde, hasta, onExplorar, onExplor
               <p className="section-title">Infecciones nosocomiales</p>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 <TarjetaMetrica info="infeccion_nosocomial" etiqueta="Episodios con infección nosocomial" valor={otras.infecciones_nosocomiales}
-                  subvalor="Episodios del periodo con la casilla del CMBD marcada, no infecciones nuevas fechadas en el periodo"
                   onClick={() => irATipo('infeccion_nosocomial')} />
               </div>
             </section>
@@ -334,10 +328,6 @@ export function SeguridadDashboard({ filtros, desde, hasta, onExplorar, onExplor
                 <p className="section-title !mb-0">Contenciones</p>
                 <span className="text-xs font-semibold bg-white border text-slate-700 rounded-full px-2 py-0.5">Hoy</span>
               </div>
-              <p className="text-xs text-slate-500 mb-2">
-                Es la situación de los pacientes ingresados hoy: no cambia con las fechas del filtro. Mide la pauta registrada, no cuántas veces se ha aplicado.
-                «Activa» es continua por seguridad o contención fija; «si precisa» solo cuenta a quien no tiene ninguna activa.
-              </p>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 <TarjetaMetrica info="contencion_activa" etiqueta="Con pauta de contención activa"
                   valor={ingresados ? `${contenciones.pacientes_con_contencion_activa} de ${ingresados}` : contenciones.pacientes_con_contencion_activa}

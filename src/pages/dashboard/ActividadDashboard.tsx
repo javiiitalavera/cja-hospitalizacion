@@ -162,8 +162,7 @@ export function ActividadDashboard({ filtros, desde, hasta, onExplorar }: {
             <TarjetaMetrica info="altas" etiqueta="Altas" valor={resumen.altas} onClick={() => onExplorar({ desde_alta: desde, hasta_alta: hasta, estado: 'alta' })} />
             <TarjetaMetrica etiqueta="Traslados" valor={resumen.traslados} onClick={() => onExplorar({ desde_alta: desde, hasta_alta: hasta, estado: 'alta_traslado' })} />
             <TarjetaMetrica etiqueta="Éxitus" valor={resumen.exitus} onClick={() => onExplorar({ desde_alta: desde, hasta_alta: hasta, estado: 'exitus' })} />
-            <TarjetaMetrica info="balance" etiqueta="Balance" valor={balance != null ? (balance > 0 ? `+${balance}` : balance) : '—'}
-              subvalor="Ingresos − salidas, sin signo de bueno o malo" />
+            <TarjetaMetrica info="balance" etiqueta="Balance" valor={balance != null ? (balance > 0 ? `+${balance}` : balance) : '—'} />
           </div>
         )}
         <div className="card p-4">

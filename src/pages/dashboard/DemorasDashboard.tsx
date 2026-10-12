@@ -80,9 +80,6 @@ export function DemorasDashboard({ filtros, desde, hasta }: { filtros: Filtros; 
   return (
     <section data-demoras-dashboard>
       <p className="section-title">Demora al alta</p>
-      <p className="text-xs text-slate-500 -mt-3 mb-3">
-        Salidas del periodo (altas y traslados, sin éxitus) en las que el CMBD indica que el paciente siguió ingresado estando ya listo para el alta.
-      </p>
 
       {estado === 'cargando' && <EstadoCargando />}
       {estado === 'error' && <EstadoError mensaje={error} onReintentar={cargar} />}
@@ -98,8 +95,7 @@ export function DemorasDashboard({ filtros, desde, hasta }: { filtros: Filtros; 
                   : `de ${r.valoradas} con la pregunta contestada (${r.altas} ${r.altas === 1 ? 'salida' : 'salidas'}) · ${Math.round((r.conDemora / r.valoradas) * 100)}%`} />
             <TarjetaMetrica info="demora_media" etiqueta="Demora media" valor={r.mediaDias != null ? `${num(r.mediaDias)} días` : '—'}
               subvalor={r.mediaDias != null ? `${r.diasTotales} días en total` : 'Ninguna demora con días indicados'} />
-            <TarjetaMetrica info="demora_mediana" etiqueta="Demora mediana" valor={r.medianaDias != null ? `${num(r.medianaDias)} días` : '—'}
-              subvalor="Mitad de las demoras por debajo de este valor" />
+            <TarjetaMetrica info="demora_mediana" etiqueta="Demora mediana" valor={r.medianaDias != null ? `${num(r.medianaDias)} días` : '—'} />
           </div>
 
           {(r.sinValorar > 0 || r.conDemoraSinDias > 0) && (

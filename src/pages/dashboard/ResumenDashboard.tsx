@@ -159,10 +159,8 @@ export function ResumenDashboard({ filtros, desde, hasta, onExplorar, onExplorar
                 que no puede abrir exactamente lo que representa no
                 debería ser pulsable. */}
             <TarjetaMetrica info="semaforo_riesgo" etiqueta="Semáforo rojo/naranja" valor={situacion.semaforo_riesgo} />
-            <TarjetaMetrica info="contencion_activa" etiqueta="Con contención activa" valor={situacion.contencion_activa}
-              subvalor="Continua por seguridad o contención fija" />
-            <TarjetaMetrica info="contencion_si_precisa" etiqueta="Con contención «si precisa»" valor={situacion.contencion_si_precisa}
-              subvalor="Sin ninguna activa" />
+            <TarjetaMetrica info="contencion_activa" etiqueta="Con contención activa" valor={situacion.contencion_activa} />
+            <TarjetaMetrica info="contencion_si_precisa" etiqueta="Con contención «si precisa»" valor={situacion.contencion_si_precisa} />
             <TarjetaMetrica info="contencion_sin_confirmar" etiqueta="Contención sin confirmar" valor={situacion.contencion_pendiente_confirmacion} />
             <TarjetaMetrica info="incidencias_pendientes" etiqueta="Incidencias pendientes" valor={situacion.incidencias_pendientes} onClick={() => onExplorar({ incidencias: 'pendiente' })} />
           </div>

@@ -101,8 +101,7 @@ export function EvolucionDashboard({ filtros, desde, hasta }: { filtros: Filtros
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <TarjetaMetrica info="salidas" etiqueta="Salidas del periodo" valor={r.altas}
-          subvalor="Altas, traslados y éxitus. Cada escala se compara solo en las que la tienen al ingreso y al alta" />
+        <TarjetaMetrica info="salidas" etiqueta="Salidas del periodo" valor={r.altas} />
         {r.escalas.map((e) => (
           <TarjetaMetrica
             key={e.def.clave}
@@ -167,11 +166,6 @@ export function EvolucionDashboard({ filtros, desde, hasta }: { filtros: Filtros
           </table>
         </div>
         <div className="text-xs text-slate-500 mt-2 space-y-1">
-          <p>
-            «Mejoran» significa puntuación menor en NPI-Q y mayor en Barthel y Lawton; «igual», exactamente la misma puntuación.
-            La media y el cambio se calculan solo con las salidas que tienen la escala en los dos momentos.
-            Lawton cuenta únicamente cuando está completo.
-          </p>
           <p>
             Conducta y autonomía se muestran por separado a propósito: no se combinan en una puntuación única.
             {poco && ' Con menos de 10 salidas comparables en alguna escala, las cifras son orientativas.'}

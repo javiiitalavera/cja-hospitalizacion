@@ -110,16 +110,11 @@ export function DiagnosticosDashboard({ filtros, desde, hasta }: { filtros: Filt
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-3 gap-3">
-        <TarjetaMetrica info="salidas" etiqueta="Salidas del periodo" valor={altas} subvalor="Altas, traslados y éxitus" />
+        <TarjetaMetrica info="salidas" etiqueta="Salidas del periodo" valor={altas} />
         <TarjetaMetrica info="dx_codificadas" etiqueta="Con diagnóstico principal codificado" valor={episodios.length} subvalor={pct(episodios.length, altas)} />
         <TarjetaMetrica etiqueta="Sin codificar" valor={sinCodificar}
           subvalor={sinCodificar > 0 ? 'Los códigos se ponen al alta, en el informe de alta o en la pestaña CMBD' : undefined} />
       </div>
-      {sinCodificar > 0 && (
-        <p className="text-xs text-slate-500 -mt-3">
-          Las cifras de abajo cuentan solo las salidas con diagnóstico principal codificado: cuantas más se codifiquen, más fiables.
-        </p>
-      )}
 
       {/* ── Diagnósticos más frecuentes ───────────────────────── */}
       <section>
@@ -147,11 +142,6 @@ export function DiagnosticosDashboard({ filtros, desde, hasta }: { filtros: Filt
               ))}
             </div>
           )}
-          <p className="text-xs text-slate-500 mt-3">
-            {modo === 'principal'
-              ? 'Porcentaje sobre las salidas con diagnóstico principal codificado.'
-              : 'Cada salida cuenta una vez por código, esté como principal o como secundario. Porcentaje sobre las salidas con diagnóstico principal codificado.'}
-          </p>
         </div>
       </section>
 
@@ -194,10 +184,6 @@ export function DiagnosticosDashboard({ filtros, desde, hasta }: { filtros: Filt
               })}
             </div>
           )}
-          <p className="text-xs text-slate-500 mt-3">
-            Cada alta se clasifica una sola vez según todos sus códigos (principal y secundarios): p. ej. G30.1 + F02.811 es una demencia de Alzheimer.
-            Porcentajes sobre las salidas con demencia. El deterioro cognitivo leve (G31.84) no cuenta como demencia.
-          </p>
         </div>
       </section>
     </div>
