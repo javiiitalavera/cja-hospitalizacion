@@ -15,7 +15,7 @@ import { useAuth } from '../../lib/AuthContext'
 import { ChipsTurno } from '../../components/ChipsTurno'
 import { AvisoGuardado, useAvisoGuardado } from '../../components/AvisoGuardado'
 import { useConfirmar } from '../../components/useConfirmar'
-import { BloqueOxigeno, BloqueSonda, SelectorAislamiento, SelectorVias } from '../../components/ViasDispositivos'
+import { BloqueOxigeno, BloqueSonda, FONDO_DISPOSITIVO, SelectorAislamiento, SelectorVias } from '../../components/ViasDispositivos'
 import { AvisoFicha } from '../../components/AvisoFicha'
 import { TituloSeccion } from '../../components/TituloSeccion'
 import {
@@ -161,17 +161,17 @@ export function TabPautaCuidados({ ingresoId, episodioActivo }: { ingresoId: str
       </section>
 
       {/* 2 · Vías y dispositivos (las mismas casillas de la hoja de ítems) */}
-      <section className="card">
-        <p className="section-title px-6 pt-6">Vías y dispositivos</p>
+      <section className="card overflow-hidden">
+        <p className="section-title px-6 pt-6 !mb-1">Vías y dispositivos</p>
         <div className="divide-y">
-          <div className="px-6 pb-4 space-y-2.5">
+          <div className={`px-6 py-3 space-y-2.5 ${(dispositivos.vias ?? []).length > 0 ? FONDO_DISPOSITIVO : ''}`}>
             <p className="text-sm font-medium text-slate-800">Vías</p>
             <SelectorVias datos={dispositivos} onCambio={cambiarDispositivos} deshabilitado={!puedeEditarDispositivos || ocupado} />
           </div>
-          <div className="px-6 py-4">
+          <div className={`px-6 py-4 ${dispositivos.sonda_vesical ? FONDO_DISPOSITIVO : ''}`}>
             <BloqueSonda datos={dispositivos} onCambio={cambiarDispositivos} deshabilitado={!puedeEditarDispositivos || ocupado} />
           </div>
-          <div className="px-6 py-4">
+          <div className={`px-6 py-4 ${dispositivos.oxigenoterapia ? FONDO_DISPOSITIVO : ''}`}>
             <BloqueOxigeno datos={dispositivos} onCambio={cambiarDispositivos} deshabilitado={!puedeEditarDispositivos || ocupado} />
           </div>
         </div>
@@ -180,12 +180,12 @@ export function TabPautaCuidados({ ingresoId, episodioActivo }: { ingresoId: str
       {/* 3 · Indicaciones para las hojas de trabajo */}
       <section className="card">
         <p className="section-title px-6 pt-6">Indicaciones para las auxiliares</p>
-        <div className="divide-y border-t">
+        <div className="px-6 pb-6 space-y-3">
           {indicaciones.length === 0 && (
-            <p className="px-6 py-6 text-sm text-slate-500 text-center">Todavía no hay indicaciones para este paciente.</p>
+            <p className="py-4 text-sm text-slate-500 text-center">Todavía no hay indicaciones para este paciente.</p>
           )}
           {indicaciones.map((i) => (
-            <div key={i.id} className="px-6 py-3 space-y-2">
+            <div key={i.id} data-testid="indicacion-pauta" className="rounded-md bg-amber-50 border border-amber-200 px-3 py-2.5 space-y-2">
               {editando === i.id ? (
                 <div className="space-y-2">
                   <textarea
@@ -207,7 +207,7 @@ export function TabPautaCuidados({ ingresoId, episodioActivo }: { ingresoId: str
                 </div>
               ) : (
                 <div className="flex items-start justify-between gap-3">
-                  <p className="text-sm text-slate-800 whitespace-pre-wrap break-words min-w-0">{i.texto}</p>
+                  <p className="text-sm font-medium text-slate-900 whitespace-pre-wrap break-words min-w-0">{i.texto}</p>
                   {puedeEditar && (
                     <div className="flex items-center gap-1 shrink-0">
                       <button type="button" title="Editar" className="p-1 text-slate-500 hover:text-slate-700"

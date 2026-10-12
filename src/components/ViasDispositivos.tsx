@@ -3,7 +3,7 @@
 // se marca en uno se ve en los demás. Cada selector avisa con `onCambio` de las columnas que hay que guardar.
 
 import { useEffect, useState } from 'react'
-import { ShieldAlert } from 'lucide-react'
+import { Check, ShieldAlert } from 'lucide-react'
 import {
   AISLAMIENTOS, DISPOSITIVOS_OXIGENO, VIAS, cambiosDispositivo,
   type Aislamiento, type DatosDispositivos, type Via,
@@ -16,11 +16,6 @@ interface Props {
   deshabilitado?: boolean
 }
 
-const chip = (activo: boolean, deshabilitado?: boolean) =>
-  `text-sm px-3 py-1.5 rounded-lg border transition-colors ${
-    activo ? 'bg-primary-50 border-primary-300 text-primary-800 font-semibold' : 'bg-white border-slate-300 text-slate-700'
-  } ${deshabilitado ? 'cursor-default' : 'hover:border-primary-300'}`
-
 function alternar<T extends string>(lista: readonly T[] | null | undefined, valor: T, orden: readonly T[]): T[] {
   const actual = lista ?? []
   const siguiente = actual.includes(valor) ? actual.filter((x) => x !== valor) : [...actual, valor]
@@ -30,6 +25,11 @@ function alternar<T extends string>(lista: readonly T[] | null | undefined, valo
 // El aislamiento es un dato de seguridad: marcado, se ve claramente distinto a cualquier otra casilla (relleno violeta
 // sólido con icono). Los mismos colores los usa el distintivo de Inicio.
 export const AISLAMIENTO_MARCADO = 'bg-violet-700 border-violet-700 text-white'
+
+// Vías, sonda vesical y oxigenoterapia también son datos que importan de un vistazo: marcados, se ven en verde azulado
+// sólido (la vía) y con la fila teñida (en la Pauta de cuidados). Distinto del violeta del aislamiento.
+export const DISPOSITIVO_MARCADO = 'bg-teal-700 border-teal-700 text-white'
+export const FONDO_DISPOSITIVO = 'bg-teal-50'
 
 export function SelectorAislamiento({ datos, onCambio, deshabilitado }: Props) {
   const orden = AISLAMIENTOS.map((a) => a.clave)
@@ -60,8 +60,12 @@ export function SelectorVias({ datos, onCambio, deshabilitado }: Props) {
       {VIAS.map((v) => {
         const activo = (datos.vias ?? []).includes(v.clave)
         return (
-          <button key={v.clave} type="button" disabled={deshabilitado} aria-pressed={activo} className={chip(activo, deshabilitado)}
+          <button key={v.clave} type="button" disabled={deshabilitado} aria-pressed={activo}
+            className={`inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border transition-colors ${
+              activo ? `${DISPOSITIVO_MARCADO} font-semibold` : 'bg-white border-slate-300 text-slate-700'
+            } ${deshabilitado ? 'cursor-default' : activo ? 'hover:bg-teal-800' : 'hover:border-teal-300'}`}
             onClick={() => onCambio({ vias: alternar<Via>(datos.vias, v.clave, orden) })}>
+            {activo && <Check aria-hidden className="w-4 h-4" />}
             {v.etiqueta}
           </button>
         )
@@ -111,7 +115,7 @@ function CampoDetalle({ etiqueta, tipo, valor, deshabilitado, onGuardar, ancho, 
 }
 
 const interruptor = (activo: boolean, deshabilitado?: boolean) =>
-  `relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${activo ? 'bg-primary-600' : 'bg-slate-300'} ${deshabilitado ? 'opacity-60' : ''}`
+  `relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${activo ? 'bg-teal-700' : 'bg-slate-300'} ${deshabilitado ? 'opacity-60' : ''}`
 
 export function BloqueSonda({ datos, onCambio, deshabilitado }: Props) {
   const activa = !!datos.sonda_vesical
@@ -166,7 +170,7 @@ export function BloqueOxigeno({ datos, onCambio, deshabilitado }: Props) {
             {DISPOSITIVOS_OXIGENO.map((d) => {
               const elegido = datos.oxigeno_dispositivo === d.clave
               return (
-                <button key={d.clave} type="button" disabled={deshabilitado} aria-pressed={elegido} className={chip(elegido, deshabilitado)}
+                <button key={d.clave} type="button" disabled={deshabilitado} aria-pressed={elegido} className={`text-sm px-3 py-1.5 rounded-lg border transition-colors ${elegido ? `${DISPOSITIVO_MARCADO} font-semibold` : 'bg-white border-slate-300 text-slate-700'} ${deshabilitado ? 'cursor-default' : 'hover:border-teal-300'}`}
                   onClick={() => onCambio({ oxigeno_dispositivo: elegido ? null : d.clave })}>
                   {d.etiqueta}
                 </button>
