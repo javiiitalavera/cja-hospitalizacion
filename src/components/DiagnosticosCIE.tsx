@@ -9,6 +9,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import { encadenar } from '../lib/colaGuardado'
 import { avisoCodigoCIE10, buscarCIE10, cargarCatalogoCIE10, infoCIE10, normalizarCodigo, useCatalogoCIE10 } from '../lib/cie10'
+import { IndicadorGuardado } from './IndicadorGuardado'
 
 // ─── Buscador de códigos ─────────────────────────────────────
 
@@ -292,12 +293,7 @@ export function BloqueDiagnosticosCMBD({ ingresoId }: { ingresoId: string }) {
             Se guardan en el CMBD: se escriben una vez y valen para el CMBD y el dashboard. El texto de arriba sigue siendo libre.
           </p>
         </div>
-        <span className="text-xs text-slate-500 shrink-0">
-          {estado === 'pendiente' && '● Cambios pendientes'}
-          {estado === 'guardando' && '● Guardando…'}
-          {estado === 'guardado' && <span className="text-emerald-700">✓ Guardado</span>}
-          {estado === 'error' && <span className="text-red-600 font-semibold">✗ Error al guardar</span>}
-        </span>
+        <IndicadorGuardado estado={estado} className="shrink-0" />
       </div>
 
       {estado === 'conflicto' && (

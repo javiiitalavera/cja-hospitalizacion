@@ -2,9 +2,10 @@
 // episodio siga activo (la misma regla que la Hoja de ítems, donde también se edita). Escribe solo la columna del
 // semáforo en items_paciente, así que no pisa lo que otra persona haya cambiado en el resto de la hoja.
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { SEMAFORO_CAIDAS_COLOR } from '../types'
+import { IndicadorGuardado, type EstadoGuardadoValor } from './IndicadorGuardado'
 
 export const EVENTO_SEMAFORO = 'semaforo-caidas-cambiado'
 export const SEMAFOROS = ['verde', 'amarillo', 'naranja', 'rojo'] as const
@@ -31,16 +32,24 @@ export function SemaforoCaidas({
 }) {
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
+  // Guardado inmediato (al pulsar un color): mismo lenguaje que el resto de la aplicación.
+  const [estado, setEstado] = useState<EstadoGuardadoValor>('inactivo')
+  const temporizador = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => { if (temporizador.current) clearTimeout(temporizador.current) }, [])
 
   async function elegir(color: string) {
     if (guardando) return
     const nuevo = valor === color ? null : color   // pulsar el color activo lo quita
     setGuardando(true)
     setError('')
+    setEstado('guardando')
     const err = await guardarSemaforo(ingresoId, nuevo)
     setGuardando(false)
-    if (err) { setError(err); return }
+    if (err) { setError(err.replace(/^No se pudo guardar el semáforo: /, '')); setEstado('error'); return }
     onCambio(nuevo)
+    setEstado('guardado')
+    if (temporizador.current) clearTimeout(temporizador.current)
+    temporizador.current = setTimeout(() => setEstado('inactivo'), 2500)
   }
 
   return (
@@ -79,7 +88,7 @@ export function SemaforoCaidas({
           )
         })}
       </div>
-      {error && <p className="text-xs text-red-600" role="alert">{error}</p>}
+      <IndicadorGuardado estado={estado} detalle={error || undefined} />
     </div>
   )
 }

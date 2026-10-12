@@ -8,6 +8,7 @@ import { ChevronLeft, ChevronRight, Plus, FileText, AlertTriangle, History, Penc
 import { nombreCompleto } from '../types'
 import { EstadoIngreso } from '../components/EstadoIngreso'
 import { registrarAcceso } from '../lib/accesos'
+import { atajoDeRaton, FOCO_CELDA } from '../lib/accesibilidad'
 import { FILTRO_TIPOS_RETIRADOS } from '../types/eventos'
 
 interface Ingreso {
@@ -269,7 +270,7 @@ export default function DetallePaciente() {
               return (
                 <div key={ing.id}
                   className={`card p-5 cursor-pointer hover:shadow-md transition-shadow ${esActual ? 'border-primary-200 bg-primary-50/30' : ''}`}
-                  onClick={() => navigate(`/ingresos/${ing.id}`)}>
+                  onClick={atajoDeRaton(() => navigate(`/ingresos/${ing.id}`))}>
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 flex-wrap mb-2">
@@ -280,6 +281,10 @@ export default function DetallePaciente() {
                         {ing.habitacion && (
                           <span className="text-xs text-slate-500">Hab. {ing.habitacion}</span>
                         )}
+                        {/* Enlace de verdad al episodio (teclado y lector de pantalla); el clic en toda la tarjeta hace lo mismo. */}
+                        <Link to={`/ingresos/${ing.id}`} data-episodio-enlace={ing.id} className={`text-xs font-medium text-primary-700 hover:underline ${FOCO_CELDA}`}>
+                          Abrir episodio
+                        </Link>
                       </div>
                       <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-xs text-slate-600">
                         <div>
@@ -304,7 +309,7 @@ export default function DetallePaciente() {
                       )}
                     </div>
                     <div className="text-right shrink-0">
-                      <div className="flex gap-2 justify-end mb-2" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex gap-2 justify-end mb-2">
                         {evCount > 0 && (
                           <button
                             onClick={() => navigate(`/ingresos/${ing.id}?tab=eventos`)}

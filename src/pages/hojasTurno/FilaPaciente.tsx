@@ -5,7 +5,8 @@
 import { useState } from 'react'
 import { Check, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { ChipsTurno } from '../../components/ChipsTurno'
-import { useAvisoSalida } from '../../lib/avisoSalida'
+import { Link, useNavigate } from 'react-router-dom'
+import { hayCambiosSinGuardar, useAvisoSalida } from '../../lib/avisoSalida'
 import { useConfirmar } from '../../components/useConfirmar'
 import { MAX_TEXTO_PAUTA, textoVias, type Turno } from '../../types/pautaCuidados'
 import { colorSemaforo, textoDiuresis, type IndicacionHoja, type PacienteHoja } from './hoja'
@@ -31,6 +32,7 @@ export function FilaPaciente({ n, p, turno, columnas, acciones }: {
   const [nuevosTurnos, setNuevosTurnos] = useState<Turno[]>([turno])
   const [ocupado, setOcupado] = useState(false)
   const { confirmar, dialogo } = useConfirmar()
+  const navigate = useNavigate()
 
   // Aviso al recargar o cerrar la pestaña con una indicación a medio escribir o editar.
   const original = editando ? p?.indicaciones.find((i) => i.id === editando) : undefined
@@ -54,6 +56,18 @@ export function FilaPaciente({ n, p, turno, columnas, acciones }: {
   const delTurno = p.indicaciones.filter((i) => i.turnos.includes(turno))
   const diuresis = textoDiuresis(p)
   const sem = colorSemaforo(p)
+
+  // El nombre lleva a la Pauta de cuidados del paciente (solo en la hoja de hoy). Si hay una indicación a medio editar
+  // se pregunta antes de salir; con Ctrl/Cmd o botón central se abre en otra pestaña, sin preguntar.
+  const rutaPauta = ingresoId ? `/ingresos/${ingresoId}?tab=plan&sub=cuidados` : null
+  async function irAPauta(e: React.MouseEvent) {
+    if (!rutaPauta || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
+    if (!hayCambiosSinGuardar()) return
+    e.preventDefault()
+    if (await confirmar({ titulo: 'Hay cambios sin guardar', mensaje: 'Si sales ahora se perderán. ¿Quieres salir sin guardar?', textoConfirmar: 'Salir sin guardar', textoCancelar: 'Seguir editando', peligro: true })) {
+      navigate(rutaPauta)
+    }
+  }
 
   async function envolver(f: () => Promise<boolean>): Promise<boolean> {
     setOcupado(true)
@@ -99,7 +113,14 @@ export function FilaPaciente({ n, p, turno, columnas, acciones }: {
           title={p.semaforo ? `Semáforo de caídas: ${p.semaforo}` : undefined}
         >{n}</span>
       </td>
-      <td className="px-3 py-2 font-semibold text-slate-800 whitespace-nowrap">{p.nombre}</td>
+      <td className="px-3 py-2 font-semibold text-slate-800 whitespace-nowrap">
+        {rutaPauta ? (
+          <Link to={rutaPauta} onClick={irAPauta} data-pauta-paciente={ingresoId} title="Abrir su pauta de cuidados"
+            className="hover:text-primary-700 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 rounded">
+            {p.nombre}
+          </Link>
+        ) : p.nombre}
+      </td>
       {columnas.map((c) => (
         <td key={c} className="px-0.5 py-2 text-center text-[0.65rem] text-slate-500 bg-slate-50/70 border-l border-dashed border-slate-200">
           {c === 'Diuresis' || c === 'Orina' ? diuresis : ''}

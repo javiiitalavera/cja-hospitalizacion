@@ -12,6 +12,7 @@ import { cargarCamposHeredados, cargarCamposIniciales } from '../informes/datosF
 import { MAX_TEXTO, PLANTILLAS, PLANTILLA_LABEL, plantillaPorId } from '../informes/plantillas'
 import type { InformePuntual, PlantillaId } from '../informes/plantillas'
 import { AutoTextarea } from './AutoTextarea'
+import { IndicadorGuardado } from '../../components/IndicadorGuardado'
 
 const SELECT_INFORME = '*, registrado_por:profesionales!registrado_por_id(nombre, apellidos)'
 
@@ -302,12 +303,7 @@ function EditorInforme({
         <button onClick={volver} className="text-sm text-slate-500 hover:text-slate-700 flex items-center gap-1">
           <ArrowLeft className="w-4 h-4" /> Volver a la lista
         </button>
-        <div className="text-xs text-slate-500 flex items-center gap-1">
-          {estado === 'pendiente' && <><span className="w-1.5 h-1.5 rounded-full bg-slate-400 inline-block" /> Cambios pendientes</>}
-          {estado === 'guardando' && <><span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse inline-block" /> Guardando…</>}
-          {estado === 'guardado' && <><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" /> Guardado</>}
-          {estado === 'error' && <span className="text-red-600 font-semibold">Error al guardar — {errorGuardado || 'comprueba la conexión'}</span>}
-        </div>
+        <IndicadorGuardado estado={estado} detalle={errorGuardado || undefined} />
       </div>
 
       <div>

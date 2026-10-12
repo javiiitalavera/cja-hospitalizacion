@@ -7,6 +7,7 @@ import { edad } from '../lib/fechas'
 import { useAuth } from '../lib/AuthContext'
 import { Plus, Search, Loader2, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react'
 import { EstadoIngreso } from '../components/EstadoIngreso'
+import { atajoDeRaton, FOCO_CELDA } from '../lib/accesibilidad'
 
 interface PacienteRow {
   id: string
@@ -274,10 +275,12 @@ export default function Pacientes() {
               return (
                 <tr key={p.id}
                   className="hover:bg-slate-50 transition-colors cursor-pointer"
-                  onClick={() => navigate(`/pacientes/${p.id}`)}>
+                  onClick={atajoDeRaton(() => navigate(`/pacientes/${p.id}`))}>
                   <td className="px-4 py-3">
                     <p className="font-medium text-slate-800">
-                      {p.primer_apellido}{p.segundo_apellido ? ' ' + p.segundo_apellido : ''}, {p.nombre}
+                      <Link to={`/pacientes/${p.id}`} data-paciente-enlace={p.id} className={`hover:text-primary-700 hover:underline ${FOCO_CELDA}`}>
+                        {p.primer_apellido}{p.segundo_apellido ? ' ' + p.segundo_apellido : ''}, {p.nombre}
+                      </Link>
                     </p>
                   </td>
                   <td className="px-4 py-3 text-slate-500 text-xs">{e != null ? `${e}a` : '—'}</td>

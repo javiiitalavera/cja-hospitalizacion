@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react'
 import { CabeceraPagina } from '../components/CabeceraPagina'
 import { BotonActualizar } from '../components/BotonActualizar'
 import { Cargando } from '../components/Cargando'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { atajoDeRaton, FOCO_CELDA } from '../lib/accesibilidad'
 import { escapeHtml, imprimirTablaHTML } from '../lib/imprimir'
 import { supabase } from '../lib/supabase'
-import { nombreCompleto, nombreYApellido } from '../types'
+import { nombreCompleto, nombreYApellido, SEMAFORO_CAIDAS_COLOR } from '../types'
 import { ChevronDown, ChevronRight as ChevronRightIcon, Download, Printer, Search, Plus } from 'lucide-react'
 import { TIPO_EVENTO_LABEL, TIPO_EVENTO_COLOR, TURNO_LABEL, CAMPOS_POR_TIPO, DIAS_PENDIENTE_AVISO, FILTRO_TIPOS_RETIRADOS, diasPendiente, type TipoEvento } from '../types/eventos'
 import { AntiguedadPendiente } from '../components/AntiguedadPendiente'
@@ -42,6 +43,8 @@ interface EventoActivo {
     paciente: { nombre: string; primer_apellido: string; segundo_apellido?: string }
   }
 }
+
+const MAYUS = (t: string) => t.charAt(0).toUpperCase() + t.slice(1)
 
 function escaparCsv(v: string): string {
   return `"${v.replace(/"/g, '""')}"`
@@ -80,6 +83,10 @@ export function Eventos() {
   const [contenciones, setContenciones] = useState<any[]>([])
   const [errorContenciones, setErrorContenciones] = useState('')
   const [modalContencion, setModalContencion] = useState<string | null>(null)
+  // Semáforo de caídas de cada paciente de la lista (ingreso_id -> color). Si la consulta falla se avisa y la columna
+  // queda con «—»: mejor eso que dar a entender que nadie tiene semáforo.
+  const [semaforos, setSemaforos] = useState<Record<string, string | null>>({})
+  const [errorSemaforos, setErrorSemaforos] = useState(false)
 
   useEffect(() => { fetchContenciones() }, [])
 
@@ -100,6 +107,12 @@ export function Eventos() {
       }
       const activas = (data ?? []).filter((c: any) => necesitaConfirmacion(c.dia, c.noche))
       setContenciones(activas.sort((a: any, b: any) => (a.ingreso.habitacion ?? 999) - (b.ingreso.habitacion ?? 999)))
+      if (activas.length > 0) {
+        const { data: items, error: errSem } = await supabase
+          .from('items_paciente').select('ingreso_id, semaforo_caidas').in('ingreso_id', activas.map((c: any) => c.ingreso_id))
+        setErrorSemaforos(!!errSem)
+        setSemaforos(Object.fromEntries((items ?? []).map((it: any) => [it.ingreso_id, it.semaforo_caidas ?? null])))
+      }
     } finally {
       setLoadingContenciones(false)
     }
@@ -117,6 +130,7 @@ export function Eventos() {
       return `<tr>
         <td>${c.ingreso.habitacion ?? '—'}</td>
         <td>${escapeHtml(nombreYApellido(c.ingreso.paciente))}</td>
+        <td>${escapeHtml(semaforos[c.ingreso_id] ? MAYUS(semaforos[c.ingreso_id]!) : '—')}</td>
         <td>${escapeHtml(dia)}</td>
         <td>${escapeHtml(noche)}</td>
         <td>${c.actualizado_en ? new Date(c.actualizado_en).toLocaleDateString('es-ES') : '—'}</td>
@@ -125,7 +139,7 @@ export function Eventos() {
     imprimirTablaHTML(
       'Contenciones activas',
       `${ordenadas.length} paciente${ordenadas.length === 1 ? '' : 's'} con contención pautada · ingresos activos`,
-      '<tr><th>Hab.</th><th>Paciente</th><th>Día</th><th>Noche</th><th>Última revisión</th></tr>',
+      '<tr><th>Hab.</th><th>Paciente</th><th>Semáforo</th><th>Día</th><th>Noche</th><th>Última revisión</th></tr>',
       tbody,
     )
   }
@@ -495,6 +509,9 @@ export function Eventos() {
             </button>
           )}
         </div>
+        {errorSemaforos && !loadingContenciones && (
+          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 mb-2">No se pudo cargar el semáforo de caídas: la columna Semáforo no es fiable ahora mismo.</p>
+        )}
         <div className="card overflow-hidden">
           {loadingContenciones ? (
             <Cargando />
@@ -508,6 +525,7 @@ export function Eventos() {
                 <tr className="border-b bg-slate-50 text-left text-xs font-semibold text-slate-500">
                   <th className="px-4 py-2.5">Hab.</th>
                   <th className="px-4 py-2.5">Paciente</th>
+                  <th className="px-4 py-2.5">Semáforo</th>
                   <th className="px-4 py-2.5">Día</th>
                   <th className="px-4 py-2.5">Noche</th>
                   <th className="px-4 py-2.5">Última revisión</th>
@@ -521,7 +539,24 @@ export function Eventos() {
                   return (
                     <tr key={c.ingreso_id} className="hover:bg-slate-50 cursor-pointer" onClick={() => setModalContencion(c.ingreso_id)}>
                       <td className="px-4 py-2.5">{c.ingreso.habitacion ?? '—'}</td>
-                      <td className="px-4 py-2.5 font-medium text-slate-700">{nombreCompleto(c.ingreso.paciente)}</td>
+                      <td className="px-4 py-2.5 font-medium text-slate-700">
+                        {/* La acción va dentro de la celda, como botón de verdad: se alcanza con el teclado. Pulsar en cualquier
+                            otra parte de la fila sigue abriendo lo mismo, como comodidad para el ratón. */}
+                        <button type="button" data-contencion-paciente={c.ingreso_id} onClick={() => setModalContencion(c.ingreso_id)}
+                          className="text-left hover:text-primary-700 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 rounded">
+                          {nombreCompleto(c.ingreso.paciente)}
+                        </button>
+                      </td>
+                      <td className="px-4 py-2.5" data-semaforo-contencion={c.ingreso_id}>
+                        {semaforos[c.ingreso_id] ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
+                            style={{ backgroundColor: SEMAFORO_CAIDAS_COLOR[semaforos[c.ingreso_id]!], color: semaforos[c.ingreso_id] === 'rojo' ? '#fff' : '#000' }}>
+                            {MAYUS(semaforos[c.ingreso_id]!)}
+                          </span>
+                        ) : (
+                          <span className="text-slate-500 text-xs">{errorSemaforos ? '—' : 'Sin semáforo'}</span>
+                        )}
+                      </td>
                       <td className="px-4 py-2.5">
                         {c.dia && c.dia !== 'ninguna' ? (
                           <span className={`px-2 py-0.5 rounded text-xs font-medium ${SEVERIDAD_ESTILO[sevDia].bg} ${SEVERIDAD_ESTILO[sevDia].text}`}>
@@ -591,7 +626,6 @@ export function Eventos() {
                     filas={filasDelTipo(r.tipo)}
                     abierto={expandido === r.tipo}
                     onToggle={() => setExpandido((e) => (e === r.tipo ? null : r.tipo))}
-                    onClickPaciente={(id) => navigate(`/ingresos/${id}?tab=eventos`)}
                   />
                 ))
               )}
@@ -713,7 +747,7 @@ export function Eventos() {
                     <tr
                       key={ev.id}
                       className="hover:bg-slate-50 cursor-pointer"
-                      onClick={() => ev.ingreso?.id && navigate(`/ingresos/${ev.ingreso.id}?tab=eventos`)}
+                      onClick={atajoDeRaton(() => { if (ev.ingreso?.id) navigate(`/ingresos/${ev.ingreso.id}?tab=eventos`) })}
                     >
                       <td className="px-4 py-2 text-slate-500 text-xs">
                         {new Date(ev.fecha).toLocaleDateString('es-ES')}
@@ -732,7 +766,9 @@ export function Eventos() {
                         )}
                       </td>
                       <td className="px-4 py-2 font-medium text-slate-700">
-                        {ev.ingreso?.paciente ? nombreCompleto(ev.ingreso.paciente) : '—'}
+                        {ev.ingreso?.paciente && ev.ingreso.id ? (
+                          <Link to={`/ingresos/${ev.ingreso.id}?tab=eventos`} className={`hover:text-primary-700 hover:underline ${FOCO_CELDA}`}>{nombreCompleto(ev.ingreso.paciente)}</Link>
+                        ) : ev.ingreso?.paciente ? nombreCompleto(ev.ingreso.paciente) : '—'}
                       </td>
                       <td className="px-4 py-2 text-xs">
                         {ev.ingreso?.estado === 'activo' ? (
@@ -755,21 +791,27 @@ export function Eventos() {
 
 // ─── Fila de tipo: resumen + tabla de detalle desplegable ─────
 
-function FilaTipo({ resumen, filas, abierto, onToggle, onClickPaciente }: {
+function FilaTipo({ resumen, filas, abierto, onToggle }: {
   resumen: { tipo: TipoEvento; pacientesAfectados: number; totalIncidencias: number }
   filas: EventoActivo[]
   abierto: boolean
   onToggle: () => void
-  onClickPaciente: (ingresoId: string) => void
 }) {
   const campos = CAMPOS_POR_TIPO[resumen.tipo]
   return (
     <>
-      <tr className="hover:bg-slate-50 transition-colors cursor-pointer" onClick={onToggle}>
+      <tr className="hover:bg-slate-50 transition-colors cursor-pointer" onClick={atajoDeRaton(onToggle)}>
         <td className="px-4 py-2.5 text-slate-500">
-          {resumen.totalIncidencias > 0 && (abierto ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRightIcon className="w-3.5 h-3.5" />)}
+          {resumen.totalIncidencias > 0 && (abierto ? <ChevronDown aria-hidden className="w-3.5 h-3.5" /> : <ChevronRightIcon aria-hidden className="w-3.5 h-3.5" />)}
         </td>
-        <td className="px-4 py-2.5 font-medium text-slate-700">{TIPO_EVENTO_LABEL[resumen.tipo]}</td>
+        <td className="px-4 py-2.5 font-medium text-slate-700">
+          {/* Botón de verdad (con teclado y lector de pantalla); el clic en el resto de la fila hace lo mismo. */}
+          {resumen.totalIncidencias > 0 ? (
+            <button type="button" onClick={onToggle} aria-expanded={abierto} data-tipo-fila={resumen.tipo} className={`text-left hover:text-primary-700 ${FOCO_CELDA}`}>
+              {TIPO_EVENTO_LABEL[resumen.tipo]}
+            </button>
+          ) : TIPO_EVENTO_LABEL[resumen.tipo]}
+        </td>
         <td className="px-4 py-2.5 text-right tabular-nums">
           {resumen.pacientesAfectados === 0
             ? <span className="text-slate-500">—</span>
@@ -800,9 +842,8 @@ function FilaTipo({ resumen, filas, abierto, onToggle, onClickPaciente }: {
                     <tr key={ev.id} className="hover:bg-slate-50">
                       <td className="px-3 py-2 whitespace-nowrap">{new Date(ev.fecha).toLocaleDateString('es-ES')}</td>
                       <td className="px-3 py-2 whitespace-nowrap">{ev.turno ? TURNO_LABEL[ev.turno as keyof typeof TURNO_LABEL] : '—'}</td>
-                      <td className="px-3 py-2 font-medium text-slate-700 cursor-pointer hover:underline"
-                        onClick={() => onClickPaciente(ev.ingreso.id)}>
-                        {nombreCompleto(ev.ingreso.paciente)}
+                      <td className="px-3 py-2 font-medium text-slate-700">
+                        <Link to={`/ingresos/${ev.ingreso.id}?tab=eventos`} className={`hover:text-primary-700 hover:underline ${FOCO_CELDA}`}>{nombreCompleto(ev.ingreso.paciente)}</Link>
                       </td>
                       <td className="px-3 py-2">{ev.ingreso.habitacion ?? '—'}</td>
                       {campos.map((c) => (

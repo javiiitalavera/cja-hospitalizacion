@@ -286,9 +286,15 @@ export default function DetalleIngreso() {
               <h1 className="text-xl font-bold text-slate-800">{nombreDelPaciente}</h1>
               <div className="flex items-center gap-3 mt-0.5 text-xs text-slate-500 flex-wrap">
                 {edadPaciente != null && <span>{edadPaciente} años</span>}
+                {/* NHC: identificador del paciente en el centro, siempre a mano en la cabecera */}
+                {p.nhc && (
+                  <span data-nhc className="tabular-nums">
+                    {edadPaciente != null ? '· ' : ''}NHC <span className="font-medium text-slate-700 select-all">{p.nhc}</span>
+                  </span>
+                )}
                 {ingreso.medico_responsable && (
                   <span>
-                    {edadPaciente != null ? '· ' : ''}{ingreso.medico_responsable.nombre} {ingreso.medico_responsable.apellidos}
+                    {edadPaciente != null || p.nhc ? '· ' : ''}{ingreso.medico_responsable.nombre} {ingreso.medico_responsable.apellidos}
                   </span>
                 )}
                 {episodioCerrado ? (

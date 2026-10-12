@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAvisoSalida } from '../lib/avisoSalida'
 import { AlertCircle, Check } from 'lucide-react'
+import { TEXTO_ERROR, TEXTO_GUARDADO } from './IndicadorGuardado'
 
 // Aviso flotante de guardado. El indicador de arriba del informe se queda fuera de la pantalla
 // en cuanto se baja a rellenar el final (o a pulsar «Guardar ahora»), así que el aviso va fijo
@@ -23,11 +24,11 @@ export function AvisoGuardado({ avisos }: {
     <div className="fixed bottom-5 right-5 z-[70] flex flex-col items-end gap-2 pointer-events-none" role="status" aria-live="polite">
       {visibles.map((a) => a.estado === 'guardado' ? (
         <div key={a.etiqueta} className="flex items-center gap-2 bg-emerald-600 text-white text-sm font-medium rounded-lg shadow-lg px-4 py-2.5">
-          <Check className="w-4 h-4" /> {a.texto ?? `${a.etiqueta} guardado`}
+          <Check aria-hidden className="w-4 h-4" /> {a.texto ?? `${TEXTO_GUARDADO} · ${a.etiqueta}`}
         </div>
       ) : (
         <div key={a.etiqueta} className="flex items-center gap-2 bg-red-600 text-white text-sm font-medium rounded-lg shadow-lg px-4 py-2.5">
-          <AlertCircle className="w-4 h-4 shrink-0" /> No se ha podido guardar ({a.etiqueta.toLowerCase()}){a.error ? `: ${a.error}` : ' — comprueba la conexión'}
+          <AlertCircle aria-hidden className="w-4 h-4 shrink-0" /> {TEXTO_ERROR} · {a.etiqueta}: {a.error || 'comprueba la conexión'}
         </div>
       ))}
     </div>
@@ -36,7 +37,7 @@ export function AvisoGuardado({ avisos }: {
 
 // Para las pantallas que guardan al instante (sin botón «Guardar»): da el aviso verde al terminar
 // y el rojo, con el motivo, si falla. Se pinta con <AvisoGuardado avisos={avisos} />.
-export function useAvisoGuardado(etiqueta: string, texto = 'Cambio guardado') {
+export function useAvisoGuardado(etiqueta: string, texto?: string) {
   const [aviso, setAviso] = useState<{ estado: EstadoAviso; error?: string }>({ estado: 'inactivo' })
   const temporizador = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => () => { if (temporizador.current) clearTimeout(temporizador.current) }, [])

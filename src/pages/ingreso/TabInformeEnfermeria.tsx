@@ -14,6 +14,7 @@ import type { Ingreso } from '../../types'
 import { GRUPOS_ENFERMERIA, MAX_TEXTO_ENFERMERIA } from '../informes/enfermeria'
 import type { InformeEnfermeria } from '../informes/enfermeria'
 import { AutoTextarea } from './AutoTextarea'
+import { IndicadorGuardado } from '../../components/IndicadorGuardado'
 
 const SELECT_INFORME = '*, elaborado_por:profesionales!elaborado_por_id(nombre, apellidos)'
 
@@ -190,12 +191,7 @@ export function TabInformeEnfermeria({ ingresoId, ingreso }: { ingresoId: string
           <h2 className="text-base font-bold text-slate-800">Informe de enfermería</h2>
           <p className="text-sm text-slate-500">Continuidad de cuidados: lo que necesita el paciente al alta o al traslado.</p>
         </div>
-        <div className="text-xs text-slate-500 flex items-center gap-1 shrink-0 pt-1">
-          {estado === 'pendiente' && <><span className="w-1.5 h-1.5 rounded-full bg-slate-400 inline-block" /> Cambios pendientes</>}
-          {estado === 'guardando' && <><span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse inline-block" /> Guardando…</>}
-          {estado === 'guardado' && <><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" /> Guardado</>}
-          {estado === 'error' && <span className="text-red-600 font-semibold">Error al guardar — {errorGuardado || 'comprueba la conexión'}</span>}
-        </div>
+        <IndicadorGuardado estado={estado} detalle={errorGuardado || undefined} className="shrink-0 pt-1" />
       </div>
 
       {estado === 'conflicto' && (

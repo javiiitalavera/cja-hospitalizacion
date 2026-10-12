@@ -1,6 +1,10 @@
 import { Fragment, memo } from 'react'
 import { GRUPOS, BOLD_ROWS, LABEL_BOLD_ROWS, habBg, textColor } from './constantes'
 import type { IngresoConItems } from './tipos'
+import { atajoDeRaton } from '../../lib/accesibilidad'
+
+// Anillo de foco de los botones que van dentro de las celdas (hacia dentro, para que no lo recorte la tabla).
+const FOCO = 'focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-600'
 
 // ─── TABLA EN PANTALLA ────────────────────────────────────────
 
@@ -61,12 +65,14 @@ const Bloque = memo(function Bloque({
                 key={n}
                 className={`border border-slate-400 text-[9.5pt] font-bold text-center py-0.5 ${!ing && !readOnly ? 'cursor-pointer hover:bg-primary-50' : ''}`}
                 style={{ backgroundColor: bg, color }}
-                onClick={() => {
+                onClick={atajoDeRaton(() => {
                   if (!ing && !readOnly && onSelectVacia) onSelectVacia(n)
-                }}
+                })}
                 title={!ing && !readOnly ? `Ingresar en habitación ${n}` : undefined}
               >
-                {n}
+                {!ing && !readOnly && onSelectVacia ? (
+                  <button type="button" onClick={() => onSelectVacia(n)} aria-label={`Ingresar en la habitación ${n}`} className={`w-full h-full ${FOCO}`}>{n}</button>
+                ) : n}
               </th>
             )
           })}
@@ -123,12 +129,20 @@ const Bloque = memo(function Bloque({
                         key={n}
                         className={`${cellCls} ${ingreso && !readOnly ? 'cursor-pointer hover:brightness-95' : !ingreso && !readOnly ? 'cursor-pointer hover:bg-primary-50/40' : ''} ${isSelected ? 'ring-2 ring-inset ring-primary-500' : ''}`}
                         style={{ backgroundColor: cellBg, color, fontWeight: alertaActiva ? 700 : (BOLD_ROWS.has(fila.key) ? 600 : 400), ...(fila.key === 'nombre' ? { fontSize: '8.5pt', hyphens: 'auto' as const } : {}) }}
-                        onClick={() => {
+                        onClick={atajoDeRaton(() => {
                           if (ingreso && !readOnly) onSelect(ingreso)
                           else if (!ingreso && !readOnly && onSelectVacia && fila.key === 'nombre') onSelectVacia(n)
-                        }}
+                        })}
                       >
-                        {val || '\u00a0'}
+                        {/* El nombre es el botón que abre al paciente (teclado y lector de pantalla); pulsar en el resto de la
+                            columna del paciente hace lo mismo, como comodidad para el ratón. */}
+                        {ingreso && !readOnly && fila.key === 'nombre' ? (
+                          <button type="button" onClick={() => onSelect(ingreso)} aria-pressed={isSelected} data-paciente-boton={ingreso.id}
+                            aria-label={`Editar ítems de ${val || 'la habitación ' + n} (habitación ${n})`}
+                            className={`w-full h-full font-[inherit] ${FOCO}`} style={{ fontWeight: 'inherit', fontSize: 'inherit', hyphens: 'inherit' }}>
+                            {val || '\u00a0'}
+                          </button>
+                        ) : (val || '\u00a0')}
                       </td>
                     )
                   })}

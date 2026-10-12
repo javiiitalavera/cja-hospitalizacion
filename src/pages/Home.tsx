@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Cargando } from '../components/Cargando'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import type { Ingreso } from '../types'
@@ -52,7 +52,12 @@ function fechaCorta(f: string): string {
 
 const MAX_LINEAS_TOOLTIP = 6
 
-const COLUMNAS_TABLA = '2.5rem minmax(0,1.4fr) 3rem 3.5rem 5.5rem minmax(0,0.9fr) 6rem 10.5rem 2rem'
+// Hab., Paciente, Edad, NHC, Días, Ingreso, Médico, Contención, Incidencias, flecha. Contención e Incidencias van
+// separadas por un hueco propio (la columna de Incidencias lleva relleno a la izquierda) para que no se lean como un solo grupo.
+const COLUMNAS_TABLA = '2.5rem minmax(0,1.6fr) 2.5rem 4rem 3rem 5rem minmax(0,0.7fr) 6rem 11.5rem 2rem'
+// Enlace que ocupa toda la fila (o tarjeta): se navega con un enlace de verdad, que se puede tabular, abrir en otra
+// pestaña y leen los lectores de pantalla. Los botones de dentro (contención, incidencias) quedan por encima.
+const ENLACE_FILA = 'after:absolute after:inset-0 after:content-[\'\'] focus:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-primary-400 focus-visible:after:rounded-[inherit]'
 
 type IngresoConPaciente = Ingreso & {
   paciente: {
@@ -292,7 +297,9 @@ export default function Home() {
               <div key={eje} className="relative group/tt w-10 flex flex-col items-center">
                 {conRotulos && <span className="text-[0.7rem] leading-none text-slate-500 mb-1">{eje === 'dia' ? 'Día' : 'Noche'}</span>}
                 <button
-                  onClick={(e) => { e.stopPropagation(); setModalContencion(ingreso.id) }}
+                  type="button"
+                  aria-label={`Contención de ${eje === 'dia' ? 'día' : 'noche'}: ${etiqueta}${pendienteConfirmar ? ' (pendiente de confirmación médica)' : ''}. Abrir`}
+                  onClick={() => setModalContencion(ingreso.id)}
                   className={`relative flex items-center justify-center w-6 h-6 rounded-md border transition-colors ${estilo.bg} ${estilo.border} ${estilo.text} hover:opacity-80 ${pendienteConfirmar ? 'animate-pulse ring-2 ring-amber-400' : ''}`}
                 >
                   <Icono className="w-3.5 h-3.5" />
@@ -334,10 +341,7 @@ export default function Home() {
             type="button"
             aria-label="Registrar incidencia"
             data-registrar={ingreso.id}
-            onClick={(e) => {
-              e.stopPropagation()
-              setModalEvento(ingreso.id)
-            }}
+            onClick={() => setModalEvento(ingreso.id)}
             className="p-1 rounded-md border border-slate-200 text-slate-500 hover:bg-amber-50 hover:border-amber-200 hover:text-amber-700 transition-colors"
           >
             <Plus className="w-3.5 h-3.5" />
@@ -349,19 +353,15 @@ export default function Home() {
         <div>
           {lista.length > 0 && (
             <div className="relative group/tt w-fit">
-              <button
-                type="button"
+              <Link
+                to={`/ingresos/${ingreso.id}?tab=eventos`}
                 data-incidencias={ingreso.id}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  navigate(`/ingresos/${ingreso.id}?tab=eventos`)
-                }}
                 className={`flex items-center gap-1 px-2 py-1 rounded-lg border text-xs font-medium whitespace-nowrap transition-colors ${color}`}
               >
                 <AlertTriangle className="w-3 h-3 shrink-0" />
                 {lista.length}
                 {pendientes > 0 && ` · ${pendientes} pendiente${pendientes > 1 ? 's' : ''}`}
-              </button>
+              </Link>
               <Tooltip titulo={`Incidencias del ingreso (${lista.length})`} ancho="max-w-[360px]">
                 {visibles.map((ev) => (
                   <div key={ev.id} className="flex items-center gap-1.5 text-xs">
@@ -395,11 +395,14 @@ export default function Home() {
           if (!ingreso) {
             return (
               <div key={n}
-                className={`flex items-center gap-3 border border-dashed border-slate-300 rounded-xl px-4 py-3 min-h-[5.5rem] transition-colors ${esMedico ? 'cursor-pointer hover:border-primary-300 hover:bg-primary-50/30' : ''}`}
-                onClick={esMedico ? () => navigate(`/pacientes/nuevo?habitacion=${n}`) : undefined}
+                className={`relative flex items-center gap-3 border border-dashed border-slate-300 rounded-xl px-4 py-3 min-h-[5.5rem] transition-colors ${esMedico ? 'hover:border-primary-300 hover:bg-primary-50/30' : ''}`}
                 title={esMedico ? `Ingresar en habitación ${n}` : `Habitación ${n} libre`}>
                 <span className="w-9 h-9 rounded-lg bg-slate-50 text-slate-500 flex items-center justify-center font-bold text-sm shrink-0">{n}</span>
-                <span className="text-sm text-slate-500">Libre{esMedico ? ' · ingresar' : ''}</span>
+                {esMedico ? (
+                  <Link to={`/pacientes/nuevo?habitacion=${n}`} className={`text-sm text-slate-500 rounded-xl ${ENLACE_FILA}`}>Libre · ingresar</Link>
+                ) : (
+                  <span className="text-sm text-slate-500">Libre</span>
+                )}
               </div>
             )
           }
@@ -416,17 +419,18 @@ export default function Home() {
             : '—'
           return (
             <div key={n}
-              className="group bg-white border border-slate-200 rounded-xl p-4 hover:shadow-sm hover:border-primary-200 transition-all cursor-pointer flex flex-col gap-2.5"
-              onClick={() => navigate(`/ingresos/${ingreso.id}`)}>
+              className="group relative bg-white border border-slate-200 rounded-xl p-4 hover:shadow-sm hover:border-primary-200 transition-all flex flex-col gap-2.5">
               <div className="flex items-start gap-3">
                 <div className="w-9 h-9 rounded-lg flex items-center justify-center font-bold text-sm shrink-0"
                   style={semColor ? { backgroundColor: semColor, color: sem === 'rojo' ? '#fff' : '#000' } : { backgroundColor: '#f1f5f9', color: '#475569' }}>
                   {n}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="font-semibold text-slate-800 text-sm leading-tight">{p ? nombreCompleto(p) : '—'}</p>
+                  <p className="font-semibold text-slate-800 text-sm leading-tight">
+                    <Link to={`/ingresos/${ingreso.id}`} data-fila-paciente={ingreso.id} className={`rounded-xl ${ENLACE_FILA}`}>{p ? nombreCompleto(p) : '—'}</Link>
+                  </p>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    {e != null ? `${e} años` : '—'} · ingreso {fingreso}
+                    {e != null ? `${e} años` : '—'}{p?.nhc ? ` · NHC ${p.nhc}` : ''} · ingreso {fingreso}
                     {dias != null && (
                       <span className={`ml-1.5 font-medium px-1.5 py-0.5 rounded-full ${
                         dias > 60 ? 'bg-amber-100 text-amber-700' : dias > 30 ? 'text-slate-700' : 'text-slate-500'
@@ -438,7 +442,7 @@ export default function Home() {
               </div>
               <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
                 <span className="text-xs text-slate-500 truncate min-w-0" title={medico}>{medico}</span>
-                <div className="flex items-end gap-3 shrink-0">
+                <div className="flex items-end gap-5 shrink-0">
                   {celdaContencion(ingreso, true)}
                   {celdaIncidencias(ingreso)}
                 </div>
@@ -495,16 +499,16 @@ export default function Home() {
           </p>
           <div className="space-y-1">
             {sinHabitacion.map((ingreso) => (
-              <div
+              <Link
                 key={ingreso.id}
-                className="flex items-center justify-between text-sm cursor-pointer hover:bg-amber-100/60 rounded px-2 py-1 -mx-2"
-                onClick={() => navigate(`/ingresos/${ingreso.id}?editar=habitacion`)}
+                to={`/ingresos/${ingreso.id}?editar=habitacion`}
+                className="flex items-center justify-between text-sm hover:bg-amber-100/60 focus-visible:bg-amber-100/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 rounded px-2 py-1 -mx-2"
               >
                 <span className="text-amber-900 font-medium">
                   {ingreso.paciente ? nombreCompleto(ingreso.paciente) : '—'}
                 </span>
                 <span className="text-amber-700 text-xs">Asignar habitación →</span>
-              </div>
+              </Link>
             ))}
           </div>
         </div>
@@ -536,6 +540,7 @@ export default function Home() {
             <div>Hab.</div>
             <div>Paciente</div>
             <div>Edad</div>
+            <div>NHC</div>
             <div>Días</div>
             <div>Ingreso</div>
             <div>Médico</div>
@@ -548,7 +553,7 @@ export default function Home() {
                 <span className="w-10 text-center">Noche</span>
               </div>
             </div>
-            <div>Incidencias</div>
+            <div className="pl-5">Incidencias</div>
             <div></div>
           </div>
 
@@ -563,15 +568,21 @@ export default function Home() {
               return (
                 <div
                   key={n}
-                  className={`grid gap-x-3 items-center bg-slate-50/50 px-3 py-1.5 transition-colors rounded-[inherit] ${
-                    esMedico ? 'cursor-pointer hover:bg-primary-50/40' : ''
+                  className={`relative grid gap-x-3 items-center bg-slate-50/50 px-3 py-1.5 transition-colors rounded-[inherit] ${
+                    esMedico ? 'hover:bg-primary-50/40' : ''
                   }`}
                   style={{ gridTemplateColumns: COLUMNAS_TABLA }}
-                  onClick={esMedico ? () => navigate(`/pacientes/nuevo?habitacion=${n}`) : undefined}
                   title={esMedico ? `Ingresar en habitación ${n}` : `Habitación ${n} libre`}
                 >
                   <span className="text-xs font-bold text-slate-500">{n}</span>
-                  <span className="text-xs text-slate-500">— libre —</span>
+                  {esMedico ? (
+                    <Link to={`/pacientes/nuevo?habitacion=${n}`} className={`text-xs text-slate-500 hover:text-primary-700 ${ENLACE_FILA}`}>
+                      — libre — <span className="sr-only">· ingresar en la habitación {n}</span>
+                    </Link>
+                  ) : (
+                    <span className="text-xs text-slate-500">— libre —</span>
+                  )}
+                  <span />
                   <span />
                   <span />
                   <span />
@@ -603,9 +614,8 @@ export default function Home() {
             return (
               <div key={n} className="group">
                 <div
-                  className="grid gap-x-3 items-center bg-white px-3 py-2 hover:bg-slate-50 transition-colors cursor-pointer rounded-[inherit]"
+                  className="relative grid gap-x-3 items-center bg-white px-3 py-2 hover:bg-slate-50 transition-colors rounded-[inherit]"
                   style={{ gridTemplateColumns: COLUMNAS_TABLA }}
-                  onClick={() => navigate(`/ingresos/${ingreso.id}`)}
                 >
                   {/* Hab con semáforo */}
                   <div>
@@ -622,10 +632,14 @@ export default function Home() {
                   </div>
                   {/* Nombre */}
                   <div className="min-w-0 pr-2">
-                    <p className="font-semibold text-slate-800 text-sm leading-tight truncate">{nombreDelPaciente}</p>
+                    <p className="font-semibold text-slate-800 text-sm leading-tight truncate">
+                      <Link to={`/ingresos/${ingreso.id}`} data-fila-paciente={ingreso.id} className={ENLACE_FILA}>{nombreDelPaciente}</Link>
+                    </p>
                   </div>
                   {/* Edad */}
                   <div className="text-slate-500 text-xs">{e != null ? `${e}a` : '—'}</div>
+                  {/* NHC: el identificador del paciente en el centro */}
+                  <div className="text-slate-600 text-xs tabular-nums truncate" title={p?.nhc ? `NHC ${p.nhc}` : 'Sin NHC'}>{p?.nhc || '—'}</div>
                   {/* Días */}
                   <div>
                     {dias != null && (
@@ -655,7 +669,7 @@ export default function Home() {
                       últimos 7 días; gris = solo antiguas. El «+» está
                       pegado a ella y registra una nueva sin salir de
                       Inicio (el formulario ya avisa de duplicados). */}
-                  {celdaIncidencias(ingreso)}
+                  <div className="pl-5">{celdaIncidencias(ingreso)}</div>
                   {/* Arrow */}
                   <div className="flex justify-end">
                     <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-500 transition-colors" />

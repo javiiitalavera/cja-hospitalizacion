@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { atajoDeRaton, FOCO_CELDA } from '../../lib/accesibilidad'
 import { supabase } from '../../lib/supabase'
 import { imprimirTablaHTML, escapeHtml } from '../../lib/imprimir'
 import { Download, Printer, ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-react'
@@ -212,8 +213,10 @@ export function ExploradorEpisodios() {
 
   function CabeceraOrden({ col, children }: { col: typeof orden; children: React.ReactNode }) {
     return (
-      <th className="px-4 py-2 cursor-pointer select-none hover:text-slate-700" onClick={() => cambiarOrden(col)}>
-        <span className="flex items-center gap-1">{children}<ArrowUpDown className="w-3 h-3 opacity-50" /></span>
+      <th className="px-4 py-2 select-none" aria-sort={orden === col ? (ordenDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
+        <button type="button" onClick={() => cambiarOrden(col)} className={`flex items-center gap-1 font-semibold hover:text-slate-700 ${FOCO_CELDA}`} title="Ordenar por esta columna">
+          {children}<ArrowUpDown aria-hidden className="w-3 h-3 opacity-50" />
+        </button>
       </th>
     )
   }
@@ -304,8 +307,10 @@ export function ExploradorEpisodios() {
             </thead>
             <tbody className="divide-y">
               {filas.map((f) => (
-                <tr key={f.id} className="hover:bg-slate-50 cursor-pointer" onClick={() => navigate(`/ingresos/${f.id}`)}>
-                  <td className="px-4 py-2 font-medium text-slate-700">{f.paciente}</td>
+                <tr key={f.id} className="hover:bg-slate-50 cursor-pointer" onClick={atajoDeRaton(() => navigate(`/ingresos/${f.id}`))}>
+                  <td className="px-4 py-2 font-medium text-slate-700">
+                    <Link to={`/ingresos/${f.id}`} className={`hover:text-primary-700 hover:underline ${FOCO_CELDA}`}>{f.paciente}</Link>
+                  </td>
                   <td className="px-4 py-2 text-slate-500">{f.nhc ?? '—'}</td>
                   <td className="px-4 py-2">{new Date(f.fecha_ingreso).toLocaleDateString('es-ES')}</td>
                   <td className="px-4 py-2">{f.fecha_alta ? new Date(f.fecha_alta).toLocaleDateString('es-ES') : '—'}</td>

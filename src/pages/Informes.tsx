@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { CabeceraPagina } from '../components/CabeceraPagina'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { atajoDeRaton, FOCO_CELDA } from '../lib/accesibilidad'
 import { supabase } from '../lib/supabase'
 import { Search, FileText, LogOut, HeartPulse, Ambulance, ClipboardList, FilePen, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react'
 import { ESTADO_INGRESO_LABEL as ESTADO_LABEL, nombreCompleto } from '../types'
@@ -313,7 +314,7 @@ export function Informes() {
               return (
                 <tr key={`${r.tipo}-${r.id}`}
                   className="hover:bg-slate-50 transition-colors cursor-pointer"
-                  onClick={() => navigate(rutaInforme(r))}>
+                  onClick={atajoDeRaton(() => navigate(rutaInforme(r)))}>
                   <td className="px-4 py-3">
                     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${clase}`}>
                       <Icono className="w-3 h-3" />
@@ -336,7 +337,9 @@ export function Informes() {
                       {ESTADO_INFORME_LABEL[r.estadoInforme]}
                     </span>
                   </td>
-                  <td className="px-4 py-3 font-medium text-slate-800">{r.paciente}</td>
+                  <td className="px-4 py-3 font-medium text-slate-800">
+                    <Link to={rutaInforme(r)} data-informe-enlace={`${r.tipo}-${r.id}`} className={`hover:text-primary-700 hover:underline ${FOCO_CELDA}`}>{r.paciente}</Link>
+                  </td>
                   <td className="px-4 py-3 text-slate-500 text-xs font-mono">{r.nhc || <span className="text-slate-500">—</span>}</td>
                   <td className="px-4 py-3 text-slate-500 text-xs">
                     {r.fecha ? new Date(r.fecha).toLocaleDateString('es-ES') : '—'}

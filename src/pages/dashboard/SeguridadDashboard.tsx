@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import type { Filtros, EstadoCarga } from './tipos'
 import { TarjetaMetrica, EstadoCargando, EstadoError, EstadoSinDatos } from './ComponentesDashboard'
+import { atajoDeRaton, FOCO_CELDA } from '../../lib/accesibilidad'
 
 const TIPO_LABEL: Record<string, string> = {
   caida: 'Caída', ulcera: 'Úlcera por presión', error_medicacion: 'Error de medicación',
@@ -81,8 +82,10 @@ export function SeguridadDashboard({ filtros, desde, hasta, onExplorar, onExplor
                   </thead>
                   <tbody className="divide-y">
                     {datos.por_tipo.map((t) => (
-                      <tr key={t.tipo} className="hover:bg-slate-50 cursor-pointer" onClick={() => irATipo(t.tipo)}>
-                        <td className="px-4 py-2 font-medium text-slate-700">{TIPO_LABEL[t.tipo] ?? t.tipo}</td>
+                      <tr key={t.tipo} className="hover:bg-slate-50 cursor-pointer" onClick={atajoDeRaton(() => irATipo(t.tipo))}>
+                        <td className="px-4 py-2 font-medium text-slate-700">
+                          <button type="button" onClick={() => irATipo(t.tipo)} className={`text-left hover:text-primary-700 hover:underline ${FOCO_CELDA}`}>{TIPO_LABEL[t.tipo] ?? t.tipo}</button>
+                        </td>
                         <td className="px-4 py-2 text-right tabular-nums">{t.total}</td>
                         <td className="px-4 py-2 text-right tabular-nums">{t.pacientes_afectados}</td>
                         <td className="px-4 py-2 text-right tabular-nums">{t.pendientes || <span className="text-slate-500">—</span>}</td>

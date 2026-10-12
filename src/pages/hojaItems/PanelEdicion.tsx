@@ -13,6 +13,7 @@ import {
   type ContencionDia, type ContencionNoche,
 } from '../../types/contenciones'
 import type { IngresoConItems } from './tipos'
+import { IndicadorGuardado } from '../../components/IndicadorGuardado'
 
 // ─── PANEL LATERAL DE EDICIÓN ─────────────────────────────────
 
@@ -274,26 +275,7 @@ export default function PanelEdicion({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {estado === 'pendiente' && (
-            <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 text-xs font-medium">
-              ● Cambios pendientes
-            </span>
-          )}
-          {estado === 'guardando' && (
-            <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 text-xs font-medium">
-              ● Guardando…
-            </span>
-          )}
-          {estado === 'guardado' && (
-            <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-semibold">
-              ✓ Guardado
-            </span>
-          )}
-          {estado === 'error' && (
-            <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-red-100 text-red-700 text-xs font-semibold">
-              ✗ Error al guardar, inténtalo de nuevo
-            </span>
-          )}
+          <IndicadorGuardado estado={estado} detalle="inténtalo de nuevo" />
           <button onClick={onClose} className="text-slate-500 hover:text-slate-600 ml-1">
             <X className="w-4 h-4" />
           </button>

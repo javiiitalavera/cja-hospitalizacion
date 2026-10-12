@@ -6,6 +6,7 @@ import {
   totalBarthel, totalLawton, totalNPI,
   type NPIRespuestaDominio,
 } from '../types/escalas'
+import { IndicadorGuardado } from './IndicadorGuardado'
 
 // Tarjeta compacta: nombre de la escala, resultado, y un botón para
 // abrir el modal donde de verdad se rellena — antes las cuatro
@@ -82,12 +83,8 @@ export function ModalEscala({ titulo, onCerrar, children, onGuardar, completa, f
         <div className="px-6 py-3 border-t shrink-0 flex items-center justify-between gap-3">
           <p className="text-xs min-w-0">
             {estado === 'conflicto' ? <span className="text-amber-700">Alguien más ha guardado estas escalas: cierra y pulsa «Ver la versión más reciente».</span>
-              : estado === 'error' ? <span className="text-red-600 font-semibold">No se ha podido guardar — comprueba la conexión.</span>
-              : avisoIncompleta ? <span className="text-amber-700">Guardado, pero la escala está incompleta{faltaTexto ? `: ${faltaTexto}` : ''}.</span>
-              : estado === 'guardando' || guardando ? <span className="text-slate-500">Guardando…</span>
-              : estado === 'pendiente' ? <span className="text-slate-500">Cambios pendientes de guardar</span>
-              : estado === 'guardado' ? <span className="text-emerald-700">✓ Guardado</span>
-              : null}
+              : avisoIncompleta && estado !== 'error' ? <span className="text-amber-700">Guardado, pero la escala está incompleta{faltaTexto ? `: ${faltaTexto}` : ''}.</span>
+              : <IndicadorGuardado estado={estado === 'error' ? 'error' : (estado === 'guardando' || guardando) ? 'guardando' : (estado ?? 'inactivo')} />}
           </p>
           <div className="flex items-center gap-2 shrink-0">
             <button type="button" onClick={onCerrar} className="btn-secondary text-sm">Cerrar</button>

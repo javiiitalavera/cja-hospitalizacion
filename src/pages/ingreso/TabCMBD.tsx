@@ -10,6 +10,7 @@ import { estadoSegunCircunstancia } from '../../lib/alta'
 import { avisoCodigoCIE10, cargarCatalogoCIE10, infoCIE10, useCatalogoCIE10 } from '../../lib/cie10'
 import { FilaDx } from '../../components/DiagnosticosCIE'
 import { CheckCircle, Circle, Download, Save } from 'lucide-react'
+import { IndicadorGuardado } from '../../components/IndicadorGuardado'
 
 const N_SECUNDARIOS = 8
 const N_PROCEDIMIENTOS = 8
@@ -451,12 +452,7 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
           <p className="text-xs text-slate-500 mt-0.5">Registro al alta · {nombreDelPaciente}</p>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-slate-500">
-            {estado === 'pendiente' && '● Cambios pendientes'}
-            {estado === 'guardando' && '● Guardando…'}
-            {estado === 'guardado' && <span className="text-emerald-700">✓ Guardado</span>}
-            {estado === 'error' && <span className="text-red-600 font-semibold">✗ Error al guardar</span>}
-          </span>
+          <IndicadorGuardado estado={estado} />
           <button type="button" onClick={handleGuardar} className="btn-secondary text-xs py-1.5">
             <Save className="w-3.5 h-3.5" /> Guardar
           </button>

@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
 import { Cargando } from '../../components/Cargando'
+import { atajoDeRaton, FOCO_CELDA } from '../../lib/accesibilidad'
 import { CONTENCION_DIA_LABEL, CONTENCION_NOCHE_LABEL, type ContencionDia, type ContencionNoche } from '../../types/contenciones'
 import { FILTROS_CAMBIOS_VACIOS, pedirCambios, type FiltrosCambios } from './consultas'
 import {
@@ -173,7 +174,7 @@ export function TabCambios({ personal }: { personal: Personal }) {
                 return (
                   <Fragment key={f.id}>
                     <tr className={`border-t border-slate-100 ${tieneDetalle ? 'cursor-pointer hover:bg-slate-50' : ''}`}
-                      onClick={() => tieneDetalle && setExpandido((e) => (e === f.id ? null : f.id))}>
+                      onClick={atajoDeRaton(() => { if (tieneDetalle) setExpandido((e) => (e === f.id ? null : f.id)) })}>
                       <td className="px-4 py-2 text-slate-600 whitespace-nowrap">
                         {formatoFecha(f.fecha)}
                         {f.fechaFin && f.nGuardados > 1 && <span className="text-slate-500"> – {formatoHora(f.fechaFin)}</span>}
@@ -193,7 +194,14 @@ export function TabCambios({ personal }: { personal: Personal }) {
                         {f.nGuardados > 1 && <span className="ml-1.5 text-xs text-slate-500">{f.nGuardados} guardados</span>}
                       </td>
                       <td className="px-4 py-2 text-slate-500">{textoAfecta(f, pacientes, personal)}</td>
-                      <td className="px-4 py-2 text-slate-500">{tieneDetalle && (expandido === f.id ? '▾' : '▸')}</td>
+                      <td className="px-4 py-2 text-slate-500">
+                        {tieneDetalle && (
+                          <button type="button" onClick={() => setExpandido((e) => (e === f.id ? null : f.id))} aria-expanded={expandido === f.id}
+                            aria-label={expandido === f.id ? 'Ocultar el detalle del cambio' : 'Ver el detalle del cambio'} className={`px-1 ${FOCO_CELDA}`}>
+                            <span aria-hidden>{expandido === f.id ? '▾' : '▸'}</span>
+                          </button>
+                        )}
+                      </td>
                     </tr>
                     {expandido === f.id && tieneDetalle && (
                       <tr className="bg-slate-50 border-t border-slate-100">
