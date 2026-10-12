@@ -76,7 +76,7 @@ export function MedicacionDashboard({ filtros, desde, hasta }: { filtros: Filtro
       </p>
 
       <section>
-        <p className="section-title">Polifarmacia</p>
+        <p className="section-title">Polifarmacia y antipsicóticos</p>
         <div className="card p-4">
           <table className="w-full text-sm">
             <thead>
@@ -98,8 +98,55 @@ export function MedicacionDashboard({ filtros, desde, hasta }: { filtros: Filtro
                   ))}
                 </tr>
               ))}
+              <tr className="border-b last:border-0" data-dos-antipsicoticos>
+                <td className="py-2 text-slate-700">2 o más antipsicóticos</td>
+                {(['ingreso', 'alta'] as const).map((m) => (
+                  <td key={m} className="py-2 text-right tabular-nums text-slate-700">
+                    <span className="font-semibold">{r.dosOMasAntipsicoticos[m]}</span>
+                    <span className="text-slate-500"> · {pct(r.dosOMasAntipsicoticos[m], r.conMedicacion[m])}</span>
+                  </td>
+                ))}
+              </tr>
             </tbody>
           </table>
+        </div>
+      </section>
+
+      <section>
+        <p className="section-title">Antipsicóticos y benzodiacepinas: cambio entre el ingreso y el alta</p>
+        <div className="card p-4">
+          <table className="w-full text-sm" data-cambio-psicofarmacos>
+            <thead>
+              <tr className="text-xs text-slate-500 border-b">
+                <th className="text-left font-semibold py-2">Grupo</th>
+                <th className="text-right font-semibold py-2 whitespace-nowrap">Con ambos informes</th>
+                <th className="text-right font-semibold py-2">Aumentan</th>
+                <th className="text-right font-semibold py-2">Igual</th>
+                <th className="text-right font-semibold py-2">Reducen</th>
+                <th className="text-right font-semibold py-2 whitespace-nowrap">Empiezan</th>
+                <th className="text-right font-semibold py-2 whitespace-nowrap">Se retiran</th>
+              </tr>
+            </thead>
+            <tbody>
+              {r.cambioPorGrupo.map((c) => (
+                <tr key={c.clave} className="border-b last:border-0" data-grupo={c.clave}>
+                  <td className="py-2 text-slate-700">{c.etiqueta}</td>
+                  <td className="py-2 text-right tabular-nums text-slate-700 font-semibold">{c.conAmbos}</td>
+                  {([c.aumentan, c.igual, c.reducen, c.inician, c.suspenden]).map((n, i) => (
+                    <td key={i} className="py-2 text-right tabular-nums text-slate-700">
+                      <span className="font-semibold">{n}</span>
+                      <span className="text-slate-500"> · {pct(n, c.conAmbos)}</span>
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="text-xs text-slate-500 mt-3">
+            Se compara cuántos fármacos del grupo tiene cada paciente en el informe de ingreso y en el de alta, solo en las altas con medicación escrita en los dos.
+            «Empiezan»: sin ninguno al ingreso y con alguno al alta. «Se retiran»: con alguno al ingreso y ninguno al alta; ambos ya están contados dentro de «aumentan» o «reducen».
+            Cambiar un antipsicótico por otro cuenta como «igual». Reducir fármacos no demuestra por sí solo una mejor atención: hay que interpretarlo junto con la evolución clínica.
+          </p>
         </div>
       </section>
 

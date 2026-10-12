@@ -38,6 +38,18 @@ export type Momento = 'ingreso' | 'alta'
 export interface Medias { episodios: number; farmacos: number; psicofarmacos: number }   // medias, sobre los episodios con medicación
 export interface PorcentajeGrupo { clave: string; etiqueta: string; n: Record<Momento, number> }
 
+// Cómo cambia, entre el ingreso y el alta, el número de fármacos de un grupo (solo altas con medicación en los dos informes).
+export interface CambioGrupo {
+  clave: 'antipsicoticos' | 'benzodiacepinas'
+  etiqueta: string
+  conAmbos: number
+  aumentan: number
+  igual: number
+  reducen: number
+  inician: number      // sin ninguno al ingreso y con alguno al alta
+  suspenden: number    // con alguno al ingreso y ninguno al alta
+}
+
 export interface ResumenPeriodo {
   altas: number
   conMedicacion: Record<Momento, number>             // altas con algún fármaco escrito en ese informe
@@ -49,6 +61,8 @@ export interface ResumenPeriodo {
   sinClasificar: { texto: string; n: number }[]       // lo más frecuente que el catálogo no reconoce (y nadie ha marcado)
   dudosos: { texto: string; n: number }[]             // fármacos de uso mixto sin marcar (valproato…): n = veces que aparecen
   conPendientes: Record<Momento, number>              // altas con algún fármaco pendiente de marcar (sin clasificar o de uso mixto)
+  cambioPorGrupo: CambioGrupo[]
+  dosOMasAntipsicoticos: Record<Momento, number>      // altas con ≥2 antipsicóticos distintos en ese informe
 }
 
 const NINGUNO = { ingreso: 0, alta: 0 }
@@ -70,6 +84,11 @@ export function resumenPeriodo(episodios: EpisodioMed[]): ResumenPeriodo {
   const dud = new Map<string, { texto: string; n: number }>()
   const pend = { ...NINGUNO }
   let ambos = 0, difF = 0, difP = 0
+  const cambios: CambioGrupo[] = [
+    { clave: 'antipsicoticos', etiqueta: 'Antipsicóticos', conAmbos: 0, aumentan: 0, igual: 0, reducen: 0, inician: 0, suspenden: 0 },
+    { clave: 'benzodiacepinas', etiqueta: 'Benzodiacepinas (incluye clonazepam)', conAmbos: 0, aumentan: 0, igual: 0, reducen: 0, inician: 0, suspenden: 0 },
+  ]
+  const dosAntipsicoticos = { ...NINGUNO }
 
   for (const e of episodios) {
     for (const m of MOMENTOS) {
@@ -95,8 +114,19 @@ export function resumenPeriodo(episodios: EpisodioMed[]): ResumenPeriodo {
       contar(sinClas, r.sinClasificar)
       contar(dud, r.dudosos)
       if (r.sinClasificar.length + r.dudosos.length > 0) pend[m]++
+      if (r.porGrupo.antipsicotico >= 2) dosAntipsicoticos[m]++
     }
     if (e.ingreso && e.alta) {
+      const antes = [e.ingreso.porGrupo.antipsicotico, e.ingreso.benzodiacepinas]
+      const despues = [e.alta.porGrupo.antipsicotico, e.alta.benzodiacepinas]
+      cambios.forEach((c, i) => {
+        c.conAmbos++
+        if (despues[i] > antes[i]) c.aumentan++
+        else if (despues[i] < antes[i]) c.reducen++
+        else c.igual++
+        if (antes[i] === 0 && despues[i] > 0) c.inician++
+        if (antes[i] > 0 && despues[i] === 0) c.suspenden++
+      })
       ambos++
       difF += e.alta.total - e.ingreso.total
       difP += e.alta.psicofarmacos - e.ingreso.psicofarmacos
@@ -117,5 +147,7 @@ export function resumenPeriodo(episodios: EpisodioMed[]): ResumenPeriodo {
     sinClasificar: [...sinClas.values()].sort((a, b) => b.n - a.n || a.texto.localeCompare(b.texto)).slice(0, 12),
     dudosos: [...dud.values()].sort((a, b) => b.n - a.n || a.texto.localeCompare(b.texto)).slice(0, 12),
     conPendientes: pend,
+    cambioPorGrupo: cambios,
+    dosOMasAntipsicoticos: dosAntipsicoticos,
   }
 }
