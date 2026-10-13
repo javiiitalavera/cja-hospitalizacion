@@ -495,7 +495,7 @@ function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
         {opcionales(OPCIONALES_RECOMENDACIONES)}
         <div>
           <span className="label">Medicación al alta</span>
-          <p className="text-xs text-slate-500 mb-2">Pre-rellenada desde el tratamiento al ingreso. Edita lo que necesites.</p>
+          <p className="text-xs text-slate-500 mb-2">Pre-rellenada desde el tratamiento al ingreso.</p>
           <AvisoTextoAntiguo texto={data.medicacion_alta} filas={filasMed} />
           <TablaMedicacion filas={filasMed}
             onChange={v => update('medicacion_estructurada', v)} />

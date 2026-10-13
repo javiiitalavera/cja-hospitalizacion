@@ -21,31 +21,29 @@ export const DEFINICIONES = definiciones({
     titulo: 'Estancia ≥ 60 días',
     queCuenta: 'Pacientes ingresados ahora cuyo ingreso empezó hace 60 días o más.',
     formula: 'Ingresos activos con fecha de ingreso ≤ hoy − 60 días.',
-    ojo: 'Es una foto de hoy: no cambia con el periodo elegido.',
   },
   semaforo_riesgo: {
     titulo: 'Semáforo rojo/naranja',
     queCuenta: 'Pacientes ingresados ahora con el semáforo de riesgo de caídas en rojo o naranja.',
     formula: 'Ingresos activos con semáforo de caídas = rojo o naranja.',
-    ojo: 'Foto de hoy. Quien no tiene semáforo valorado no se cuenta.',
+    ojo: 'Quien no tiene semáforo valorado no se cuenta.',
   },
   contencion_activa: {
     titulo: 'Contención activa',
     queCuenta: 'Pacientes ingresados ahora con una pauta de contención activa.',
     formula: 'Ingresos activos con contención continua por seguridad (día) o contención fija (noche). En Seguridad se muestra también el % sobre todos los ingresados.',
-    ojo: 'Solo contención: no cuentan barras, cota cero ni sensores. Mide la pauta registrada, no cuántas veces se ha aplicado. Foto de hoy.',
+    ojo: 'Solo contención: no cuentan barras, cota cero ni sensores. Mide la pauta registrada, no cuántas veces se ha aplicado.',
   },
   contencion_si_precisa: {
     titulo: 'Contención «si precisa»',
     queCuenta: 'Pacientes ingresados ahora con pauta de contención «si precisa» (de día o de noche) y sin contención activa.',
     formula: 'Ingresos activos con pauta «si precisa» y sin contención activa.',
-    ojo: 'Cada paciente cuenta en una sola de las dos tarjetas: si tiene contención activa no se suma aquí. Foto de hoy.',
+    ojo: 'Cada paciente cuenta en una sola de las dos tarjetas: si tiene contención activa no se suma aquí.',
   },
   contencion_sin_confirmar: {
     titulo: 'Contención sin confirmar',
     queCuenta: 'Pautas de contención (activas o «si precisa») que todavía no ha confirmado un profesional.',
     formula: 'Ingresos activos con pauta activa o «si precisa» y sin confirmar.',
-    ojo: 'Es trabajo pendiente, no un tipo de contención. Foto de hoy.',
   },
   incidencias_pendientes: {
     titulo: 'Incidencias pendientes',
@@ -57,7 +55,7 @@ export const DEFINICIONES = definiciones({
     titulo: 'Episodios activos de larga duración',
     queCuenta: 'Pacientes ingresados ahora con 30, 60 o 90 días de estancia o más.',
     formula: 'Ingresos activos con fecha de ingreso ≤ hoy − 30 / 60 / 90 días.',
-    ojo: 'Foto de hoy, no depende del periodo. Los tramos se solapan: quien lleva 90 días está también en los de 60 y 30.',
+    ojo: 'Los tramos se solapan: quien lleva 90 días está también en los de 60 y 30.',
   },
 
   // ── Actividad del periodo ───────────────────────────────────
@@ -65,19 +63,19 @@ export const DEFINICIONES = definiciones({
     titulo: 'Altas',
     queCuenta: 'Episodios cerrados como alta ordinaria, según su fecha de alta.',
     formula: 'Ingresos con estado «alta» y fecha de alta dentro del periodo.',
-    ojo: 'No incluye traslados ni éxitus, que se cuentan aparte. Altas + traslados + éxitus son las «salidas».',
+    ojo: 'Los traslados y los éxitus se cuentan aparte.',
   },
   salidas: {
     titulo: 'Salidas del periodo',
     queCuenta: 'Episodios que terminan dentro del periodo, sea cual sea el motivo, según su fecha de alta.',
     formula: 'Altas + traslados + éxitus con fecha de alta dentro del periodo.',
-    ojo: 'Es la base de esta pestaña. Cada indicador dice con cuántas salidas se calcula de verdad (las que tienen el dato).',
+    ojo: 'Cuenta episodios: un paciente que reingresa en el periodo puede contar más de una vez. Cada indicador dice con cuántas salidas se calcula (las que tienen el dato).',
   },
   balance: {
     titulo: 'Balance',
     queCuenta: 'Diferencia entre las entradas y las salidas del periodo.',
     formula: 'Ingresos nuevos − salidas (altas + traslados + éxitus).',
-    ojo: 'Positivo: entraron más de los que salieron. Negativo: al revés. No es ni bueno ni malo por sí mismo.',
+    ojo: 'Positivo: entraron más de los que salieron. Negativo: al revés.',
   },
   dias_estancia: {
     titulo: 'Días-estancia',
@@ -101,13 +99,13 @@ export const DEFINICIONES = definiciones({
     titulo: 'Estancia media',
     queCuenta: 'Duración media de los episodios que terminan en el periodo.',
     formula: 'Media de (fecha de alta − fecha de ingreso) de las salidas con alta en el periodo.',
-    ojo: 'Incluye altas, traslados y éxitus. No incluye a quienes siguen ingresados. Sin salidas en el periodo se muestra «—».',
+    ojo: 'Incluye altas, traslados y éxitus. No incluye a quienes siguen ingresados.',
   },
   estancia_mediana: {
     titulo: 'Estancia mediana',
     queCuenta: 'Valor central de la duración de esos mismos episodios.',
     formula: 'Mediana de (fecha de alta − fecha de ingreso) de las salidas con alta en el periodo.',
-    ojo: 'La mitad de las salidas estuvo menos días que este valor. Las estancias muy largas la afectan menos que a la media.',
+    ojo: 'Las estancias muy largas la afectan menos que a la media.',
   },
   reingresos: {
     titulo: 'Reingresos (≤180 y ≤30 días)',
@@ -127,19 +125,18 @@ export const DEFINICIONES = definiciones({
     titulo: 'Pacientes con demora al alta',
     queCuenta: 'Pacientes con la casilla «Demora al alta» marcada en el CMBD de su alta.',
     formula: 'Pacientes con demora ÷ salidas con la pregunta contestada (sí o no) × 100.',
-    ojo: 'Altas y traslados con fecha de alta en el periodo, sin éxitus. Se cuenta por episodio: un paciente que reingresa en el periodo puede contar más de una vez. Las salidas con la pregunta sin contestar no cuentan ni como demora ni como no demora.',
+    ojo: 'Altas y traslados del periodo, sin éxitus. Las salidas con la pregunta sin contestar no cuentan ni como demora ni como no demora.',
   },
   demora_media: {
     titulo: 'Demora media',
     queCuenta: 'Días de demora medios entre los pacientes con demora.',
     formula: 'Suma de los días de demora ÷ nº de pacientes con demora que tienen los días escritos.',
-    ojo: 'Un paciente con demora pero sin los días escritos no entra. Sin ninguno con días se muestra «—».',
+    ojo: 'Un paciente con demora pero sin los días escritos no entra.',
   },
   demora_mediana: {
     titulo: 'Demora mediana',
     queCuenta: 'Valor central de los días de demora.',
     formula: 'Mediana de los días de demora de los pacientes con demora y días escritos.',
-    ojo: 'La mitad de las demoras duró menos que este valor.',
   },
 
   // ── Diagnósticos ────────────────────────────────────────────
@@ -153,7 +150,7 @@ export const DEFINICIONES = definiciones({
     titulo: 'Salidas con demencia codificada',
     queCuenta: 'Salidas con algún código de demencia, como principal o como secundario.',
     formula: 'Salidas con código de demencia ÷ salidas con diagnóstico principal codificado × 100.',
-    ojo: 'Se reconoce por prefijo: G30, F01, F02, F03, G31.83, G31.0x. Un código de la OMS que no existe en la CIE-10-ES (F00.x) no cuenta como Alzheimer hasta corregirlo. El deterioro cognitivo leve (G31.84) no cuenta.',
+    ojo: 'Se reconoce por prefijo: G30, F01, F02, F03, G31.83, G31.0x. F00.x (código de la OMS que no existe en la CIE-10-ES) y el deterioro cognitivo leve (G31.84) no cuentan.',
   },
 
   // ── Evolución clínica ───────────────────────────────────────
@@ -167,19 +164,19 @@ export const DEFINICIONES = definiciones({
     titulo: 'Media ingreso → alta',
     queCuenta: 'Puntuación media de la escala al ingreso y al alta.',
     formula: 'Media de la puntuación al ingreso → media al alta, solo en salidas con ambas valoraciones.',
-    ojo: 'Las dos medias usan las mismas salidas, para que se puedan comparar. Las escalas no se suman entre sí.',
+    ojo: 'Las dos medias usan las mismas salidas, para que se puedan comparar.',
   },
   escala_cambio: {
     titulo: 'Cambio medio ingreso → alta',
     queCuenta: 'Cuánto cambia la puntuación entre el ingreso y el alta.',
     formula: 'Media de (puntuación al alta − puntuación al ingreso) en salidas con ambas valoraciones. Entre paréntesis, la mediana.',
-    ojo: 'NPI-Q: bajar es mejorar. Barthel y Lawton: subir es mejorar. La mediana se afecta menos por casos extremos.',
+    ojo: 'NPI-Q: bajar es mejorar. Barthel y Lawton: subir es mejorar.',
   },
   escala_mejoran: {
     titulo: 'Pacientes que mejoran · igual · empeoran',
     queCuenta: 'Cuántos pacientes terminan mejor, igual o peor que al ingreso en esa escala.',
     formula: 'Se compara la puntuación al alta con la del ingreso en cada salida con ambas valoraciones. Mejora: baja el NPI-Q, o suben Barthel o Lawton. Igual: misma puntuación.',
-    ojo: 'Se cuenta por episodio: un paciente que reingresa puede contar más de una vez. Cualquier cambio cuenta, por pequeño que sea: no se aplica ningún umbral clínico.',
+    ojo: 'Cualquier cambio cuenta, por pequeño que sea: no se aplica ningún umbral clínico.',
   },
 
   // ── Medicación ──────────────────────────────────────────────
@@ -187,13 +184,13 @@ export const DEFINICIONES = definiciones({
     titulo: 'Fármacos por paciente',
     queCuenta: 'Número medio de fármacos por paciente en el informe de ingreso y en el de alta.',
     formula: 'Media de fármacos (un principio activo cuenta una vez) entre los pacientes con la medicación rellenada en ese informe, por separado al ingreso y al alta.',
-    ojo: 'Una lista vacía que el médico ha dejado así («sin medicación») cuenta con 0 fármacos. Si la medicación está sin tocar, ese paciente queda fuera. Se cuenta por episodio: un paciente que reingresa puede contar más de una vez. La media de ingreso y la de alta pueden salir de pacientes distintos; para comparar los mismos está el cambio medio. Sin ninguna salida rellenada se muestra «—».',
+    ojo: 'Una lista vacía que el médico ha dejado así («sin medicación») cuenta con 0 fármacos. Si la medicación está sin tocar, ese paciente queda fuera. La media de ingreso y la de alta pueden salir de pacientes distintos; para comparar los mismos está el cambio medio.',
   },
   med_psicofarmacos: {
     titulo: 'Psicofármacos por paciente',
     queCuenta: 'Número medio de psicofármacos por paciente en el informe de ingreso y en el de alta.',
     formula: 'Media de psicofármacos entre los pacientes con la medicación rellenada en ese informe, por separado al ingreso y al alta.',
-    ojo: 'Psicofármaco: grupos N05 y N06 de la clasificación ATC, más lo que el médico marca a mano como «Sí» (la marca manual manda sobre el catálogo). Los pacientes «sin medicación» cuentan con 0. Se cuenta por episodio: un paciente que reingresa puede contar más de una vez.',
+    ojo: 'Psicofármaco: grupos N05 y N06 de la clasificación ATC, más lo que el médico marca a mano como «Sí» (la marca manual manda sobre el catálogo). Los pacientes «sin medicación» cuentan con 0.',
   },
   med_cambio: {
     titulo: 'Cambio medio ingreso → alta',
@@ -205,7 +202,6 @@ export const DEFINICIONES = definiciones({
     titulo: 'Polifarmacia',
     queCuenta: 'Pacientes con 5 o más (o 10 o más) fármacos en el informe de ingreso o en el de alta.',
     formula: 'Informes con ≥ 5 (o ≥ 10) fármacos ÷ informes con la medicación rellenada en ese momento × 100.',
-    ojo: 'Ingreso y alta se calculan por separado, cada uno sobre sus propios informes. Se cuenta por episodio: un paciente que reingresa puede contar más de una vez.',
   },
   med_dos_antipsicoticos: {
     titulo: '2 o más antipsicóticos',
@@ -251,7 +247,7 @@ export const DEFINICIONES = definiciones({
   },
   caidas_graves: {
     titulo: 'Caídas graves',
-    queCuenta: 'Caídas del periodo con fractura o TCE como consecuencia (y las antiguas marcadas con gravedad «grave»).',
+    queCuenta: 'Caídas del periodo con fractura o TCE como consecuencia.',
     formula: 'Caídas con consecuencia = Fractura o TCE (o, en las antiguas, gravedad = Grave).',
     ojo: 'Una caída cuenta una vez aunque cumpla las dos condiciones.',
   },
@@ -259,7 +255,7 @@ export const DEFINICIONES = definiciones({
     titulo: 'Caídas pendientes de valoración',
     queCuenta: 'Caídas del periodo en las que aún no se ha confirmado si hubo lesión.',
     formula: 'Caídas con consecuencia = Pendiente de valoración.',
-    ojo: 'Es trabajo pendiente: al valorarlas pasan a «con lesión» o a «sin lesión».',
+    ojo: 'Al valorarlas pasan a «con lesión» o a «sin lesión».',
   },
   caidas_repetidas: {
     titulo: 'Pacientes con 2 o más caídas',

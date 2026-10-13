@@ -314,7 +314,7 @@ export default function PanelEdicion({
 
         <p className="section-title mt-3">Seguridad y conducta</p>
         <span className="text-xs text-slate-600 block">Pauta de contención</span>
-        <p className="text-[0.7rem] text-slate-500 mb-1.5">Contención pautada para el día y la noche. Pulsa Día o Noche para ver o editar; cada cambio queda en su historial.</p>
+        <p className="text-[0.7rem] text-slate-500 mb-1.5">Pulsa Día o Noche para ver o editar la pauta.</p>
         {errorContencion && (
           <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded px-2 py-1 mb-1.5">{errorContencion}</p>
         )}
