@@ -113,7 +113,7 @@ export const DEFINICIONES = definiciones({
     titulo: 'Reingresos (≤180 y ≤30 días)',
     queCuenta: 'Ingresos nuevos del periodo de pacientes con un alta o traslado en los 180 días anteriores. Debajo, los que fueron en los 30 primeros.',
     formula: 'Ingresos del periodo con un alta o traslado previo del mismo paciente hasta 180 (o 30) días antes. Los de 30 días están incluidos en los de 180.',
-    ojo: 'Es una proporción sobre los ingresos, no sobre las altas. Solo cuenta episodios registrados en la aplicación. Un éxitus no cuenta como alta previa.',
+    ojo: 'Es una proporción sobre los ingresos, no sobre las altas. Solo cuenta episodios registrados en la aplicación.',
   },
   incidencias: {
     titulo: 'Incidencias',
