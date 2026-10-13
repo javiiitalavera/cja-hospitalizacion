@@ -82,7 +82,7 @@ function TabEventos({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteIn
   }
 
   return (
-    <div className="max-w-3xl space-y-4">
+    <div className="ancho-formulario space-y-4">
       {dialogo}
       {errorBorrar && (
         <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-2.5">{errorBorrar}</div>

@@ -458,7 +458,7 @@ export default function Home() {
   }
 
   return (
-    <div className="p-6 md:p-8">
+    <div className="p-6 md:p-8 ancho-tabla">
       <CabeceraPagina titulo="Unidad de Hospitalización" subtitulo={<span className="inline-block first-letter:uppercase">{today}</span>}>
         <span className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-700">
           <span aria-hidden className="w-2 h-2 rounded-full bg-emerald-500" />{ocupadas} ingresados

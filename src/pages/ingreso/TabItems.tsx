@@ -139,7 +139,7 @@ function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo
 
   if (!itemsListos) {
     return errorItems ? (
-      <div className="max-w-3xl bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 flex items-center justify-between gap-3" role="alert">
+      <div className="ancho-formulario bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 flex items-center justify-between gap-3" role="alert">
         <span>{errorItems} Hasta que se carguen no se puede editar ni guardar.</span>
         <button type="button" onClick={() => setReintento((n) => n + 1)} className="btn-secondary text-xs shrink-0">Reintentar</button>
       </div>
@@ -147,7 +147,7 @@ function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo
   }
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="ancho-formulario space-y-6">
       {errorCarga && (
         <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
           {errorCarga} — no guardes cambios hasta recargar la página, para no sobrescribir datos reales con vacío.

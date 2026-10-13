@@ -256,7 +256,7 @@ export default function DetallePaciente() {
 
         {/* EPISODIOS */}
         {tab === 'ingresos' && (
-          <div className="max-w-3xl space-y-3">
+          <div className="ancho-formulario space-y-3">
             {ingresos.length === 0 ? (
               <div className="card p-10 text-center text-slate-500 text-sm">Sin ingresos registrados.</div>
             ) : ingresos.map((ing, idx) => {
@@ -346,7 +346,7 @@ export default function DetallePaciente() {
 
         {/* DATOS PERSONALES */}
         {tab === 'datos' && (
-          <div className="max-w-3xl">
+          <div className="ancho-formulario">
             <div className="flex justify-end mb-3">
               {!esMedico ? null : editando ? (
                 <div className="flex gap-2">

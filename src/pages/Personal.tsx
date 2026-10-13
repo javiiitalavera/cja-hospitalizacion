@@ -183,7 +183,7 @@ export function Personal() {
   })
 
   return (
-    <div className="p-6 md:p-8 max-w-6xl">
+    <div className="p-6 md:p-8 ancho-tabla">
       <CabeceraPagina titulo="Personal" subtitulo="Gestión de cuentas, roles y permisos.">
         <button onClick={() => setMostrarForm(true)} className="btn-primary">
           <UserPlus className="w-4 h-4" /> Nuevo profesional

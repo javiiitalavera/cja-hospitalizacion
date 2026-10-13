@@ -462,7 +462,7 @@ export default function DetalleIngreso() {
         )}
         {/* Aviso de sección en construcción */}
         {seccion === 'cmbd' && (
-          <AvisoFicha tono="atencion" icono={Construction} className="mb-4 max-w-3xl">
+          <AvisoFicha tono="atencion" icono={Construction} className="mb-4 ancho-formulario">
             El CMBD está en construcción: puede cambiar y no debe usarse todavía como registro definitivo.
           </AvisoFicha>
         )}
@@ -475,7 +475,7 @@ export default function DetalleIngreso() {
             editables tras el cierre — cada uno gestiona su propio
             aviso de solo lectura si corresponde por rol. */}
         {episodioCerrado && ['datos', 'items'].includes(seccion) && (
-          <AvisoFicha icono={Lock} className="mb-4 max-w-3xl">
+          <AvisoFicha icono={Lock} className="mb-4 ancho-formulario">
             Episodio cerrado ({ESTADO_LABEL[ingreso.estado] ?? ingreso.estado}): solo lectura, ya no se puede editar.
           </AvisoFicha>
         )}

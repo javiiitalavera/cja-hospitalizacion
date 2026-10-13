@@ -170,7 +170,7 @@ export default function Pacientes() {
   }
 
   return (
-    <div className="p-6 md:p-8">
+    <div className="p-6 md:p-8 ancho-tabla">
       <CabeceraPagina
         titulo="Buscar paciente"
         subtitulo={`${loading ? '…' : `${total} resultado${total !== 1 ? 's' : ''}`} · todos los pacientes de la clínica`}

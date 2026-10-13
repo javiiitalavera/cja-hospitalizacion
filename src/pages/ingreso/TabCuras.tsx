@@ -748,7 +748,7 @@ export function TabCuras({ ingresoId, episodioActivo }: { ingresoId: string; epi
   }
 
   return (
-    <div className="max-w-3xl space-y-5">
+    <div className="ancho-formulario space-y-5">
       {dialogo}
       {!episodioActivo && (
         <AvisoFicha icono={Lock}>

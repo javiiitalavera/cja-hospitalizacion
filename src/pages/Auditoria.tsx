@@ -28,7 +28,7 @@ export function Auditoria() {
   }
 
   return (
-    <div className="p-6 md:p-8 max-w-6xl">
+    <div className="p-6 md:p-8 ancho-tabla">
       <CabeceraPagina
         titulo="Auditoría"
         subtitulo={pestana === 'cambios' ? 'Quién ha creado, editado o borrado, qué cambió y cuándo' : 'Quién ha entrado, abierto, impreso o exportado'}

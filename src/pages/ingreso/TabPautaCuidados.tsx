@@ -139,7 +139,7 @@ export function TabPautaCuidados({ ingresoId, episodioActivo }: { ingresoId: str
   if (error) return <p className="text-sm text-red-600 py-8 text-center">{error}</p>
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="space-y-6 ancho-formulario">
       <TituloSeccion titulo="Pauta de cuidados"
         subtitulo="Lo que necesita el paciente en el día a día: aislamiento, vías y dispositivos, e indicaciones para las auxiliares. Las lesiones van en Curas; los registros diarios, en Hoja de ítems." />
       {!puedeEditar && (

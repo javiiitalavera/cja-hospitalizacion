@@ -408,7 +408,7 @@ export function Eventos() {
   // ── Render ────────────────────────────────────────────────
 
   return (
-    <div className="p-6 md:p-8 space-y-8">
+    <div className="p-6 md:p-8 space-y-8 ancho-tabla">
 
       {/* Header */}
       <CabeceraPagina className="!mb-0" titulo="Incidencias" subtitulo="Estado de seguridad de la planta">

@@ -227,7 +227,7 @@ export function Informes() {
   })
 
   return (
-    <div className="p-6 md:p-8">
+    <div className="p-6 md:p-8 ancho-tabla">
       <CabeceraPagina
         className="!mb-2"
         titulo="Buscar informe"

@@ -334,7 +334,7 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
   const filasIngreso: FilaMedicacion[] = (data.tratamiento_ingreso_estructurado as FilaMedicacion[]) ?? []
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="ancho-formulario space-y-6">
       {dialogo}
       <AvisoGuardado avisos={[
         { estado, etiqueta: 'Informe' },

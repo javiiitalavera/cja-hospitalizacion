@@ -244,7 +244,7 @@ export default function HojaItems() {
   if (loading) return <Cargando pagina />
 
   return (
-    <div className={`p-4 transition-all duration-200 ${selected ? 'mr-80' : ''}`}>
+    <div className={`p-4 ancho-amplio transition-all duration-200 ${selected ? 'mr-80' : ''}`}>
       <CabeceraPagina
         titulo="Hoja de ítems"
         subtitulo={<><span className="inline-block first-letter:uppercase">{today}</span>{!selected && ' · haz clic en un paciente para editar sus ítems'}</>}

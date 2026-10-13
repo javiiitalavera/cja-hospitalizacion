@@ -53,6 +53,12 @@
   .card {
     @apply bg-white rounded-xl border shadow-sm;
   }
+  /* Los tres anchos de contenido de la app. Cada pantalla usa uno según lo que muestra:
+     formulario/ficha (texto que se lee), tabla/listado, o matriz densa con muchas columnas.
+     Todo va alineado a la izquierda para que el título no cambie de sitio al cambiar de pantalla. */
+  .ancho-formulario { @apply max-w-3xl; }
+  .ancho-tabla { @apply max-w-6xl; }
+  .ancho-amplio { @apply max-w-[80rem]; }
   .section-title {
     @apply text-sm font-semibold text-primary-700 mb-3;
   }

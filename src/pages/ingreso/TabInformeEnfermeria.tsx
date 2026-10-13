@@ -178,7 +178,7 @@ export function TabInformeEnfermeria({ ingresoId, ingreso }: { ingresoId: string
   if (cargando) return <Cargando />
   if (errorCarga) {
     return (
-      <div className="card p-4 text-sm max-w-3xl">
+      <div className="card p-4 text-sm ancho-formulario">
         <p className="text-red-600">{errorCarga}</p>
         <button onClick={cargar} className="btn-secondary text-xs mt-2">Reintentar</button>
       </div>
@@ -186,7 +186,7 @@ export function TabInformeEnfermeria({ ingresoId, ingreso }: { ingresoId: string
   }
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="ancho-formulario space-y-6">
       <AvisoGuardado avisos={[{ estado, etiqueta: 'Informe', error: errorGuardado }]} />
       <div className="flex items-start justify-between gap-4">
         <TituloSeccion titulo="Informe de enfermería" subtitulo="Continuidad de cuidados: lo que necesita el paciente al alta o al traslado." />

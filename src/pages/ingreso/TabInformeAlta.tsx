@@ -309,7 +309,7 @@ function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
   const filasMed: FilaMedicacion[] = (data.medicacion_estructurada as FilaMedicacion[]) ?? []
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="ancho-formulario space-y-6">
       <AvisoGuardado avisos={[
         { estado, etiqueta: 'Informe' },
         { estado: estadoEscalas, etiqueta: 'Escalas', texto: 'Escalas guardadas' },
