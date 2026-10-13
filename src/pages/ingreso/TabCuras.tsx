@@ -454,9 +454,14 @@ export interface ExtrasEdicionLesion {
   puedeBorrarValoracion: (v: Valoracion) => boolean
   onEditarValoracion: (v: Valoracion) => void
   onEliminarValoracion: (v: Valoracion) => void
-  onCambioEstado: () => void
+  // Sin onCambioEstado no se enseña «Marcar como curada» aquí (en la ficha ya está en la tarjeta de la lesión).
+  onCambioEstado?: () => void
   onEliminarLesion: () => void
 }
+
+// «Curada» no encaja con el cuidado preventivo de la piel: ahí se «finaliza».
+const textoCerrar = (l: Lesion) => (l.caracteristicas === 'cuidado_piel' ? 'Finalizar cuidado' : 'Marcar como curada')
+const textoCerrada = (l: Lesion) => (l.caracteristicas === 'cuidado_piel' ? 'Finalizado' : 'Curada')
 
 export function ModalEditarLesion({
   lesion, paciente, pestañaInicial, extras, onClose, onGuardado,
@@ -503,9 +508,11 @@ export function ModalEditarLesion({
         <CuerpoLesion ingresoId={lesion.ingreso_id} editando={lesion} onClose={onClose} onGuardado={onGuardado} />
         {extras?.puedeEditar && (
           <div className="mt-5 pt-4 border-t border-slate-200 flex items-center justify-between gap-3">
-            <button type="button" onClick={extras.onCambioEstado} className="text-sm font-medium text-slate-600 hover:text-slate-800 underline">
-              {curada ? 'Reabrir la lesión' : 'Dar por curada'}
-            </button>
+            {extras.onCambioEstado ? (
+              <button type="button" onClick={extras.onCambioEstado} className="text-sm font-medium text-slate-600 hover:text-slate-800 underline">
+                {curada ? 'Reabrir la lesión' : textoCerrar(lesion)}
+              </button>
+            ) : <span />}
             {extras.puedeBorrar && (
               <button type="button" onClick={extras.onEliminarLesion} className="text-sm font-medium text-red-600 hover:text-red-700 flex items-center gap-1">
                 <Trash2 className="w-4 h-4" />Eliminar la lesión
@@ -572,21 +579,20 @@ export function TablaHistorial({
 }
 
 // ── Tarjeta de una lesión ────────────────────────────────────
-// Sencilla: lo que hay (pauta y última valoración) y un solo botón «Editar».
+// Sencilla: lo que hay (pauta y última valoración) y las dos cosas que se hacen cada día, con su nombre:
+// «Valorar» y «Cambiar cura». Corregir los datos de la lesión y eliminarla vive dentro de «Editar datos».
 export function TarjetaLesion({
-  lesion, puedeEditar, puedeBorrar, puedeBorrarValoracion, evolucionAbierta = false,
-  onEditar, onEditarValoracion, onCambioEstado, onEliminarLesion, onEliminarValoracion,
+  lesion, puedeEditar, puedeBorrarValoracion, evolucionAbierta = false,
+  onEditar, onEditarValoracion, onCambioEstado, onEliminarValoracion,
 }: {
   lesion: Lesion
   puedeEditar: boolean
-  puedeBorrar: boolean
   puedeBorrarValoracion: (v: Valoracion) => boolean
   // Abre el historial desde el principio (en la ventana de la tabla de cuidados).
   evolucionAbierta?: boolean
-  onEditar: () => void
+  onEditar: (pestaña: Pestaña) => void
   onEditarValoracion: (v: Valoracion) => void
   onCambioEstado: () => void
-  onEliminarLesion: () => void
   onEliminarValoracion: (v: Valoracion) => void
 }) {
   const [abierta, setAbierta] = useState(evolucionAbierta)
@@ -595,6 +601,7 @@ export function TarjetaLesion({
   const ultima = vals.find(esValoracionClinica)
   const partesUltima = ultima ? partesValoracion(ultima) : []
   const curada = !!lesion.fecha_fin
+  const mostrarHistorial = vals.length > 1 || !!ultima
   return (
     <div className={`card p-4 ${curada ? 'opacity-80' : ''}`}>
       <div className="flex items-start justify-between gap-3">
@@ -602,7 +609,7 @@ export function TarjetaLesion({
           <div className="flex items-center gap-2 flex-wrap">
             <p className="font-semibold text-slate-800">{lesion.localizacion}</p>
             <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">{CARACTERISTICA_LABEL[lesion.caracteristicas]}</span>
-            {curada && <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">Curada el {fechaLarga(lesion.fecha_fin!)}</span>}
+            {curada && <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">{textoCerrada(lesion)} el {fechaLarga(lesion.fecha_fin!)}</span>}
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
             Desde {fechaLarga(lesion.fecha_inicio)}
@@ -610,10 +617,10 @@ export function TarjetaLesion({
             {lesion.registrado_por && ` · ${lesion.registrado_por.nombre} ${lesion.registrado_por.apellidos}`}
           </p>
         </div>
-        {puedeEditar && (
-          <div className="flex items-center gap-1 shrink-0">
-            <button onClick={onEditar} className="btn-secondary !px-3 !py-1.5 text-xs"><Pencil className="w-3.5 h-3.5" />Editar</button>
-            {puedeBorrar && <button onClick={onEliminarLesion} title="Eliminar la lesión" className="p-1.5 text-slate-500 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>}
+        {puedeEditar && !curada && (
+          <div className="flex items-center gap-2 shrink-0">
+            <button onClick={() => onEditar('valoracion')} title="Anotar cómo está la lesión hoy: medidas, grado, frotis, escalas" className="btn-secondary !px-3 !py-1.5 text-xs"><Plus className="w-3.5 h-3.5" />Valorar</button>
+            <button onClick={() => onEditar('pauta')} title="Cambiar la cura que lleva: apósito, frecuencia, días" className="btn-secondary !px-3 !py-1.5 text-xs"><Pencil className="w-3.5 h-3.5" />Cambiar cura</button>
           </div>
         )}
       </div>
@@ -638,19 +645,27 @@ export function TarjetaLesion({
       </p>
       {lesion.notas && <p className="text-xs text-slate-600 mt-1 whitespace-pre-wrap">{lesion.notas}</p>}
 
-      <div className="mt-3 flex items-center gap-3">
-        <button onClick={() => setAbierta(!abierta)} className="flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700">
-          {abierta ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-          Historial ({vals.length})
-        </button>
+      <div className="mt-3 flex items-center gap-4">
+        {/* Con un solo registro (la pauta inicial) y ninguna valoración, el historial no tiene nada que enseñar. */}
+        {mostrarHistorial && (
+          <button onClick={() => setAbierta(!abierta)} className="flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700">
+            {abierta ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+            Historial ({vals.length})
+          </button>
+        )}
         {puedeEditar && (
-          <button onClick={onCambioEstado} className="text-xs font-medium text-slate-500 hover:text-slate-700 underline">
-            {curada ? 'Reabrir' : 'Dar por curada'}
+          <button onClick={() => onEditar('datos')} title="Corregir localización, fecha de inicio, origen o notas; también eliminar la lesión" className="text-xs font-medium text-slate-500 hover:text-slate-700 underline">
+            Editar datos
+          </button>
+        )}
+        {puedeEditar && (
+          <button onClick={onCambioEstado} className="ml-auto text-xs font-medium text-emerald-700 hover:text-emerald-800 underline">
+            {curada ? 'Reabrir' : textoCerrar(lesion)}
           </button>
         )}
       </div>
 
-      {abierta && (
+      {mostrarHistorial && abierta && (
         <TablaHistorial
           vals={vals}
           puedeEditar={puedeEditar}
@@ -675,7 +690,9 @@ export function TabCuras({ ingresoId, episodioActivo }: { ingresoId: string; epi
   const [loading, setLoading] = useState(true)
   const [errorCarga, setErrorCarga] = useState('')
   const [errorAccion, setErrorAccion] = useState('')
-  const [formLesion, setFormLesion] = useState<{ editando: Lesion | null } | null>(null)
+  const [formLesion, setFormLesion] = useState<{ editando: Lesion | null; pestaña?: Pestaña } | null>(null)
+  // «Curadas» empieza plegado: son historia, no trabajo del día.
+  const [verCuradas, setVerCuradas] = useState(false)
   const [formValoracion, setFormValoracion] = useState<{ lesion: Lesion; editando: Valoracion } | null>(null)
   const hoy = hoyLocal()
 
@@ -718,13 +735,15 @@ export function TabCuras({ ingresoId, episodioActivo }: { ingresoId: string; epi
     await cargar()
   }
 
-  async function eliminarLesion(l: Lesion) {
-    if (!(await confirmar({ titulo: `¿Eliminar «${l.localizacion}»?`, mensaje: 'Se eliminará con todas sus valoraciones. No se puede deshacer.', textoConfirmar: 'Eliminar', peligro: true }))) return
+  // Devuelve false si se canceló la confirmación (para no cerrar la ventana desde la que se pidió).
+  async function eliminarLesion(l: Lesion): Promise<boolean> {
+    if (!(await confirmar({ titulo: `¿Eliminar «${l.localizacion}»?`, mensaje: 'Se eliminará con todas sus valoraciones. No se puede deshacer.', textoConfirmar: 'Eliminar', peligro: true }))) return false
     setErrorAccion('')
     const { error, count } = await supabase.from('curas_lesiones').delete({ count: 'exact' }).eq('id', l.id)
     if (error) setErrorAccion('No se pudo eliminar: ' + error.message)
     else if (!count) setErrorAccion('No se eliminó: solo puede hacerlo quien la registró o un administrador.')
     await cargar()
+    return true
   }
 
   async function eliminarValoracion(v: Valoracion) {
@@ -779,8 +798,8 @@ export function TabCuras({ ingresoId, episodioActivo }: { ingresoId: string; epi
                   ? marcaHoy.estado === 'hecha' ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />
                   : <Circle className="w-4 h-4" />}
                 {marcaHoy
-                  ? marcaHoy.estado === 'hecha' ? 'Cura de hoy hecha' : 'Cura de hoy no realizada'
-                  : tocaHoy ? 'Registrar cura de hoy' : 'Hoy no toca cura'}
+                  ? marcaHoy.estado === 'hecha' ? 'Curas de hoy: realizadas' : 'Curas de hoy: no realizadas'
+                  : tocaHoy ? 'Registrar curas de hoy' : 'Hoy no toca cura'}
               </button>
             )}
             <button onClick={() => setFormLesion({ editando: null })} className="btn-primary"><Plus className="w-4 h-4" />Añadir lesión o cuidado</button>
@@ -800,35 +819,38 @@ export function TabCuras({ ingresoId, episodioActivo }: { ingresoId: string; epi
                 key={l.id}
                 lesion={l}
                 puedeEditar={puedeEditar}
-                puedeBorrar={puedeEditar && (esAdmin || esMio(l.registrado_por_id))}
                 puedeBorrarValoracion={(v) => puedeEditar && (esAdmin || esMio(v.registrado_por_id))}
-                onEditar={() => setFormLesion({ editando: l })}
+                onEditar={(pestaña) => setFormLesion({ editando: l, pestaña })}
                 onEditarValoracion={(v) => setFormValoracion({ lesion: l, editando: v })}
                 onCambioEstado={() => cambiarEstado(l)}
-                onEliminarLesion={() => eliminarLesion(l)}
                 onEliminarValoracion={eliminarValoracion}
               />
             ))}
           </div>
           {curadas.length > 0 && (
             <div>
-              <p className="section-title">Curadas</p>
-              <div className="space-y-3">
-                {curadas.map((l) => (
-                  <TarjetaLesion
-                    key={l.id}
-                    lesion={l}
-                    puedeEditar={puedeEditar}
-                    puedeBorrar={puedeEditar && (esAdmin || esMio(l.registrado_por_id))}
-                    puedeBorrarValoracion={(v) => puedeEditar && (esAdmin || esMio(v.registrado_por_id))}
-                    onEditar={() => setFormLesion({ editando: l })}
-                    onEditarValoracion={(v) => setFormValoracion({ lesion: l, editando: v })}
-                    onCambioEstado={() => cambiarEstado(l)}
-                    onEliminarLesion={() => eliminarLesion(l)}
-                    onEliminarValoracion={eliminarValoracion}
-                  />
-                ))}
-              </div>
+              <p className="section-title">
+                <button type="button" onClick={() => setVerCuradas((v) => !v)} aria-expanded={verCuradas} className="flex items-center gap-1 hover:text-slate-800">
+                  {verCuradas ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                  Curadas y finalizadas ({curadas.length})
+                </button>
+              </p>
+              {verCuradas && (
+                <div className="space-y-3">
+                  {curadas.map((l) => (
+                    <TarjetaLesion
+                      key={l.id}
+                      lesion={l}
+                      puedeEditar={puedeEditar}
+                      puedeBorrarValoracion={(v) => puedeEditar && (esAdmin || esMio(v.registrado_por_id))}
+                      onEditar={(pestaña) => setFormLesion({ editando: l, pestaña })}
+                      onEditarValoracion={(v) => setFormValoracion({ lesion: l, editando: v })}
+                      onCambioEstado={() => cambiarEstado(l)}
+                      onEliminarValoracion={eliminarValoracion}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </>
@@ -856,8 +878,19 @@ export function TabCuras({ ingresoId, episodioActivo }: { ingresoId: string; epi
       {formLesion?.editando && (
         <ModalEditarLesion
           lesion={formLesion.editando}
+          pestañaInicial={formLesion.pestaña}
           onClose={() => setFormLesion(null)}
           onGuardado={async () => { setFormLesion(null); await cargar() }}
+          extras={{
+            error: errorAccion,
+            puedeEditar,
+            puedeBorrar: puedeEditar && (esAdmin || esMio(formLesion.editando.registrado_por_id)),
+            puedeBorrarValoracion: (v) => puedeEditar && (esAdmin || esMio(v.registrado_por_id)),
+            onEditarValoracion: (v) => { const l = formLesion.editando!; setFormLesion(null); setFormValoracion({ lesion: l, editando: v }) },
+            onEliminarValoracion: eliminarValoracion,
+            // «Marcar como curada» ya está en la tarjeta: aquí solo «Eliminar».
+            onEliminarLesion: async () => { if (await eliminarLesion(formLesion.editando!)) setFormLesion(null) },
+          }}
         />
       )}
       {formValoracion && (
