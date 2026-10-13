@@ -11,6 +11,7 @@ import { useAuth } from '../lib/AuthContext'
 import { CabeceraPagina } from '../components/CabeceraPagina'
 import { BotonActualizar } from '../components/BotonActualizar'
 import { AvisoGuardado, useAvisoGuardado } from '../components/AvisoGuardado'
+import { IndicadorGuardado } from '../components/IndicadorGuardado'
 import { imprimirHTMLEnMarco } from '../lib/imprimir'
 import { TURNOS, type Turno } from '../types/pautaCuidados'
 import { construirHojaHTML, turnoActual, type PacienteHoja } from './hojasTurno/hoja'
@@ -30,7 +31,7 @@ export default function HojasTurno() {
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')
   const [aviso, setAviso] = useState('')
-  const { avisos, guardado, fallo } = useAvisoGuardado('Hoja de turno')
+  const { avisos, estado: estadoAviso, error: errorAviso, empezar, guardado, fallo } = useAvisoGuardado('Hoja de turno')
 
   async function cargar(silencioso = false) {
     if (!silencioso) setCargando(true)
@@ -96,6 +97,7 @@ export default function HojasTurno() {
 
   const acciones: AccionesFila | undefined = esEnfermeria ? {
     anadir: async (ingresoId, texto, turnos) => {
+      empezar()
       const r = await anadirIndicacion(ingresoId, texto, turnos)
       const ok = await ejecutar({ error: r.error })
       if (ok && r.indicacion) {
@@ -105,6 +107,7 @@ export default function HojasTurno() {
       return ok
     },
     cambiar: async (ingresoId, id, cambios) => {
+      empezar()
       const base = pacientes.find((p) => p.ingresoId === ingresoId)?.indicaciones.find((i) => i.id === id)?.updated_at
       const r = await cambiarIndicacion(id, cambios, base)
       const ok = await ejecutar(r)
@@ -112,6 +115,7 @@ export default function HojasTurno() {
       return ok
     },
     borrar: async (ingresoId, id) => {
+      empezar()
       const base = pacientes.find((p) => p.ingresoId === ingresoId)?.indicaciones.find((i) => i.id === id)?.updated_at
       const ok = await ejecutar(await borrarIndicacion(id, base))
       if (ok) actualizar(ingresoId, (p) => ({ ...p, indicaciones: p.indicaciones.filter((i) => i.id !== id) }))
@@ -141,6 +145,7 @@ export default function HojasTurno() {
         )}
       </CabeceraPagina>
 
+      <div className="flex justify-end -mt-3 min-h-[1.25rem]"><IndicadorGuardado estado={estadoAviso} detalle={errorAviso} /></div>
       <AvisoGuardado avisos={avisos} />
 
       {verHistorico ? (

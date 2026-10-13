@@ -41,6 +41,7 @@ type Tab = {
   subs?: Sub[]                 // pestañas con subpestañas
   subPorDefecto?: string       // subpestaña que se abre al entrar (por defecto, la primera)
   enConstruccion?: boolean
+  soloMedico?: boolean         // la pestaña no se enseña a enfermería ni a otros roles asistenciales (sí a médicos y administración)
 }
 
 const TABS: Tab[] = [
@@ -69,7 +70,7 @@ const TABS: Tab[] = [
       { id: 'incidencias', label: 'Incidencias', seccion: 'incidencias' },
     ],
   },
-  { id: 'cmbd', label: 'CMBD', icon: Database, seccion: 'cmbd', enConstruccion: true },
+  { id: 'cmbd', label: 'CMBD', icon: Database, seccion: 'cmbd', enConstruccion: true, soloMedico: true },
 ]
 
 // Enlaces antiguos (?tab=ingreso, ?tab=eventos…) que siguen existiendo
@@ -91,13 +92,15 @@ function pestanaPorDefecto(rol: string | undefined): { tab: string; sub?: string
   return { tab: 'datos' }
 }
 
-function resolverPestana(tabParam: string | null, subParam: string | null, rol?: string, editar?: boolean): { tab: Tab; sub: Sub | null } {
+function resolverPestana(tabParam: string | null, subParam: string | null, rol?: string, editar?: boolean, esMedico?: boolean): { tab: Tab; sub: Sub | null } {
   const alias = tabParam ? ALIAS_TABS[tabParam] : undefined
   // Sin ?tab: la de por defecto según el rol (salvo que el enlace pida editar datos, que vive en Datos).
   const porDefecto = !tabParam && !editar ? pestanaPorDefecto(rol) : null
   if (porDefecto) { tabParam = porDefecto.tab; subParam = subParam ?? porDefecto.sub ?? null }
   const tabId = alias?.tab ?? tabParam ?? 'datos'
-  const tab = TABS.find((t) => t.id === tabId) ?? TABS[0]
+  const pedida = TABS.find((t) => t.id === tabId) ?? TABS[0]
+  // Un enlace directo a una pestaña solo para médicos (CMBD) abre Datos si quien lo abre no lo es.
+  const tab = pedida.soloMedico && !esMedico ? TABS[0] : pedida
   if (!tab.subs) return { tab, sub: null }
   const subId = alias?.sub ?? subParam ?? tab.subPorDefecto ?? tab.subs[0].id
   const sub = tab.subs.find((s) => s.id === subId)
@@ -115,7 +118,7 @@ export default function DetalleIngreso() {
   // La pestaña y la subpestaña se leen siempre de la URL (?tab=…&sub=…),
   // sin estado propio: así, al navegar de un ingreso a otro sin recargar
   // la página, la pestaña nunca se queda "pegada" a la anterior.
-  const { tab: tabActual, sub: subActual } = resolverPestana(searchParams.get('tab'), searchParams.get('sub'), profesional?.rol, !!searchParams.get('editar'))
+  const { tab: tabActual, sub: subActual } = resolverPestana(searchParams.get('tab'), searchParams.get('sub'), profesional?.rol, !!searchParams.get('editar'), esMedico)
   const seccion: Seccion = subActual ? subActual.seccion : tabActual.seccion!
   const [ingreso, setIngreso] = useState<Ingreso | null>(null)
   const [loading, setLoading] = useState(true)
@@ -365,7 +368,7 @@ export default function DetalleIngreso() {
 
         {/* Tabs */}
         <div className="flex gap-1 mt-4 -mb-4">
-          {TABS.map(({ id: tid, label, icon: Icon, enConstruccion }) => (
+          {TABS.filter((t) => !t.soloMedico || esMedico).map(({ id: tid, label, icon: Icon, enConstruccion }) => (
             <button
               key={tid}
               onClick={() => irA(tid)}

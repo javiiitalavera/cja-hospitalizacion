@@ -2120,11 +2120,17 @@ begin
 
   select jsonb_build_object(
     'total', count(*),
-    'con_lesion', count(*) filter (where e.datos->>'con_lesion' = 'Sí'),
-    'pendientes_valoracion', count(*) filter (where e.datos->>'con_lesion' = 'Pendiente de valoración'),
+    'con_lesion', count(*) filter (where
+      case when e.datos ? 'con_lesion' then e.datos->>'con_lesion' = 'Sí'
+           else e.datos->>'consecuencias' in ('Contusión', 'Herida', 'Fractura', 'TCE', 'Otro') end),
+    'pendientes_valoracion', count(*) filter (where
+      case when e.datos ? 'con_lesion' then e.datos->>'con_lesion' = 'Pendiente de valoración'
+           else e.datos->>'consecuencias' = 'Pendiente de valoración' end),
     'graves', count(*) filter (where e.datos->>'gravedad' = 'Grave' or e.datos->>'consecuencias' in ('Fractura', 'TCE')),
     'tasa_total_1000', case when v_dias_estancia > 0 then round(count(*)::numeric / v_dias_estancia * 1000, 2) else null end,
-    'tasa_con_lesion_1000', case when v_dias_estancia > 0 then round(count(*) filter (where e.datos->>'con_lesion' = 'Sí')::numeric / v_dias_estancia * 1000, 2) else null end
+    'tasa_con_lesion_1000', case when v_dias_estancia > 0 then round(count(*) filter (where
+      case when e.datos ? 'con_lesion' then e.datos->>'con_lesion' = 'Sí'
+           else e.datos->>'consecuencias' in ('Contusión', 'Herida', 'Fractura', 'TCE', 'Otro') end)::numeric / v_dias_estancia * 1000, 2) else null end
   ) into v_caidas
   from public.eventos e
   inner join public.ingresos i on i.id = e.ingreso_id

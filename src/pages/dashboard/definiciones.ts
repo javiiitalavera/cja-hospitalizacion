@@ -246,19 +246,19 @@ export const DEFINICIONES = definiciones({
   caidas_con_lesion: {
     titulo: 'Caídas con lesión',
     queCuenta: 'Caídas del periodo en las que se ha confirmado que hubo lesión.',
-    formula: 'Caídas con «con lesión» = Sí. Debajo, la tasa: ÷ días-estancia × 1.000.',
+    formula: 'Caídas con consecuencia Contusión, Herida, Fractura, TCE u Otro. Debajo, la tasa: ÷ días-estancia × 1.000.',
     ojo: 'Las pendientes de valoración no cuentan aquí.',
   },
   caidas_graves: {
     titulo: 'Caídas graves',
-    queCuenta: 'Caídas del periodo con gravedad «grave» o con fractura o TCE como consecuencia.',
-    formula: 'Caídas con gravedad = Grave, o consecuencia = Fractura o TCE.',
+    queCuenta: 'Caídas del periodo con fractura o TCE como consecuencia (y las antiguas marcadas con gravedad «grave»).',
+    formula: 'Caídas con consecuencia = Fractura o TCE (o, en las antiguas, gravedad = Grave).',
     ojo: 'Una caída cuenta una vez aunque cumpla las dos condiciones.',
   },
   caidas_pendientes: {
     titulo: 'Caídas pendientes de valoración',
     queCuenta: 'Caídas del periodo en las que aún no se ha confirmado si hubo lesión.',
-    formula: 'Caídas con «con lesión» = Pendiente de valoración.',
+    formula: 'Caídas con consecuencia = Pendiente de valoración.',
     ojo: 'Es trabajo pendiente: al valorarlas pasan a «con lesión» o a «sin lesión».',
   },
   caidas_repetidas: {

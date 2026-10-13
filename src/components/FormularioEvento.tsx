@@ -387,14 +387,6 @@ export default function FormularioEvento({ ingresoId, eventoExistente, onClose, 
                 </div>
                 )
               })}
-              {/* Aviso, no bloqueo — puede haber matices clínicos que
-                  esto no capture, pero conviene que quien registra lo
-                  revise antes de dar por buena la combinación. */}
-              {tipo === 'caida' && datos.consecuencias === 'Sin lesión' && ['Leve', 'Moderada', 'Grave'].includes(datos.gravedad) && (
-                <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5">
-                  "Sin lesión" en consecuencias no encaja con una gravedad de "{datos.gravedad}". Revisa que sea correcto.
-                </p>
-              )}
             </div>
           )}
 

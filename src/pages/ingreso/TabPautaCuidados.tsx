@@ -14,6 +14,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/AuthContext'
 import { ChipsTurno } from '../../components/ChipsTurno'
 import { AvisoGuardado, useAvisoGuardado } from '../../components/AvisoGuardado'
+import { IndicadorGuardado } from '../../components/IndicadorGuardado'
 import { useConfirmar } from '../../components/useConfirmar'
 import { BloqueOxigeno, BloqueSonda, FONDO_DISPOSITIVO, SelectorAislamiento, SelectorVias } from '../../components/ViasDispositivos'
 import { AvisoFicha } from '../../components/AvisoFicha'
@@ -40,7 +41,7 @@ export function TabPautaCuidados({ ingresoId, episodioActivo }: { ingresoId: str
 
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')
-  const { avisos, guardado, fallo } = useAvisoGuardado('Pauta de cuidados')
+  const { avisos, estado: estadoAviso, error: errorAviso, empezar, guardado, fallo } = useAvisoGuardado('Pauta de cuidados')
   const { confirmar, dialogo } = useConfirmar()
   const [indicaciones, setIndicaciones] = useState<IndicacionCuidado[]>([])
   const [dispositivos, setDispositivos] = useState<DatosDispositivos>({})
@@ -49,6 +50,7 @@ export function TabPautaCuidados({ ingresoId, episodioActivo }: { ingresoId: str
   const [nuevosTurnos, setNuevosTurnos] = useState<Turno[]>(TODOS_TURNOS)
   const [editando, setEditando] = useState<string | null>(null)
   const [textoEdicion, setTextoEdicion] = useState('')
+  const [turnosEdicion, setTurnosEdicion] = useState<Turno[]>([])
   const [ocupado, setOcupado] = useState(false)
 
   async function cargar(silencioso = false) {
@@ -80,6 +82,7 @@ export function TabPautaCuidados({ ingresoId, episodioActivo }: { ingresoId: str
   // recarga en silencio la versión actual (lo que se estaba escribiendo se queda en pantalla).
   async function ejecutar(accion: () => Promise<ResultadoPauta>): Promise<ResultadoPauta | null> {
     setOcupado(true)
+    empezar()
     const r = await accion()
     setOcupado(false)
     if (r.error) {
@@ -111,17 +114,11 @@ export function TabPautaCuidados({ ingresoId, episodioActivo }: { ingresoId: str
   async function guardarEdicion(i: IndicacionCuidado) {
     const texto = textoEdicion.trim()
     if (!texto || ocupado) return
-    const r = await ejecutar(() => cambiarIndicacion(i.id, { texto }, i.updated_at))
+    const r = await ejecutar(() => cambiarIndicacion(i.id, { texto, turnos: turnosEdicion }, i.updated_at))
     if (r) {
-      setIndicaciones((l) => l.map((x) => (x.id === i.id ? { ...x, texto, updated_at: r.actualizada ?? x.updated_at } : x)))
+      setIndicaciones((l) => l.map((x) => (x.id === i.id ? { ...x, texto, turnos: turnosEdicion, updated_at: r.actualizada ?? x.updated_at } : x)))
       setEditando(null)
     }
-  }
-
-  async function cambiarTurnos(i: IndicacionCuidado, turnos: Turno[]) {
-    if (!puedeEditar || ocupado) return
-    const r = await ejecutar(() => cambiarIndicacion(i.id, { turnos }, i.updated_at))
-    if (r) setIndicaciones((l) => l.map((x) => (x.id === i.id ? { ...x, turnos, updated_at: r.actualizada ?? x.updated_at } : x)))
   }
 
   async function borrar(i: IndicacionCuidado) {
@@ -133,7 +130,11 @@ export function TabPautaCuidados({ ingresoId, episodioActivo }: { ingresoId: str
 
   // Aviso al recargar o cerrar la pestaña con texto escrito y sin guardar.
   const original = editando ? indicaciones.find((x) => x.id === editando) : undefined
-  useAvisoSalida((!!original && textoEdicion.trim() !== original.texto.trim()) || nuevoTexto.trim() !== '')
+  const turnosIguales = (a: Turno[], b: Turno[]) => a.length === b.length && a.every((t) => b.includes(t))
+  const sucio = (!!original && (textoEdicion.trim() !== original.texto.trim() || !turnosIguales(turnosEdicion, original.turnos))) || nuevoTexto.trim() !== ''
+  useAvisoSalida(sucio)
+  // Mismo indicador y mismas palabras que en el resto de la aplicación.
+  const estadoIndicador = ocupado ? 'guardando' : sucio ? 'pendiente' : estadoAviso
 
   if (cargando) return <Cargando />
   if (error) return <p className="text-sm text-red-600 py-8 text-center">{error}</p>
@@ -151,6 +152,7 @@ export function TabPautaCuidados({ ingresoId, episodioActivo }: { ingresoId: str
               : 'Solo lectura: las indicaciones las escribe enfermería, y el aislamiento, las vías y los dispositivos, enfermería y médicos (o un administrador).'}
         </AvisoFicha>
       )}
+      <div className="flex justify-end -mb-3"><IndicadorGuardado estado={estadoIndicador} detalle={errorAviso} /></div>
       <AvisoGuardado avisos={avisos} />
       {dialogo}
 
@@ -196,6 +198,10 @@ export function TabPautaCuidados({ ingresoId, episodioActivo }: { ingresoId: str
                     value={textoEdicion}
                     onChange={(e) => setTextoEdicion(e.target.value)}
                   />
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs text-slate-500">Sale en:</span>
+                    <ChipsTurno valor={turnosEdicion} onChange={setTurnosEdicion} />
+                  </div>
                   <div className="flex gap-2">
                     <button type="button" className="btn-primary text-xs py-1 gap-1" disabled={ocupado || !textoEdicion.trim()} onClick={() => guardarEdicion(i)}>
                       <Check className="w-3.5 h-3.5" /> Guardar
@@ -211,7 +217,7 @@ export function TabPautaCuidados({ ingresoId, episodioActivo }: { ingresoId: str
                   {puedeEditar && (
                     <div className="flex items-center gap-1 shrink-0">
                       <button type="button" title="Editar" className="p-1 text-slate-500 hover:text-slate-700"
-                        onClick={() => { setEditando(i.id); setTextoEdicion(i.texto) }}>
+                        onClick={() => { setEditando(i.id); setTextoEdicion(i.texto); setTurnosEdicion(i.turnos) }}>
                         <Pencil className="w-3.5 h-3.5" />
                       </button>
                       <button type="button" title="Quitar" className="p-1 text-slate-500 hover:text-red-500" onClick={() => borrar(i)}>
@@ -221,7 +227,8 @@ export function TabPautaCuidados({ ingresoId, episodioActivo }: { ingresoId: str
                   )}
                 </div>
               )}
-              <ChipsTurno valor={i.turnos} deshabilitado={!puedeEditar || ocupado} onChange={puedeEditar ? (t) => cambiarTurnos(i, t) : undefined} />
+              {/* Los turnos se cambian al editar la indicación (con su botón Guardar), igual que en las Hojas de turno. */}
+              {editando !== i.id && <ChipsTurno valor={i.turnos} />}
             </div>
           ))}
         </div>

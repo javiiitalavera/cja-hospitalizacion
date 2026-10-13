@@ -1,7 +1,7 @@
 // Indicador de guardado único para toda la aplicación. Antes cada pantalla decía una cosa distinta («Error al
 // guardar», «✗ Error al guardar», «No se ha podido guardar»…) y era difícil saber si lo escrito estaba a salvo.
 // Ahora solo hay cuatro estados, con las mismas palabras y la misma forma en todas partes:
-//   Cambios pendientes → Guardando… → Guardado        (y, si falla, «No se pudo guardar»)
+//   Cambios sin guardar → Guardando → Guardado        (y, si falla, «No se pudo guardar»)
 // Sirve igual para el guardado manual (botón), el automático (a los segundos de dejar de escribir) y el inmediato
 // (al pulsar o al salir del campo): lo que cambia es cuándo se pasa de «pendiente» a «guardando», no cómo se dice.
 
@@ -9,8 +9,8 @@ import { AlertCircle, Check } from 'lucide-react'
 
 export type EstadoGuardadoValor = 'inactivo' | 'pendiente' | 'guardando' | 'guardado' | 'error' | 'conflicto'
 
-export const TEXTO_PENDIENTE = 'Cambios pendientes'
-export const TEXTO_GUARDANDO = 'Guardando…'
+export const TEXTO_PENDIENTE = 'Cambios sin guardar'
+export const TEXTO_GUARDANDO = 'Guardando'
 export const TEXTO_GUARDADO = 'Guardado'
 export const TEXTO_ERROR = 'No se pudo guardar'
 

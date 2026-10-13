@@ -118,8 +118,7 @@ export default function PanelEdicion({
     if (updated) versionGuardadaRef.current = updated.version
     if (miSecuencia !== saveSeqRef.current) return true
     if (error) {
-      setEstado('error')
-      setTimeout(() => setEstado((e) => (e === 'error' ? 'inactivo' : e)), 4000)
+      setEstado('error')   // se queda a la vista hasta el siguiente guardado correcto: lo escrito sigue sin guardar
       return false
     }
     if (!updated) {
@@ -185,8 +184,7 @@ export default function PanelEdicion({
     if (updated) versionGuardadaRef.current = updated.version
     if (miSecuencia !== saveSeqRef.current) return true
     if (error) {
-      setEstado('error')
-      setTimeout(() => setEstado((e) => (e === 'error' ? 'inactivo' : e)), 4000)
+      setEstado('error')   // se queda a la vista hasta el siguiente guardado correcto: lo escrito sigue sin guardar
       return false
     }
     if (!updated) { setEstado('conflicto'); return false }
@@ -276,6 +274,9 @@ export default function PanelEdicion({
         </div>
         <div className="flex items-center gap-2">
           <IndicadorGuardado estado={estado} detalle="inténtalo de nuevo" />
+          {estado === 'error' && (
+            <button type="button" onClick={() => { void save() }} className="text-xs font-semibold text-primary-700 hover:underline">Reintentar</button>
+          )}
           <button onClick={onClose} className="text-slate-500 hover:text-slate-600 ml-1">
             <X className="w-4 h-4" />
           </button>

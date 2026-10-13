@@ -6,6 +6,7 @@ import { DistintivoAislamiento } from '../../components/DistintivoAislamiento'
 import { useState } from 'react'
 import { Check, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { ChipsTurno } from '../../components/ChipsTurno'
+import { IndicadorGuardado } from '../../components/IndicadorGuardado'
 import { Link, useNavigate } from 'react-router-dom'
 import { hayCambiosSinGuardar, useAvisoSalida } from '../../lib/avisoSalida'
 import { useConfirmar } from '../../components/useConfirmar'
@@ -162,6 +163,7 @@ export function FilaPaciente({ n, p, turno, columnas, acciones }: {
                     <button type="button" className="btn-secondary text-xs py-1 gap-1" onClick={() => setEditando(null)}>
                       <X className="w-3.5 h-3.5" /> Cancelar
                     </button>
+                    <IndicadorGuardado estado={ocupado ? 'guardando' : (textoEdicion.trim() !== i.texto.trim() || !turnosIguales(turnosEdicion, i.turnos)) ? 'pendiente' : 'inactivo'} />
                   </div>
                 </div>
               )
@@ -213,6 +215,7 @@ export function FilaPaciente({ n, p, turno, columnas, acciones }: {
                 <button type="button" className="btn-secondary text-xs py-1 gap-1" onClick={() => setAnadiendo(false)}>
                   <X className="w-3.5 h-3.5" /> Cancelar
                 </button>
+                <IndicadorGuardado estado={ocupado ? 'guardando' : nuevoTexto.trim() !== '' ? 'pendiente' : 'inactivo'} />
               </div>
             </div>
           ) : (

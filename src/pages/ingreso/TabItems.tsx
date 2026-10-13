@@ -10,11 +10,13 @@ import { severidadDia, severidadNoche, SEVERIDAD_ESTILO, SEVERIDAD_BOTON_ESTILO 
 import { SEMAFORO_CAIDAS_COLOR } from '../../types'
 import { EVENTO_SEMAFORO, SEMAFOROS } from '../../components/SemaforoCaidas'
 import { AvisoFicha } from '../../components/AvisoFicha'
+import { IndicadorGuardado } from '../../components/IndicadorGuardado'
+import { encadenar } from '../../lib/colaGuardado'
 
 
 function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo?: { nombre: string; habitacion?: number | null } }) {
   const [data, setData] = useState<Partial<ItemsPaciente & { version: number }>>({})
-  const [estado, setEstado] = useState<'inactivo' | 'guardando' | 'guardado' | 'error' | 'conflicto'>('inactivo')
+  const [estado, setEstado] = useState<'inactivo' | 'pendiente' | 'guardando' | 'guardado' | 'error' | 'conflicto'>('inactivo')
   const [verHistorico, setVerHistorico] = useState(false)
   const [modalContencion, setModalContencion] = useState(false)
   const [estadoContencion, setEstadoContencion] = useState<{ dia: string | null; noche: string[] | null } | 'cargando'>('cargando')
@@ -28,12 +30,24 @@ function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo
   // guarda se escribe algo más, esa edición sigue pendiente (la respuesta del servidor no la pisa).
   const [sucio, setSucio] = useState(false)
   const revRef = useRef(0)
+  // Guardado automático, igual que en el panel de la Hoja de ítems: unos segundos después de dejar de tocar el formulario.
+  // Los guardados van en cola y cada uno lee la versión que dejó el anterior, para no conflictuar con uno mismo.
+  const dataRef = useRef(data)
+  dataRef.current = data
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const cadenaRef = useRef<Promise<boolean>>(Promise.resolve(true))
+  const versionGuardadaRef = useRef<number | null>(null)
   function editar(fn: (d: Partial<ItemsPaciente & { version: number }>) => Partial<ItemsPaciente & { version: number }>) {
     revRef.current++
     setSucio(true)
     setData(fn)
+    if (estado === 'conflicto') return    // en conflicto no se reintenta solo: primero «Ver la versión más reciente»
+    setEstado('pendiente')
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => { void save() }, 1200)
   }
-  useAvisoSalida(sucio || estado === 'guardando' || estado === 'error' || estado === 'conflicto')
+  useAvisoSalida(sucio || estado === 'pendiente' || estado === 'guardando' || estado === 'error' || estado === 'conflicto')
+  useEffect(() => () => { if (debounceRef.current) clearTimeout(debounceRef.current) }, [])
 
   function cargarContencion() {
     supabase.from('contenciones').select('dia, noche').eq('ingreso_id', ingresoId).maybeSingle()
@@ -58,6 +72,9 @@ function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo
     // llamaba si había datos) — así, al cambiar de un paciente con
     // items a uno sin ellos, el formulario se vacía de verdad en vez
     // de seguir mostrando los datos del paciente anterior.
+    if (debounceRef.current) { clearTimeout(debounceRef.current); debounceRef.current = null }
+    versionGuardadaRef.current = null
+    setEstado('inactivo')
     setData({})
     setSucio(false)
     setErrorCarga('')
@@ -77,28 +94,35 @@ function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo
     return () => { vigente = false }
   }, [ingresoId, reintento])
 
-  async function save() {
+  function save(): Promise<boolean> {
+    if (debounceRef.current) { clearTimeout(debounceRef.current); debounceRef.current = null }
     const miRev = revRef.current
     setEstado('guardando')
-    // update() con la versión leída, no upsert() a ciegas: si alguien
-    // más ha guardado esta misma hoja mientras tanto, esto no
-    // encuentra ninguna fila y avisa, en vez de pisarlo en silencio.
+    return encadenar(cadenaRef, () => ejecutarGuardado(miRev))
+  }
+
+  async function ejecutarGuardado(miRev: number): Promise<boolean> {
+    // update() con la versión que dejó el guardado anterior, no upsert() a ciegas: si alguien más ha guardado esta
+    // misma hoja mientras tanto, esto no encuentra ninguna fila y avisa, en vez de pisarlo en silencio.
+    const d = dataRef.current
+    const version = versionGuardadaRef.current ?? d.version ?? 1
     const { data: guardado, error } = await supabase
       .from('items_paciente')
-      .update(data)
+      .update(d)
       .eq('ingreso_id', ingresoId)
-      .eq('version', data.version ?? 1)
+      .eq('version', version)
       .select()
       .maybeSingle()
+    if (guardado) versionGuardadaRef.current = guardado.version
     if (error) {
+      // El error se queda a la vista hasta el siguiente guardado correcto: lo escrito sigue sin guardar.
       setEstado('error')
-      setTimeout(() => setEstado((e) => (e === 'error' ? 'inactivo' : e)), 4000)
-      return
+      return false
     }
-    if (!guardado) { setEstado('conflicto'); return }
+    if (!guardado) { setEstado('conflicto'); return false }
     // Solo se toma la versión nueva: lo que se haya cambiado mientras se guardaba se queda en pantalla
     // y sigue pendiente de guardar (antes la respuesta del servidor lo borraba sin avisar).
-    setData((d) => ({ ...d, version: guardado.version, updated_at: guardado.updated_at }))
+    setData((prev) => ({ ...prev, version: guardado.version, updated_at: guardado.updated_at }))
     // La cabecera del paciente muestra el color del semáforo: se le avisa del valor ya guardado.
     window.dispatchEvent(new CustomEvent(EVENTO_SEMAFORO, { detail: { ingresoId, valor: guardado.semaforo_caidas ?? null } }))
     if (revRef.current === miRev) {
@@ -106,12 +130,14 @@ function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo
       setEstado('guardado')
       setTimeout(() => setEstado((e) => (e === 'guardado' ? 'inactivo' : e)), 2000)
     } else {
-      setEstado('inactivo')   // hay ediciones posteriores: el botón vuelve a «Guardar cambios»
+      setEstado('pendiente')   // hay ediciones posteriores: ya hay otro guardado programado
     }
+    return true
   }
 
   async function recargarTrasConflicto() {
     const { data: d } = await supabase.from('items_paciente').select('*').eq('ingreso_id', ingresoId).maybeSingle()
+    versionGuardadaRef.current = null
     setData(d ?? {})
     setSucio(false)
     setEstado('inactivo')
@@ -148,6 +174,14 @@ function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo
 
   return (
     <div className="ancho-formulario space-y-6">
+      <div className="sticky top-0 z-10 flex justify-end">
+        <span className="bg-white/90 backdrop-blur rounded-full px-3 py-1 shadow-sm border border-slate-100">
+          <IndicadorGuardado estado={estado} detalle="inténtalo de nuevo" />
+          {estado === 'error' && (
+            <button type="button" onClick={() => { void save() }} className="ml-2 text-xs font-semibold text-primary-700 hover:underline">Reintentar</button>
+          )}
+        </span>
+      </div>
       {errorCarga && (
         <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
           {errorCarga} — no guardes cambios hasta recargar la página, para no sobrescribir datos reales con vacío.
@@ -156,7 +190,7 @@ function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo
       <div className="card p-6 space-y-5">
         <p className="section-title !mb-0">Seguridad y conducta</p>
 
-        {/* Semáforo de caídas: como el resto del formulario, no se guarda hasta pulsar «Guardar cambios». */}
+        {/* Semáforo de caídas: se guarda solo, como el resto del formulario. */}
         <div>
           <label className="label">Semáforo de caídas</label>
           <div className="flex gap-2" role="group" aria-label="Semáforo de caídas">
@@ -354,16 +388,13 @@ function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo
         <AvisoFicha tono="atencion" accion={
           <button onClick={recargarTrasConflicto} className="btn-secondary text-xs shrink-0">Ver la versión más reciente</button>
         }>
-          Alguien más ha guardado cambios en esta hoja mientras la editabas. Lo que has marcado sigue aquí, sin guardar todavía.
+          Alguien más ha guardado cambios en esta hoja mientras la editabas. Lo que has marcado sigue aquí, sin guardar.
         </AvisoFicha>
       )}
 
-      <div className="flex justify-between items-center">
+      <div className="flex items-center">
         <button onClick={() => setVerHistorico(v => !v)} className="btn-secondary text-xs">
           {verHistorico ? 'Ocultar histórico' : 'Ver histórico de snapshots'}
-        </button>
-        <button onClick={save} disabled={estado === 'guardando' || estado === 'conflicto'} className="btn-primary">
-          {estado === 'guardando' ? 'Guardando…' : estado === 'error' ? '✗ Error al guardar' : estado === 'guardado' ? '✓ Guardado' : 'Guardar cambios'}
         </button>
       </div>
 

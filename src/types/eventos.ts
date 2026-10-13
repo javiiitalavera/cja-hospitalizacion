@@ -103,19 +103,18 @@ export const DERIVACIONES_A_HOSPITAL = ['Urgencias, sin ingreso', 'Ingreso hospi
 
 // Campos que se añadieron después de que ya hubiera incidencias registradas: al editar una incidencia antigua que no
 // los tiene no se exigen (obligarían a inventar el dato de algo que ocurrió hace tiempo).
-export const CAMPOS_AÑADIDOS_DESPUES = ['derivacion', 'presenciada', 'mecanismo']
+export const CAMPOS_AÑADIDOS_DESPUES = ['derivacion', 'presenciada', 'mecanismo', 'consecuencias']
 
 export const CAMPOS_POR_TIPO: Record<TipoEvento, CampoEvento[]> = {
   caida: [
-    { key: 'con_lesion', label: 'Con lesión', tipo: 'select', opciones: ['Sí', 'No', 'Pendiente de valoración'], requerido: true },
-    { key: 'gravedad', label: 'Gravedad', tipo: 'select', opciones: ['Sin lesión', 'Leve', 'Moderada', 'Grave', 'Pendiente de valoración'] },
     { key: 'lugar', label: 'Lugar', tipo: 'select', opciones: LUGARES, requerido: true },
     // Solo se pide si el lugar es un pasillo o la sala de terapia (ver DETALLE_LUGAR).
     { key: 'lugar_detalle', label: 'Pasillo / sala', tipo: 'select', opciones: DETALLES_LUGAR },
     { key: 'presenciada', label: 'Presenciada', tipo: 'select', opciones: ['Presenciada por el personal', 'No presenciada (hallado en el suelo)'], requerido: true },
     { key: 'mecanismo', label: 'Mecanismo', tipo: 'select', opciones: ['Levantándose de la cama', 'Levantándose del sillón / silla', 'Caminando', 'Sentándose', 'Cayó de la cama', 'En el aseo / ducha', 'Durante una transferencia', 'Otro / se desconoce'], requerido: true },
     { key: 'circunstancias', label: 'Circunstancias', tipo: 'select', opciones: ['Solo', 'Supervisado', 'Con sujeción activa'] },
-    { key: 'consecuencias', label: 'Consecuencias', tipo: 'select', opciones: ['Sin lesión', 'Contusión', 'Herida', 'Fractura', 'TCE', 'Otro', 'Pendiente de valoración'] },
+    // Un solo campo para la lesión: de aquí salen «con lesión», «graves» y «pendientes de valoración» del Dashboard.
+    { key: 'consecuencias', label: 'Consecuencias', tipo: 'select', opciones: ['Sin lesión', 'Contusión', 'Herida', 'Fractura', 'TCE', 'Otro', 'Pendiente de valoración'], requerido: true },
     DERIVACION,
   ],
 
