@@ -110,10 +110,10 @@ export const DEFINICIONES = definiciones({
     ojo: 'La mitad de las salidas estuvo menos días que este valor. Las estancias muy largas la afectan menos que a la media.',
   },
   reingresos: {
-    titulo: 'Reingresos (≤30 días)',
-    queCuenta: 'Ingresos nuevos del periodo de pacientes que habían tenido un alta o un traslado en los 30 días anteriores.',
-    formula: 'Ingresos con fecha de ingreso en el periodo y un alta o traslado previo del mismo paciente hasta 30 días antes. Se muestra «reingresos de ingresos nuevos».',
-    ojo: 'Es una proporción sobre los ingresos, no la tasa clásica sobre las altas. Un éxitus no cuenta como alta previa.',
+    titulo: 'Reingresos (≤180 días y ≤30 días)',
+    queCuenta: 'Ingresos nuevos del periodo de pacientes que habían tenido un alta o un traslado en los 180 días anteriores (unos 6 meses). Debajo se separan los que reingresaron en los 30 primeros días.',
+    formula: 'Ingresos con fecha de ingreso en el periodo y un alta o traslado previo del mismo paciente hasta 180 días antes (hasta 30 días, en el segundo dato). Los de 30 días son un subconjunto de los de 180. Se muestra «reingresos de ingresos nuevos».',
+    ojo: 'Es una proporción sobre los ingresos, no la tasa clásica sobre las altas: mira hacia atrás, así que no queda a la baja en los periodos recientes. Un éxitus no cuenta como alta previa. Solo ve los episodios registrados en la aplicación: si hubo ingresos anteriores a su puesta en marcha que no están cargados, esos reingresos no se detectan. Se cuenta por episodio: un paciente que reingresa dos veces cuenta dos.',
   },
   incidencias: {
     titulo: 'Incidencias',

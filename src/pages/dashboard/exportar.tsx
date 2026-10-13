@@ -171,6 +171,7 @@ const INDICADORES_PERIODO: [string, keyof ResumenPeriodo][] = [
   ['Ocupación máxima (%)', 'ocupacion_max_pct'],
   ['Estancia media (días)', 'estancia_media_dias'],
   ['Estancia mediana (días)', 'estancia_mediana_dias'],
+  ['Ingresos que son reingresos (≤180 días)', 'reingresos_180d'],
   ['Ingresos que son reingresos (≤30 días)', 'reingresos_30d'],
   ['Incidencias (sin úlceras por presión)', 'incidencias_total'],
   ['Incidencias por 1.000 días-estancia', 'incidencias_tasa_1000'],

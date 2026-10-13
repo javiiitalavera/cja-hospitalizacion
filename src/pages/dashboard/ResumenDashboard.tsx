@@ -196,10 +196,19 @@ export function ResumenDashboard({ filtros, desde, hasta, onExplorar, onExplorar
               subvalor={resumen.salidas_totales > 0 ? `Mediana: ${resumen.estancia_mediana_dias} d` : 'Sin datos suficientes: no hay salidas en el periodo'} />
             {/* Proporción sobre los ingresos nuevos del periodo (cuántos de
                 ellos son reingresos), no la tasa clásica sobre las altas. */}
-            <TarjetaMetrica info="reingresos" etiqueta="Ingresos que son reingresos (≤30 días)" valor={`${resumen.reingresos_30d} de ${resumen.ingresos_nuevos}`}
-              subvalor={resumen.ingresos_nuevos > 0
-                ? `${Math.round(resumen.reingresos_30d / resumen.ingresos_nuevos * 1000) / 10}% de los ingresos nuevos · alta o traslado previo en 30 días`
-                : 'Alta o traslado previo en los 30 días anteriores'} />
+            {/* Dos niveles en una sola tarjeta: ≤180 días y, dentro de ellos, los de ≤30 días. Si la base de datos aún no
+                devuelve reingresos_180d (falta ejecutar la migración 20261021), se enseña solo el dato de 30 días. */}
+            {resumen.reingresos_180d == null ? (
+              <TarjetaMetrica info="reingresos" etiqueta="Ingresos que son reingresos (≤30 días)" valor={`${resumen.reingresos_30d} de ${resumen.ingresos_nuevos}`}
+                subvalor={resumen.ingresos_nuevos > 0
+                  ? `${Math.round(resumen.reingresos_30d / resumen.ingresos_nuevos * 1000) / 10}% de los ingresos nuevos · alta o traslado previo en 30 días`
+                  : 'Alta o traslado previo en los 30 días anteriores'} />
+            ) : (
+              <TarjetaMetrica info="reingresos" etiqueta="Ingresos que son reingresos (≤180 días)" valor={`${resumen.reingresos_180d} de ${resumen.ingresos_nuevos}`}
+                subvalor={resumen.ingresos_nuevos > 0
+                  ? `${Math.round(resumen.reingresos_180d / resumen.ingresos_nuevos * 1000) / 10}% de los ingresos nuevos · de ellos, ${resumen.reingresos_30d} en ≤30 días (${Math.round(resumen.reingresos_30d / resumen.ingresos_nuevos * 1000) / 10}%)`
+                  : 'Alta o traslado previo en los 180 días anteriores'} />
+            )}
             <TarjetaMetrica info="incidencias" etiqueta="Incidencias" valor={resumen.incidencias_total}
               subvalor={(resumen.incidencias_tasa_1000 != null ? `${resumen.incidencias_tasa_1000} por 1.000 días-estancia · ` : '') + 'sin úlceras por presión (ver Seguridad)'}
               comparacion={comparacionTexto(resumen.incidencias_total, 'incidencias_total')}

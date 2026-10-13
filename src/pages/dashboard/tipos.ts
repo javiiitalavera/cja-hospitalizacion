@@ -44,6 +44,7 @@ export interface ResumenPeriodo {
   estancia_media_dias: number
   estancia_mediana_dias: number
   reingresos_30d: number
+  reingresos_180d: number   // incluye a los de 30 días
   incidencias_total: number
   incidencias_tasa_1000: number | null
 }
