@@ -7,7 +7,6 @@ import { supabase } from '../lib/supabase'
 import { fetchContencionesPorIngreso } from '../lib/contenciones'
 import { useAuth } from '../lib/AuthContext'
 import type { ItemsPaciente } from '../types'
-import { SEMAFORO_CAIDAS_COLOR as SEMAFORO_COLOR } from '../types'
 import { Printer, History } from 'lucide-react'
 import type { ContencionDia, ContencionNoche } from '../types/contenciones'
 import type { IngresoConItems } from './hojaItems/tipos'
@@ -249,17 +248,6 @@ export default function HojaItems() {
         titulo="Hoja de ítems"
         subtitulo={<><span className="inline-block first-letter:uppercase">{today}</span>{!selected && ' · haz clic en un paciente para editar sus ítems'}</>}
       >
-        <div className="flex items-center gap-2 text-xs text-slate-500">
-          {['verde', 'amarillo', 'naranja', 'rojo'].map((c) => (
-            <span key={c} className="flex items-center gap-1">
-              <span
-                className="w-3 h-3 rounded-full inline-block border border-slate-300"
-                style={{ backgroundColor: SEMAFORO_COLOR[c] }}
-              />
-              {c}
-            </span>
-          ))}
-        </div>
         <BotonActualizar onClick={fetchData} cargando={refreshing} />
         <button
           onClick={() => {
