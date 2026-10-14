@@ -25,9 +25,9 @@ export function imprimirHTMLEnMarco(html: string): void {
   registrarAcceso('impresion', { detalle: titulo ? desescapar(titulo) : 'Documento' })
   const marco = document.createElement('iframe')
   marco.setAttribute('aria-hidden', 'true')
-  // Fuera de la pantalla pero con el ancho útil de un A4 vertical (210 − 2×8 mm): así el documento se maqueta como saldrá
+  // Fuera de la pantalla pero con el ancho útil de un A4 vertical (210 − 2×12 mm): así el documento se maqueta como saldrá
   // en papel y puede medirse (los documentos «de una sola página» se ajustan midiéndose a sí mismos).
-  marco.style.cssText = 'position:fixed;left:-10000px;top:0;width:194mm;height:280mm;border:0'
+  marco.style.cssText = 'position:fixed;left:-10000px;top:0;width:186mm;height:280mm;border:0'
   const quitar = () => { if (marco.parentNode) marco.parentNode.removeChild(marco) }
   marco.onload = () => {
     const w = marco.contentWindow
@@ -59,7 +59,7 @@ export function pieImpresion(): string {
 
 function estiloBase(orientacion: 'portrait' | 'landscape'): string {
   return `
-  @page { size: A4 ${orientacion}; margin: 8mm; }
+  @page { size: A4 ${orientacion}; margin: 8mm 12mm; }
   * { box-sizing: border-box; }
   body { font-family: Arial, sans-serif; margin: 0; padding: 0; color: #111; }
   .cab { display: flex; justify-content: space-between; align-items: baseline; gap: 8mm; margin-bottom: 3mm; }
@@ -87,7 +87,7 @@ export interface OpcionesDocumento {
   unaPagina?: boolean                  // tiene que salir en UNA hoja: si no cabe, se reduce el tamaño hasta que quepa
 }
 
-// Reduce el documento (zoom) lo justo para que entre en una sola hoja A4 con sus márgenes de 8 mm. Se mide a sí
+// Reduce el documento (zoom) lo justo para que entre en una sola hoja A4 con sus márgenes (8 mm arriba y abajo). Se mide a sí
 // mismo al cargar y justo antes de imprimir; si ya cabe, no toca nada.
 const SCRIPT_UNA_PAGINA = `<script>(function(){
   function ajustar(){

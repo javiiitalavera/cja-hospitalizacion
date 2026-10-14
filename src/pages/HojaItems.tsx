@@ -280,7 +280,7 @@ export default function HojaItems() {
             oculta mientras se consulta el histórico; cada modo
             tiene ahora su propio botón de imprimir, sin ambigüedad. */}
         {!verHistorico && (
-          <button onClick={() => printHoja(data, today)} className="btn-secondary">
+          <button onClick={() => printHoja(data, today)} className="btn-primary">
             <Printer className="w-4 h-4" />
             Imprimir
           </button>

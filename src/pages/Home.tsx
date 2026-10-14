@@ -477,7 +477,7 @@ export default function Home() {
         <BotonActualizar onClick={fetchData} cargando={refreshing} />
         <button
           onClick={() => imprimirListaHabitaciones(slots.map((s) => s?.paciente ? nombreYApellido(s.paciente) : null))}
-          className="btn-secondary"
+          className="btn-primary"
           title="Imprimir lista de pacientes"
         >
           <Printer className="w-4 h-4" />
