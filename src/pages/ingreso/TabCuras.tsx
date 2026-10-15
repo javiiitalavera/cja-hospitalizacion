@@ -474,7 +474,7 @@ export function ModalEditarLesion({
   const actual = disponibles.find((p) => p.id === pestaña)!
   const vals = ordenarValoraciones(lesion.valoraciones)
   return (
-    <Modal titulo={`${lesion.localizacion} · ${CARACTERISTICA_LABEL[lesion.caracteristicas]}`} onClose={onClose}>
+    <Modal titulo={`${CARACTERISTICA_LABEL[lesion.caracteristicas]} · ${lesion.localizacion}`} onClose={onClose}>
       {paciente && <p className="text-sm font-medium text-slate-700 -mt-2 mb-3">{paciente}</p>}
       {extras?.error && <p className="aviso aviso-error mb-3">{extras.error}</p>}
       {disponibles.length > 1 && (
@@ -602,13 +602,12 @@ export function TarjetaLesion({
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2 flex-wrap">
-            <p className="font-semibold text-slate-800">{lesion.localizacion}</p>
-            <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">{CARACTERISTICA_LABEL[lesion.caracteristicas]}</span>
+            <p className="font-semibold text-slate-800 text-base">{CARACTERISTICA_LABEL[lesion.caracteristicas]} · {lesion.localizacion}</p>
             {curada && <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">{textoCerrada(lesion)} el {fechaLarga(lesion.fecha_fin!)}</span>}
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
             Desde {fechaLarga(lesion.fecha_inicio)}
-            {lesion.origen && ` · ${lesion.origen === 'centro' ? 'producida en el centro' : 'producida fuera del centro'}`}
+            {lesion.origen && ` · ${lesion.origen === 'centro' ? 'Producida en el centro' : 'Producida fuera del centro'}`}
             {lesion.registrado_por && ` · ${lesion.registrado_por.nombre} ${lesion.registrado_por.apellidos}`}
           </p>
         </div>
