@@ -50,6 +50,18 @@ export function usePersonal(): Personal {
   return { ...estado, recargar: cargar }
 }
 
+// Nombres de pacientes de una lista de identificadores (para exportar). '' = ya no existe.
+export async function nombresDePacientes(ids: (string | null | undefined)[]): Promise<Record<string, string>> {
+  const unicos = [...new Set(ids.filter((x): x is string => !!x))]
+  const resultado: Record<string, string> = {}
+  for (const id of unicos) resultado[id] = ''
+  for (let i = 0; i < unicos.length; i += 100) {
+    const { data } = await supabase.from('pacientes').select('id, nombre, primer_apellido').in('id', unicos.slice(i, i + 100))
+    for (const p of (data ?? []) as any[]) resultado[p.id] = `${p.nombre} ${p.primer_apellido}`.trim()
+  }
+  return resultado
+}
+
 // Nombres de pacientes por identificador, pedidos de una vez por tanda y guardados. '' = ya no existe.
 export function usePacientesNombres() {
   const [mapa, setMapa] = useState<Record<string, string>>({})

@@ -68,6 +68,7 @@ export const ACCESO_LABEL: Record<string, { etiqueta: string; color: string }> =
   ficha_paciente: { etiqueta: 'Abrió una ficha de paciente', color: 'bg-emerald-50 text-emerald-700' },
   impresion: { etiqueta: 'Imprimió', color: 'bg-amber-50 text-amber-700' },
   exportacion_word: { etiqueta: 'Exportó a Word', color: 'bg-amber-50 text-amber-700' },
+  exportacion_csv: { etiqueta: 'Exportó a CSV', color: 'bg-amber-50 text-amber-700' },
 }
 
 // ─── Qué cambió ──────────────────────────────────────────────

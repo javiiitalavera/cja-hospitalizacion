@@ -3570,7 +3570,7 @@ create table if not exists public.registro_accesos (
     id bigserial primary key,
     fecha timestamptz not null default now(),
     usuario_id uuid,
-    tipo text not null check (tipo in ('inicio_sesion', 'expediente', 'ficha_paciente', 'impresion', 'exportacion_word')),
+    tipo text not null check (tipo in ('inicio_sesion', 'expediente', 'ficha_paciente', 'impresion', 'exportacion_word', 'exportacion_csv')),
     ingreso_id uuid,
     paciente_id uuid,
     detalle text check (detalle is null or length(detalle) <= 200)
@@ -3583,7 +3583,7 @@ create index if not exists registro_accesos_usuario_idx on public.registro_acces
 -- Lo escribe la aplicación llamando a esta función, nunca a mano. Quién es lo pone el servidor.
 -- Para no llenar el registro, una repetición idéntica (misma persona, tipo, paciente y detalle) dentro de
 -- la ventana indicada no se vuelve a apuntar: 30 min para inicio de sesión, 10 para abrir expediente o ficha
--- y 1 para imprimir o exportar.
+-- y 1 para imprimir o exportar (a Word o a CSV).
 create or replace function public.registrar_acceso(
     p_tipo text,
     p_ingreso_id uuid default null,
@@ -3604,7 +3604,7 @@ begin
   if v_yo is null or private.mi_rol() is null then
     return;
   end if;
-  if p_tipo is null or p_tipo not in ('inicio_sesion', 'expediente', 'ficha_paciente', 'impresion', 'exportacion_word') then
+  if p_tipo is null or p_tipo not in ('inicio_sesion', 'expediente', 'ficha_paciente', 'impresion', 'exportacion_word', 'exportacion_csv') then
     raise exception 'Tipo de acceso no válido.';
   end if;
 

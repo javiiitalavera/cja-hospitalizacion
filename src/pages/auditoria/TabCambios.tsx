@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
+import { Download } from 'lucide-react'
 import { Cargando } from '../../components/Cargando'
 import { atajoDeRaton, FOCO_CELDA } from '../../lib/accesibilidad'
 import { CONTENCION_DIA_LABEL, CONTENCION_NOCHE_LABEL, type ContencionDia, type ContencionNoche } from '../../types/contenciones'
@@ -6,23 +7,10 @@ import { FILTROS_CAMBIOS_VACIOS, pedirCambios, type FiltrosCambios } from './con
 import {
   ACCIONES_FILTRO, TABLA_LABEL, accionColor, accionLabel, detalleDeFila, etiquetaCampo, formatearValor, type FilaAuditoria,
 } from './etiquetas'
-import { usePacientesNombres, type Personal } from './personal'
+import { nombresDePacientes, usePacientesNombres, type Personal } from './personal'
+import { detalleParaCsv, resumenCambio, textoAfecta } from './resumen'
+import { descargarCSV, reunirTodas, resumenFiltrosAuditoria } from './exportar'
 import { AvisoError, BarraFiltros, formatoFecha, formatoHora } from './Filtros'
-
-function textoAfecta(f: FilaAuditoria, mapaPacientes: Record<string, string>, personal: Personal): string {
-  if (f.tabla === 'profesionales') {
-    const n = f.registroId ? personal.porProf[f.registroId] : undefined
-    if (n) return n
-    const a = f.antes
-    return a?.nombre ? `${a.nombre} ${a.apellidos ?? ''}`.trim() + ' (eliminado)' : '—'
-  }
-  if (f.tabla === 'farmacos_alias') return f.antes?.clave ?? f.cambios?.clave?.despues as string ?? '—'
-  if (f.tabla === 'pacientes' && f.accion.toUpperCase() === 'DELETE' && f.antes?.nombre) {
-    return `${f.antes.nombre} ${f.antes.primer_apellido ?? ''}`.trim() + ' (eliminado)'
-  }
-  if (f.pacienteId) return mapaPacientes[f.pacienteId] === undefined ? '…' : (mapaPacientes[f.pacienteId] || 'Paciente eliminado')
-  return '—'
-}
 
 function DetalleDesplegado({ f }: { f: FilaAuditoria }) {
   const d = detalleDeFila(f)
@@ -86,6 +74,8 @@ export function TabCambios({ personal }: { personal: Personal }) {
   const [errorAuditoria, setErrorAuditoria] = useState('')
   const [errorContencion, setErrorContencion] = useState('')
   const [expandido, setExpandido] = useState<string | null>(null)
+  const [exportando, setExportando] = useState(false)
+  const [avisoExportar, setAvisoExportar] = useState('')
   const { mapa: pacientes, resolver } = usePacientesNombres()
   const ultima = useRef(0)
 
@@ -108,6 +98,44 @@ export function TabCambios({ personal }: { personal: Personal }) {
   useEffect(() => { if (personal.cargado) cargar(true) }, [filtros, personal.cargado])
 
   const hayFiltros = JSON.stringify(filtros) !== JSON.stringify(FILTROS_CAMBIOS_VACIOS)
+
+  // Exporta todo lo que coincide con los filtros (hasta un tope), no solo las filas ya cargadas.
+  async function exportarCSV() {
+    setExportando(true)
+    setAvisoExportar('')
+    try {
+      let fallo = ''
+      const r = await reunirTodas(async (antes) => {
+        const x = await pedirCambios(filtros, personal, antes)
+        fallo = x.errorAuditoria || x.errorContencion
+        return { filas: x.filas, hayMas: x.hayMas, error: fallo }
+      })
+      if (r.error) { setAvisoExportar('No se pudo exportar: ' + r.error); return }
+      const nombres = await nombresDePacientes(r.filas.map((f) => f.pacienteId))
+      const extra: string[] = []
+      if (filtros.tabla) extra.push(`Tipo: ${TABLA_LABEL[filtros.tabla] ?? filtros.tabla}`)
+      if (filtros.accion) extra.push(`Acción: ${accionLabel(filtros.accion)}`)
+      if (filtros.soloSeguridad) extra.push('Solo cambios de seguridad')
+      descargarCSV(
+        'auditoria_cambios',
+        resumenFiltrosAuditoria(filtros, (id) => personal.porAuth[id], extra),
+        ['Fecha y hora', 'Último guardado', 'Quién', 'Tipo', 'Acción', 'Seguridad', 'Afecta a', 'Qué cambió'],
+        r.filas.map((f) => [
+          formatoFecha(f.fecha),
+          f.fechaFin && f.nGuardados > 1 ? formatoFecha(f.fechaFin) : '',
+          f.actorId ? ((f.actorTipo === 'auth' ? personal.porAuth[f.actorId] : personal.porProf[f.actorId]) ?? 'Usuario desconocido') : 'Autor no identificado',
+          TABLA_LABEL[f.tabla] ?? f.tabla,
+          accionLabel(f.accion),
+          f.nivel === 'seguridad' ? 'Sí' : 'No',
+          textoAfecta(f, nombres, personal),
+          detalleParaCsv(f),
+        ]),
+      )
+      if (r.truncado) setAvisoExportar(`Se han exportado los ${r.filas.length.toLocaleString('es-ES')} cambios más recientes. Acota las fechas para obtener el resto.`)
+    } finally {
+      setExportando(false)
+    }
+  }
 
   return (
     <>
@@ -164,6 +192,7 @@ export function TabCambios({ personal }: { personal: Personal }) {
                 <th className="px-4 py-2 font-medium">Tipo</th>
                 <th className="px-4 py-2 font-medium">Acción</th>
                 <th className="px-4 py-2 font-medium">Afecta a</th>
+                <th className="px-4 py-2 font-medium">Qué cambió</th>
                 <th className="px-4 py-2 w-8"></th>
               </tr>
             </thead>
@@ -194,6 +223,7 @@ export function TabCambios({ personal }: { personal: Personal }) {
                         {f.nGuardados > 1 && <span className="ml-1.5 text-xs text-slate-500">{f.nGuardados} guardados</span>}
                       </td>
                       <td className="px-4 py-2 text-slate-500">{textoAfecta(f, pacientes, personal)}</td>
+                      <td className="px-4 py-2 text-slate-600 text-xs">{resumenCambio(f)}</td>
                       <td className="px-4 py-2 text-slate-500">
                         {tieneDetalle && (
                           <button type="button" onClick={() => setExpandido((e) => (e === f.id ? null : f.id))} aria-expanded={expandido === f.id}
@@ -205,7 +235,7 @@ export function TabCambios({ personal }: { personal: Personal }) {
                     </tr>
                     {expandido === f.id && tieneDetalle && (
                       <tr className="bg-slate-50 border-t border-slate-100">
-                        <td colSpan={6} className="px-4 py-3"><DetalleDesplegado f={f} /></td>
+                        <td colSpan={7} className="px-4 py-3"><DetalleDesplegado f={f} /></td>
                       </tr>
                     )}
                   </Fragment>
@@ -225,10 +255,13 @@ export function TabCambios({ personal }: { personal: Personal }) {
           )}
           <p className="text-xs text-slate-500">
             {filas.length} {filas.length === 1 ? 'cambio' : 'cambios'}{hayMas ? ' (hay más antiguos)' : ' — no hay más'}.
-            Los guardados automáticos seguidos de la misma persona se juntan en una sola fila.
           </p>
+          <button onClick={exportarCSV} disabled={exportando} className="btn-secondary text-xs py-1 gap-1 ml-auto">
+            <Download className="w-3.5 h-3.5" /> {exportando ? 'Exportando…' : 'Exportar CSV'}
+          </button>
         </div>
       )}
+      {avisoExportar && <p className="mt-2 text-xs text-amber-700">{avisoExportar}</p>}
     </>
   )
 }

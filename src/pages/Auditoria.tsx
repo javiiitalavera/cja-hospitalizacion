@@ -1,6 +1,6 @@
 // Auditoría (solo administradores): qué se ha cambiado en la aplicación y quién ha accedido a qué.
 //  · Cambios: quién creó, editó o borró algo, cuándo, de qué paciente, y qué cambió exactamente (campo por campo).
-//  · Accesos: quién abrió un expediente o una ficha, imprimió, exportó a Word o entró en la aplicación.
+//  · Accesos: quién abrió un expediente o una ficha, imprimió, exportó (Word o CSV) o entró en la aplicación.
 
 import { useState } from 'react'
 import { CabeceraPagina } from '../components/CabeceraPagina'
@@ -34,10 +34,10 @@ export function Auditoria() {
         subtitulo={pestana === 'cambios' ? 'Quién ha creado, editado o borrado, qué cambió y cuándo' : 'Quién ha entrado, abierto, impreso o exportado'}
       />
 
-      <div className="flex gap-1 border-b border-slate-200 mb-5">
+      <div className="segmentado mb-5" role="group" aria-label="Qué consultar">
         {([['cambios', 'Cambios'], ['accesos', 'Accesos']] as const).map(([clave, etiqueta]) => (
-          <button key={clave} type="button" onClick={() => setPestana(clave)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${pestana === clave ? 'border-primary-600 text-primary-700' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>
+          <button key={clave} type="button" aria-pressed={pestana === clave} onClick={() => setPestana(clave)}
+            className={`segmentado-btn ${pestana === clave ? 'activo' : ''}`}>
             {etiqueta}
           </button>
         ))}

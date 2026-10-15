@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
+import { Download } from 'lucide-react'
 import { Cargando } from '../../components/Cargando'
 import { FILTROS_ACCESOS_VACIOS, pedirAccesos, type FilaAcceso, type FiltrosAccesos } from './consultas'
 import { ACCESO_LABEL } from './etiquetas'
-import { usePacientesNombres, type Personal } from './personal'
+import { nombresDePacientes, usePacientesNombres, type Personal } from './personal'
+import { descargarCSV, reunirTodas, resumenFiltrosAuditoria } from './exportar'
 import { AvisoError, BarraFiltros, formatoFecha } from './Filtros'
 
 export function TabAccesos({ personal }: { personal: Personal }) {
@@ -12,6 +14,8 @@ export function TabAccesos({ personal }: { personal: Personal }) {
   const [cargando, setCargando] = useState(true)
   const [cargandoMas, setCargandoMas] = useState(false)
   const [error, setError] = useState('')
+  const [exportando, setExportando] = useState(false)
+  const [avisoExportar, setAvisoExportar] = useState('')
   const { mapa: pacientes, resolver } = usePacientesNombres()
   const ultima = useRef(0)
 
@@ -33,12 +37,36 @@ export function TabAccesos({ personal }: { personal: Personal }) {
 
   const hayFiltros = JSON.stringify(filtros) !== JSON.stringify(FILTROS_ACCESOS_VACIOS)
 
+  // Exporta todo lo que coincide con los filtros (hasta un tope), no solo las filas ya cargadas.
+  async function exportarCSV() {
+    setExportando(true)
+    setAvisoExportar('')
+    try {
+      const r = await reunirTodas((antes) => pedirAccesos(filtros, antes))
+      if (r.error) { setAvisoExportar('No se pudo exportar: ' + r.error); return }
+      const nombres = await nombresDePacientes(r.filas.map((f) => f.pacienteId))
+      const extra = filtros.tipo ? [`Qué hizo: ${ACCESO_LABEL[filtros.tipo]?.etiqueta ?? filtros.tipo}`] : []
+      descargarCSV(
+        'auditoria_accesos',
+        resumenFiltrosAuditoria(filtros, (id) => personal.porAuth[id], extra),
+        ['Fecha y hora', 'Quién', 'Qué hizo', 'Paciente', 'Detalle'],
+        r.filas.map((f) => [
+          formatoFecha(f.fecha),
+          f.usuarioId ? (personal.porAuth[f.usuarioId] ?? 'Usuario desconocido') : 'Autor no identificado',
+          ACCESO_LABEL[f.tipo]?.etiqueta ?? f.tipo,
+          f.pacienteId ? (nombres[f.pacienteId] || 'Paciente eliminado') : '',
+          f.detalle ?? '',
+        ]),
+      )
+      if (r.truncado) setAvisoExportar(`Se han exportado los ${r.filas.length.toLocaleString('es-ES')} accesos más recientes. Acota las fechas para obtener el resto.`)
+    } finally {
+      setExportando(false)
+    }
+  }
+
   return (
     <>
-      <p className="text-sm text-slate-600 mb-3 max-w-3xl">
-        Quién ha abierto un expediente o una ficha, quién ha imprimido o exportado a Word, y cuándo se ha entrado en la aplicación.
-        Si alguien repite lo mismo en pocos minutos solo se apunta una vez.
-      </p>
+      <p className="text-xs text-slate-500 mb-3">Si alguien repite lo mismo en pocos minutos, solo se apunta una vez.</p>
       <BarraFiltros
         filtros={filtros} onChange={setFiltros} personal={personal}
         hayFiltros={hayFiltros} onLimpiar={() => setFiltros(FILTROS_ACCESOS_VACIOS)}
@@ -112,8 +140,12 @@ export function TabAccesos({ personal }: { personal: Personal }) {
             </button>
           )}
           <p className="text-xs text-slate-500">{filas.length} {filas.length === 1 ? 'acceso' : 'accesos'}{hayMas ? ' (hay más antiguos)' : ' — no hay más'}.</p>
+          <button onClick={exportarCSV} disabled={exportando} className="btn-secondary text-xs py-1 gap-1 ml-auto">
+            <Download className="w-3.5 h-3.5" /> {exportando ? 'Exportando…' : 'Exportar CSV'}
+          </button>
         </div>
       )}
+      {avisoExportar && <p className="mt-2 text-xs text-amber-700">{avisoExportar}</p>}
     </>
   )
 }

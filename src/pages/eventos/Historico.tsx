@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { atajoDeRaton, FOCO_CELDA } from '../../lib/accesibilidad'
 import { escapeHtml, imprimirTablaHTML } from '../../lib/imprimir'
 import { formatFechaLocal } from '../../lib/fechas'
+import { registrarAcceso } from '../../lib/accesos'
 import { supabase } from '../../lib/supabase'
 import { nombreCompleto, nombreYApellido } from '../../types'
 import { Download, Printer, Search, ChevronDown, ChevronRight } from 'lucide-react'
@@ -147,6 +148,7 @@ export function Historico() {
   }
 
   function exportarCSVBusqueda() {
+    registrarAcceso('exportacion_csv', { detalle: 'Incidencias' })
     const cabecera = ['Fecha', 'Turno', 'Tipo', 'Estado', 'Paciente', 'Habitación en el momento', 'Episodio', 'Notas', 'Registrado por']
       .map(escaparCsv).join(',')
     const filas = resultados.map((ev) => [

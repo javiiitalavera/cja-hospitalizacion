@@ -1,4 +1,4 @@
-// Registro de accesos: apunta quién abre un expediente o una ficha, quién imprime o exporta a Word y cuándo
+// Registro de accesos: apunta quién abre un expediente o una ficha, quién imprime o exporta (a Word o a CSV) y cuándo
 // se entra en la aplicación (se consulta en Auditoría → Accesos, solo los administradores).
 //
 // Se avisa a la base de datos sin esperar y sin molestar: si falla (sin conexión, o aún no está creada la
@@ -7,7 +7,7 @@
 
 import { supabase } from './supabase'
 
-export type TipoAcceso = 'inicio_sesion' | 'expediente' | 'ficha_paciente' | 'impresion' | 'exportacion_word'
+export type TipoAcceso = 'inicio_sesion' | 'expediente' | 'ficha_paciente' | 'impresion' | 'exportacion_word' | 'exportacion_csv'
 
 export interface DatosAcceso {
   ingresoId?: string | null

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { atajoDeRaton, FOCO_CELDA } from '../../lib/accesibilidad'
 import { supabase } from '../../lib/supabase'
+import { registrarAcceso } from '../../lib/accesos'
 import { imprimirTablaHTML, escapeHtml } from '../../lib/imprimir'
 import { Download, Printer, ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-react'
 import type { EstadoCarga } from './tipos'
@@ -178,6 +179,7 @@ export function ExploradorEpisodios() {
   async function exportarCSV() {
     const { data, error: err } = await supabase.rpc('buscar_episodios_dashboard', parametrosRPC(false))
     if (err) { alert('No se pudo exportar: ' + err.message); return }
+    registrarAcceso('exportacion_csv', { detalle: 'Episodios' })
     const todas: Fila[] = data?.filas ?? []
     const cabecera = ['Paciente', 'NHC', 'Fecha ingreso', 'Fecha alta', 'Estado', 'Días estancia', 'Médico', 'Incidencias'].map(csv).join(',')
     const cuerpo = todas.map((f) => [
