@@ -1,5 +1,5 @@
 // Una cura de la "Tabla de cuidados" abierta directamente en la ventana de edición (la misma que
-// «Editar» en la ficha), sin pasar antes por una tarjeta intermedia: Nueva valoración, Editar cura,
+// «Editar» en la ficha), sin pasar antes por una tarjeta intermedia: Registrar evolución, Editar cura,
 // Editar lesión e Historial, todo en una sola ventana. Se abre en «Editar cura», que es lo que se ve
 // escrito en la tabla.
 
@@ -41,7 +41,7 @@ export function ModalCura({
   }
 
   async function eliminarLesion() {
-    if (!(await confirmar({ titulo: `¿Eliminar «${lesion.localizacion}»?`, mensaje: 'Se eliminará con todas sus valoraciones. No se puede deshacer.', textoConfirmar: 'Eliminar', peligro: true }))) return
+    if (!(await confirmar({ titulo: `¿Eliminar «${lesion.localizacion}»?`, mensaje: 'Se eliminará con todo su historial. No se puede deshacer.', textoConfirmar: 'Eliminar', peligro: true }))) return
     setErrorAccion('')
     const { error, count } = await supabase.from('curas_lesiones').delete({ count: 'exact' }).eq('id', lesion.id)
     if (error) { setErrorAccion('No se pudo eliminar: ' + error.message); return }

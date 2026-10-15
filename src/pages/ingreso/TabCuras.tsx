@@ -198,7 +198,7 @@ function CuerpoLesion({
       })
       if (errV) {
         setGuardando(false)
-        setError('La lesión se ha creado, pero no se pudo guardar la pauta: ' + errV.message + ' Añádela después con «Nueva valoración».')
+        setError('La lesión se ha creado, pero no se pudo guardar la pauta: ' + errV.message + ' Añádela después con «Registrar evolución».')
         return
       }
     }
@@ -330,7 +330,7 @@ function CuerpoValoracion({
       if (braden !== null && (Number.isNaN(braden) || braden < 6 || braden > 23)) { setError('Braden: valor entre 6 y 23.'); return }
       if (emina !== null && (Number.isNaN(emina) || emina < 0 || emina > 15)) { setError('EMINA: valor entre 0 y 15.'); return }
       const algo = f.medidas.trim() || f.grado || f.frotis || norton !== null || braden !== null || emina !== null || f.notas.trim()
-      if (!editando && !algo) { setError('Anota al menos un dato de la valoración (medidas, grado, escalas, notas…).'); return }
+      if (!editando && !algo) { setError('Anota al menos un dato de la evolución (medidas, grado, escalas, notas…).'); return }
     }
     if (f.fecha < lesion.fecha_inicio) { setError('La fecha no puede ser anterior al inicio de la lesión (' + fechaLarga(lesion.fecha_inicio) + ').'); return }
     setGuardando(true)
@@ -417,7 +417,7 @@ function CuerpoValoracion({
       <div className="flex gap-3 pt-1">
         <button onClick={onClose} className="btn-secondary flex-1">Cancelar</button>
         <button onClick={guardar} disabled={guardando} className="btn-primary flex-1 justify-center">
-          {guardando ? 'Guardando…' : modo === 'pauta' && !editando ? 'Guardar cura' : modo === 'valoracion' && !editando ? 'Guardar valoración' : 'Guardar'}
+          {guardando ? 'Guardando…' : modo === 'pauta' && !editando ? 'Guardar cura' : modo === 'valoracion' && !editando ? 'Guardar evolución' : 'Guardar'}
         </button>
       </div>
     </div>
@@ -440,10 +440,10 @@ export function FormularioValoracion({
 // mal escrito con anotar cómo está la lesión o cambiar la cura.
 type Pestaña = 'valoracion' | 'pauta' | 'datos' | 'historial'
 const PESTAÑAS: { id: Pestaña; titulo: string; ayuda: string }[] = [
-  { id: 'valoracion', titulo: 'Nueva valoración', ayuda: 'Cómo está la lesión hoy: medidas, grado, frotis, escalas.' },
+  { id: 'valoracion', titulo: 'Registrar evolución', ayuda: 'Cómo está la lesión hoy: medidas, grado, frotis, escalas.' },
   { id: 'pauta', titulo: 'Editar cura', ayuda: 'Cambiar la cura que lleva: apósito, frecuencia, días.' },
   { id: 'datos', titulo: 'Editar lesión', ayuda: 'Para corregir algo mal escrito: localización, fecha de inicio, origen, notas.' },
-  { id: 'historial', titulo: 'Historial', ayuda: 'Valoraciones y cambios de cura registrados.' },
+  { id: 'historial', titulo: 'Historial', ayuda: 'Evolución y cambios de cura registrados.' },
 ]
 
 // Lo que hace falta para llevar la lesión entera desde esta ventana (historial, dar por curada, eliminar),
@@ -545,7 +545,7 @@ export function TablaHistorial({
       <table className="w-full text-xs">
         <thead>
           <tr className="text-left text-slate-500 border-b">
-            {['Fecha', 'Valoración', 'Cura', 'Notas', ''].map((h) => (
+            {['Fecha', 'Evolución', 'Cura', 'Notas', ''].map((h) => (
               <th key={h} className="py-1 pr-3 font-semibold">{h}</th>
             ))}
           </tr>
@@ -575,7 +575,7 @@ export function TablaHistorial({
 
 // ── Tarjeta de una lesión ────────────────────────────────────
 // Sencilla: lo que hay (pauta y última valoración) y las dos cosas que se hacen cada día, con su nombre:
-// «Valorar» y «Cambiar cura». Corregir los datos de la lesión y eliminarla vive dentro de «Editar datos».
+// «Registrar evolución» y «Cambiar cura». Corregir los datos de la lesión y eliminarla vive dentro de «Editar datos».
 export function TarjetaLesion({
   lesion, puedeEditar, puedeBorrarValoracion, evolucionAbierta = false,
   onEditar, onEditarValoracion, onCambioEstado, onEliminarValoracion,
@@ -599,7 +599,7 @@ export function TarjetaLesion({
   const mostrarHistorial = vals.length > 1 || !!ultima
   return (
     <div className={`card p-4 ${curada ? 'opacity-80' : ''}`}>
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2 flex-wrap">
             <p className="font-semibold text-slate-800 text-base">{CARACTERISTICA_LABEL[lesion.caracteristicas]} · {lesion.localizacion}</p>
@@ -613,7 +613,7 @@ export function TarjetaLesion({
         </div>
         {puedeEditar && !curada && (
           <div className="flex items-center gap-2 shrink-0">
-            <button onClick={() => onEditar('valoracion')} title="Anotar cómo está la lesión hoy: medidas, grado, frotis, escalas" className="btn-secondary btn-sm"><Plus className="w-3.5 h-3.5" />Valorar</button>
+            <button onClick={() => onEditar('valoracion')} title="Anotar cómo está la lesión hoy: medidas, grado, frotis, escalas" className="btn-secondary btn-sm"><Plus className="w-3.5 h-3.5" />Registrar evolución</button>
             <button onClick={() => onEditar('pauta')} title="Cambiar la cura que lleva: apósito, frecuencia, días" className="btn-secondary btn-sm"><Pencil className="w-3.5 h-3.5" />Cambiar cura</button>
           </div>
         )}
@@ -634,13 +634,13 @@ export function TarjetaLesion({
       )}
       <p className="text-xs text-slate-500 mt-2" data-testid="bloque-valoracion">
         {ultima
-          ? <>Última valoración {fechaLarga(ultima.fecha)}{partesUltima.length > 0 && ` · ${partesUltima.join(' · ')}`}</>
-          : 'Todavía no hay valoraciones.'}
+          ? <>Última evolución {fechaLarga(ultima.fecha)}{partesUltima.length > 0 && ` · ${partesUltima.join(' · ')}`}</>
+          : 'Todavía no hay evolución registrada.'}
       </p>
       {lesion.notas && <p className="text-xs text-slate-600 mt-1 whitespace-pre-wrap">{lesion.notas}</p>}
 
       <div className="mt-3 flex items-center gap-4">
-        {/* Con un solo registro (la pauta inicial) y ninguna valoración, el historial no tiene nada que enseñar. */}
+        {/* Con un solo registro (la pauta inicial) y ninguna evolución, el historial no tiene nada que enseñar. */}
         {mostrarHistorial && (
           <button onClick={() => setAbierta(!abierta)} className="flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700">
             {abierta ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
@@ -731,7 +731,7 @@ export function TabCuras({ ingresoId, episodioActivo }: { ingresoId: string; epi
 
   // Devuelve false si se canceló la confirmación (para no cerrar la ventana desde la que se pidió).
   async function eliminarLesion(l: Lesion): Promise<boolean> {
-    if (!(await confirmar({ titulo: `¿Eliminar «${l.localizacion}»?`, mensaje: 'Se eliminará con todas sus valoraciones. No se puede deshacer.', textoConfirmar: 'Eliminar', peligro: true }))) return false
+    if (!(await confirmar({ titulo: `¿Eliminar «${l.localizacion}»?`, mensaje: 'Se eliminará con todo su historial. No se puede deshacer.', textoConfirmar: 'Eliminar', peligro: true }))) return false
     setErrorAccion('')
     const { error, count } = await supabase.from('curas_lesiones').delete({ count: 'exact' }).eq('id', l.id)
     if (error) setErrorAccion('No se pudo eliminar: ' + error.message)
@@ -741,7 +741,7 @@ export function TabCuras({ ingresoId, episodioActivo }: { ingresoId: string; epi
   }
 
   async function eliminarValoracion(v: Valoracion) {
-    if (!(await confirmar({ titulo: '¿Eliminar esta valoración?', mensaje: 'No se puede deshacer.', textoConfirmar: 'Eliminar', peligro: true }))) return
+    if (!(await confirmar({ titulo: '¿Eliminar este registro de evolución?', mensaje: 'No se puede deshacer.', textoConfirmar: 'Eliminar', peligro: true }))) return
     setErrorAccion('')
     const { error, count } = await supabase.from('curas_valoraciones').delete({ count: 'exact' }).eq('id', v.id)
     if (error) setErrorAccion('No se pudo eliminar: ' + error.message)

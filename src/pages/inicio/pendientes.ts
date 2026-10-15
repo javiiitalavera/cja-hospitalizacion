@@ -254,7 +254,7 @@ export function calcularPendientes(e: EntradaPendientes): LineaPendiente[] {
     const ingresosAfectados = porHab([...new Set(sinValorar.map((l) => l.ingreso_id))])
     lineas.push({
       id: 'lesiones_sin_valorar',
-      texto: `${n} ${plural(n, 'lesión', 'lesiones')} sin valoración en más de ${DIAS_SIN_VALORACION} días`,
+      texto: `${n} ${plural(n, 'lesión', 'lesiones')} sin evolución registrada en más de ${DIAS_SIN_VALORACION} días`,
       detalle: detalle(ingresosAfectados),
       accion: { tipo: 'ruta', ruta: `/ingresos/${primero(ingresosAfectados)}?tab=plan&sub=curas` },
       destinos: destinosFicha(ingresosAfectados, 'tab=plan&sub=curas'),
