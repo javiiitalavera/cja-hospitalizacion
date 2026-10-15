@@ -457,11 +457,11 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
         <TituloSeccion titulo="CMBD · Conjunto Mínimo Básico de Datos" subtitulo={<>Registro al alta · {nombreDelPaciente}</>} />
         <div className="flex items-center gap-2">
           <IndicadorGuardado estado={estado} />
-          <button type="button" onClick={handleGuardar} className="btn-secondary text-xs py-1.5">
+          <button type="button" onClick={handleGuardar} className="btn-secondary btn-sm">
             <Save className="w-3.5 h-3.5" /> Guardar
           </button>
           <button type="button" onClick={handleExportar} disabled={exportando}
-            className="btn-primary text-xs py-1.5 disabled:opacity-60">
+            className="btn-primary btn-sm disabled:opacity-60">
             <Download className="w-3.5 h-3.5" />
             {exportando ? 'Generando…' : 'Exportar Excel'}
           </button>
@@ -470,7 +470,7 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
 
       {estado === 'conflicto' && (
         <AvisoFicha tono="atencion" accion={
-          <button onClick={recargarTrasConflicto} className="btn-secondary text-xs shrink-0">Ver la versión más reciente</button>
+          <button onClick={recargarTrasConflicto} className="btn-secondary btn-sm shrink-0">Ver la versión más reciente</button>
         }>
           Alguien más ha guardado cambios en el CMBD mientras lo editabas. Lo que has escrito sigue aquí, sin guardar todavía.
         </AvisoFicha>
@@ -752,7 +752,7 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
       })()}
 
       {errorFaltantes.length > 0 && (
-        <div className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+        <div className="aviso aviso-error">
           No se puede exportar todavía. Falta: {errorFaltantes.join(', ')}.
         </div>
       )}

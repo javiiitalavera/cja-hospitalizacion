@@ -78,7 +78,7 @@ export function MarcaCuraModal({
       {marca ? (
         <div className="space-y-4">
           {marca.estado === 'hecha' ? (
-            <div className="flex items-start gap-2 text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 text-sm">
+            <div className="aviso aviso-exito flex items-start gap-2">
               <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" />
               <span>Cura hecha{quien ? ` por ${quien}` : ''}.</span>
             </div>

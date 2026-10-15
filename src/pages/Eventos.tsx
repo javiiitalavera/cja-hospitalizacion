@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Segmentado } from '../components/Segmentado'
 import { CabeceraPagina } from '../components/CabeceraPagina'
 import { BotonActualizar } from '../components/BotonActualizar'
 import { Cargando } from '../components/Cargando'
@@ -226,21 +227,17 @@ export function Eventos() {
         </button>
       </CabeceraPagina>
 
-      <div className="segmentado" role="group" aria-label="Vista">
-        {VISTAS.map(({ clave, etiqueta }) => {
-          const aviso = clave === 'actuales' ? pendientesActivas : clave === 'contenciones' && esMedico ? sinConfirmar : 0
-          return (
-            <button key={clave} type="button" aria-pressed={vista === clave} onClick={() => cambiarVista(clave)}
-              className={`segmentado-btn ${vista === clave ? 'activo' : ''}`}>
-              {etiqueta}
-              {aviso > 0 && (
-                <span className="min-w-[1.25rem] px-1.5 rounded-full bg-amber-100 text-amber-700 text-xs font-semibold text-center"
-                  title={clave === 'actuales' ? 'Pendientes de completar' : 'Pautas pendientes de confirmar'}>{aviso}</span>
-              )}
-            </button>
-          )
-        })}
-      </div>
+      <Segmentado
+        etiqueta="Vista"
+        valor={vista}
+        onChange={cambiarVista}
+        opciones={VISTAS.map(({ clave, etiqueta }) => ({
+          clave,
+          etiqueta,
+          aviso: clave === 'actuales' ? pendientesActivas : clave === 'contenciones' && esMedico ? sinConfirmar : 0,
+          avisoTitulo: clave === 'actuales' ? 'Pendientes de completar' : 'Pautas pendientes de confirmar',
+        }))}
+      />
 
       {selectorPaciente && !ingresoParaIncidencia && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setSelectorPaciente(false)}>
@@ -318,13 +315,13 @@ export function Eventos() {
               )}
             </p>
             {!loadingContenciones && !errorContenciones && contenciones.length > 0 && (
-              <button onClick={imprimirContenciones} className="btn-secondary text-xs py-1 gap-1" title="Imprimir la lista de contenciones activas">
+              <button onClick={imprimirContenciones} className="btn-secondary btn-sm" title="Imprimir la lista de contenciones activas">
                 <Printer className="w-3.5 h-3.5" /> Imprimir
               </button>
             )}
           </div>
           {errorSemaforos && !loadingContenciones && (
-            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 mb-2">No se pudo cargar el semáforo de caídas: la columna Semáforo no es fiable ahora mismo.</p>
+            <p className="aviso aviso-atencion mb-2">No se pudo cargar el semáforo de caídas: la columna Semáforo no es fiable ahora mismo.</p>
           )}
           <div className="card overflow-x-auto">
             {loadingContenciones ? (

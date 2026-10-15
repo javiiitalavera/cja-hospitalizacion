@@ -140,7 +140,7 @@ export function TabAccesos({ personal }: { personal: Personal }) {
             </button>
           )}
           <p className="text-xs text-slate-500">{filas.length} {filas.length === 1 ? 'acceso' : 'accesos'}{hayMas ? ' (hay más antiguos)' : ' — no hay más'}.</p>
-          <button onClick={exportarCSV} disabled={exportando} className="btn-secondary text-xs py-1 gap-1 ml-auto">
+          <button onClick={exportarCSV} disabled={exportando} className="btn-secondary btn-sm ml-auto">
             <Download className="w-3.5 h-3.5" /> {exportando ? 'Exportando…' : 'Exportar CSV'}
           </button>
         </div>

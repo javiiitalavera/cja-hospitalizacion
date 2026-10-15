@@ -165,9 +165,9 @@ function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo
 
   if (!itemsListos) {
     return errorItems ? (
-      <div className="ancho-formulario bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 flex items-center justify-between gap-3" role="alert">
+      <div className="aviso aviso-error ancho-formulario flex items-center justify-between gap-3" role="alert">
         <span>{errorItems} Hasta que se carguen no se puede editar ni guardar.</span>
-        <button type="button" onClick={() => setReintento((n) => n + 1)} className="btn-secondary text-xs shrink-0">Reintentar</button>
+        <button type="button" onClick={() => setReintento((n) => n + 1)} className="btn-secondary btn-sm shrink-0">Reintentar</button>
       </div>
     ) : <Cargando texto="Cargando hoja de ítems…" />
   }
@@ -183,7 +183,7 @@ function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo
         </span>
       </div>
       {errorCarga && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+        <div className="aviso aviso-error">
           {errorCarga} — no guardes cambios hasta recargar la página, para no sobrescribir datos reales con vacío.
         </div>
       )}
@@ -386,14 +386,14 @@ function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo
 
       {estado === 'conflicto' && (
         <AvisoFicha tono="atencion" accion={
-          <button onClick={recargarTrasConflicto} className="btn-secondary text-xs shrink-0">Ver la versión más reciente</button>
+          <button onClick={recargarTrasConflicto} className="btn-secondary btn-sm shrink-0">Ver la versión más reciente</button>
         }>
           Alguien más ha guardado cambios en esta hoja mientras la editabas. Lo que has marcado sigue aquí, sin guardar.
         </AvisoFicha>
       )}
 
       <div className="flex items-center">
-        <button onClick={() => setVerHistorico(v => !v)} className="btn-secondary text-xs">
+        <button onClick={() => setVerHistorico(v => !v)} className="btn-secondary btn-sm">
           {verHistorico ? 'Ocultar histórico' : 'Ver histórico de snapshots'}
         </button>
       </div>

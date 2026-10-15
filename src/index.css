@@ -74,6 +74,14 @@
   .segmentado-btn.activo {
     @apply bg-white text-primary-700 shadow-sm;
   }
+  /* Botón pequeño (acciones dentro de una fila, de un aviso o de una tarjeta). Se combina con btn-primary / btn-secondary. */
+  .btn-sm { @apply text-xs px-3 py-1.5; }
+  /* Avisos y mensajes de error: un único aspecto en toda la aplicación (tamaño, relleno, radio). El color lo da el tono. */
+  .aviso { @apply text-sm leading-snug rounded-lg border px-4 py-2.5; }
+  .aviso-error { @apply bg-red-50 border-red-200 text-red-700; }
+  .aviso-atencion { @apply bg-amber-50 border-amber-200 text-amber-800; }
+  .aviso-info { @apply bg-slate-100 border-slate-200 text-slate-700; }
+  .aviso-exito { @apply bg-emerald-50 border-emerald-200 text-emerald-700; }
   .textarea {
     @apply w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white resize-none;
   }
@@ -109,12 +117,10 @@
   input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea { font-size: 16px; }
 }
 
-/* En pantallas estrechas, los selectores segmentados (subpestañas, vistas) se desplazan en vez de salirse. */
-@media (max-width: 767px) {
-  .segmentado { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
-  .segmentado::-webkit-scrollbar { display: none; }
-  .segmentado-btn { white-space: nowrap; flex-shrink: 0; }
-}
+/* Los selectores segmentados (vistas, subpestañas) se desplazan en vez de salirse cuando no caben. */
+.segmentado { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.segmentado::-webkit-scrollbar { display: none; }
+.segmentado-btn { white-space: nowrap; flex-shrink: 0; }
 /* Barra de pestañas con desplazamiento horizontal, sin barra visible. */
 .pestanas-scroll { overflow-x: auto; scrollbar-width: none; }
 .pestanas-scroll::-webkit-scrollbar { display: none; }

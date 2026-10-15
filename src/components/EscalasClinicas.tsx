@@ -87,9 +87,9 @@ export function ModalEscala({ titulo, onCerrar, children, onGuardar, completa, f
               : <IndicadorGuardado estado={estado === 'error' ? 'error' : (estado === 'guardando' || guardando) ? 'guardando' : (estado ?? 'inactivo')} />}
           </p>
           <div className="flex items-center gap-2 shrink-0">
-            <button type="button" onClick={onCerrar} className="btn-secondary text-sm">Cerrar</button>
+            <button type="button" onClick={onCerrar} className="btn-secondary">Cerrar</button>
             {onGuardar && (
-              <button type="button" onClick={guardar} disabled={guardando} className="btn-primary text-sm disabled:opacity-60">
+              <button type="button" onClick={guardar} disabled={guardando} className="btn-primary disabled:opacity-60">
                 {guardando ? 'Guardando…' : completa ? 'Guardar y cerrar' : 'Guardar'}
               </button>
             )}

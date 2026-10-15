@@ -127,7 +127,7 @@ export default function HojasTurno() {
   const html = useMemo(() => construirHojaHTML(turno, pacientes, new Date()), [turno, pacientes])
 
   return (
-    <div className="p-4 sm:p-6 md:p-8 space-y-5 ancho-amplio">
+    <div className="p-4 sm:p-6 md:p-8 space-y-6 ancho-amplio">
       <CabeceraPagina
         className="!mb-0"
         titulo="Hojas de turno"
@@ -145,15 +145,17 @@ export default function HojasTurno() {
         )}
       </CabeceraPagina>
 
-      <div className="flex justify-end -mt-3 min-h-[1.25rem]"><IndicadorGuardado estado={estadoAviso} detalle={errorAviso} /></div>
       <AvisoGuardado avisos={avisos} />
 
       {verHistorico ? (
         <HistoricoHojas />
       ) : (
         <>
-          <TabsTurno turno={turno} onChange={setTurno} />
-          {aviso && <div className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">{aviso}</div>}
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <TabsTurno turno={turno} onChange={setTurno} />
+            <IndicadorGuardado estado={estadoAviso} detalle={errorAviso} />
+          </div>
+          {aviso && <div className="aviso aviso-atencion">{aviso}</div>}
           {error ? (
             <p className="text-sm text-red-600 py-8 text-center">{error}</p>
           ) : cargando ? (

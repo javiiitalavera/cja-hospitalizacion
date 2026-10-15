@@ -114,7 +114,7 @@ function PorFecha() {
         )}
       </div>
       <TabsTurno turno={turno} onChange={setTurno} />
-      {error && <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</div>}
+      {error && <div className="aviso aviso-error">{error}</div>}
       {cargando ? (
         <Cargando />
       ) : pacientes.length === 0 ? (
@@ -198,7 +198,7 @@ function PorPaciente() {
           <p className="text-xs text-slate-500 mt-1">Ningún paciente tiene todavía histórico registrado.</p>
         )}
       </div>
-      {error && <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</div>}
+      {error && <div className="aviso aviso-error">{error}</div>}
 
       {elegido && (cargando ? (
         <Cargando texto="Cargando historial…" />

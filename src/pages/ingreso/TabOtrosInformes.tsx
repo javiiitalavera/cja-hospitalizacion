@@ -103,7 +103,7 @@ export function TabOtrosInformes({ ingresoId, ingreso }: { ingresoId: string; in
           <ArrowLeft className="w-4 h-4" /> Volver a la lista
         </button>
         <h2 className="text-base font-bold text-slate-800">Nuevo informe</h2>
-        {errorCrear && <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{errorCrear}</p>}
+        {errorCrear && <p className="aviso aviso-error">{errorCrear}</p>}
         <div className="grid gap-3">
           {PLANTILLAS.map((pl) => (
             <button
@@ -142,7 +142,7 @@ export function TabOtrosInformes({ ingresoId, ingreso }: { ingresoId: string; in
       {errorCarga && (
         <div className="card p-4 text-sm">
           <p className="text-red-600">{errorCarga}</p>
-          <button onClick={cargar} className="btn-secondary text-xs mt-2">Reintentar</button>
+          <button onClick={cargar} className="btn-secondary btn-sm mt-2">Reintentar</button>
         </div>
       )}
       {!loading && !errorCarga && lista.length === 0 && (
@@ -317,7 +317,7 @@ function EditorInforme({
 
       {estado === 'conflicto' && (
         <AvisoFicha tono="atencion" accion={
-          <button onClick={recargarTrasConflicto} className="btn-secondary text-xs shrink-0">Ver la versión más reciente</button>
+          <button onClick={recargarTrasConflicto} className="btn-secondary btn-sm shrink-0">Ver la versión más reciente</button>
         }>
           Alguien más ha guardado este informe. Lo que has escrito sigue aquí, sin guardar.
         </AvisoFicha>
@@ -335,7 +335,7 @@ function EditorInforme({
         </div>
       ))}
 
-      {errorAccion && <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{errorAccion}</p>}
+      {errorAccion && <p className="aviso aviso-error">{errorAccion}</p>}
 
       <div className="flex flex-wrap justify-end gap-3">
         {esMedico && (

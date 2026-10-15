@@ -20,7 +20,7 @@ export function AvisoTextoAntiguo({ texto, filas }: { texto?: string | null; fil
   if (!texto?.trim()) return null
   if ((filas ?? []).some((f) => f.farmaco?.trim())) return null
   return (
-    <div className="mb-2 text-xs bg-amber-50 border border-amber-200 text-amber-900 rounded-lg px-3 py-2">
+    <div className="aviso aviso-atencion mb-2">
       <p className="font-medium mb-1">Texto anterior a la tabla (informe antiguo): pásalo a la tabla para que salga en el resto de informes</p>
       <p className="whitespace-pre-wrap">{texto}</p>
     </div>

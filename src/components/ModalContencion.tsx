@@ -227,15 +227,15 @@ export default function ModalContencion({ ingresoId, onClose, onGuardado, pacien
             <p className="text-sm text-slate-500 text-center py-8">Cargando…</p>
           ) : loadError ? (
             <div className="text-center py-8 space-y-3">
-              <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{loadError}</p>
-              <button onClick={cargar} className="btn-secondary text-xs">Reintentar</button>
+              <p className="aviso aviso-error">{loadError}</p>
+              <button onClick={cargar} className="btn-secondary btn-sm">Reintentar</button>
             </div>
           ) : conflicto ? (
             <div className="text-center py-8 space-y-3">
-              <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              <p className="aviso aviso-atencion">
                 Alguien más ha modificado esta pauta mientras la tenías abierta. Recarga para ver el cambio antes de guardar el tuyo.
               </p>
-              <button onClick={cargar} className="btn-primary text-xs">Recargar</button>
+              <button onClick={cargar} className="btn-primary btn-sm">Recargar</button>
             </div>
           ) : (
             <>
@@ -271,7 +271,7 @@ export default function ModalContencion({ ingresoId, onClose, onGuardado, pacien
                   <div className="flex items-center justify-between gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5">
                     <p className="text-xs text-amber-800 font-medium">Pendiente de confirmación médica</p>
                     {esMedico ? (
-                      <button onClick={confirmar} disabled={confirmando} className="btn-primary text-xs py-1 shrink-0">
+                      <button onClick={confirmar} disabled={confirmando} className="btn-primary btn-sm shrink-0">
                         {confirmando ? 'Confirmando…' : 'Confirmar'}
                       </button>
                     ) : (
@@ -404,7 +404,7 @@ export default function ModalContencion({ ingresoId, onClose, onGuardado, pacien
               </div>
 
               {error && (
-                <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{error}</p>
+                <p className="aviso aviso-error">{error}</p>
               )}
             </>
           )}

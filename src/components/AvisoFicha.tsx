@@ -1,14 +1,18 @@
-// Aviso de la ficha del paciente: un único aspecto para todos (antes había cuatro: ámbar grande, ámbar pequeño, azul
-// pequeño y uno a todo el ancho). Solo hay dos tonos:
+// Aviso de una pantalla o ficha: un único aspecto para todos (tamaño, relleno, radio), con cuatro tonos:
 //   · «info»: dice algo que conviene saber y no pide hacer nada (solo lectura por rol, episodio cerrado, qué se hereda).
 //   · «atencion»: pide atención o decisión (alguien más guardó, sección en construcción, cambios que quedan en Auditoría).
-// Mismo tamaño de letra, mismo relleno y mismo radio. Si lleva una acción (un botón), va a la derecha.
+//   · «error»: algo ha fallado (no se pudo cargar o guardar).
+//   · «exito»: confirmación de algo que se ha hecho.
+// Si lleva una acción (un botón «Reintentar», por ejemplo), va a la derecha. Los mensajes sueltos de una sola línea
+// pueden usar directamente las clases «aviso aviso-error» (definidas en index.css), que son las mismas.
 
 import type { ElementType, ReactNode } from 'react'
 
 const TONO = {
-  info: 'bg-slate-100 border-slate-200 text-slate-700',
-  atencion: 'bg-amber-50 border-amber-200 text-amber-800',
+  info: 'aviso-info',
+  atencion: 'aviso-atencion',
+  error: 'aviso-error',
+  exito: 'aviso-exito',
 } as const
 
 export function AvisoFicha({ tono = 'info', icono: Icono, accion, children, className = '', ...resto }: {
@@ -20,7 +24,7 @@ export function AvisoFicha({ tono = 'info', icono: Icono, accion, children, clas
   'data-testid'?: string
 }) {
   return (
-    <div role="note" className={`flex items-center gap-2.5 text-sm leading-snug rounded-lg border px-4 py-2.5 ${TONO[tono]} ${className}`} {...resto}>
+    <div role={tono === 'error' ? 'alert' : 'note'} className={`aviso ${TONO[tono]} flex items-center gap-2.5 ${className}`} {...resto}>
       {Icono && <Icono aria-hidden className="w-4 h-4 shrink-0" />}
       <div className="min-w-0 flex-1">{children}</div>
       {accion && <div className="shrink-0">{accion}</div>}

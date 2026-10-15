@@ -2,6 +2,7 @@
 //  · Cambios: quién creó, editó o borró algo, cuándo, de qué paciente, y qué cambió exactamente (campo por campo).
 //  · Accesos: quién abrió un expediente o una ficha, imprimió, exportó (Word o CSV) o entró en la aplicación.
 
+import { Segmentado } from '../components/Segmentado'
 import { useState } from 'react'
 import { CabeceraPagina } from '../components/CabeceraPagina'
 import { useAuth } from '../lib/AuthContext'
@@ -34,14 +35,13 @@ export function Auditoria() {
         subtitulo={pestana === 'cambios' ? 'Quién ha creado, editado o borrado, qué cambió y cuándo' : 'Quién ha entrado, abierto, impreso o exportado'}
       />
 
-      <div className="segmentado mb-5" role="group" aria-label="Qué consultar">
-        {([['cambios', 'Cambios'], ['accesos', 'Accesos']] as const).map(([clave, etiqueta]) => (
-          <button key={clave} type="button" aria-pressed={pestana === clave} onClick={() => setPestana(clave)}
-            className={`segmentado-btn ${pestana === clave ? 'activo' : ''}`}>
-            {etiqueta}
-          </button>
-        ))}
-      </div>
+      <Segmentado
+        className="mb-5"
+        etiqueta="Qué consultar"
+        valor={pestana}
+        onChange={setPestana}
+        opciones={[{ clave: 'cambios', etiqueta: 'Cambios' }, { clave: 'accesos', etiqueta: 'Accesos' }]}
+      />
 
       {pestana === 'cambios' ? <TabCambios personal={personal} /> : <TabAccesos personal={personal} />}
     </div>

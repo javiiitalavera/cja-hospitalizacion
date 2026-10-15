@@ -325,7 +325,7 @@ function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
 
       {estado === 'conflicto' && (
         <AvisoFicha tono="atencion" accion={
-          <button onClick={recargarTrasConflicto} className="btn-secondary text-xs shrink-0">Ver la versión más reciente</button>
+          <button onClick={recargarTrasConflicto} className="btn-secondary btn-sm shrink-0">Ver la versión más reciente</button>
         }>
           Alguien más ha guardado cambios en este informe mientras lo editabas. Lo que has escrito sigue aquí, sin guardar todavía.
         </AvisoFicha>
@@ -349,7 +349,7 @@ function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
         </div>
         {estadoEscalas === 'conflicto' && (
           <AvisoFicha tono="atencion" accion={
-            <button onClick={recargarEscalaAltaTrasConflicto} className="btn-secondary text-xs shrink-0">Ver la versión más reciente</button>
+            <button onClick={recargarEscalaAltaTrasConflicto} className="btn-secondary btn-sm shrink-0">Ver la versión más reciente</button>
           }>
             Alguien más ha guardado cambios en las escalas mientras las editabas. Lo marcado sigue aquí, sin guardar todavía.
           </AvisoFicha>

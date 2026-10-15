@@ -203,10 +203,10 @@ export function TabPautaCuidados({ ingresoId, episodioActivo }: { ingresoId: str
                     <ChipsTurno valor={turnosEdicion} onChange={setTurnosEdicion} />
                   </div>
                   <div className="flex gap-2">
-                    <button type="button" className="btn-primary text-xs py-1 gap-1" disabled={ocupado || !textoEdicion.trim()} onClick={() => guardarEdicion(i)}>
+                    <button type="button" className="btn-primary btn-sm" disabled={ocupado || !textoEdicion.trim()} onClick={() => guardarEdicion(i)}>
                       <Check className="w-3.5 h-3.5" /> Guardar
                     </button>
-                    <button type="button" className="btn-secondary text-xs py-1 gap-1" onClick={() => setEditando(null)}>
+                    <button type="button" className="btn-secondary btn-sm" onClick={() => setEditando(null)}>
                       <X className="w-3.5 h-3.5" /> Cancelar
                     </button>
                   </div>
@@ -252,7 +252,7 @@ export function TabPautaCuidados({ ingresoId, episodioActivo }: { ingresoId: str
                 <span className="text-xs text-slate-500">Sale en:</span>
                 <ChipsTurno valor={nuevosTurnos} onChange={setNuevosTurnos} />
               </div>
-              <button type="button" className="btn-primary text-sm gap-1" disabled={ocupado || !nuevoTexto.trim()} onClick={anadir}>
+              <button type="button" className="btn-primary" disabled={ocupado || !nuevoTexto.trim()} onClick={anadir}>
                 <Plus className="w-4 h-4" /> Añadir
               </button>
             </div>

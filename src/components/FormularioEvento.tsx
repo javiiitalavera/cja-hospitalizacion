@@ -282,7 +282,7 @@ export default function FormularioEvento({ ingresoId, eventoExistente, onClose, 
             const reciente = posibleDuplicado()
             if (!reciente) return null
             return (
-              <div className="text-xs bg-amber-50 border border-amber-200 text-amber-800 rounded-lg px-3 py-2">
+              <div className="aviso aviso-atencion">
                 <span className="font-medium">Incidencia reciente:</span> {TIPO_EVENTO_LABEL[reciente.tipo]}{' '}
                 {new Date(`${reciente.fecha}T${reciente.hora || '00:00'}`).toLocaleDateString('es-ES')}
                 {reciente.hora && ` a las ${reciente.hora.slice(0, 5)}`}
@@ -326,7 +326,7 @@ export default function FormularioEvento({ ingresoId, eventoExistente, onClose, 
               franjas son las reales de la clínica: 22-8 noche, 8-15
               mañana, 15-22 tarde. */}
           {hora && turno && turnoSegunHora(hora) && turnoSegunHora(hora) !== turno && (
-            <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 -mt-2">
+            <p className="aviso aviso-atencion -mt-2">
               A las {hora} correspondería el turno de {TURNO_LABEL[turnoSegunHora(hora)!]}, no el de {TURNO_LABEL[turno]}. Compruébalo antes de guardar.
             </p>
           )}
@@ -420,12 +420,12 @@ export default function FormularioEvento({ ingresoId, eventoExistente, onClose, 
           </div>
 
           {conflicto && (
-            <div className="p-3 bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-lg flex items-center justify-between gap-3">
+            <div className="aviso aviso-atencion flex items-center justify-between gap-3">
               <span>No se ha guardado: alguien más ha modificado esta incidencia mientras la editabas (o no tienes permiso para cambiarla). Lo que has escrito sigue aquí.</span>
-              <button type="button" onClick={recargarTrasConflicto} className="btn-secondary text-xs shrink-0">Ver la versión actual</button>
+              <button type="button" onClick={recargarTrasConflicto} className="btn-secondary btn-sm shrink-0">Ver la versión actual</button>
             </div>
           )}
-          {error && <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg">{error}</div>}
+          {error && <div className="aviso aviso-error">{error}</div>}
         </div>
 
         {/* Footer */}
@@ -460,13 +460,13 @@ export default function FormularioEvento({ ingresoId, eventoExistente, onClose, 
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => { navigate(`/ingresos/${ingresoId}?tab=eventos`); onClose() }}
-                className="btn-secondary text-sm"
+                className="btn-secondary"
               >
                 Ver la existente
               </button>
               <button
                 onClick={() => { setConfirmarDuplicado(null); guardar(true) }}
-                className="btn-primary text-sm"
+                className="btn-primary"
               >
                 Registrar otra
               </button>

@@ -233,26 +233,27 @@ export function Informes() {
   return (
     <div className="p-4 sm:p-6 md:p-8 ancho-tabla">
       <CabeceraPagina
-        className="!mb-2"
         titulo="Buscador"
         subtitulo={`${loading ? '…' : `${lista.length} informe${lista.length !== 1 ? 's' : ''}`} · historial de informes de ingreso, alta, enfermería y otros`}
       />
-      <div className="mb-6">
+      {(posibleTruncado || fallos.length > 0) && (
+      <div className="mb-5 space-y-2">
         {posibleTruncado && (
-          <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-3 py-1.5 mt-2 inline-block">
+          <p className="aviso aviso-atencion">
             El historial es muy grande: puede que falten los informes más antiguos. Filtra por año para acotar la búsqueda.
           </p>
         )}
         {fallos.length > 0 && (
-          <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-1.5 mt-2 block w-fit">
+          <p className="aviso aviso-error">
             No se han podido cargar: {fallos.join(', ')}. El resto del listado sí es correcto.
           </p>
         )}
       </div>
+      )}
 
       <div className="flex gap-3 mb-5 flex-wrap items-center">
         <SelectorBusqueda activo="informes" texto={busqueda} />
-        <div className="relative flex-1 max-w-sm">
+        <div className="relative flex-1 min-w-[12rem] max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
           <input
             className="input pl-9"

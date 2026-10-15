@@ -6,6 +6,7 @@ import { useAuth } from '../lib/AuthContext'
 import { edad, diasEntre } from '../lib/fechas'
 import { ChevronLeft, ChevronRight, Plus, FileText, AlertTriangle, History, Pencil, Save, X } from 'lucide-react'
 import { nombreCompleto } from '../types'
+import { PestanasFicha } from '../components/PestanasFicha'
 import { EstadoIngreso } from '../components/EstadoIngreso'
 import { registrarAcceso } from '../lib/accesos'
 import { atajoDeRaton, FOCO_CELDA } from '../lib/accesibilidad'
@@ -173,7 +174,7 @@ export default function DetallePaciente() {
         <div className="card p-6 max-w-md">
           <p className="font-semibold text-red-600">No se pudo cargar</p>
           <p className="text-sm text-slate-500 mt-1 mb-3">{errorCarga}</p>
-          <button onClick={cargar} className="btn-secondary text-sm">Reintentar</button>
+          <button onClick={cargar} className="btn-secondary">Reintentar</button>
         </div>
       </div>
     )
@@ -192,9 +193,9 @@ export default function DetallePaciente() {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="border-b bg-white px-8 py-4">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-3">
+      <div className="border-b bg-white px-4 sm:px-6 md:px-8 py-4">
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-3 min-w-0">
             <button onClick={() => navigate(-1)} className="text-slate-500 hover:text-slate-600 mt-1">
               <ChevronLeft className="w-5 h-5" />
             </button>
@@ -224,35 +225,23 @@ export default function DetallePaciente() {
               que la base de datos lo rechazara al guardar. */}
           {esMedico && (
             ingresoActivo ? (
-              <Link to={`/ingresos/${ingresoActivo.id}`} className="btn-primary text-xs">
+              <Link to={`/ingresos/${ingresoActivo.id}`} className="btn-primary btn-sm">
                 <ChevronRight className="w-3.5 h-3.5" /> Abrir ingreso actual
               </Link>
             ) : (
-              <Link to={`/pacientes/nuevo?paciente_id=${paciente.id}`} className="btn-primary text-xs">
+              <Link to={`/pacientes/nuevo?paciente_id=${paciente.id}`} className="btn-primary btn-sm">
                 <Plus className="w-3.5 h-3.5" /> Nuevo ingreso
               </Link>
             )
           )}
         </div>
 
-        {/* Tabs */}
-        <div className="flex gap-1 mt-4 -mb-4">
-          {TABS.map(({ id: tid, label, icon: Icon }) => (
-            <button key={tid} onClick={() => setTab(tid as any)}
-              className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-                tab === tid
-                  ? 'border-primary-600 text-primary-700'
-                  : 'border-transparent text-slate-500 hover:text-slate-700'
-              }`}>
-              <Icon className="w-3.5 h-3.5" />
-              {label}
-            </button>
-          ))}
-        </div>
+        {/* Pestañas de la ficha */}
+        <PestanasFicha pestanas={TABS} activa={tab} onChange={(tid) => setTab(tid as any)} />
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-8">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8">
 
         {/* EPISODIOS */}
         {tab === 'ingresos' && (
@@ -370,9 +359,9 @@ export default function DetallePaciente() {
             )}
 
             {conflicto && (
-              <div className="mb-3 flex items-center justify-between gap-3 px-4 py-2.5 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg text-sm">
+              <div className="aviso aviso-atencion mb-3 flex items-center justify-between gap-3">
                 <span>Alguien más ha guardado cambios en esta ficha mientras la editabas. Lo que has escrito sigue aquí, sin guardar todavía.</span>
-                <button onClick={recargarTrasConflicto} className="btn-secondary text-xs shrink-0">Ver la versión más reciente</button>
+                <button onClick={recargarTrasConflicto} className="btn-secondary btn-sm shrink-0">Ver la versión más reciente</button>
               </div>
             )}
 

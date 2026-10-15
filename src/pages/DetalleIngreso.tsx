@@ -24,6 +24,8 @@ import { EVENTO_SEMAFORO } from '../components/SemaforoCaidas'
 import { TIPALT_LABEL } from '../lib/alta'
 import { registrarAcceso } from '../lib/accesos'
 import { useConfirmarSalida } from '../components/useConfirmarSalida'
+import { PestanasFicha } from '../components/PestanasFicha'
+import { Segmentado } from '../components/Segmentado'
 import { AvisoFicha } from '../components/AvisoFicha'
 
 // Estructura de la ficha: pestañas principales y, dentro de algunas,
@@ -217,24 +219,19 @@ export default function DetalleIngreso() {
     setModalAlta(false)
   }
 
-  // En pantallas estrechas la barra de pestañas se desplaza: la pestaña activa se mantiene a la vista.
-  const idPestanaActiva = tabActual.id
-  useEffect(() => {
-    document.querySelector('[data-pestanas-ingreso] [aria-current="page"]')?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })
-  }, [idPestanaActiva, loading])
   if (loading) return <Cargando pagina />
   if (errorCarga) {
     return (
-      <div className="p-8">
+      <div className="p-4 sm:p-6 md:p-8">
         <div className="card p-6 max-w-md">
           <p className="font-semibold text-red-600">No se pudo cargar</p>
           <p className="text-sm text-slate-500 mt-1 mb-3">{errorCarga}</p>
-          <button onClick={cargar} className="btn-secondary text-sm">Reintentar</button>
+          <button onClick={cargar} className="btn-secondary">Reintentar</button>
         </div>
       </div>
     )
   }
-  if (!ingreso) return <div className="p-8 text-slate-500">Ingreso no encontrado</div>
+  if (!ingreso) return <div className="p-4 sm:p-6 md:p-8 text-slate-500">Ingreso no encontrado</div>
 
   // Un episodio ya cerrado (alta, traslado o éxitus) pasa a ser solo lectura
   // para todo el mundo, médico incluido. Corregir algo después del cierre
@@ -282,9 +279,9 @@ export default function DetalleIngreso() {
     <div className="flex flex-col h-full">
       {dialogoSalida}
       {/* Header */}
-      <div className="border-b bg-white px-8 py-4">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-3">
+      <div className="border-b bg-white px-4 sm:px-6 md:px-8 py-4">
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-3 min-w-0">
             <button onClick={async () => { if (await permitirSalida()) navigate(-1) }} className="text-slate-500 hover:text-slate-600 mt-1">
               <ChevronLeft className="w-5 h-5" />
             </button>
@@ -322,12 +319,12 @@ export default function DetalleIngreso() {
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-3 flex-wrap">
           {id && <NavegadorPacientes ingresoId={id} />}
           {ingreso.estado === 'activo' && esMedico && (
             <button
               onClick={() => setModalAlta(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-800 text-white text-xs font-medium transition-colors shrink-0"
+              className="btn-primary btn-sm shrink-0"
             >
               <LogOut className="w-3.5 h-3.5" />
               Dar de alta
@@ -340,7 +337,7 @@ export default function DetalleIngreso() {
           {ingreso.estado !== 'activo' && esMedico && dentroDeVentanaReapertura && (
             <button
               onClick={() => setConfirmarReabrir(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium transition-colors shrink-0"
+              className="btn-secondary btn-sm shrink-0"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               Reabrir episodio
@@ -358,7 +355,7 @@ export default function DetalleIngreso() {
                 El episodio volverá a estar activo, y se borrará la fecha y el motivo del alta. Quedará registrado en Auditoría.
               </p>
               {errorReabrir && (
-                <p className="mb-4 text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{errorReabrir}</p>
+                <p className="aviso aviso-error mb-4">{errorReabrir}</p>
               )}
               <div className="flex gap-3">
                 <button onClick={() => setConfirmarReabrir(false)} className="btn-secondary flex-1">Cancelar</button>
@@ -371,29 +368,15 @@ export default function DetalleIngreso() {
           </div>
         )}
 
-        {/* Tabs */}
-        <div className="flex gap-1 mt-4 -mb-4 pestanas-scroll" data-pestanas-ingreso>
-          {TABS.filter((t) => !t.soloMedico || esMedico).map(({ id: tid, label, icon: Icon, enConstruccion }) => (
-            <button
-              key={tid}
-              onClick={() => irA(tid)}
-              aria-current={tabActual.id === tid ? 'page' : undefined}
-              className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors shrink-0 whitespace-nowrap ${
-                tabActual.id === tid
-                  ? 'border-primary-600 text-primary-700'
-                  : 'border-transparent text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <Icon className="w-3.5 h-3.5" />
-              {label}
-              {enConstruccion && (
-                <span className="ml-1 text-xs font-medium px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600">
-                  en construcción
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
+        {/* Pestañas de la ficha */}
+        <PestanasFicha
+          pestanas={TABS.filter((t) => !t.soloMedico || esMedico).map((t) => ({
+            id: t.id, label: t.label, icon: t.icon,
+            extra: t.enConstruccion ? <span className="ml-1 text-xs font-medium px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600">en construcción</span> : undefined,
+          }))}
+          activa={tabActual.id}
+          onChange={(tid) => irA(tid)}
+        />
       </div>
 
       {/* Modal alta */}
@@ -429,7 +412,7 @@ export default function DetalleIngreso() {
               </div>
             </div>
             {errorAlta && (
-              <p className="mt-4 text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+              <p className="aviso aviso-error mt-4">
                 {errorAlta}
               </p>
             )}
@@ -447,27 +430,20 @@ export default function DetalleIngreso() {
       )}
 
       {/* Tab content */}
-      <div className="flex-1 overflow-y-auto p-8">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8">
         {/* Subpestañas (solo en las pestañas que las tienen) */}
         {tabActual.subs && subActual && (
-          <div className="segmentado mb-6" role="tablist">
-            {tabActual.subs.map((s) => (
-              <button
-                key={s.id}
-                onClick={() => irA(tabActual.id, s.id)}
-                role="tab"
-                aria-selected={subActual.id === s.id}
-                className={`segmentado-btn ${subActual.id === s.id ? 'activo' : ''}`}
-              >
-                {s.label}
-                {s.enConstruccion && (
-                  <span className="text-xs font-medium px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600">
-                    en construcción
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
+          <Segmentado
+            className="mb-6"
+            comoPestanas
+            etiqueta="Secciones"
+            valor={subActual.id}
+            onChange={(sid) => irA(tabActual.id, sid)}
+            opciones={tabActual.subs.map((s) => ({
+              clave: s.id,
+              etiqueta: <>{s.label}{s.enConstruccion && <span className="text-xs font-medium px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600">en construcción</span>}</>,
+            }))}
+          />
         )}
         {/* Aviso de sección en construcción */}
         {seccion === 'cmbd' && (
@@ -491,7 +467,7 @@ export default function DetalleIngreso() {
         {/* Aviso de solo lectura por rol (independiente de si el episodio
             sigue activo o ya está cerrado: siempre es cosa del médico) */}
         {!esMedico && ['datos', 'ingreso', 'alta', 'cmbd'].includes(seccion) && (
-          <div className="mb-4 flex items-center gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+          <div className="aviso aviso-atencion mb-4 flex items-center gap-2">
             <Lock className="w-4 h-4 shrink-0" />
             Solo lectura: tu rol puede consultar esta sección, pero solo un médico puede editarla.
           </div>

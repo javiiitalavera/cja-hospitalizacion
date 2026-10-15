@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from 'react'
+import { Segmentado } from '../components/Segmentado'
 import { CabeceraPagina } from '../components/CabeceraPagina'
 import { BotonActualizar } from '../components/BotonActualizar'
 import { Cargando } from '../components/Cargando'
@@ -243,7 +244,7 @@ export default function HojaItems() {
   if (loading) return <Cargando pagina />
 
   return (
-    <div className={`p-4 ancho-amplio transition-all duration-200 ${selected ? 'mr-80' : ''}`}>
+    <div className={`p-4 sm:p-6 md:p-8 ancho-amplio transition-all duration-200 ${selected ? 'mr-80' : ''}`}>
       <CabeceraPagina
         titulo="Hoja de ítems"
         subtitulo={<><span className="inline-block first-letter:uppercase">{today}</span>{!selected && ' · haz clic en un paciente para editar sus ítems'}</>}
@@ -276,29 +277,21 @@ export default function HojaItems() {
       </CabeceraPagina>
 
       {error && (
-        <div className="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 flex items-center justify-between gap-3">
+        <div className="aviso aviso-error mb-4 flex items-center justify-between gap-3">
           <span>{error}</span>
-          <button onClick={fetchData} className="btn-secondary text-xs shrink-0">Reintentar</button>
+          <button onClick={fetchData} className="btn-secondary btn-sm shrink-0">Reintentar</button>
         </div>
       )}
 
       {/* Vista histórico */}
       {verHistorico ? (
         <div className="space-y-4">
-          <div className="flex gap-2">
-            <button
-              onClick={() => setModoHistorico('fecha')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${modoHistorico === 'fecha' ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'}`}
-            >
-              Por fecha
-            </button>
-            <button
-              onClick={() => setModoHistorico('paciente')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${modoHistorico === 'paciente' ? 'bg-primary-600 text-white border-primary-600' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'}`}
-            >
-              Por paciente
-            </button>
-          </div>
+          <Segmentado
+            etiqueta="Consultar el histórico"
+            valor={modoHistorico}
+            onChange={setModoHistorico}
+            opciones={[{ clave: 'fecha', etiqueta: 'Por fecha' }, { clave: 'paciente', etiqueta: 'Por paciente' }]}
+          />
 
           {/* MODO FECHA */}
           {modoHistorico === 'fecha' &&

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Segmentado } from '../components/Segmentado'
 import { CabeceraPagina } from '../components/CabeceraPagina'
 import { Cargando } from '../components/Cargando'
 import { supabase } from '../lib/supabase'
@@ -191,27 +192,33 @@ export function Personal() {
       </CabeceraPagina>
 
       {errorCarga && (
-        <div className="mb-4 text-sm rounded-lg px-3 py-2 border bg-red-50 text-red-600 border-red-100 flex items-center justify-between gap-3">
+        <div className="aviso aviso-error mb-4 flex items-center justify-between gap-3">
           <span>{errorCarga}</span>
-          <button onClick={() => { setCargando(true); cargar() }} className="btn-secondary text-xs shrink-0">Reintentar</button>
+          <button onClick={() => { setCargando(true); cargar() }} className="btn-secondary btn-sm shrink-0">Reintentar</button>
         </div>
       )}
 
       {feedback && (
-        <div className={`mb-4 text-sm rounded-lg px-3 py-2 border ${
-          feedback.tipo === 'ok'
-            ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
-            : feedback.tipo === 'aviso'
-              ? 'bg-amber-50 text-amber-700 border-amber-100'
-              : 'bg-red-50 text-red-600 border-red-100'
+        <div className={`mb-4 aviso ${
+          feedback.tipo === 'ok' ? 'aviso-exito' : feedback.tipo === 'aviso' ? 'aviso-atencion' : 'aviso-error'
         }`}>
           {feedback.texto}
         </div>
       )}
 
-      <div className="flex items-center gap-3 mb-4">
+      <div className="flex items-center gap-3 mb-5 flex-wrap">
+        <Segmentado
+          etiqueta="Estado"
+          valor={filtroEstado}
+          onChange={setFiltroEstado}
+          opciones={[
+            { clave: 'activos', etiqueta: 'Activos' },
+            { clave: 'inactivos', etiqueta: 'De baja' },
+            { clave: 'todos', etiqueta: 'Todos' },
+          ]}
+        />
         <input
-          className="input max-w-xs"
+          className="input max-w-[14rem]"
           placeholder="Buscar por nombre o correo…"
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
@@ -219,11 +226,6 @@ export function Personal() {
         <select className="input py-1.5 max-w-[160px]" value={filtroRol} onChange={(e) => setFiltroRol(e.target.value as Rol | 'todos')}>
           <option value="todos">Todos los roles</option>
           {ROLES.map((r) => <option key={r.valor} value={r.valor}>{r.etiqueta}</option>)}
-        </select>
-        <select className="input py-1.5 max-w-[160px]" value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value as typeof filtroEstado)}>
-          <option value="activos">Activos</option>
-          <option value="inactivos">De baja</option>
-          <option value="todos">Todos</option>
         </select>
       </div>
 
@@ -479,7 +481,7 @@ function ModalPassword({ profesional, onCerrar }: { profesional: Profesional; on
               Comunícasela de forma segura.
             </p>
             {aviso && (
-              <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              <p className="aviso aviso-atencion">
                 {aviso}
               </p>
             )}
@@ -499,7 +501,7 @@ function ModalPassword({ profesional, onCerrar }: { profesional: Profesional; on
             </div>
 
             {error && (
-              <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{error}</p>
+              <p className="aviso aviso-error">{error}</p>
             )}
 
             <div className="flex justify-end gap-2 pt-1">
@@ -606,7 +608,7 @@ function FormularioNuevo({ onCerrar, onCreado }: { onCerrar: () => void; onCread
           </div>
 
           {error && (
-            <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{error}</p>
+            <p className="aviso aviso-error">{error}</p>
           )}
 
           <div className="flex justify-end gap-2 pt-1">
@@ -750,7 +752,7 @@ function ModalEditar({ profesional, emailActual, onCerrar, onGuardado }: {
           </div>
 
           {error && (
-            <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{error}</p>
+            <p className="aviso aviso-error">{error}</p>
           )}
 
           <div className="flex justify-end gap-2 pt-1">
@@ -781,7 +783,7 @@ function ModalEditar({ profesional, emailActual, onCerrar, onGuardado }: {
               </div>
 
               {errorCuenta && (
-                <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{errorCuenta}</p>
+                <p className="aviso aviso-error">{errorCuenta}</p>
               )}
 
               <div className="flex justify-end">
@@ -806,7 +808,7 @@ function ModalEditar({ profesional, emailActual, onCerrar, onGuardado }: {
               <input className="input" type="email" value={nuevoEmail} onChange={(e) => setNuevoEmail(e.target.value)} />
 
               {errorEmail && (
-                <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{errorEmail}</p>
+                <p className="aviso aviso-error">{errorEmail}</p>
               )}
 
               <div className="flex justify-end">

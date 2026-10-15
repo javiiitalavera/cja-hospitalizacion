@@ -52,7 +52,7 @@ export function AvisoError({ texto, onReintentar, color = 'rojo' }: { texto: str
   return (
     <div className={`text-sm rounded-lg px-3 py-2 border flex items-center justify-between gap-3 ${clases}`}>
       <span>{texto}</span>
-      <button onClick={onReintentar} className="btn-secondary text-xs shrink-0">Reintentar</button>
+      <button onClick={onReintentar} className="btn-secondary btn-sm shrink-0">Reintentar</button>
     </div>
   )
 }

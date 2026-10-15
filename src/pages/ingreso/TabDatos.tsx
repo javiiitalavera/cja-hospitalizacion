@@ -169,7 +169,7 @@ function TabDatos({ ingreso, onUpdate, iniciarEditando = false }: { ingreso: Ing
           </div>
         </div>
         {error && (
-          <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{error}</p>
+          <p className="aviso aviso-error">{error}</p>
         )}
         <div className="flex justify-end gap-3">
           <button onClick={() => setEditando(false)} className="btn-secondary">Cancelar</button>
@@ -193,7 +193,7 @@ function TabDatos({ ingreso, onUpdate, iniciarEditando = false }: { ingreso: Ing
       <div className="card p-6">
         <div className="flex items-center justify-between mb-3">
           <p className="section-title mb-0">Datos del ingreso</p>
-          <button type="button" onClick={() => setEditando(true)} className="btn-secondary text-xs">
+          <button type="button" onClick={() => setEditando(true)} className="btn-secondary btn-sm">
             Editar datos del ingreso
           </button>
         </div>

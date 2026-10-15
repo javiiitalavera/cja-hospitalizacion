@@ -96,7 +96,7 @@ function TabEventos({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteIn
     <div className="ancho-formulario space-y-4">
       {dialogo}
       {errorBorrar && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-2.5">{errorBorrar}</div>
+        <div className="aviso aviso-error">{errorBorrar}</div>
       )}
       <div className="flex justify-between items-center">
         <TituloSeccion titulo="Incidencias" subtitulo={<>{eventos.length} registrada{eventos.length !== 1 ? 's' : ''} en este ingreso</>} />
@@ -111,7 +111,7 @@ function TabEventos({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteIn
       ) : errorCarga ? (
         <div className="card p-10 text-center space-y-2">
           <p className="text-red-600 text-sm">{errorCarga}</p>
-          <button onClick={fetchEventos} className="btn-secondary text-xs">Reintentar</button>
+          <button onClick={fetchEventos} className="btn-secondary btn-sm">Reintentar</button>
         </div>
       ) : eventos.length === 0 ? (
         <div className="card p-10 text-center text-slate-500 text-sm">

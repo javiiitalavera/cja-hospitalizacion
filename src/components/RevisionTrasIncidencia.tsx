@@ -85,11 +85,11 @@ export default function RevisionTrasIncidencia({
 
         <div className="flex justify-end gap-3">
           {tipo === 'semaforo' ? (
-            <button onClick={onTerminar} className="btn-primary text-sm">Listo</button>
+            <button onClick={onTerminar} className="btn-primary">Listo</button>
           ) : (
             <>
-              <button onClick={onTerminar} className="btn-secondary text-sm">Ahora no</button>
-              <button onClick={() => setContencionAbierta(true)} className="btn-primary text-sm">Revisar contención</button>
+              <button onClick={onTerminar} className="btn-secondary">Ahora no</button>
+              <button onClick={() => setContencionAbierta(true)} className="btn-primary">Revisar contención</button>
             </>
           )}
         </div>

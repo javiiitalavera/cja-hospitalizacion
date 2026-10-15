@@ -299,7 +299,7 @@ export function BloqueDiagnosticosCMBD({ ingresoId }: { ingresoId: string }) {
 
       {estado === 'conflicto' && (
         <AvisoFicha tono="atencion" accion={
-          <button onClick={recargar} className="btn-secondary text-xs shrink-0">Ver la versión más reciente</button>
+          <button onClick={recargar} className="btn-secondary btn-sm shrink-0">Ver la versión más reciente</button>
         }>
           Alguien más ha guardado cambios en el CMBD mientras lo editabas. Lo que has escrito sigue aquí, sin guardar.
         </AvisoFicha>

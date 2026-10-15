@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Segmentado } from '../../components/Segmentado'
+import { CabeceraPagina } from '../../components/CabeceraPagina'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Download, LayoutDashboard } from 'lucide-react'
+import { Download } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/AuthContext'
 import type { Filtros, Periodo } from './tipos'
@@ -122,12 +124,12 @@ export function Dashboard() {
 
   const vistas: { valor: Vista; etiqueta: string; disponible: boolean }[] = [
     { valor: 'resumen', etiqueta: 'Resumen', disponible: true },
-    { valor: 'actividad', etiqueta: 'Actividad y ocupación', disponible: true },
+    { valor: 'actividad', etiqueta: 'Actividad', disponible: true },
     { valor: 'diagnosticos', etiqueta: 'Diagnósticos', disponible: true },
-    { valor: 'evolucion', etiqueta: 'Evolución clínica', disponible: true },
+    { valor: 'evolucion', etiqueta: 'Evolución', disponible: true },
     { valor: 'medicacion', etiqueta: 'Medicación', disponible: true },
     { valor: 'seguridad', etiqueta: 'Seguridad', disponible: true },
-    { valor: 'explorador', etiqueta: 'Explorador de episodios', disponible: true },
+    { valor: 'explorador', etiqueta: 'Episodios', disponible: true },
   ]
 
   // Antes lo veía cualquier profesional — ahora, igual que Personal
@@ -158,28 +160,20 @@ export function Dashboard() {
 
   return (
     <div className="p-4 sm:p-6 md:p-8 space-y-6 ancho-tabla">
-      <div className="flex items-center gap-2">
-        <LayoutDashboard className="w-5 h-5 text-slate-500" />
-        <h1 className="text-2xl font-bold text-slate-800">Dashboard</h1>
-      </div>
+      <CabeceraPagina className="!mb-0" titulo="Dashboard" subtitulo="Indicadores clínicos y de funcionamiento de la unidad" />
 
-      <div className="flex gap-1 border-b">
-        {vistas.map((v) => (
-          <button
-            key={v.valor}
-            onClick={() => v.disponible && cambiarVista(v.valor)}
-            disabled={!v.disponible}
-            title={!v.disponible ? 'Todavía no construida — próxima ronda' : undefined}
-            className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
-              vista === v.valor ? 'border-primary-600 text-primary-700'
-              : v.disponible ? 'border-transparent text-slate-500 hover:text-slate-700'
-              : 'border-transparent text-slate-500 cursor-not-allowed'
-            }`}
-          >
-            {v.etiqueta}
-          </button>
-        ))}
-      </div>
+      <Segmentado
+        className="[&_.segmentado-btn]:px-2.5"
+        etiqueta="Vista del dashboard"
+        valor={vista}
+        onChange={cambiarVista}
+        opciones={vistas.map((v) => ({
+          clave: v.valor,
+          etiqueta: v.etiqueta,
+          deshabilitada: !v.disponible,
+          titulo: !v.disponible ? 'Todavía no construida — próxima ronda' : undefined,
+        }))}
+      />
 
       {/* El Explorador tiene sus propios filtros (fechas, estado,
           médico, estancia, incidencias) — la barra global no le
@@ -194,7 +188,7 @@ export function Dashboard() {
       {vista !== 'explorador' && (
         <div className="flex flex-wrap items-center justify-between gap-2 -mt-3">
           <p className="text-xs text-slate-600" data-intervalo>{etiquetaIntervalo(desde, hasta, medicoTexto)}</p>
-          <button type="button" className="btn-secondary text-xs gap-1" disabled={nAportes === 0} data-exportar
+          <button type="button" className="btn-secondary btn-sm" disabled={nAportes === 0} data-exportar
             title={nAportes === 0 ? 'Espera a que se carguen los datos' : 'Descarga un Excel con las tablas de esta pestaña'}
             onClick={() => descargarExcel(contextoExportar, [...aportes.current.values()])}>
             <Download className="w-3.5 h-3.5" /> Exportar datos de esta vista

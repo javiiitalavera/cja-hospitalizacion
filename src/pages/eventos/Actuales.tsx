@@ -64,7 +64,7 @@ export function Actuales({ eventos, desde, cargando, error, onReintentar, onIrAH
     return (
       <div className="card px-4 py-10 text-center">
         <p className="text-red-600 text-sm mb-2">{error}</p>
-        <button onClick={onReintentar} className="btn-secondary text-xs">Reintentar</button>
+        <button onClick={onReintentar} className="btn-secondary btn-sm">Reintentar</button>
       </div>
     )
   }
@@ -195,7 +195,7 @@ export function Actuales({ eventos, desde, cargando, error, onReintentar, onIrAH
                               <p className="text-xs text-slate-500">
                                 {ev.registrado_por ? `Registrado por ${ev.registrado_por.nombre} ${ev.registrado_por.apellidos}` : ''}
                               </p>
-                              <Link to={rutaIncidencia(ev.ingreso.id, ev.id)} className="btn-secondary text-xs py-1">
+                              <Link to={rutaIncidencia(ev.ingreso.id, ev.id)} className="btn-secondary btn-sm">
                                 {ev.estado === 'pendiente' ? 'Completar' : 'Abrir'}
                               </Link>
                             </div>

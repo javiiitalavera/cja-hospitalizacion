@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Segmentado } from '../components/Segmentado'
 import { Cargando } from '../components/Cargando'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -466,14 +467,15 @@ export default function Home() {
         <span className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500">
           <span aria-hidden className="w-2 h-2 rounded-full bg-slate-300" />{libres} libres
         </span>
-        <div className="segmentado" role="group" aria-label="Vista">
-          {([['filas', 'Filas', LayoutList], ['tarjetas', 'Tarjetas', LayoutGrid]] as const).map(([v, et, Icono]) => (
-            <button key={v} type="button" onClick={() => cambiarVista(v)} aria-pressed={vista === v} title={`Vista de ${et.toLowerCase()}`}
-              className={`segmentado-btn ${vista === v ? 'activo' : ''}`}>
-              <Icono className="w-3.5 h-3.5" />{et}
-            </button>
-          ))}
-        </div>
+        <Segmentado
+          etiqueta="Vista"
+          valor={vista}
+          onChange={cambiarVista}
+          opciones={[
+            { clave: 'filas', etiqueta: 'Filas', icono: LayoutList, titulo: 'Vista de filas' },
+            { clave: 'tarjetas', etiqueta: 'Tarjetas', icono: LayoutGrid, titulo: 'Vista de tarjetas' },
+          ]}
+        />
         <BotonActualizar onClick={fetchData} cargando={refreshing} />
         <button
           onClick={() => imprimirListaHabitaciones(slots.map((s) => s?.paciente ? nombreYApellido(s.paciente) : null))}
@@ -521,14 +523,14 @@ export default function Home() {
       {loading ? (
         <Cargando />
       ) : error ? (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-6 text-center space-y-2">
+        <div className="aviso aviso-error text-center space-y-2">
           <p>{error}</p>
-          <button onClick={fetchData} className="btn-secondary text-xs">Reintentar</button>
+          <button onClick={fetchData} className="btn-secondary btn-sm">Reintentar</button>
         </div>
       ) : (
         <>
         {errorAuxiliar && (
-          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 mb-2">
+          <p className="aviso aviso-atencion mb-2">
             {errorAuxiliar}
           </p>
         )}

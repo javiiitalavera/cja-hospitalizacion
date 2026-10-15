@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Segmentado } from '../components/Segmentado'
 import { CabeceraPagina } from '../components/CabeceraPagina'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -185,7 +186,7 @@ export default function Pacientes() {
 
       <div className="flex gap-3 mb-5 flex-wrap items-center">
         <SelectorBusqueda activo="pacientes" texto={busqueda} />
-        <div className="relative flex-1 max-w-sm">
+        <div className="relative flex-1 min-w-[12rem] max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
           <input
             className="input pl-9 pr-9"
@@ -219,16 +220,16 @@ export default function Pacientes() {
             <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 animate-spin" />
           )}
         </div>
-        <div className="segmentado" role="group" aria-label="Estado">
-        {(['activo', 'alta', 'todos'] as const).map(e => (
-          <button key={e} type="button"
-            aria-pressed={filtroEstado === e}
-            onClick={() => { setFiltroEstado(e); setPagina(0) }}
-            className={`segmentado-btn ${filtroEstado === e ? 'activo' : ''}`}>
-            {e === 'activo' ? 'Ingresados' : e === 'alta' ? 'Altas / Éxitus' : 'Todos'}
-          </button>
-        ))}
-        </div>
+        <Segmentado
+          etiqueta="Estado"
+          valor={filtroEstado}
+          onChange={(e) => { setFiltroEstado(e); setPagina(0) }}
+          opciones={[
+            { clave: 'activo', etiqueta: 'Ingresados' },
+            { clave: 'alta', etiqueta: 'Altas / Éxitus' },
+            { clave: 'todos', etiqueta: 'Todos' },
+          ]}
+        />
       </div>
 
       <div className="card overflow-x-auto">
@@ -265,7 +266,7 @@ export default function Pacientes() {
             ) : error ? (
               <tr><td colSpan={6} className="px-4 py-12 text-center">
                 <p className="text-red-600 text-sm mb-2">{error}</p>
-                <button onClick={fetchPacientes} className="btn-secondary text-xs">Reintentar</button>
+                <button onClick={fetchPacientes} className="btn-secondary btn-sm">Reintentar</button>
               </td></tr>
             ) : pacientes.length === 0 ? (
               <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-500">No hay resultados</td></tr>
@@ -336,13 +337,13 @@ export default function Pacientes() {
               <button type="button"
                 onClick={() => setPagina(p => Math.max(0, p - 1))}
                 disabled={pagina === 0}
-                className="btn-secondary text-xs py-1.5 disabled:opacity-40">
+                className="btn-secondary btn-sm disabled:opacity-40">
                 <ChevronLeft className="w-3.5 h-3.5" /> Anterior
               </button>
               <button type="button"
                 onClick={() => setPagina(p => Math.min(totalPaginas - 1, p + 1))}
                 disabled={pagina >= totalPaginas - 1}
-                className="btn-secondary text-xs py-1.5 disabled:opacity-40">
+                className="btn-secondary btn-sm disabled:opacity-40">
                 Siguiente <ChevronRight className="w-3.5 h-3.5" />
               </button>
             </div>

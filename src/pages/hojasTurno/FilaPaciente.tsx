@@ -157,10 +157,10 @@ export function FilaPaciente({ n, p, turno, columnas, acciones }: {
                     <ChipsTurno compacto valor={turnosEdicion} onChange={setTurnosEdicion} />
                   </div>
                   <div className="flex gap-2">
-                    <button type="button" className="btn-primary text-xs py-1 gap-1" disabled={ocupado || !textoEdicion.trim()} onClick={() => guardarEdicion(i)}>
+                    <button type="button" className="btn-primary btn-sm" disabled={ocupado || !textoEdicion.trim()} onClick={() => guardarEdicion(i)}>
                       <Check className="w-3.5 h-3.5" /> Guardar
                     </button>
-                    <button type="button" className="btn-secondary text-xs py-1 gap-1" onClick={() => setEditando(null)}>
+                    <button type="button" className="btn-secondary btn-sm" onClick={() => setEditando(null)}>
                       <X className="w-3.5 h-3.5" /> Cancelar
                     </button>
                     <IndicadorGuardado estado={ocupado ? 'guardando' : (textoEdicion.trim() !== i.texto.trim() || !turnosIguales(turnosEdicion, i.turnos)) ? 'pendiente' : 'inactivo'} />
@@ -209,10 +209,10 @@ export function FilaPaciente({ n, p, turno, columnas, acciones }: {
                 <ChipsTurno compacto valor={nuevosTurnos} onChange={setNuevosTurnos} />
               </div>
               <div className="flex gap-2">
-                <button type="button" className="btn-primary text-xs py-1 gap-1" disabled={ocupado || !nuevoTexto.trim()} onClick={guardarNueva}>
+                <button type="button" className="btn-primary btn-sm" disabled={ocupado || !nuevoTexto.trim()} onClick={guardarNueva}>
                   <Plus className="w-3.5 h-3.5" /> Añadir
                 </button>
-                <button type="button" className="btn-secondary text-xs py-1 gap-1" onClick={() => setAnadiendo(false)}>
+                <button type="button" className="btn-secondary btn-sm" onClick={() => setAnadiendo(false)}>
                   <X className="w-3.5 h-3.5" /> Cancelar
                 </button>
                 <IndicadorGuardado estado={ocupado ? 'guardando' : nuevoTexto.trim() !== '' ? 'pendiente' : 'inactivo'} />

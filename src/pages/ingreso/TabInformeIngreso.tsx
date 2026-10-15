@@ -279,7 +279,7 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
   }
   // Aviso de un campo copiado del ingreso anterior que aún no se ha revisado.
   const avisoRevisar = (key: string) => porRevisar.includes(key) && (
-    <div className="flex items-center justify-between gap-3 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-2.5 py-1.5 mb-1.5">
+    <div className="aviso aviso-atencion flex items-center justify-between gap-3 mb-1.5">
       <span className="flex items-center gap-1.5"><AlertTriangle className="w-3.5 h-3.5 shrink-0" />Copiado del ingreso anterior: revísalo.</span>
       {!soloLectura && <button type="button" onClick={() => confirmarRevisado(key)} className="font-semibold underline underline-offset-2 shrink-0">Sigue vigente</button>}
     </div>
@@ -352,7 +352,7 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
 
       {estado === 'conflicto' && (
         <AvisoFicha tono="atencion" accion={
-          <button onClick={recargarTrasConflicto} className="btn-secondary text-xs shrink-0">Ver la versión más reciente</button>
+          <button onClick={recargarTrasConflicto} className="btn-secondary btn-sm shrink-0">Ver la versión más reciente</button>
         }>
           Alguien más ha guardado cambios en este informe mientras lo editabas. Lo que has escrito sigue aquí, sin guardar todavía.
         </AvisoFicha>
@@ -403,7 +403,7 @@ function TabInformeIngreso({ ingresoId, ingreso }: { ingresoId: string; ingreso:
         </div>
         {estadoEscalas === 'conflicto' && (
           <AvisoFicha tono="atencion" accion={
-            <button onClick={recargarEscalasTrasConflicto} className="btn-secondary text-xs shrink-0">Ver la versión más reciente</button>
+            <button onClick={recargarEscalasTrasConflicto} className="btn-secondary btn-sm shrink-0">Ver la versión más reciente</button>
           }>
             Alguien más ha guardado cambios en las escalas mientras las editabas. Lo marcado sigue aquí, sin guardar todavía.
           </AvisoFicha>

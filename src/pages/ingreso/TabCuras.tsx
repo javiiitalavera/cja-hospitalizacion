@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { Segmentado } from '../../components/Segmentado'
 import { useAvisoSalida } from '../../lib/avisoSalida'
 import { Cargando } from '../../components/Cargando'
 import { supabase } from '../../lib/supabase'
@@ -251,12 +252,12 @@ function CuerpoLesion({
           </div>
         )}
         {conflicto && (
-          <div className="text-sm bg-amber-50 border border-amber-200 text-amber-800 rounded-lg px-3 py-2 flex items-center justify-between gap-3">
+          <div className="aviso aviso-atencion flex items-center justify-between gap-3">
             <span>No se ha guardado: alguien más ha modificado esta lesión mientras la editabas (o no tienes permiso para cambiarla). Lo que has escrito sigue aquí.</span>
-            <button type="button" onClick={recargarTrasConflicto} className="btn-secondary text-xs shrink-0">Ver la versión actual</button>
+            <button type="button" onClick={recargarTrasConflicto} className="btn-secondary btn-sm shrink-0">Ver la versión actual</button>
           </div>
         )}
-        {error && <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{error}</p>}
+        {error && <p className="aviso aviso-error">{error}</p>}
         <div className="flex gap-3 pt-1">
           <button onClick={onClose} className="btn-secondary flex-1">Cancelar</button>
           <button onClick={guardar} disabled={guardando || conflicto} className="btn-primary flex-1 justify-center">
@@ -412,7 +413,7 @@ function CuerpoValoracion({
         <label className="label">{modo === 'pauta' && !editando ? 'Motivo del cambio (opcional)' : 'Notas'}</label>
         <textarea className="textarea" rows={2} maxLength={2000} value={f.notas} onChange={(e) => setF({ ...f, notas: e.target.value })} />
       </div>
-      {error && <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{error}</p>}
+      {error && <p className="aviso aviso-error">{error}</p>}
       <div className="flex gap-3 pt-1">
         <button onClick={onClose} className="btn-secondary flex-1">Cancelar</button>
         <button onClick={guardar} disabled={guardando} className="btn-primary flex-1 justify-center">
@@ -475,22 +476,16 @@ export function ModalEditarLesion({
   return (
     <Modal titulo={`${lesion.localizacion} · ${CARACTERISTICA_LABEL[lesion.caracteristicas]}`} onClose={onClose}>
       {paciente && <p className="text-sm font-medium text-slate-700 -mt-2 mb-3">{paciente}</p>}
-      {extras?.error && <p className="mb-3 text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{extras.error}</p>}
+      {extras?.error && <p className="aviso aviso-error mb-3">{extras.error}</p>}
       {disponibles.length > 1 && (
-        <div role="tablist" className="flex gap-1 border-b border-slate-200 mb-3 overflow-x-auto">
-          {disponibles.map((p) => (
-            <button
-              key={p.id}
-              role="tab"
-              aria-selected={p.id === pestaña}
-              type="button"
-              onClick={() => setPestaña(p.id)}
-              className={`px-3 py-2 text-sm font-medium -mb-px border-b-2 whitespace-nowrap transition-colors ${p.id === pestaña ? 'border-primary-600 text-primary-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
-            >
-              {p.titulo}
-            </button>
-          ))}
-        </div>
+        <Segmentado
+          className="mb-3"
+          comoPestanas
+          etiqueta="Secciones de la lesión"
+          valor={pestaña}
+          onChange={setPestaña}
+          opciones={disponibles.map((p) => ({ clave: p.id, etiqueta: p.titulo }))}
+        />
       )}
       <p className="text-xs text-slate-500 mb-3">{actual.ayuda}</p>
       {/* Las pestañas no visibles siguen montadas: así lo escrito en una no se pierde al mirar otra. */}
@@ -619,8 +614,8 @@ export function TarjetaLesion({
         </div>
         {puedeEditar && !curada && (
           <div className="flex items-center gap-2 shrink-0">
-            <button onClick={() => onEditar('valoracion')} title="Anotar cómo está la lesión hoy: medidas, grado, frotis, escalas" className="btn-secondary !px-3 !py-1.5 text-xs"><Plus className="w-3.5 h-3.5" />Valorar</button>
-            <button onClick={() => onEditar('pauta')} title="Cambiar la cura que lleva: apósito, frecuencia, días" className="btn-secondary !px-3 !py-1.5 text-xs"><Pencil className="w-3.5 h-3.5" />Cambiar cura</button>
+            <button onClick={() => onEditar('valoracion')} title="Anotar cómo está la lesión hoy: medidas, grado, frotis, escalas" className="btn-secondary btn-sm"><Plus className="w-3.5 h-3.5" />Valorar</button>
+            <button onClick={() => onEditar('pauta')} title="Cambiar la cura que lleva: apósito, frecuencia, días" className="btn-secondary btn-sm"><Pencil className="w-3.5 h-3.5" />Cambiar cura</button>
           </div>
         )}
       </div>
@@ -761,7 +756,7 @@ export function TabCuras({ ingresoId, episodioActivo }: { ingresoId: string; epi
       <div className="card p-6 max-w-md">
         <p className="font-semibold text-red-600">No se pudo cargar</p>
         <p className="text-sm text-slate-500 mt-1 mb-3">{errorCarga}</p>
-        <button onClick={cargar} className="btn-secondary text-sm">Reintentar</button>
+        <button onClick={cargar} className="btn-secondary">Reintentar</button>
       </div>
     )
   }
@@ -807,7 +802,7 @@ export function TabCuras({ ingresoId, episodioActivo }: { ingresoId: string; epi
         )}
       </div>
 
-      {errorAccion && <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{errorAccion}</p>}
+      {errorAccion && <p className="aviso aviso-error">{errorAccion}</p>}
 
       {lesiones.length === 0 ? (
         <div className="card p-8 text-center text-sm text-slate-500">Este ingreso no tiene lesiones ni cuidados de piel registrados.</div>

@@ -266,20 +266,20 @@ export function Historico() {
         )}
 
         <div className="flex items-center gap-2 pt-1">
-          <button onClick={() => buscarIncidencias()} disabled={buscando} className="btn-primary text-sm">
+          <button onClick={() => buscarIncidencias()} disabled={buscando} className="btn-primary">
             <Search className="w-4 h-4" />
             {buscando ? 'Buscando…' : 'Buscar'}
           </button>
-          <button onClick={quitarFiltros} disabled={buscando} className="btn-secondary text-sm">Quitar filtros</button>
+          <button onClick={quitarFiltros} disabled={buscando} className="btn-secondary">Quitar filtros</button>
         </div>
       </div>
 
       {errorBusqueda && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">{errorBusqueda}</div>
+        <div className="aviso aviso-error">{errorBusqueda}</div>
       )}
 
       {truncado && !errorBusqueda && (
-        <div className="bg-amber-50 border border-amber-200 text-amber-800 text-xs rounded-lg px-4 py-2.5">
+        <div className="aviso aviso-atencion">
           Hay {totalCoincidencias.toLocaleString('es-ES')} incidencias con estos filtros y se muestran las {MAX_RESULTADOS.toLocaleString('es-ES')} más recientes. Acota las fechas para ver el resto.
         </div>
       )}
@@ -292,10 +292,10 @@ export function Historico() {
             </p>
             {resultados.length > 0 && (
               <div className="flex gap-2">
-                <button onClick={exportarCSVBusqueda} className="btn-secondary text-xs py-1 gap-1">
+                <button onClick={exportarCSVBusqueda} className="btn-secondary btn-sm">
                   <Download className="w-3.5 h-3.5" /> Exportar CSV
                 </button>
-                <button onClick={imprimirBusqueda} className="btn-secondary text-xs py-1 gap-1">
+                <button onClick={imprimirBusqueda} className="btn-secondary btn-sm">
                   <Printer className="w-3.5 h-3.5" /> Imprimir
                 </button>
               </div>

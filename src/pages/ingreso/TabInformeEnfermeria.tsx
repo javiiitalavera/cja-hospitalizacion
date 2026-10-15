@@ -180,7 +180,7 @@ export function TabInformeEnfermeria({ ingresoId, ingreso }: { ingresoId: string
     return (
       <div className="card p-4 text-sm ancho-formulario">
         <p className="text-red-600">{errorCarga}</p>
-        <button onClick={cargar} className="btn-secondary text-xs mt-2">Reintentar</button>
+        <button onClick={cargar} className="btn-secondary btn-sm mt-2">Reintentar</button>
       </div>
     )
   }
@@ -195,7 +195,7 @@ export function TabInformeEnfermeria({ ingresoId, ingreso }: { ingresoId: string
 
       {estado === 'conflicto' && (
         <AvisoFicha tono="atencion" accion={
-          <button onClick={recargarTrasConflicto} className="btn-secondary text-xs shrink-0">Ver la versión más reciente</button>
+          <button onClick={recargarTrasConflicto} className="btn-secondary btn-sm shrink-0">Ver la versión más reciente</button>
         }>
           Alguien más ha guardado este informe. Lo que has escrito sigue aquí, sin guardar.
         </AvisoFicha>
@@ -249,7 +249,7 @@ export function TabInformeEnfermeria({ ingresoId, ingreso }: { ingresoId: string
         </p>
       )}
 
-      {errorAccion && <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{errorAccion}</p>}
+      {errorAccion && <p className="aviso aviso-error">{errorAccion}</p>}
 
       <div className="flex flex-wrap justify-end gap-3">
         <button type="button" onClick={exportar} className="btn-secondary">

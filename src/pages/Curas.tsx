@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { CabeceraPagina } from '../components/CabeceraPagina'
+import { BotonActualizar } from '../components/BotonActualizar'
 import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, Check, X, Circle, Printer, Pencil, Plus } from 'lucide-react'
 import { supabase } from '../lib/supabase'
@@ -196,14 +197,15 @@ export default function Curas() {
         titulo="Pauta de curas"
         subtitulo={`${loading ? '…' : `${pacientes.filter((p) => p.lesiones.length > 0).length} paciente${pacientes.filter((p) => p.lesiones.length > 0).length === 1 ? '' : 's'} con curas activas`} · registro semanal de curas`}
       >
+          <BotonActualizar onClick={cargar} cargando={loading} />
           <button onClick={() => setLunes(sumarDias(lunes, -7))} className="btn-secondary !px-2.5" aria-label="Semana anterior"><ChevronLeft className="w-4 h-4" /></button>
           <span className="text-sm font-medium text-slate-700 min-w-[11rem] text-center">{fechaCorta(semana[0])} – {fechaCorta(semana[6])}</span>
           <button onClick={() => setLunes(sumarDias(lunes, 7))} className="btn-secondary !px-2.5" aria-label="Semana siguiente"><ChevronRight className="w-4 h-4" /></button>
-          {!esSemanaActual && <button onClick={() => setLunes(lunesDe(hoy))} className="btn-secondary text-sm">Esta semana</button>}
-          <button onClick={() => imprimirHoja(pacientes, semana, registros, tocaEse)} disabled={pacientes.length === 0} className="btn-secondary text-sm">
+          {!esSemanaActual && <button onClick={() => setLunes(lunesDe(hoy))} className="btn-secondary">Esta semana</button>}
+          <button onClick={() => imprimirHoja(pacientes, semana, registros, tocaEse)} disabled={pacientes.length === 0} className="btn-secondary">
             <Printer className="w-4 h-4" />Imprimir
           </button>
-          <button onClick={() => { setBusquedaPaciente(''); setSelectorPaciente(true) }} className="btn-primary text-sm">
+          <button onClick={() => { setBusquedaPaciente(''); setSelectorPaciente(true) }} className="btn-primary">
             <Plus className="w-4 h-4" />Añadir lesión
           </button>
       </CabeceraPagina>
@@ -212,7 +214,7 @@ export default function Curas() {
         <div className="card p-6 max-w-md mb-6">
           <p className="font-semibold text-red-600">No se pudo cargar</p>
           <p className="text-sm text-slate-500 mt-1 mb-3">{error}</p>
-          <button onClick={cargar} className="btn-secondary text-sm">Reintentar</button>
+          <button onClick={cargar} className="btn-secondary">Reintentar</button>
         </div>
       )}
 

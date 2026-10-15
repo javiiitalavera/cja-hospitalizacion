@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { CabeceraPagina } from '../components/CabeceraPagina'
 import { Cargando } from '../components/Cargando'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -7,7 +8,7 @@ import { escaparBusquedaIlike, quitarTildes } from '../lib/busqueda'
 import { useAuth } from '../lib/AuthContext'
 import type { Profesional, Paciente } from '../types'
 import { nombreCompleto } from '../types'
-import { ChevronLeft, Save, Search, UserPlus, RefreshCw, Lock } from 'lucide-react'
+import { Save, Search, UserPlus, RefreshCw, Lock } from 'lucide-react'
 import SelectorHabitacion from '../components/SelectorHabitacion'
 import { informeBaseReingreso, itemsBaseReingreso } from '../lib/reingreso'
 
@@ -356,7 +357,7 @@ export default function NuevoIngreso() {
             <p className="text-sm text-slate-500 mt-1">
               Solo un médico puede crear ingresos y pacientes. Si necesitas registrar uno, avisa al médico responsable.
             </p>
-            <button onClick={() => navigate(-1)} className="btn-secondary mt-3 text-sm">Volver</button>
+            <button onClick={() => navigate(-1)} className="btn-secondary mt-3">Volver</button>
           </div>
         </div>
       </div>
@@ -365,25 +366,17 @@ export default function NuevoIngreso() {
 
   return (
     <div className="p-4 sm:p-6 md:p-8 ancho-formulario">
-      <div className="flex items-center gap-3 mb-7">
-        <button
-          onClick={() => (paso === 'buscar' ? navigate(-1) : setPaso('buscar'))}
-          className="text-slate-500 hover:text-slate-600"
-        >
-          <ChevronLeft className="w-5 h-5" />
-        </button>
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800">Nuevo ingreso</h1>
-          <p className="text-sm text-slate-500">
-            {paso === 'buscar' && 'Busca si el paciente ya existe o crea uno nuevo'}
-            {paso === 'reingreso' &&
-              `Reingreso de ${pacienteSeleccionado?.primer_apellido}, ${pacienteSeleccionado?.nombre}`}
-            {paso === 'nuevo_paciente' && 'Nuevo paciente'}
-          </p>
-        </div>
-      </div>
+      <CabeceraPagina
+        titulo="Nuevo ingreso"
+        onVolver={() => (paso === 'buscar' ? navigate(-1) : setPaso('buscar'))}
+        subtitulo={
+          paso === 'buscar' ? 'Busca si el paciente ya existe o crea uno nuevo'
+          : paso === 'reingreso' ? `Reingreso de ${pacienteSeleccionado?.primer_apellido}, ${pacienteSeleccionado?.nombre}`
+          : 'Nuevo paciente'
+        }
+      />
 
-      {error && <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg">{error}</div>}
+      {error && <div className="aviso aviso-error mb-4">{error}</div>}
 
       {/* PASO 1: Buscar */}
       {paso === 'buscar' && (
@@ -452,9 +445,9 @@ export default function NuevoIngreso() {
               <p className="text-sm text-slate-500 mt-3">Pulsa Buscar para comprobar si ya existe.</p>
             )}
             {errorBusqueda && (
-              <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-3 py-2 mt-3 flex items-center justify-between gap-3">
+              <div className="aviso aviso-error mt-3 flex items-center justify-between gap-3">
                 <span>{errorBusqueda}</span>
-                <button onClick={buscarPaciente} className="btn-secondary text-xs shrink-0">Reintentar</button>
+                <button onClick={buscarPaciente} className="btn-secondary btn-sm shrink-0">Reintentar</button>
               </div>
             )}
           </div>
@@ -466,7 +459,7 @@ export default function NuevoIngreso() {
           </div>
 
           {errorBusqueda ? (
-            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-center">
+            <p className="aviso aviso-atencion text-center">
               No se puede crear un paciente nuevo hasta comprobar que no existe ya — reintenta la búsqueda de arriba.
             </p>
           ) : (

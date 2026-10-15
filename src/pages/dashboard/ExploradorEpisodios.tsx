@@ -280,10 +280,10 @@ export function ExploradorEpisodios() {
             busqueda: null, desde_ingreso: null, hasta_ingreso: null, desde_alta: null, hasta_alta: null,
             solapa_desde: null, solapa_hasta: null, estado: null, medico: null, estancia_min: null,
             estancia_max: null, con_incidencias: null, tipo_incidencia: null,
-          })} className="btn-secondary text-xs">Limpiar filtros</button>
+          })} className="btn-secondary btn-sm">Limpiar filtros</button>
           <div className="flex gap-2">
-            <button onClick={exportarCSV} className="btn-secondary text-xs gap-1"><Download className="w-3.5 h-3.5" /> Exportar CSV</button>
-            <button onClick={imprimir} className="btn-secondary text-xs gap-1"><Printer className="w-3.5 h-3.5" /> Imprimir</button>
+            <button onClick={exportarCSV} className="btn-secondary btn-sm"><Download className="w-3.5 h-3.5" /> Exportar CSV</button>
+            <button onClick={imprimir} className="btn-secondary btn-sm"><Printer className="w-3.5 h-3.5" /> Imprimir</button>
           </div>
         </div>
       </div>
@@ -330,11 +330,11 @@ export function ExploradorEpisodios() {
 
       {estado === 'listo' && totalPaginas > 1 && (
         <div className="flex items-center justify-center gap-3">
-          <button disabled={pagina <= 1} onClick={() => irAPagina(pagina - 1)} className="btn-secondary text-xs disabled:opacity-40">
+          <button disabled={pagina <= 1} onClick={() => irAPagina(pagina - 1)} className="btn-secondary btn-sm disabled:opacity-40">
             <ChevronLeft className="w-4 h-4" />
           </button>
           <span className="text-xs text-slate-500">Página {pagina} de {totalPaginas}</span>
-          <button disabled={pagina >= totalPaginas} onClick={() => irAPagina(pagina + 1)} className="btn-secondary text-xs disabled:opacity-40">
+          <button disabled={pagina >= totalPaginas} onClick={() => irAPagina(pagina + 1)} className="btn-secondary btn-sm disabled:opacity-40">
             <ChevronRight className="w-4 h-4" />
           </button>
         </div>

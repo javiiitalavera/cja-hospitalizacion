@@ -284,9 +284,9 @@ export default function PanelEdicion({
       </div>
 
       {estado === 'conflicto' && (
-        <div className="mx-4 mt-3 bg-amber-50 border border-amber-200 text-amber-800 text-xs rounded-lg px-3 py-2 flex items-center justify-between gap-2">
+        <div className="aviso aviso-atencion mx-4 mt-3 flex items-center justify-between gap-2">
           <span>Alguien más ha guardado cambios en esta hoja mientras la editabas.</span>
-          <button onClick={recargarTrasConflicto} className="btn-secondary text-xs shrink-0 py-1">Ver lo más reciente</button>
+          <button onClick={recargarTrasConflicto} className="btn-secondary btn-sm shrink-0">Ver lo más reciente</button>
         </div>
       )}
 
@@ -316,7 +316,7 @@ export default function PanelEdicion({
         <span className="text-xs text-slate-600 block">Pauta de contención</span>
         <p className="text-[0.7rem] text-slate-500 mb-1.5">Pulsa Día o Noche para ver o editar la pauta.</p>
         {errorContencion && (
-          <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded px-2 py-1 mb-1.5">{errorContencion}</p>
+          <p className="aviso aviso-error mb-1.5">{errorContencion}</p>
         )}
         {estadoContencion === 'cargando' ? (
           <p className="text-xs text-slate-500">Cargando…</p>
@@ -524,10 +524,10 @@ export default function PanelEdicion({
           </button>
         ) : (
           <div className="flex gap-2">
-            <button onClick={() => setConfirmLimpiar(false)} className="btn-secondary flex-1 text-xs py-1.5">
+            <button onClick={() => setConfirmLimpiar(false)} className="btn-secondary btn-sm flex-1">
               Cancelar
             </button>
-            <button onClick={limpiarItems} className="btn-danger flex-1 text-xs py-1.5">
+            <button onClick={limpiarItems} className="btn-danger btn-sm flex-1">
               Confirmar borrado
             </button>
           </div>
