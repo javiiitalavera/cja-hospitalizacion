@@ -20,8 +20,8 @@ const ROL_LABEL: Record<string, string> = {
 const navItems = [
   // grupo: los bloques se separan con una línea fina (navegar / registro diario / administración).
   { to: '/', icon: Home, label: 'Inicio', end: true, grupo: 1 },
-  // «Buscar» reúne pacientes e informes (selector dentro de la pantalla): se ve activo en las dos direcciones.
-  { to: '/pacientes', icon: Search, label: 'Buscar', grupo: 1, tambien: ['/informes'] },
+  // «Buscador» reúne pacientes e informes (selector dentro de la pantalla): se ve activo en las dos direcciones.
+  { to: '/pacientes', icon: Search, label: 'Buscador', grupo: 1, tambien: ['/informes'] },
   { to: '/items', icon: ClipboardList, label: 'Hoja de ítems', grupo: 2 },
   { to: '/hojas-turno', icon: ClipboardCheck, label: 'Hojas de turno', grupo: 2 },
   { to: '/curas', icon: Bandage, label: 'Pauta de curas', grupo: 2 },

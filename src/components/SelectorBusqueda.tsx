@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 
-// Un solo «Buscar» con dos listados: pacientes e informes. Al cambiar de uno a otro se conserva lo escrito en el
+// Un solo «Buscador» con dos listados: pacientes e informes. Al cambiar de uno a otro se conserva lo escrito en el
 // buscador (va en la dirección como «q»); cada listado guarda por su cuenta sus filtros y su orden.
 const MODOS = [
   { clave: 'pacientes', etiqueta: 'Pacientes', ruta: '/pacientes' },

@@ -234,7 +234,7 @@ export function Informes() {
     <div className="p-6 md:p-8 ancho-tabla">
       <CabeceraPagina
         className="!mb-2"
-        titulo="Buscar"
+        titulo="Buscador"
         subtitulo={`${loading ? '…' : `${lista.length} informe${lista.length !== 1 ? 's' : ''}`} · historial de informes de ingreso, alta, enfermería y otros`}
       />
       <div className="mb-6">
