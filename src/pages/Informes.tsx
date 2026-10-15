@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { CabeceraPagina } from '../components/CabeceraPagina'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { atajoDeRaton, FOCO_CELDA } from '../lib/accesibilidad'
 import { supabase } from '../lib/supabase'
 import { Search, FileText, LogOut, HeartPulse, Ambulance, ClipboardList, FilePen, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react'
@@ -9,6 +9,7 @@ import { EstadoIngreso } from '../components/EstadoIngreso'
 import { quitarTildes } from '../lib/busqueda'
 import { estaVacio } from '../lib/informesEstado'
 import { formatFechaLocal } from '../lib/fechas'
+import { SelectorBusqueda } from '../components/SelectorBusqueda'
 
 // Los seis tipos de informe que se pueden listar: los dos clásicos del
 // médico, el de enfermería y los tres de "Otros informes".
@@ -101,6 +102,7 @@ function valorOrden(r: InformeRow, c: ColumnaOrden): string {
 
 export function Informes() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [loading, setLoading] = useState(true)
   const [informes, setInformes] = useState<InformeRow[]>([])
   const [posibleTruncado, setPosibleTruncado] = useState(false)
@@ -109,7 +111,9 @@ export function Informes() {
   const [filtroAnio, setFiltroAnio] = useState<string>('todos')
   // 'todos', un tipo concreto, o 'otros' (los tres de "Otros informes").
   const [filtroTipo, setFiltroTipo] = useState<'todos' | 'otros' | TipoInforme>('todos')
-  const [busqueda, setBusqueda] = useState('')
+  // El texto buscado vive en la dirección (?q=), como en Pacientes: al volver de un informe, o al cambiar entre
+  // Pacientes e Informes, la búsqueda sigue ahí.
+  const [busqueda, setBusqueda] = useState(searchParams.get('q') ?? '')
   const [orden, setOrden] = useState<{ columna: ColumnaOrden; asc: boolean }>({ columna: 'fecha', asc: false })
 
   useEffect(() => { fetchInformes() }, [])
@@ -230,7 +234,7 @@ export function Informes() {
     <div className="p-6 md:p-8 ancho-tabla">
       <CabeceraPagina
         className="!mb-2"
-        titulo="Buscar informe"
+        titulo="Buscar"
         subtitulo={`${loading ? '…' : `${lista.length} informe${lista.length !== 1 ? 's' : ''}`} · historial de informes de ingreso, alta, enfermería y otros`}
       />
       <div className="mb-6">
@@ -247,13 +251,18 @@ export function Informes() {
       </div>
 
       <div className="flex gap-3 mb-5 flex-wrap items-center">
+        <SelectorBusqueda activo="informes" texto={busqueda} />
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
           <input
             className="input pl-9"
             placeholder="Buscar por paciente o NHC…"
             value={busqueda}
-            onChange={e => setBusqueda(e.target.value)}
+            onChange={e => {
+              const valor = e.target.value
+              setBusqueda(valor)
+              setSearchParams(valor.trim() ? { q: valor } : {}, { replace: true })
+            }}
           />
         </div>
 

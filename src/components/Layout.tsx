@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom"
 import {
-  Users, ClipboardList, AlertTriangle,
-  BarChart2, Home, ChevronLeft, LogOut, UserCog, History, FileText, Bandage, ClipboardCheck
+  ClipboardList, AlertTriangle,
+  BarChart2, Home, ChevronLeft, LogOut, UserCog, History, Search, Bandage, ClipboardCheck
 } from 'lucide-react'
 import { useAuth } from '../lib/AuthContext'
 import { hayCambiosSinGuardar } from '../lib/avisoSalida'
@@ -20,8 +20,8 @@ const ROL_LABEL: Record<string, string> = {
 const navItems = [
   // grupo: los bloques se separan con una línea fina (navegar / registro diario / administración).
   { to: '/', icon: Home, label: 'Inicio', end: true, grupo: 1 },
-  { to: '/pacientes', icon: Users, label: 'Buscar paciente', grupo: 1 },
-  { to: '/informes', icon: FileText, label: 'Buscar informe', grupo: 1 },
+  // «Buscar» reúne pacientes e informes (selector dentro de la pantalla): se ve activo en las dos direcciones.
+  { to: '/pacientes', icon: Search, label: 'Buscar', grupo: 1, tambien: ['/informes'] },
   { to: '/items', icon: ClipboardList, label: 'Hoja de ítems', grupo: 2 },
   { to: '/hojas-turno', icon: ClipboardCheck, label: 'Hojas de turno', grupo: 2 },
   { to: '/curas', icon: Bandage, label: 'Pauta de curas', grupo: 2 },
@@ -79,22 +79,23 @@ export default function Layout() {
 
         {/* Nav */}
         <nav className="flex-1 py-4 px-2 space-y-0.5 overflow-y-auto">
-          {items.map(({ to, icon: Icon, label, end, grupo }, i) => (
+          {items.map(({ to, icon: Icon, label, end, grupo, tambien }, i) => (
             <div key={to} className={i > 0 && items[i - 1].grupo !== grupo ? 'pt-2 mt-2 border-t border-slate-100' : ''}>
             <NavLink
               to={to}
               end={end}
               onClick={(e) => irConAviso(e, to)}
               title={collapsed ? label : undefined}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-2 py-2 rounded-lg text-sm transition-colors duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300 ${
+              className={({ isActive: activoRuta }) => {
+                const isActive = activoRuta || (tambien ?? []).some((r) => location.pathname === r || location.pathname.startsWith(r + '/'))
+                return `flex items-center gap-3 px-2 py-2 rounded-lg text-sm transition-colors duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300 ${
                   collapsed ? 'justify-center' : ''
                 } ${
                   isActive
                     ? 'bg-primary-50 text-primary-700 font-semibold'
                     : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
                 }`
-              }
+              }}
             >
               <Icon className="w-4 h-4 shrink-0" />
               {!collapsed && label}

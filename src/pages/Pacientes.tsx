@@ -8,6 +8,7 @@ import { useAuth } from '../lib/AuthContext'
 import { Plus, Search, Loader2, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react'
 import { EstadoIngreso } from '../components/EstadoIngreso'
 import { atajoDeRaton, FOCO_CELDA } from '../lib/accesibilidad'
+import { SelectorBusqueda } from '../components/SelectorBusqueda'
 
 interface PacienteRow {
   id: string
@@ -172,7 +173,7 @@ export default function Pacientes() {
   return (
     <div className="p-6 md:p-8 ancho-tabla">
       <CabeceraPagina
-        titulo="Buscar paciente"
+        titulo="Buscar"
         subtitulo={`${loading ? '…' : `${total} resultado${total !== 1 ? 's' : ''}`} · todos los pacientes de la clínica`}
       >
         {esMedico && (
@@ -183,6 +184,7 @@ export default function Pacientes() {
       </CabeceraPagina>
 
       <div className="flex gap-3 mb-5 flex-wrap items-center">
+        <SelectorBusqueda activo="pacientes" texto={busqueda} />
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
           <input
