@@ -771,7 +771,7 @@ export function TabCuras({ ingresoId, episodioActivo }: { ingresoId: string; epi
       )}
 
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <TituloSeccion titulo="Curas y cuidados de la piel" subtitulo={<>{activas.length} activa{activas.length === 1 ? '' : 's'}{curadas.length > 0 && ` · ${curadas.length} curada${curadas.length === 1 ? '' : 's'}`}</>} />
+        <TituloSeccion titulo="Curas y piel" subtitulo={<>Lesiones y cuidados de la piel: qué cura lleva, cómo evoluciona y cuándo se realiza. · {activas.length} activa{activas.length === 1 ? '' : 's'}{curadas.length > 0 && ` · ${curadas.length} curada${curadas.length === 1 ? '' : 's'}`}</>} />
         {puedeEditar && (
           <div className="flex items-center gap-2">
             {activas.length > 0 && (

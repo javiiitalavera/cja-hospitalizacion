@@ -194,7 +194,7 @@ export default function Curas() {
   return (
     <div className="p-4 sm:p-6 md:p-8 ancho-tabla">
       <CabeceraPagina
-        titulo="Pauta de curas"
+        titulo="Curas y piel"
         subtitulo={`${loading ? '…' : `${pacientes.filter((p) => p.lesiones.length > 0).length} paciente${pacientes.filter((p) => p.lesiones.length > 0).length === 1 ? '' : 's'} con curas activas`} · registro semanal de curas`}
       >
           <BotonActualizar onClick={cargar} cargando={loading} />
@@ -220,7 +220,7 @@ export default function Curas() {
 
       {!loading && !error && pacientes.length === 0 && (
         <div className="card p-8 text-center text-sm text-slate-500">
-          No hay pacientes con curas activas. Pulsa «Añadir lesión» para registrar una lesión o cuidado (también se puede hacer desde la ficha del paciente, Plan de cuidados → Pauta de curas).
+          No hay pacientes con curas activas. Pulsa «Añadir lesión» para registrar una lesión o cuidado (también se puede hacer desde la ficha del paciente, Plan de cuidados → Curas y piel).
         </div>
       )}
 

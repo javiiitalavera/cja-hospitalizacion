@@ -61,7 +61,7 @@ const TABS: Tab[] = [
     id: 'plan', label: 'Plan de cuidados', icon: ClipboardList,
     subs: [
       { id: 'cuidados', label: 'Pauta de cuidados', seccion: 'cuidados' },
-      { id: 'curas', label: 'Pauta de curas', seccion: 'curas' },
+      { id: 'curas', label: 'Curas y piel', seccion: 'curas' },
       { id: 'items', label: 'Hoja de ítems', seccion: 'items' },
     ],
     subPorDefecto: 'items',

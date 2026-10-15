@@ -283,7 +283,7 @@ export function SeguridadDashboard({ filtros, desde, hasta, onExplorar, onExplor
             <section>
               <p className="section-title">Úlceras por presión</p>
               <p className="text-xs text-slate-500 -mt-3 mb-2">
-                Se registran en Plan de cuidados → Pauta de curas.
+                Se registran en Plan de cuidados → Curas y piel.
               </p>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3" data-ulceras>
                 <TarjetaMetrica info="upp_producidas" etiqueta="Producidas en el centro" valor={ulceras.aparecidas_durante}

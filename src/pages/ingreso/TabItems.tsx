@@ -5,11 +5,11 @@ import { supabase } from '../../lib/supabase'
 import type { ItemsPaciente } from '../../types'
 import { BloqueOxigeno, BloqueSonda, SelectorAislamiento, SelectorVias } from '../../components/ViasDispositivos'
 import type { DatosDispositivos } from '../../types/pautaCuidados'
-import ModalContencion from '../../components/ModalContencion'
-import { severidadDia, severidadNoche, SEVERIDAD_ESTILO, SEVERIDAD_BOTON_ESTILO } from '../../types/contenciones'
+import { BloqueContencion } from '../../components/BloqueContencion'
 import { SEMAFORO_CAIDAS_COLOR } from '../../types'
 import { EVENTO_SEMAFORO, SEMAFOROS } from '../../components/SemaforoCaidas'
 import { AvisoFicha } from '../../components/AvisoFicha'
+import { TituloSeccion } from '../../components/TituloSeccion'
 import { IndicadorGuardado } from '../../components/IndicadorGuardado'
 import { encadenar } from '../../lib/colaGuardado'
 
@@ -18,9 +18,6 @@ function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo
   const [data, setData] = useState<Partial<ItemsPaciente & { version: number }>>({})
   const [estado, setEstado] = useState<'inactivo' | 'pendiente' | 'guardando' | 'guardado' | 'error' | 'conflicto'>('inactivo')
   const [verHistorico, setVerHistorico] = useState(false)
-  const [modalContencion, setModalContencion] = useState(false)
-  const [estadoContencion, setEstadoContencion] = useState<{ dia: string | null; noche: string[] | null } | 'cargando'>('cargando')
-  const [errorCarga, setErrorCarga] = useState('')
   // Estado de la carga de los ítems: hasta que llegan (o si falla) no se enseña el formulario ni se puede guardar,
   // para que un formulario vacío por error de carga no se confunda con «no lleva nada» ni se guarde encima de datos reales.
   const [itemsListos, setItemsListos] = useState(false)
@@ -49,22 +46,6 @@ function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo
   useAvisoSalida(sucio || estado === 'pendiente' || estado === 'guardando' || estado === 'error' || estado === 'conflicto')
   useEffect(() => () => { if (debounceRef.current) clearTimeout(debounceRef.current) }, [])
 
-  function cargarContencion() {
-    supabase.from('contenciones').select('dia, noche').eq('ingreso_id', ingresoId).maybeSingle()
-      .then(({ data, error }) => {
-        if (error) {
-          // Un error real (red, permisos...) no es lo mismo que "sin
-          // revisar todavía" — si se confunden, guardar después
-          // podría sobrescribir una pauta real con "no hay nada".
-          setErrorCarga('No se pudo comprobar la contención: ' + error.message)
-          return
-        }
-        setEstadoContencion(data ?? { dia: null, noche: null })
-      })
-  }
-
-  useEffect(() => { cargarContencion() }, [ingresoId])
-
   useEffect(() => {
     // .maybeSingle() en vez de .single(): un ingreso recién creado
     // puede no tener fila de items_paciente todavía, y eso no es un
@@ -77,7 +58,6 @@ function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo
     setEstado('inactivo')
     setData({})
     setSucio(false)
-    setErrorCarga('')
     setItemsListos(false)
     setErrorItems('')
     let vigente = true
@@ -174,19 +154,17 @@ function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo
 
   return (
     <div className="ancho-formulario space-y-6">
-      <div className="sticky top-0 z-10 flex justify-end">
-        <span className="bg-white/90 backdrop-blur rounded-full px-3 py-1 shadow-sm border border-slate-100">
+      <TituloSeccion titulo="Hoja de ítems"
+        subtitulo="Necesidades y ayudas del paciente para los cuidados diarios: se actualizan cuando cambian y salen en la hoja de ítems impresa. Aislamiento, contención y vías son los mismos datos que en Pauta de cuidados." />
+      {/* Indicador de guardado: flota arriba a la derecha (sin ocupar altura) y solo se ve cuando hay algo que decir. */}
+      <div className="sticky top-0 z-10 flex justify-end h-0 !mt-0 pointer-events-none">
+        <span className={`pointer-events-auto bg-white/90 backdrop-blur rounded-full px-3 py-1 shadow-sm border border-slate-100 ${estado === 'inactivo' || estado === 'conflicto' ? 'hidden' : ''}`}>
           <IndicadorGuardado estado={estado} detalle="inténtalo de nuevo" />
           {estado === 'error' && (
             <button type="button" onClick={() => { void save() }} className="ml-2 text-xs font-semibold text-primary-700 hover:underline">Reintentar</button>
           )}
         </span>
       </div>
-      {errorCarga && (
-        <div className="aviso aviso-error">
-          {errorCarga} — no guardes cambios hasta recargar la página, para no sobrescribir datos reales con vacío.
-        </div>
-      )}
       <div className="card p-6 space-y-5">
         <p className="section-title !mb-0">Seguridad y conducta</p>
 
@@ -209,39 +187,7 @@ function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo
           <p className="text-xs text-slate-500 mt-1">Riesgo de caída del paciente. Pulsa el color activo para quitarlo.</p>
         </div>
 
-        <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 space-y-2.5" data-testid="bloque-contencion">
-          <div>
-            <p className="label !mb-0">Pauta de contención</p>
-            <p className="text-xs text-slate-500">
-              Contención pautada para el día y para la noche. Pulsa Día o Noche para ver o editar la contención; cada cambio queda en su historial.
-            </p>
-          </div>
-        {estadoContencion === 'cargando' ? (
-          <Cargando />
-        ) : (
-          <div className="flex flex-wrap gap-2" role="group" aria-label="Pauta de contención">
-            {(['dia', 'noche'] as const).map((eje) => {
-              const sev = eje === 'dia' ? severidadDia(estadoContencion.dia as any) : severidadNoche(estadoContencion.noche as any)
-              const estilo = SEVERIDAD_ESTILO[sev]
-              return (
-                <button key={eje} type="button" onClick={() => setModalContencion(true)}
-                  aria-label={`Contención ${eje === 'dia' ? 'día' : 'noche'}: ${estilo.label}. Ver o editar`}
-                  className={`min-w-[11rem] px-3 py-1.5 rounded-lg text-xs font-semibold border-2 transition-all hover:brightness-95 ${SEVERIDAD_BOTON_ESTILO[sev]}`}>
-                  {eje === 'dia' ? 'Día' : 'Noche'}: {estilo.label}
-                </button>
-              )
-            })}
-          </div>
-        )}
-        {modalContencion && (
-          <ModalContencion
-            ingresoId={ingresoId}
-            onClose={() => setModalContencion(false)}
-            onGuardado={cargarContencion}
-            pacienteInfo={pacienteInfo}
-          />
-        )}
-        </div>
+        <BloqueContencion ingresoId={ingresoId} pacienteInfo={pacienteInfo} />
         <div className="border-t border-slate-200 pt-5" data-testid="bloque-alerta-conducta">
           <label className="label">Alerta de conducta</label>
           <div className="flex flex-wrap gap-2">

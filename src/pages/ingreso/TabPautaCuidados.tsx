@@ -19,6 +19,7 @@ import { useConfirmar } from '../../components/useConfirmar'
 import { BloqueOxigeno, BloqueSonda, FONDO_DISPOSITIVO, SelectorAislamiento, SelectorVias } from '../../components/ViasDispositivos'
 import { AvisoFicha } from '../../components/AvisoFicha'
 import { TituloSeccion } from '../../components/TituloSeccion'
+import { BloqueContencion } from '../../components/BloqueContencion'
 import {
   anadirIndicacion, borrarIndicacion, cambiarIndicacion, guardarDispositivos, type ResultadoPauta,
 } from '../hojasTurno/operaciones'
@@ -142,7 +143,7 @@ export function TabPautaCuidados({ ingresoId, episodioActivo }: { ingresoId: str
   return (
     <div className="space-y-6 ancho-formulario">
       <TituloSeccion titulo="Pauta de cuidados"
-        subtitulo="Lo que necesita el paciente en el día a día: aislamiento, vías y dispositivos, e indicaciones para las auxiliares. Las lesiones van en Curas; los registros diarios, en Hoja de ítems." />
+        subtitulo="Contención, aislamiento, dispositivos e indicaciones para las auxiliares según el turno." />
       {!puedeEditar && (
         <AvisoFicha icono={Lock}>
           {!episodioActivo
@@ -152,17 +153,24 @@ export function TabPautaCuidados({ ingresoId, episodioActivo }: { ingresoId: str
               : 'Solo lectura: las indicaciones las escribe enfermería, y el aislamiento, las vías y los dispositivos, enfermería y médicos (o un administrador).'}
         </AvisoFicha>
       )}
-      <div className="flex justify-end -mb-3"><IndicadorGuardado estado={estadoIndicador} detalle={errorAviso} /></div>
+      <div className="sticky top-0 z-10 flex justify-end h-0 !mt-0 pointer-events-none">
+        <span className={`pointer-events-auto bg-white/90 backdrop-blur rounded-full px-3 py-1 shadow-sm border border-slate-100 ${estadoIndicador === 'inactivo' || estadoIndicador === 'conflicto' ? 'hidden' : ''}`}>
+          <IndicadorGuardado estado={estadoIndicador} detalle={errorAviso} />
+        </span>
+      </div>
       <AvisoGuardado avisos={avisos} />
       {dialogo}
 
-      {/* 1 · Precauciones */}
+      {/* 1 · Contención y seguridad nocturna (la misma pauta que se ve en la Hoja de ítems, Inicio e Incidencias) */}
+      <BloqueContencion ingresoId={ingresoId} />
+
+      {/* 2 · Precauciones */}
       <section className={`card p-6 ${(dispositivos.aislamiento ?? []).length > 0 ? 'border-violet-300 bg-violet-50/50' : ''}`}>
         <p className="section-title">Aislamiento</p>
         <SelectorAislamiento datos={dispositivos} onCambio={cambiarDispositivos} deshabilitado={!puedeEditarDispositivos || ocupado} />
       </section>
 
-      {/* 2 · Vías y dispositivos (las mismas casillas de la hoja de ítems) */}
+      {/* 3 · Vías y dispositivos (las mismas casillas de la hoja de ítems) */}
       <section className="card overflow-hidden">
         <p className="section-title px-6 pt-6 !mb-1">Vías y dispositivos</p>
         <div className="divide-y">
@@ -179,7 +187,7 @@ export function TabPautaCuidados({ ingresoId, episodioActivo }: { ingresoId: str
         </div>
       </section>
 
-      {/* 3 · Indicaciones para las hojas de trabajo */}
+      {/* 4 · Indicaciones para las hojas de trabajo */}
       <section className="card">
         <p className="section-title px-6 pt-6">Indicaciones para las auxiliares</p>
         <div className="px-6 pb-6 space-y-3">
@@ -260,7 +268,7 @@ export function TabPautaCuidados({ ingresoId, episodioActivo }: { ingresoId: str
         </section>
       )}
 
-      {/* 4 · Lo que sigue en Aegerus */}
+      {/* 5 · Lo que sigue en Aegerus */}
       <section>
         <div className="rounded-xl border border-slate-200 bg-slate-50 p-6 space-y-3">
           <p className="section-title !mb-0">Se gestiona en Aegerus</p>
