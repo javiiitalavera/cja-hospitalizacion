@@ -43,7 +43,7 @@ export function BuscadorCIE({ value, onChange, disabled, principal }: {
 
   return (
     <div ref={ref} className="relative">
-      <input className="input text-sm" placeholder="Código o nombre (p. ej. G30.1, alzheimer, depresión…)"
+      <input className="input text-sm" placeholder="Código o nombre" title="Código o nombre (p. ej. G30.1, alzheimer, depresión…)"
         value={q}
         disabled={disabled}
         onChange={e => { setQ(e.target.value); setOpen(true) }}
@@ -109,50 +109,47 @@ export function FilaDx({ label, codigo, desc, poad, onCodigoYDesc, onDesc, onPoa
   useCatalogoCIE10(!!codigo && !infoCIE10(codigo))
   const aviso = avisoCodigoCIE10(codigo, { principal })
   const exento = !!codigo && !!infoCIE10(codigo)?.marcas?.includes('E')
+  const sinContestar = poad == null && !exento
+  // Una sola línea por diagnóstico en pantallas anchas: etiqueta · código · descripción · «Al ingreso».
+  // En pantallas estrechas se apila (etiqueta, código, descripción + «Al ingreso»).
   return (
-    <div className="grid grid-cols-[9rem_1fr_auto] gap-3 items-start">
-      <span className="text-xs text-slate-500 pt-2.5 shrink-0">
+    <div className="grid grid-cols-[minmax(0,1fr)_auto] md:grid-cols-[5.5rem_10.5rem_minmax(0,1fr)_auto] gap-x-3 gap-y-1.5 items-center">
+      <span className="order-1 col-span-2 md:col-span-1 text-xs text-slate-500 shrink-0">
         {label}{required && <span className="text-red-400 ml-0.5">*</span>}
       </span>
-      <div className="space-y-1.5">
+      <div className="order-2 md:col-span-1">
         <BuscadorCIE value={codigo} onChange={(c, d) => onCodigoYDesc(c, d)} disabled={disabled} principal={principal} />
-        {(codigo || desc) && (
-          <input className="input text-xs text-slate-500" placeholder="Descripción" disabled={disabled}
-            value={desc} onChange={e => onDesc(e.target.value)} />
-        )}
-        {aviso && (
-          <p className="flex items-start gap-1.5 text-xs text-amber-700">
-            <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />{aviso}
-          </p>
-        )}
       </div>
+      <input className="order-4 md:order-3 col-span-2 md:col-span-1 input text-sm text-slate-600 min-w-0" placeholder="Descripción" disabled={disabled}
+        title={desc || undefined}
+        value={desc} onChange={e => onDesc(e.target.value)} />
       {/* POAD (presente al ingreso) — solo si hay código.
           Tres estados: sin contestar («¿?», en ámbar), SÍ y NO. Antes, sin contestar se veía y se
           exportaba como «NO», es decir, «no estaba al ingreso, se adquirió en el hospital». Los
           códigos exentos de POAD no necesitan respuesta y conservan el botón de dos estados. */}
-      <div className="pt-2 shrink-0">
+      <div className="order-3 md:order-4 flex items-center gap-1.5 shrink-0 md:min-w-[7.5rem] justify-end">
         {codigo && (
-          <div className="flex flex-col items-center gap-0.5">
-            <span className="text-xs text-slate-500 leading-none">Al ingreso</span>
-            {(() => {
-              const sinContestar = poad == null && !exento
-              return (
-                <button type="button" disabled={disabled}
-                  onClick={() => onPoad(!(poad === true))}
-                  title={sinContestar ? 'Sin contestar: indica si este diagnóstico ya estaba presente al ingreso' : undefined}
-                  className={`w-12 h-6 rounded-full text-xs font-bold transition-colors ${
-                    poad === true ? 'bg-emerald-500 text-white'
-                    : sinContestar ? 'bg-amber-100 text-amber-700 ring-1 ring-amber-300'
-                    : 'bg-slate-200 text-slate-500'
-                  }`}>
-                  {poad === true ? 'SÍ' : sinContestar ? '¿?' : 'NO'}
-                </button>
-              )
-            })()}
-            {exento && <span className="text-[0.65rem] text-slate-500 leading-none" title="Este código está exento de indicar POAD según la tabla oficial">Exento</span>}
-          </div>
+          <>
+            <span className="text-xs text-slate-500">Al ingreso</span>
+            <button type="button" disabled={disabled}
+              onClick={() => onPoad(!(poad === true))}
+              title={sinContestar ? 'Sin contestar: indica si este diagnóstico ya estaba presente al ingreso' : undefined}
+              className={`w-12 h-6 rounded-full text-xs font-bold transition-colors ${
+                poad === true ? 'bg-emerald-500 text-white'
+                : sinContestar ? 'bg-amber-100 text-amber-700 ring-1 ring-amber-300'
+                : 'bg-slate-200 text-slate-500'
+              }`}>
+              {poad === true ? 'SÍ' : sinContestar ? '¿?' : 'NO'}
+            </button>
+            {exento && <span className="text-[0.65rem] text-slate-500" title="Este código está exento de indicar POAD según la tabla oficial">Exento</span>}
+          </>
         )}
       </div>
+      {aviso && (
+        <p className="order-5 col-span-2 md:col-start-2 md:col-span-3 flex items-start gap-1.5 text-xs text-amber-700">
+          <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />{aviso}
+        </p>
+      )}
     </div>
   )
 }
@@ -286,12 +283,12 @@ export function BloqueDiagnosticosCMBD({ ingresoId }: { ingresoId: string }) {
 
   if (!cargado) return null
   return (
-    <div className="pt-4 mt-2 border-t space-y-3">
+    <div className="pt-4 mt-2 border-t space-y-2.5">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-slate-700">Códigos CIE-10-ES</p>
           <p className="text-xs text-slate-500">
-            Se guardan en el CMBD: se escriben una vez y valen para el CMBD y el dashboard. El texto de arriba sigue siendo libre.
+            Los códigos valen para el CMBD y el dashboard. No aparecen en el informe al exportarlo ni al imprimirlo.
           </p>
         </div>
         <IndicadorGuardado estado={estado} className="shrink-0" />
