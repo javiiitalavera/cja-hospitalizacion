@@ -302,7 +302,7 @@ export default function Home() {
                   type="button"
                   aria-label={`Contención de ${eje === 'dia' ? 'día' : 'noche'}: ${etiqueta}${pendienteConfirmar ? ' (pendiente de confirmación médica)' : ''}. Abrir`}
                   onClick={() => setModalContencion(ingreso.id)}
-                  className={`relative flex items-center justify-center w-6 h-6 rounded-md border transition-colors ${estilo.bg} ${estilo.border} ${estilo.text} hover:opacity-80 ${pendienteConfirmar ? 'animate-pulse ring-2 ring-amber-400' : ''}`}
+                  className={`relative flex items-center justify-center w-6 h-6 tactil:w-9 tactil:h-9 rounded-md border transition-colors ${estilo.bg} ${estilo.border} ${estilo.text} hover:opacity-80 ${pendienteConfirmar ? 'animate-pulse ring-2 ring-amber-400' : ''}`}
                 >
                   <Icono strokeWidth={2.4} className="w-3.5 h-3.5" />
                   {sev === 'sin_revisar' && (
@@ -458,7 +458,7 @@ export default function Home() {
   }
 
   return (
-    <div className="p-6 md:p-8 ancho-tabla">
+    <div className="p-4 sm:p-6 md:p-8 ancho-tabla">
       <CabeceraPagina titulo="Unidad de Hospitalización" subtitulo={<span className="inline-block first-letter:uppercase">{today}</span>}>
         <span className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-700">
           <span aria-hidden className="w-2 h-2 rounded-full bg-emerald-500" />{ocupadas} ingresados
@@ -534,7 +534,8 @@ export default function Home() {
         )}
         {vista === 'tarjetas' ? vistaTarjetas() : (
         // Sin overflow-hidden a propósito: recortaría los tooltips de la primera fila. Las esquinas se redondean a mano.
-        <div className="card">
+        <div className="card max-lg:overflow-x-auto">
+        <div className="max-lg:min-w-[760px]">
           {/* Cabecera */}
           <div
             className="grid gap-x-3 items-end text-xs font-semibold text-slate-500 px-3 py-2 bg-slate-50 border-b rounded-t-xl"
@@ -680,6 +681,7 @@ export default function Home() {
               </div>
             )
           })}
+          </div>
           </div>
         </div>
         )}

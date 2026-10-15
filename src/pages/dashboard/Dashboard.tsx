@@ -157,7 +157,7 @@ export function Dashboard() {
   }
 
   return (
-    <div className="p-6 md:p-8 space-y-6 ancho-tabla">
+    <div className="p-4 sm:p-6 md:p-8 space-y-6 ancho-tabla">
       <div className="flex items-center gap-2">
         <LayoutDashboard className="w-5 h-5 text-slate-500" />
         <h1 className="text-2xl font-bold text-slate-800">Dashboard</h1>

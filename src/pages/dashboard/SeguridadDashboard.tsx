@@ -210,7 +210,7 @@ export function SeguridadDashboard({ filtros, desde, hasta, onExplorar, onExplor
             {/* ── Tabla por tipo ──────────────────────────────── */}
             <section>
               <p className="section-title">Incidencias por tipo</p>
-              <div className="card overflow-hidden">
+              <div className="card overflow-x-auto">
                 {datos.por_tipo.length === 0 ? <EstadoSinDatos mensaje="Sin incidencias en este periodo." /> : (
                   <table className="w-full text-sm">
                     <thead>
@@ -251,7 +251,7 @@ export function SeguridadDashboard({ filtros, desde, hasta, onExplorar, onExplor
                 <TarjetaMetrica info="caidas_repetidas" etiqueta="Pacientes con 2 o más caídas" valor={caidas.pacientes_con_caidas_repetidas ?? '—'} subvalor="En el periodo" />
               </div>
               {repetidas.length > 0 && (
-                <div className="card overflow-hidden mt-3" data-caidas-repetidas>
+                <div className="card overflow-x-auto mt-3" data-caidas-repetidas>
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b bg-slate-50 text-left text-xs font-semibold text-slate-500">

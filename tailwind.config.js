@@ -34,6 +34,11 @@ export default {
       },
     },
   },
-  plugins: [],
+  // Los estilos «hover:» solo se aplican donde hay ratón: en pantallas táctiles el «hover» se queda pegado tras tocar.
+  future: { hoverOnlyWhenSupported: true },
+  plugins: [
+    // «tactil:» = pantalla táctil (dedo): para agrandar lo que es demasiado pequeño para pulsar.
+    ({ addVariant }) => { addVariant('tactil', '@media (pointer: coarse)') },
+  ],
 }
 

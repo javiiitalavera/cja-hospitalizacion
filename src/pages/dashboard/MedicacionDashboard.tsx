@@ -153,7 +153,7 @@ export function MedicacionDashboard({ filtros, desde, hasta }: { filtros: Filtro
 
       <section>
         <p className="section-title">Polifarmacia y antipsicóticos</p>
-        <div className="card p-4">
+        <div className="card p-4 overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-xs text-slate-500 border-b">
@@ -190,7 +190,7 @@ export function MedicacionDashboard({ filtros, desde, hasta }: { filtros: Filtro
 
       <section>
         <p className="section-title">Antipsicóticos y benzodiacepinas: cambio entre el ingreso y el alta</p>
-        <div className="card p-4">
+        <div className="card p-4 overflow-x-auto">
           <table className="w-full text-sm" data-cambio-psicofarmacos>
             <thead>
               <tr className="text-xs text-slate-500 border-b">
@@ -223,7 +223,7 @@ export function MedicacionDashboard({ filtros, desde, hasta }: { filtros: Filtro
 
       <section>
         <p className="section-title">Pacientes con al menos un fármaco de cada grupo</p>
-        <div className="card p-4">
+        <div className="card p-4 overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-xs text-slate-500 border-b">

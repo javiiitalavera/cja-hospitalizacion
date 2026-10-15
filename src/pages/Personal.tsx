@@ -183,7 +183,7 @@ export function Personal() {
   })
 
   return (
-    <div className="p-6 md:p-8 ancho-tabla">
+    <div className="p-4 sm:p-6 md:p-8 ancho-tabla">
       <CabeceraPagina titulo="Personal" subtitulo="Gestión de cuentas, roles y permisos.">
         <button onClick={() => setMostrarForm(true)} className="btn-primary">
           <UserPlus className="w-4 h-4" /> Nuevo profesional
@@ -230,8 +230,8 @@ export function Personal() {
       {cargando ? (
         <Cargando />
       ) : (
-        <div className="card overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="card overflow-x-auto">
+          <table className="w-full text-sm min-w-[640px]">
             <thead className="bg-slate-50 text-slate-500 text-left">
               <tr>
                 <th className="px-4 py-2 font-medium">Nombre</th>

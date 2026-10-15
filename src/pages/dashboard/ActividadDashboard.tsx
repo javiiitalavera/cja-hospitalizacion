@@ -237,12 +237,12 @@ export function ActividadDashboard({ filtros, desde, hasta, onExplorar }: {
         <p className="text-xs text-slate-500 -mt-3 mb-2">
           Un recuento, no una medida de productividad — y no refleja cambios de médico responsable durante el ingreso, que la aplicación no registra.
         </p>
-        <div className="card overflow-hidden">
+        <div className="card overflow-x-auto">
           {estadoDetalle === 'cargando' && <EstadoCargando />}
           {estadoDetalle === 'error' && <EstadoError mensaje={errorDetalle} onReintentar={cargar} />}
           {estadoDetalle === 'listo' && detalle && detalle.por_medico.length === 0 && <EstadoSinDatos />}
           {estadoDetalle === 'listo' && detalle && detalle.por_medico.length > 0 && (
-            <table className="w-full text-sm">
+            <table className="w-full text-sm min-w-[560px]">
               <thead>
                 <tr className="border-b bg-slate-50 text-left text-xs font-semibold text-slate-500">
                   <th className="px-4 py-2">Médico</th>

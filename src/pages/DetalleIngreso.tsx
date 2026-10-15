@@ -217,6 +217,11 @@ export default function DetalleIngreso() {
     setModalAlta(false)
   }
 
+  // En pantallas estrechas la barra de pestañas se desplaza: la pestaña activa se mantiene a la vista.
+  const idPestanaActiva = tabActual.id
+  useEffect(() => {
+    document.querySelector('[data-pestanas-ingreso] [aria-current="page"]')?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })
+  }, [idPestanaActiva, loading])
   if (loading) return <Cargando pagina />
   if (errorCarga) {
     return (
@@ -367,12 +372,13 @@ export default function DetalleIngreso() {
         )}
 
         {/* Tabs */}
-        <div className="flex gap-1 mt-4 -mb-4">
+        <div className="flex gap-1 mt-4 -mb-4 pestanas-scroll" data-pestanas-ingreso>
           {TABS.filter((t) => !t.soloMedico || esMedico).map(({ id: tid, label, icon: Icon, enConstruccion }) => (
             <button
               key={tid}
               onClick={() => irA(tid)}
-              className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+              aria-current={tabActual.id === tid ? 'page' : undefined}
+              className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors shrink-0 whitespace-nowrap ${
                 tabActual.id === tid
                   ? 'border-primary-600 text-primary-700'
                   : 'border-transparent text-slate-500 hover:text-slate-700'

@@ -216,7 +216,7 @@ export function Eventos() {
   // ── Render ────────────────────────────────────────────────
 
   return (
-    <div className="p-6 md:p-8 space-y-6 ancho-tabla">
+    <div className="p-4 sm:p-6 md:p-8 space-y-6 ancho-tabla">
 
       <CabeceraPagina className="!mb-0" titulo="Incidencias" subtitulo="Incidencias de seguridad y contenciones de la planta">
         <BotonActualizar onClick={actualizarTodo} cargando={refreshing} />
@@ -326,7 +326,7 @@ export function Eventos() {
           {errorSemaforos && !loadingContenciones && (
             <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 mb-2">No se pudo cargar el semáforo de caídas: la columna Semáforo no es fiable ahora mismo.</p>
           )}
-          <div className="card overflow-hidden">
+          <div className="card overflow-x-auto">
             {loadingContenciones ? (
               <Cargando />
             ) : errorContenciones ? (
@@ -334,7 +334,7 @@ export function Eventos() {
             ) : contenciones.length === 0 ? (
               <p className="px-4 py-8 text-center text-slate-500 text-sm">Ningún paciente ingresado tiene contención pautada ahora mismo.</p>
             ) : (
-              <table className="w-full text-sm">
+              <table className="w-full text-sm min-w-[560px]">
                 <thead>
                   <tr className="border-b bg-slate-50 text-left text-xs font-semibold text-slate-500">
                     <th className="px-4 py-2.5">Hab.</th>

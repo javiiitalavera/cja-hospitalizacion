@@ -33,7 +33,7 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
+    <div className="min-h-dvh flex items-center justify-center bg-slate-50 p-4">
       <div className="w-full max-w-sm">
         {/* Cabecera con el mismo logo que la barra lateral */}
         <div className="flex flex-col items-center mb-6">

@@ -231,7 +231,7 @@ export function Informes() {
   })
 
   return (
-    <div className="p-6 md:p-8 ancho-tabla">
+    <div className="p-4 sm:p-6 md:p-8 ancho-tabla">
       <CabeceraPagina
         className="!mb-2"
         titulo="Buscador"
@@ -286,8 +286,8 @@ export function Informes() {
         </select>
       </div>
 
-      <div className="card overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="card overflow-x-auto">
+        <table className="w-full text-sm min-w-[640px]">
           <thead>
             <tr className="border-b bg-slate-50">
               {COLUMNAS.map(({ clave, titulo }) => {

@@ -92,3 +92,29 @@
   .celda-notoca { background-color: #f1f5f9; border-color: #e2e8f0; }
   .celda-toca { background-color: #fde68a; border-color: #f59e0b; }
 }
+
+/* ── Pantallas táctiles (tablet y móvil) ─────────────────────────────────────────────────────────────
+   Zonas de pulsación de al menos 40-44 px, y campos de 16 px para que el iPhone no haga zoom al tocarlos.
+   Todo va dentro de «pointer: coarse»: en un ordenador con ratón no cambia nada. */
+@media (pointer: coarse) {
+  .btn-primary, .btn-secondary, .btn-danger, .segmentado-btn { min-height: 44px; }
+  select { min-height: 44px; }
+  :where(button.p-1, button.p-1\.5, button.p-2, a.p-1, a.p-1\.5) {
+    min-width: 40px; min-height: 40px; display: inline-flex; align-items: center; justify-content: center;
+  }
+  input[type="checkbox"], input[type="radio"] { width: 1.25rem; height: 1.25rem; }
+  aside nav a { min-height: 44px; }
+}
+@media (max-width: 1023px) and (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea { font-size: 16px; }
+}
+
+/* En pantallas estrechas, los selectores segmentados (subpestañas, vistas) se desplazan en vez de salirse. */
+@media (max-width: 767px) {
+  .segmentado { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+  .segmentado::-webkit-scrollbar { display: none; }
+  .segmentado-btn { white-space: nowrap; flex-shrink: 0; }
+}
+/* Barra de pestañas con desplazamiento horizontal, sin barra visible. */
+.pestanas-scroll { overflow-x: auto; scrollbar-width: none; }
+.pestanas-scroll::-webkit-scrollbar { display: none; }

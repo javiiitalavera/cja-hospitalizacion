@@ -41,7 +41,7 @@ function RequireAuth() {
 
   // Mientras comprobamos si hay sesión, pantalla de espera sobria.
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center text-slate-500">Cargando…</div>
+    return <div className="min-h-dvh flex items-center justify-center text-slate-500">Cargando…</div>
   }
 
   // Sin sesión → al login.
@@ -51,7 +51,7 @@ function RequireAuth() {
   // en lugar de dejar la app a medias sin rol.
   if (!profesional) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="min-h-dvh flex items-center justify-center p-4">
         <div className="card p-6 max-w-sm text-center space-y-2">
           <p className="font-semibold text-slate-800">Cuenta sin profesional asignado</p>
           <p className="text-sm text-slate-500">

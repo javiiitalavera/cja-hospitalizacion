@@ -295,7 +295,7 @@ export function ExploradorEpisodios() {
         {estado === 'error' && <EstadoError mensaje={error} onReintentar={buscar} />}
         {estado === 'sin_datos' && <EstadoSinDatos mensaje="Ningún episodio coincide con estos filtros." />}
         {estado === 'listo' && (
-          <table className="w-full text-sm">
+          <table className="w-full text-sm min-w-[720px]">
             <thead>
               <tr className="border-b bg-slate-50 text-left text-xs font-semibold text-slate-500">
                 <CabeceraOrden col="paciente">Paciente</CabeceraOrden>

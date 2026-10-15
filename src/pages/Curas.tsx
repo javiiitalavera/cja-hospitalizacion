@@ -191,7 +191,7 @@ export default function Curas() {
   const esSemanaActual = lunes === lunesDe(hoy)
 
   return (
-    <div className="p-6 md:p-8 ancho-tabla">
+    <div className="p-4 sm:p-6 md:p-8 ancho-tabla">
       <CabeceraPagina
         titulo="Pauta de curas"
         subtitulo={`${loading ? '…' : `${pacientes.filter((p) => p.lesiones.length > 0).length} paciente${pacientes.filter((p) => p.lesiones.length > 0).length === 1 ? '' : 's'} con curas activas`} · registro semanal de curas`}

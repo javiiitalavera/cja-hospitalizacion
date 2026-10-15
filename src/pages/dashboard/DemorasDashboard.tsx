@@ -108,7 +108,7 @@ export function DemorasDashboard({ filtros, desde, hasta }: { filtros: Filtros; 
           {r.porMotivo.length > 0 && (
             <div>
               <p className="text-xs font-semibold text-slate-600 mb-1.5">Por motivo de la demora</p>
-              <div className="card overflow-hidden">
+              <div className="card overflow-x-auto">
                 <table className="w-full text-sm" data-por-motivo>
                   <thead>
                     <tr className="border-b bg-slate-50 text-left text-xs font-semibold text-slate-500">

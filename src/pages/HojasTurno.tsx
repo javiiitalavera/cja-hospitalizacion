@@ -127,7 +127,7 @@ export default function HojasTurno() {
   const html = useMemo(() => construirHojaHTML(turno, pacientes, new Date()), [turno, pacientes])
 
   return (
-    <div className="p-6 md:p-8 space-y-5 ancho-amplio">
+    <div className="p-4 sm:p-6 md:p-8 space-y-5 ancho-amplio">
       <CabeceraPagina
         className="!mb-0"
         titulo="Hojas de turno"
