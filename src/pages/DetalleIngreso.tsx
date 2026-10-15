@@ -86,10 +86,10 @@ const ALIAS_TABS: Record<string, { tab: string; sub: string }> = {
   eventos: { tab: 'seguimiento', sub: 'incidencias' },
 }
 
-// Pestaña con la que se abre la ficha cuando el enlace no indica ninguna: enfermería entra en la pauta de
-// cuidados y los médicos en el informe de ingreso. El resto (y los enlaces con ?tab=…) abren Datos o lo indicado.
+// Pestaña con la que se abre la ficha cuando el enlace no indica ninguna: enfermería entra en Curas y piel
+// y los médicos en el informe de ingreso. El resto (y los enlaces con ?tab=…) abren Datos o lo indicado.
 function pestanaPorDefecto(rol: string | undefined): { tab: string; sub?: string } {
-  if (rol === 'enfermeria') return { tab: 'plan', sub: 'cuidados' }
+  if (rol === 'enfermeria') return { tab: 'plan', sub: 'curas' }
   if (rol === 'medico') return { tab: 'informes', sub: 'ingreso' }
   return { tab: 'datos' }
 }
