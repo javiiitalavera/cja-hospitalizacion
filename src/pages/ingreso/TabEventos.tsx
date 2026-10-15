@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Cargando } from '../../components/Cargando'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/AuthContext'
@@ -18,6 +19,10 @@ function TabEventos({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteIn
   const [editando, setEditando] = useState<Evento | null>(null)
   const [errorBorrar, setErrorBorrar] = useState('')
   const [errorCarga, setErrorCarga] = useState('')
+  // Desde Incidencias se llega con ?evento=<id>: al cargar, esa incidencia se abre para verla o completarla (una sola vez).
+  const [searchParams] = useSearchParams()
+  const eventoDeUrl = searchParams.get('evento')
+  const abiertoDeUrl = useRef(false)
 
   // Editar ya no exige ser el autor — cualquier profesional
   // asistencial puede completar una incidencia en un turno
@@ -56,6 +61,12 @@ function TabEventos({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteIn
   }
 
   useEffect(() => { fetchEventos() }, [ingresoId])
+
+  useEffect(() => {
+    if (!eventoDeUrl || abiertoDeUrl.current || loading) return
+    const ev = eventos.find((e) => e.id === eventoDeUrl)
+    if (ev) { abiertoDeUrl.current = true; abrirEditar(ev) }
+  }, [eventos, loading, eventoDeUrl])
 
   async function eliminar(id: string) {
     if (!(await confirmar({ titulo: '¿Eliminar esta incidencia?', mensaje: 'No se puede deshacer.', textoConfirmar: 'Eliminar', peligro: true }))) return
