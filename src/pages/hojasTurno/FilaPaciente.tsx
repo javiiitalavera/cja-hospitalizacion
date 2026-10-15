@@ -1,6 +1,6 @@
 // Una fila de la hoja de turno en pantalla: habitación, paciente, columnas de papel, vía y las
 // indicaciones de enfermería del turno (editables por enfermería y administración). La vía y la diuresis salen
-// de la Pauta de cuidados y de la Hoja de ítems: aquí no se editan.
+// de Otros cuidados y de la Hoja de ítems: aquí no se editan.
 
 import { DistintivoAislamiento } from '../../components/DistintivoAislamiento'
 import { useState } from 'react'
@@ -59,7 +59,7 @@ export function FilaPaciente({ n, p, turno, columnas, acciones }: {
   const diuresis = textoDiuresis(p)
   const sem = colorSemaforo(p)
 
-  // El nombre lleva a la Pauta de cuidados del paciente (solo en la hoja de hoy). Si hay una indicación a medio editar
+  // El nombre lleva a los Otros cuidados del paciente (solo en la hoja de hoy). Si hay una indicación a medio editar
   // se pregunta antes de salir; con Ctrl/Cmd o botón central se abre en otra pestaña, sin preguntar.
   const rutaPauta = ingresoId ? `/ingresos/${ingresoId}?tab=plan&sub=cuidados` : null
   async function irAPauta(e: React.MouseEvent) {
@@ -117,7 +117,7 @@ export function FilaPaciente({ n, p, turno, columnas, acciones }: {
       </td>
       <td className="px-3 py-2 font-semibold text-slate-800 whitespace-nowrap">
         {rutaPauta ? (
-          <Link to={rutaPauta} onClick={irAPauta} data-pauta-paciente={ingresoId} title="Abrir su pauta de cuidados"
+          <Link to={rutaPauta} onClick={irAPauta} data-pauta-paciente={ingresoId} title="Abrir sus otros cuidados (indicaciones para las auxiliares)"
             className="hover:text-primary-700 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-400 rounded">
             {p.nombre}
           </Link>
@@ -129,7 +129,7 @@ export function FilaPaciente({ n, p, turno, columnas, acciones }: {
           {c === 'Diuresis' || c === 'Orina' ? diuresis : ''}
         </td>
       ))}
-      {/* La vía sale de la Pauta de cuidados del paciente: aquí solo se muestra, como Diuresis. */}
+      {/* La vía sale de la Hoja de ítems del paciente: aquí solo se muestra, como Diuresis. */}
       <td
         className="px-0.5 py-2 text-center text-[0.65rem] text-slate-500 bg-slate-50/70 border-l border-dashed border-slate-200"
         title={textoVias(p.vias, false) || undefined}

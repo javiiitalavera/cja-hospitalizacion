@@ -3,11 +3,8 @@ import { Cargando } from '../../components/Cargando'
 import { useAvisoSalida } from '../../lib/avisoSalida'
 import { supabase } from '../../lib/supabase'
 import type { ItemsPaciente } from '../../types'
-import { BloqueOxigeno, BloqueSonda, SelectorAislamiento, SelectorVias } from '../../components/ViasDispositivos'
-import type { DatosDispositivos } from '../../types/pautaCuidados'
-import { BloqueContencion } from '../../components/BloqueContencion'
-import { SEMAFORO_CAIDAS_COLOR } from '../../types'
-import { EVENTO_SEMAFORO, SEMAFOROS } from '../../components/SemaforoCaidas'
+import { CamposItems } from '../../components/CamposItems'
+import { EVENTO_SEMAFORO } from '../../components/SemaforoCaidas'
 import { AvisoFicha } from '../../components/AvisoFicha'
 import { TituloSeccion } from '../../components/TituloSeccion'
 import { IndicadorGuardado } from '../../components/IndicadorGuardado'
@@ -123,26 +120,6 @@ function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo
     setEstado('inactivo')
   }
 
-  const sel = (key: keyof ItemsPaciente, label: string, options: { v: string; l: string }[]) => (
-    <div>
-      <label className="label">{label}</label>
-      <select className="input" value={(data[key] as string) ?? ''}
-        onChange={e => editar(d => ({ ...d, [key]: e.target.value || null }))}>
-        <option value="">—</option>
-        {options.map(o => <option key={o.v} value={o.v}>{o.l}</option>)}
-      </select>
-    </div>
-  )
-
-  const bool = (key: keyof ItemsPaciente, label: string) => (
-    <label className="flex items-center gap-2 text-sm cursor-pointer">
-      <input type="checkbox" className="w-4 h-4 rounded text-primary-600"
-        checked={!!(data[key])}
-        onChange={e => editar(d => ({ ...d, [key]: e.target.checked }))} />
-      {label}
-    </label>
-  )
-
   if (!itemsListos) {
     return errorItems ? (
       <div className="aviso aviso-error ancho-formulario flex items-center justify-between gap-3" role="alert">
@@ -155,7 +132,7 @@ function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo
   return (
     <div className="ancho-formulario space-y-6">
       <TituloSeccion titulo="Hoja de ítems"
-        subtitulo="Necesidades y ayudas del paciente para los cuidados diarios: se actualizan cuando cambian y salen en la hoja de ítems impresa. Aislamiento, contención y vías son los mismos datos que en Pauta de cuidados." />
+        subtitulo="Necesidades y ayudas del paciente para los cuidados diarios: se actualizan cuando cambian y salen en la hoja de ítems impresa." />
       {/* Indicador de guardado: flota arriba a la derecha (sin ocupar altura) y solo se ve cuando hay algo que decir. */}
       <div className="sticky top-0 z-10 flex justify-end h-0 !mt-0 pointer-events-none">
         <span className={`pointer-events-auto bg-white/90 backdrop-blur rounded-full px-3 py-1 shadow-sm border border-slate-100 ${estado === 'inactivo' || estado === 'conflicto' ? 'hidden' : ''}`}>
@@ -165,170 +142,14 @@ function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo
           )}
         </span>
       </div>
-      <div className="card p-6 space-y-5">
-        <p className="section-title !mb-0">Seguridad y conducta</p>
-
-        {/* Semáforo de caídas: se guarda solo, como el resto del formulario. */}
-        <div>
-          <label className="label">Semáforo de caídas</label>
-          <div className="flex gap-2" role="group" aria-label="Semáforo de caídas">
-            {SEMAFOROS.map((color) => {
-              const activo = (data as any).semaforo_caidas === color
-              return (
-                <button key={color} type="button" aria-pressed={activo} aria-label={`Semáforo de caídas ${color}`}
-                  onClick={() => editar(d => ({ ...d, semaforo_caidas: activo ? null : color } as any))}
-                  className={`min-w-[5.5rem] py-1.5 rounded-lg text-xs font-semibold border-2 transition-all ${activo ? 'border-slate-700 scale-105' : 'border-transparent opacity-90 hover:opacity-100'}`}
-                  style={{ backgroundColor: SEMAFORO_CAIDAS_COLOR[color], color: color === 'rojo' ? '#fff' : '#000' }}>
-                  {color.charAt(0).toUpperCase() + color.slice(1)}
-                </button>
-              )
-            })}
-          </div>
-          <p className="text-xs text-slate-500 mt-1">Riesgo de caída del paciente. Pulsa el color activo para quitarlo.</p>
-        </div>
-
-        <BloqueContencion ingresoId={ingresoId} pacienteInfo={pacienteInfo} />
-        <div className="border-t border-slate-200 pt-5" data-testid="bloque-alerta-conducta">
-          <label className="label">Alerta de conducta</label>
-          <div className="flex flex-wrap gap-2">
-            {([
-              { v: 'riesgo_autolitico', l: 'Riesgo autolítico' },
-              { v: 'agresion_imprevisible', l: 'Agresión imprevisible' },
-              { v: 'riesgo_fuga', l: 'Riesgo de fuga' },
-            ] as const).map((opt) => {
-              const actual = (data.alerta_conducta as string[]) ?? []
-              const activo = actual.includes(opt.v)
-              return (
-                <button key={opt.v} type="button"
-                  onClick={() => editar(d => ({ ...d, alerta_conducta: activo ? actual.filter(x => x !== opt.v) : [...actual, opt.v] } as any))}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${activo ? 'bg-red-50 text-red-700 border-red-200' : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400'}`}>
-                  {opt.l}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-        <div>
-          <label className="label">Objetos de calma</label>
-          <input className="input" value={(data.objetos_calma as string) ?? ''}
-            onChange={e => editar(d => ({ ...d, objetos_calma: e.target.value }))} />
-        </div>
-      </div>
-
-      <div className="card p-6 space-y-5">
-        <p className="section-title">Aislamiento, vías y dispositivos</p>
-        {(() => {
-          const d = data as DatosDispositivos
-          const cambiar = (c: DatosDispositivos) => editar((x) => ({ ...x, ...c } as any))
-          return (
-            <>
-              <div>
-                <label className="label">Aislamiento</label>
-                <SelectorAislamiento datos={d} onCambio={cambiar} />
-              </div>
-              <div>
-                <label className="label">Vías</label>
-                <SelectorVias datos={d} onCambio={cambiar} />
-              </div>
-              <div className="grid sm:grid-cols-2 gap-6">
-                <BloqueSonda datos={d} onCambio={cambiar} />
-                <BloqueOxigeno datos={d} onCambio={cambiar} />
-              </div>
-            </>
-          )
-        })()}
-      </div>
-
-      <div className="card p-6 space-y-4">
-        <p className="section-title">Movilidad</p>
-        <div className="grid grid-cols-2 gap-4">
-          {sel('deambulacion', 'Deambulación', [
-            { v: 'autonomo', l: 'Autónomo' },
-            { v: '1_persona', l: '1 persona' },
-            { v: '2_personas', l: '2 personas' },
-          ])}
-          <div>
-            <label className="label">Cabecero elevado (º)</label>
-            <input className="input" placeholder="p. ej. 30" value={(data.cabecero_grados as string) ?? ''}
-              onChange={e => editar(d => ({ ...d, cabecero_grados: e.target.value }))} />
-          </div>
-        </div>
-        {sel('ayudas_deambulacion', 'Ayudas', [
-          { v: 'ninguna', l: 'Ninguna' }, { v: 'baston', l: 'Bastón' },
-          { v: 'andador_2r', l: 'Andador 2 ruedas' }, { v: 'andador_4r', l: 'Andador 4 ruedas' },
-          { v: 'silla_ruedas', l: 'Silla de ruedas' },
-        ])}
-        <div className="flex flex-wrap gap-4">
-          {bool('bipedestador', 'Bipedestador')}
-          {bool('grua', 'Grúa')}
-        </div>
-      </div>
-
-      <div className="card p-6 space-y-4">
-        <p className="section-title">Alimentación</p>
-        {sel('ingestas', 'Ingestas', [{ v: 'autonomo', l: 'Autónomo' }, { v: 'dependiente', l: 'Dependiente' }])}
-      </div>
-
-      <div className="card p-6 space-y-4">
-        <p className="section-title">Higiene y continencia</p>
-        <div className="grid grid-cols-2 gap-4">
-          {sel('dependencia_avd', 'Dependencia', [{ v: '1', l: '1 persona' }, { v: '2', l: '2 personas' }])}
-          {sel('panial_dia', 'Pañal día', [{ v: 'ninguno', l: 'Ninguno' }, { v: 'BP', l: 'BP' }, { v: 'CA', l: 'CA' }])}
-          {sel('panial_noche', 'Pañal noche', [
-            { v: 'ninguno', l: 'Ninguno' }, { v: 'BP', l: 'BP' }, { v: 'CA', l: 'CA' }, { v: 'CA+malla', l: 'CA + malla' }
-          ])}
-          {sel('higiene', 'Higiene', [{ v: 'lavabo', l: 'Lavabo' }, { v: 'cama', l: 'Cama' }])}
-          {sel('ducha', 'Ducha', [{ v: 'pie', l: 'De pie' }, { v: 'sentado', l: 'Sentado' }])}
-          {sel('vestido', 'Vestido', [{ v: 'autonomo', l: 'Autónomo' }, { v: 'dependiente', l: 'Dependiente' }])}
-        </div>
-        <div className="flex flex-wrap gap-4">
-          {bool('colector', 'Colector')}
-          {bool('banio', 'Baño acompañado (no va solo)')}
-        </div>
-      </div>
-
-      <div className="card p-6 space-y-4">
-        <p className="section-title">Piel y postura</p>
-        <div className="flex flex-wrap gap-4">
-          {bool('colchon_antiescaras', 'Colchón antiescaras')}
-          {bool('patucos_coderas', 'Patucos / coderas')}
-          {bool('cambios_posturales', 'Cambios posturales')}
-        </div>
-      </div>
-
-      <div className="card p-6 space-y-4">
-        <p className="section-title">Prótesis y sensorial</p>
-        <div className="grid grid-cols-3 gap-4">
-          {sel('dentadura', 'Dentadura', [
-            { v: 'ninguna', l: 'Ninguna' }, { v: 'superior', l: 'Superior' },
-            { v: 'inferior', l: 'Inferior' }, { v: 'completa', l: 'Completa' },
-            { v: 'fija', l: 'Fija' }, { v: 'puente', l: 'Puente' },
-          ])}
-          {sel('audifonos', 'Audífonos', [
-            { v: 'ninguno', l: 'Ninguno' }, { v: 'derecho', l: 'Derecho' },
-            { v: 'izquierdo', l: 'Izquierdo' }, { v: 'ambos', l: 'Ambos' },
-          ])}
-          {sel('gafas', 'Gafas', [
-            { v: 'no', l: 'No' }, { v: 'si', l: 'Sí' }, { v: 'solo_tv', l: 'Solo TV' },
-          ])}
-        </div>
-      </div>
-
-      <div className="card p-6 space-y-4">
-        <p className="section-title">Otros</p>
-        <div className="flex flex-wrap gap-4">
-          {bool('botella_noche', 'Botella noche')}
-          {bool('timbre_habitacion', 'Timbre en habitación')}
-          {bool('siestas', 'Siesta por la tarde')}
-        </div>
-      </div>
-
-      <div className="card p-6 space-y-4">
-        <p className="section-title">Observaciones</p>
-        <textarea className="textarea" rows={3} placeholder="Notas libres…"
-          value={(data.observaciones as string) ?? ''}
-          onChange={e => editar(d => ({ ...d, observaciones: e.target.value }))} />
-      </div>
+      <CamposItems
+        variante="ficha"
+        data={data as Record<string, any>}
+        update={(k, v) => editar((d) => ({ ...d, [k]: v }))}
+        updateVarios={(c) => editar((d) => ({ ...d, ...c }))}
+        ingresoId={ingresoId}
+        pacienteInfo={pacienteInfo}
+      />
 
       {estado === 'conflicto' && (
         <AvisoFicha tono="atencion" accion={

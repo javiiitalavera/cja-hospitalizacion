@@ -1,10 +1,7 @@
-// Pauta de cuidados de un paciente, en el orden en que se piensa un paciente: precauciones (aislamiento), vías y
-// dispositivos (vías, sonda vesical, oxigenoterapia), indicaciones de enfermería para las hojas de trabajo de
-// cada turno y, al final, lo que se sigue gestionando en Aegerus.
-//
-// Aislamiento, vías y dispositivos son columnas de la Hoja de ítems (la misma información, sin duplicar): los
-// puede cambiar enfermería y médicos. Las indicaciones solo las escribe enfermería. Con el episodio cerrado todo
-// queda en solo lectura.
+// Otros cuidados de un paciente: las indicaciones de enfermería para las hojas de trabajo de las auxiliares (por turno)
+// y, al final, lo que se sigue gestionando en Aegerus. Todo lo demás del paciente (contención, aislamiento, vías y
+// dispositivos, movilidad, higiene…) está en la Hoja de ítems, que es el único sitio donde se edita. Las indicaciones
+// solo las escribe enfermería. Con el episodio cerrado todo queda en solo lectura.
 
 import { useEffect, useState } from 'react'
 import { useAvisoSalida } from '../../lib/avisoSalida'
@@ -16,16 +13,14 @@ import { ChipsTurno } from '../../components/ChipsTurno'
 import { AvisoGuardado, useAvisoGuardado } from '../../components/AvisoGuardado'
 import { IndicadorGuardado } from '../../components/IndicadorGuardado'
 import { useConfirmar } from '../../components/useConfirmar'
-import { BloqueOxigeno, BloqueSonda, FONDO_DISPOSITIVO, SelectorAislamiento, SelectorVias } from '../../components/ViasDispositivos'
 import { AvisoFicha } from '../../components/AvisoFicha'
 import { TituloSeccion } from '../../components/TituloSeccion'
-import { BloqueContencion } from '../../components/BloqueContencion'
 import {
-  anadirIndicacion, borrarIndicacion, cambiarIndicacion, guardarDispositivos, type ResultadoPauta,
+  anadirIndicacion, borrarIndicacion, cambiarIndicacion, type ResultadoPauta,
 } from '../hojasTurno/operaciones'
 import {
-  CAMPOS_DISPOSITIVOS, MAX_TEXTO_PAUTA, TODOS_TURNOS,
-  type DatosDispositivos, type IndicacionCuidado, type Turno,
+  MAX_TEXTO_PAUTA, TODOS_TURNOS,
+  type IndicacionCuidado, type Turno,
 } from '../../types/pautaCuidados'
 
 // Lo que sigue en Aegerus: es parte de la pauta de enfermería, pero esta aplicación todavía no se usa para ello.
@@ -35,17 +30,14 @@ const EN_AEGERUS = [
 ]
 
 export function TabPautaCuidados({ ingresoId, episodioActivo }: { ingresoId: string; episodioActivo: boolean }) {
-  const { esEnfermeria, esMedico } = useAuth()
+  const { esEnfermeria } = useAuth()
   const puedeEditar = esEnfermeria && episodioActivo
-  // Igual que en la hoja de ítems (de donde salen estos datos): lo puede cambiar el equipo asistencial.
-  const puedeEditarDispositivos = (esEnfermeria || esMedico) && episodioActivo
 
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')
-  const { avisos, estado: estadoAviso, error: errorAviso, empezar, guardado, fallo } = useAvisoGuardado('Pauta de cuidados')
+  const { avisos, estado: estadoAviso, error: errorAviso, empezar, guardado, fallo } = useAvisoGuardado('Otros cuidados')
   const { confirmar, dialogo } = useConfirmar()
   const [indicaciones, setIndicaciones] = useState<IndicacionCuidado[]>([])
-  const [dispositivos, setDispositivos] = useState<DatosDispositivos>({})
 
   const [nuevoTexto, setNuevoTexto] = useState('')
   const [nuevosTurnos, setNuevosTurnos] = useState<Turno[]>(TODOS_TURNOS)
@@ -57,18 +49,14 @@ export function TabPautaCuidados({ ingresoId, episodioActivo }: { ingresoId: str
   async function cargar(silencioso = false) {
     if (!silencioso) setCargando(true)
     setError('')
-    const [rInd, rDisp] = await Promise.all([
-      supabase.from('pauta_cuidados').select('id, ingreso_id, texto, turnos, created_at, updated_at')
-        .eq('ingreso_id', ingresoId).order('created_at', { ascending: true }),
-      supabase.from('items_paciente').select(CAMPOS_DISPOSITIVOS.join(', ')).eq('ingreso_id', ingresoId).maybeSingle(),
-    ])
-    if (rInd.error || rDisp.error) {
-      setError('No se pudo cargar la pauta de cuidados: ' + (rInd.error?.message ?? rDisp.error?.message))
+    const rInd = await supabase.from('pauta_cuidados').select('id, ingreso_id, texto, turnos, created_at, updated_at')
+      .eq('ingreso_id', ingresoId).order('created_at', { ascending: true })
+    if (rInd.error) {
+      setError('No se pudieron cargar las indicaciones: ' + rInd.error.message)
       setCargando(false)
       return
     }
     setIndicaciones((rInd.data ?? []) as IndicacionCuidado[])
-    setDispositivos((rDisp.data ?? {}) as DatosDispositivos)
     setCargando(false)
   }
 
@@ -95,12 +83,6 @@ export function TabPautaCuidados({ ingresoId, episodioActivo }: { ingresoId: str
     return r
   }
 
-  async function cambiarDispositivos(cambios: DatosDispositivos) {
-    if (!puedeEditarDispositivos || ocupado) return
-    const r = await ejecutar(() => guardarDispositivos(ingresoId, cambios))
-    if (r) setDispositivos((d) => ({ ...d, ...cambios }))
-  }
-
   async function anadir() {
     const texto = nuevoTexto.trim()
     if (!puedeEditar || ocupado || !texto) return
@@ -124,7 +106,7 @@ export function TabPautaCuidados({ ingresoId, episodioActivo }: { ingresoId: str
 
   async function borrar(i: IndicacionCuidado) {
     if (!puedeEditar || ocupado) return
-    if (!(await confirmar({ titulo: '¿Quitar esta indicación?', mensaje: 'Se quitará de la pauta de cuidados del paciente.', textoConfirmar: 'Quitar', peligro: true }))) return
+    if (!(await confirmar({ titulo: '¿Quitar esta indicación?', mensaje: 'Se quitará de los otros cuidados del paciente.', textoConfirmar: 'Quitar', peligro: true }))) return
     const r = await ejecutar(() => borrarIndicacion(i.id, i.updated_at))
     if (r) setIndicaciones((l) => l.filter((x) => x.id !== i.id))
   }
@@ -142,15 +124,13 @@ export function TabPautaCuidados({ ingresoId, episodioActivo }: { ingresoId: str
 
   return (
     <div className="space-y-6 ancho-formulario">
-      <TituloSeccion titulo="Pauta de cuidados"
-        subtitulo="Contención, aislamiento, dispositivos e indicaciones para las auxiliares según el turno." />
+      <TituloSeccion titulo="Otros cuidados"
+        subtitulo="Indicaciones para las auxiliares según el turno. Contención, aislamiento y dispositivos están en Hoja de ítems." />
       {!puedeEditar && (
         <AvisoFicha icono={Lock}>
           {!episodioActivo
-            ? 'Episodio cerrado: la pauta queda en solo lectura.'
-            : puedeEditarDispositivos
-              ? 'Las indicaciones de turno las escribe enfermería (o un administrador); tú puedes editar el aislamiento, las vías y los dispositivos.'
-              : 'Solo lectura: las indicaciones las escribe enfermería, y el aislamiento, las vías y los dispositivos, enfermería y médicos (o un administrador).'}
+            ? 'Episodio cerrado: las indicaciones quedan en solo lectura.'
+            : 'Solo lectura: las indicaciones las escribe enfermería (o un administrador).'}
         </AvisoFicha>
       )}
       <div className="sticky top-0 z-10 flex justify-end h-0 !mt-0 pointer-events-none">
@@ -161,33 +141,7 @@ export function TabPautaCuidados({ ingresoId, episodioActivo }: { ingresoId: str
       <AvisoGuardado avisos={avisos} />
       {dialogo}
 
-      {/* 1 · Contención y seguridad nocturna (la misma pauta que se ve en la Hoja de ítems, Inicio e Incidencias) */}
-      <BloqueContencion ingresoId={ingresoId} />
-
-      {/* 2 · Precauciones */}
-      <section className={`card p-6 ${(dispositivos.aislamiento ?? []).length > 0 ? 'border-violet-300 bg-violet-50/50' : ''}`}>
-        <p className="section-title">Aislamiento</p>
-        <SelectorAislamiento datos={dispositivos} onCambio={cambiarDispositivos} deshabilitado={!puedeEditarDispositivos || ocupado} />
-      </section>
-
-      {/* 3 · Vías y dispositivos (las mismas casillas de la hoja de ítems) */}
-      <section className="card overflow-hidden">
-        <p className="section-title px-6 pt-6 !mb-1">Vías y dispositivos</p>
-        <div className="divide-y">
-          <div className={`px-6 py-3 space-y-2.5 ${(dispositivos.vias ?? []).length > 0 ? FONDO_DISPOSITIVO : ''}`}>
-            <p className="text-sm font-medium text-slate-800">Vías</p>
-            <SelectorVias datos={dispositivos} onCambio={cambiarDispositivos} deshabilitado={!puedeEditarDispositivos || ocupado} />
-          </div>
-          <div className={`px-6 py-4 ${dispositivos.sonda_vesical ? FONDO_DISPOSITIVO : ''}`}>
-            <BloqueSonda datos={dispositivos} onCambio={cambiarDispositivos} deshabilitado={!puedeEditarDispositivos || ocupado} />
-          </div>
-          <div className={`px-6 py-4 ${dispositivos.oxigenoterapia ? FONDO_DISPOSITIVO : ''}`}>
-            <BloqueOxigeno datos={dispositivos} onCambio={cambiarDispositivos} deshabilitado={!puedeEditarDispositivos || ocupado} />
-          </div>
-        </div>
-      </section>
-
-      {/* 4 · Indicaciones para las hojas de trabajo */}
+      {/* 1 · Indicaciones para las hojas de trabajo */}
       <section className="card">
         <p className="section-title px-6 pt-6">Indicaciones para las auxiliares</p>
         <div className="px-6 pb-6 space-y-3">
@@ -268,7 +222,7 @@ export function TabPautaCuidados({ ingresoId, episodioActivo }: { ingresoId: str
         </section>
       )}
 
-      {/* 5 · Lo que sigue en Aegerus */}
+      {/* 2 · Lo que sigue en Aegerus */}
       <section>
         <div className="rounded-xl border border-slate-200 bg-slate-50 p-6 space-y-3">
           <p className="section-title !mb-0">Se gestiona en Aegerus</p>

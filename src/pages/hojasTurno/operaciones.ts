@@ -48,7 +48,7 @@ export async function borrarIndicacion(id: string, base: string | null | undefin
 }
 
 // Vías, aislamiento, sonda vesical y oxigenoterapia: no tienen tabla propia, son columnas de la hoja de ítems
-// (`items_paciente`), así que lo que se marque en la Pauta de cuidados se ve allí y al revés. Se escriben solo las
+// (`items_paciente`), así que lo que se marque en la Hoja de ítems se ve allí y al revés. Se escriben solo las
 // columnas que cambian (no la hoja entera) para no pisar lo que otra persona haya cambiado en el resto.
 export async function guardarDispositivos(ingresoId: string, cambios: DatosDispositivos): Promise<ResultadoPauta> {
   const { data, error } = await supabase.from('items_paciente').update(cambios).eq('ingreso_id', ingresoId).select('id')

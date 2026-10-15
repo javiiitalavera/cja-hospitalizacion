@@ -1,4 +1,4 @@
-// Selectores de aislamiento, vías, sonda vesical y oxigenoterapia. Los usan la Pauta de cuidados de la ficha, la
+// Selectores de aislamiento, vías, sonda vesical y oxigenoterapia. Los usan la Hoja de ítems de la ficha, la
 // Hoja de ítems (ficha y panel lateral): los tres escriben las mismas columnas de items_paciente, así que lo que
 // se marca en uno se ve en los demás. Cada selector avisa con `onCambio` de las columnas que hay que guardar.
 
@@ -27,7 +27,7 @@ function alternar<T extends string>(lista: readonly T[] | null | undefined, valo
 export const AISLAMIENTO_MARCADO = 'bg-violet-700 border-violet-700 text-white'
 
 // Vías, sonda vesical y oxigenoterapia también son datos que importan de un vistazo: marcados, se ven en verde azulado
-// sólido (la vía) y con la fila teñida (en la Pauta de cuidados). Distinto del violeta del aislamiento.
+// sólido (la vía) y con la fila teñida (en la Hoja de ítems). Distinto del violeta del aislamiento.
 export const DISPOSITIVO_MARCADO = 'bg-teal-700 border-teal-700 text-white'
 export const FONDO_DISPOSITIVO = 'bg-teal-50'
 

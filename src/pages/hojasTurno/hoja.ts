@@ -34,7 +34,7 @@ export function textoDiuresis(p: PacienteHoja): string {
 export interface ColumnaHoja { titulo: string; clase: string }
 
 // Todas las columnas de la hoja que no son Hb, Nombre ni Cuidados (Aseo, Diuresis, Deposición, comidas y
-// Vía; esta última sale de la Pauta de cuidados) miden lo mismo: así la hoja se ve ordenada y todas dejan el mismo hueco para escribir a mano.
+// Vía; esta última sale de la Hoja de ítems) miden lo mismo: así la hoja se ve ordenada y todas dejan el mismo hueco para escribir a mano.
 const MANUAL = 'c-m'   // 14 mm: bastan para anotar a mano y dejan más ancho a «Cuidados», que es donde hay más texto
 const COLUMNAS: Record<Turno, ColumnaHoja[]> = {
   manana: ['Aseo', 'Diuresis', 'Deposición', 'Desayuno', 'Comida'].map((titulo) => ({ titulo, clase: MANUAL })),

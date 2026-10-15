@@ -1,17 +1,12 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../lib/AuthContext'
 import { encadenar } from '../../lib/colaGuardado'
 import type { ItemsPaciente } from '../../types'
-import { nombreCompleto, SEMAFORO_CAIDAS_COLOR as SEMAFORO_COLOR } from '../../types'
+import { nombreCompleto } from '../../types'
 import { Save, X } from 'lucide-react'
-import ModalContencion from '../../components/ModalContencion'
-import { BloqueOxigeno, BloqueSonda, SelectorAislamiento, SelectorVias } from '../../components/ViasDispositivos'
-import type { DatosDispositivos } from '../../types/pautaCuidados'
-import {
-  severidadDia, severidadNoche, SEVERIDAD_ESTILO, SEVERIDAD_BOTON_ESTILO,
-  type ContencionDia, type ContencionNoche,
-} from '../../types/contenciones'
+import { CamposItems } from '../../components/CamposItems'
+import type { ContencionDia, ContencionNoche } from '../../types/contenciones'
 import type { IngresoConItems } from './tipos'
 import { IndicadorGuardado } from '../../components/IndicadorGuardado'
 
@@ -44,22 +39,6 @@ export default function PanelEdicion({
   dataRef.current = data
 
   const [confirmLimpiar, setConfirmLimpiar] = useState(false)
-  const [modalContencion, setModalContencion] = useState(false)
-  const [estadoContencion, setEstadoContencion] = useState<{ dia: string | null; noche: string[] | null } | 'cargando'>('cargando')
-  const [errorContencion, setErrorContencion] = useState('')
-
-  useEffect(() => {
-    supabase.from('contenciones').select('dia, noche').eq('ingreso_id', ingreso.id).maybeSingle()
-      .then(({ data, error }) => {
-        if (error) {
-          // Distinto de "sin revisar": un error real no debería
-          // dejar creer que no hay contención pautada.
-          setErrorContencion('No se pudo comprobar la contención: ' + error.message)
-          return
-        }
-        setEstadoContencion(data ?? { dia: null, noche: null })
-      })
-  }, [ingreso.id])
   const [habEdit, setHabEdit] = useState(ingreso.habitacion?.toString() ?? '')
   const [habError, setHabError] = useState('')
   const [savingHab, setSavingHab] = useState(false)
@@ -209,40 +188,6 @@ export default function PanelEdicion({
     debounceRef.current = setTimeout(() => save(next), 1200)
   }
 
-  const sel = (key: keyof ItemsPaciente, label: string, opts: { v: string; l: string }[]) => (
-    <div key={key} className="flex items-center justify-between py-1.5 border-b border-slate-100 last:border-0">
-      <span className="text-xs text-slate-600 w-32 shrink-0">{label}</span>
-      <select
-        className="text-xs border border-slate-200 rounded px-1.5 py-1 bg-white flex-1 max-w-[160px]"
-        value={(data[key] as string) ?? ''}
-        onChange={(e) => update(key, e.target.value || null)}
-      >
-        <option value="">—</option>
-        {opts.map((o) => (
-          <option key={o.v} value={o.v}>
-            {o.l}
-          </option>
-        ))}
-      </select>
-    </div>
-  )
-
-  const bool = (key: keyof ItemsPaciente, label: string) => (
-    <label
-      key={key}
-      className="flex items-center justify-between py-1.5 border-b border-slate-100 last:border-0 cursor-pointer"
-    >
-      <span className="text-xs text-slate-600">{label}</span>
-      <input
-        type="checkbox"
-        className="w-4 h-4 rounded text-primary-600"
-        checked={!!data[key]}
-        onChange={(e) => update(key, e.target.checked)}
-      />
-    </label>
-  )
-
-  const semaforo = (data as any).semaforo_caidas as string | undefined
   const nombre = ingreso.paciente ? nombreCompleto(ingreso.paciente) : ''
 
   return (
@@ -291,222 +236,14 @@ export default function PanelEdicion({
       )}
 
       <div className="flex-1 overflow-y-auto px-4 py-3">
-        {/* Semáforo caídas */}
-        <p className="section-title mt-1">Semáforo de caídas</p>
-        <div className="flex gap-2 py-2 border-b border-slate-100 mb-1">
-          {['verde', 'amarillo', 'naranja', 'rojo'].map((color) => {
-            const active = semaforo === color
-            const bg = SEMAFORO_COLOR[color]
-            const txtColor = color === 'rojo' ? '#fff' : '#000'
-            return (
-              <button
-                key={color}
-                type="button"
-                onClick={() => update('semaforo_caidas' as keyof ItemsPaciente, active ? null : color)}
-                className={`flex-1 py-1.5 rounded-lg text-xs font-semibold border-2 transition-all ${active ? 'border-slate-700 scale-105' : 'border-transparent opacity-90 hover:opacity-100'}`}
-                style={{ backgroundColor: bg, color: txtColor }}
-              >
-                {color.charAt(0).toUpperCase() + color.slice(1)}
-              </button>
-            )
-          })}
-        </div>
-
-        <p className="section-title mt-3">Seguridad y conducta</p>
-        <span className="text-xs text-slate-600 block">Pauta de contención</span>
-        <p className="text-[0.7rem] text-slate-500 mb-1.5">Pulsa Día o Noche para ver o editar la pauta.</p>
-        {errorContencion && (
-          <p className="aviso aviso-error mb-1.5">{errorContencion}</p>
-        )}
-        {estadoContencion === 'cargando' ? (
-          <p className="text-xs text-slate-500">Cargando…</p>
-        ) : (
-          <div className="flex flex-wrap gap-2 mb-2" role="group" aria-label="Pauta de contención">
-            {(['dia', 'noche'] as const).map((eje) => {
-              const sev = eje === 'dia' ? severidadDia(estadoContencion.dia as any) : severidadNoche(estadoContencion.noche as any)
-              const estilo = SEVERIDAD_ESTILO[sev]
-              return (
-                <button key={eje} type="button" onClick={() => setModalContencion(true)}
-                  aria-label={`Contención ${eje === 'dia' ? 'día' : 'noche'}: ${estilo.label}. Ver o editar`}
-                  className={`flex-1 min-w-[7rem] px-2 py-1.5 rounded-lg text-xs font-semibold border-2 transition-all hover:brightness-95 ${SEVERIDAD_BOTON_ESTILO[sev]}`}>
-                  {eje === 'dia' ? 'Día' : 'Noche'}: {estilo.label}
-                </button>
-              )
-            })}
-          </div>
-        )}
-        {modalContencion && (
-          <ModalContencion
-            ingresoId={ingreso.id}
-            onClose={() => setModalContencion(false)}
-            pacienteInfo={nombre ? { nombre, habitacion: ingreso.habitacion } : undefined}
-            onGuardado={() => {
-              supabase.from('contenciones').select('dia, noche').eq('ingreso_id', ingreso.id).maybeSingle()
-                .then(({ data, error }) => {
-                  if (error) {
-                    setErrorContencion('No se pudo confirmar el guardado: ' + error.message)
-                    return
-                  }
-                  const nueva = data ?? { dia: null, noche: null }
-                  setEstadoContencion(nueva)
-                  onContencionChanged(ingreso.id, nueva)
-                })
-            }}
-          />
-        )}
-        <div className="py-1.5 border-b border-slate-100">
-          <span className="text-xs text-slate-600 block mb-1">Alerta de conducta</span>
-          <div className="flex flex-wrap gap-1.5">
-            {([
-              { v: 'riesgo_autolitico', l: 'Riesgo autolítico' },
-              { v: 'agresion_imprevisible', l: 'Agresión imprevisible' },
-              { v: 'riesgo_fuga', l: 'Riesgo de fuga' },
-            ] as const).map((opt) => {
-              const actual: string[] = ((data as any).alerta_conducta as string[]) ?? []
-              const activo = actual.includes(opt.v)
-              return (
-                <button
-                  key={opt.v}
-                  type="button"
-                  onClick={() => update('alerta_conducta' as any, activo ? actual.filter((x) => x !== opt.v) : [...actual, opt.v])}
-                  className={`px-2 py-1 rounded text-xs font-medium border transition-colors ${
-                    activo ? 'bg-red-50 text-red-700 border-red-200' : 'bg-white text-slate-500 border-slate-300'
-                  }`}
-                >
-                  {opt.l}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-        <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
-          <span className="text-xs text-slate-600 w-32 shrink-0">Objetos de calma</span>
-          <input
-            className="text-xs border border-slate-200 rounded px-1.5 py-1 flex-1 max-w-[160px]"
-            value={((data as any).objetos_calma as string) ?? ''}
-            onChange={(e) => update('objetos_calma' as any, e.target.value)}
-          />
-        </div>
-
-        <p className="section-title mt-3">Aislamiento, vías y dispositivos</p>
-        {(() => {
-          const d = data as DatosDispositivos
-          return (
-            <div className="space-y-4 py-1.5">
-              <div className="space-y-1.5">
-                <span className="text-xs text-slate-600">Aislamiento</span>
-                <SelectorAislamiento datos={d} onCambio={updateVarios} />
-              </div>
-              <div className="space-y-1.5">
-                <span className="text-xs text-slate-600">Vías</span>
-                <SelectorVias datos={d} onCambio={updateVarios} />
-              </div>
-              <BloqueSonda datos={d} onCambio={updateVarios} />
-              <BloqueOxigeno datos={d} onCambio={updateVarios} />
-            </div>
-          )
-        })()}
-
-        <p className="section-title mt-3">Movilidad</p>
-        {sel('deambulacion', 'Deambulación', [
-          { v: 'autonomo', l: 'Autónomo' },
-          { v: '1_persona', l: '1 persona' },
-          { v: '2_personas', l: '2 personas' },
-        ])}
-        {sel('ayudas_deambulacion', 'Ayudas', [
-          { v: 'ninguna', l: 'Ninguna' },
-          { v: 'baston', l: 'Bastón' },
-          { v: 'andador_2r', l: 'Andador 2r' },
-          { v: 'andador_4r', l: 'Andador 4r' },
-          { v: 'silla_ruedas', l: 'Silla ruedas' },
-        ])}
-        {bool('bipedestador', 'Bipedestador')}
-        {bool('grua', 'Grúa')}
-        <div className="flex items-center justify-between py-1.5 border-b border-slate-100">
-          <span className="text-xs text-slate-600 w-32 shrink-0">Cabecero elevado (º)</span>
-          <input
-            className="text-xs border border-slate-200 rounded px-1.5 py-1 w-20"
-            placeholder="p. ej. 30"
-            value={((data as any).cabecero_grados as string) ?? ''}
-            onChange={(e) => update('cabecero_grados' as any, e.target.value)}
-          />
-        </div>
-
-        <p className="section-title mt-3">Alimentación</p>
-        {sel('ingestas', 'Ingestas', [
-          { v: 'autonomo', l: 'Autónomo' },
-          { v: 'dependiente', l: 'Dependiente' },
-        ])}
-
-        <p className="section-title mt-3">Higiene y continencia</p>
-        {sel('dependencia_avd', 'Dependencia', [
-          { v: '1', l: '1 persona' },
-          { v: '2', l: '2 personas' },
-        ])}
-        {sel('panial_dia', 'Pañal día', [
-          { v: 'ninguno', l: 'Ninguno' },
-          { v: 'BP', l: 'BP' },
-          { v: 'CA', l: 'CA' },
-        ])}
-        {sel('panial_noche', 'Pañal noche', [
-          { v: 'ninguno', l: 'Ninguno' },
-          { v: 'BP', l: 'BP' },
-          { v: 'CA', l: 'CA' },
-          { v: 'CA+malla', l: 'CA+malla' },
-        ])}
-        {bool('colector', 'Colector')}
-        {sel('higiene', 'Higiene', [
-          { v: 'lavabo', l: 'Lavabo' },
-          { v: 'cama', l: 'Cama' },
-        ])}
-        {sel('ducha', 'Ducha', [
-          { v: 'pie', l: 'De pie' },
-          { v: 'sentado', l: 'Sentado' },
-        ])}
-        {sel('vestido', 'Vestido', [
-          { v: 'autonomo', l: 'Autónomo' },
-          { v: 'dependiente', l: 'Dependiente' },
-        ])}
-        {bool('banio', 'Baño acompañado (no va solo)')}
-
-        <p className="section-title mt-3">Piel y postura</p>
-        {bool('colchon_antiescaras', 'Colchón antiescaras')}
-        {bool('patucos_coderas', 'Patucos / coderas')}
-        {bool('cambios_posturales', 'Cambios posturales')}
-
-        <p className="section-title mt-3">Prótesis y sensorial</p>
-        {sel('dentadura', 'Dentadura', [
-          { v: 'ninguna', l: 'Ninguna' },
-          { v: 'superior', l: 'Superior' },
-          { v: 'inferior', l: 'Inferior' },
-          { v: 'completa', l: 'Completa' },
-          { v: 'fija', l: 'Fija' },
-          { v: 'puente', l: 'Puente' },
-        ])}
-        {sel('audifonos', 'Audífonos', [
-          { v: 'ninguno', l: 'Ninguno' },
-          { v: 'derecho', l: 'Derecho' },
-          { v: 'izquierdo', l: 'Izquierdo' },
-          { v: 'ambos', l: 'Ambos' },
-        ])}
-        {sel('gafas', 'Gafas', [
-          { v: 'no', l: 'No' },
-          { v: 'si', l: 'Sí' },
-          { v: 'solo_tv', l: 'Solo TV' },
-        ])}
-
-        <p className="section-title mt-3">Otros</p>
-        {bool('botella_noche', 'Botella noche')}
-        {bool('timbre_habitacion' as any, 'Timbre en habitación')}
-        {bool('siestas', 'Siesta por la tarde')}
-
-        <p className="section-title mt-3">Observaciones</p>
-        <textarea
-          className="textarea text-xs w-full"
-          rows={3}
-          placeholder="Notas libres…"
-          value={((data as any).observaciones as string) ?? ''}
-          onChange={(e) => update('observaciones' as any, e.target.value)}
+        <CamposItems
+          variante="panel"
+          data={data as Record<string, any>}
+          update={(k, v) => update(k as keyof ItemsPaciente, v)}
+          updateVarios={updateVarios}
+          ingresoId={ingreso.id}
+          pacienteInfo={nombre ? { nombre, habitacion: ingreso.habitacion } : undefined}
+          onContencionCambio={(nueva) => onContencionChanged(ingreso.id, nueva)}
         />
       </div>
 

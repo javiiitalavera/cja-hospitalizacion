@@ -1,5 +1,5 @@
 // Distintivo de aislamiento (contacto / gotas) para listas: Inicio, y donde haga falta ver de un vistazo que un paciente
-// necesita precauciones. Mismos colores que la casilla marcada de la Pauta de cuidados.
+// necesita precauciones. Mismos colores que la casilla marcada de la Hoja de ítems.
 
 import { Link } from 'react-router-dom'
 import { ShieldAlert } from 'lucide-react'
@@ -18,12 +18,12 @@ export function DistintivoAislamiento({ aislamiento, ingresoId, className = '' }
     </>
   )
   const comun = { 'data-aislamiento': lista.map((a) => a.clave).join(',') }
-  // Con ingreso, el distintivo lleva a la Pauta de cuidados (donde se marca y se quita). Va por encima del enlace
+  // Con ingreso, el distintivo lleva a la Hoja de ítems del paciente (donde se marca y se quita). Va por encima del enlace
   // que cubre toda la fila (relative), para que pulsarlo no abra la ficha en otra pestaña.
   if (ingresoId) {
     return (
-      <Link to={`/ingresos/${ingresoId}?tab=plan&sub=cuidados`} {...comun}
-        title={`Aislamiento: ${lista.map((a) => a.etiqueta.toLowerCase()).join(' y ')}. Ver pauta de cuidados`}
+      <Link to={`/ingresos/${ingresoId}?tab=plan&sub=items`} {...comun}
+        title={`Aislamiento: ${lista.map((a) => a.etiqueta.toLowerCase()).join(' y ')}. Ver hoja de ítems`}
         className={`${clases} relative hover:bg-violet-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-1`}>
         {contenido}
       </Link>

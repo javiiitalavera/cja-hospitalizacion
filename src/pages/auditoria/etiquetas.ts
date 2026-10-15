@@ -17,8 +17,8 @@ export const TABLA_LABEL: Record<string, string> = {
   curas_lesiones: 'Cura (lesión)',
   curas_valoraciones: 'Cura (valoración)',
   curas_registro: 'Cura (marca diaria)',
-  pauta_cuidados: 'Pauta de cuidados',
-  pauta_via: 'Pauta de cuidados (vía)',
+  pauta_cuidados: 'Otros cuidados (indicación)',
+  pauta_via: 'Hoja de ítems (vía)',
   farmacos_alias: 'Marca de fármaco',
 }
 

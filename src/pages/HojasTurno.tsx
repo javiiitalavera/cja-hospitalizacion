@@ -1,5 +1,5 @@
 // Hojas de turno: las hojas de trabajo de mañana, tarde y noche de las auxiliares, con los pacientes de hoy y
-// la pauta de cuidados. Enfermería (y administración) edita aquí mismo las indicaciones; la vía sale de la Pauta de cuidados del paciente.
+// la pauta de cuidados. Enfermería (y administración) edita aquí mismo las indicaciones; la vía sale de la Hoja de ítems del paciente.
 // Cada noche se guarda una copia de la pauta (histórico), igual que la hoja de ítems. Se imprime cada turno y
 // las columnas en blanco se rellenan a mano.
 
@@ -51,7 +51,7 @@ export default function HojasTurno() {
       : { data: [], error: null }
     // Si falla algo auxiliar se sigue enseñando la hoja, pero avisando: una hoja sin indicaciones
     // no es lo mismo que «no hay indicaciones».
-    if (rInd.error) setAviso('No se pudo cargar la pauta de cuidados: la hoja podría estar incompleta.')
+    if (rInd.error) setAviso('No se pudieron cargar las indicaciones: la hoja podría estar incompleta.')
 
     const indPorIngreso = new Map<string, { id: string; texto: string; turnos: Turno[]; updated_at?: string }[]>()
     for (const r of (rInd.data ?? []) as any[]) {
