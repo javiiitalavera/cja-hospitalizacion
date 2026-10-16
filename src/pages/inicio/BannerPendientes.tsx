@@ -24,8 +24,10 @@ export function BannerPendientes({
       </p>
       <div className="md:columns-2 md:gap-x-10">
         {lineas.map((l) => (
-          <div key={l.id} className="py-0.5 text-sm text-slate-800 break-inside-avoid">
-            <span aria-hidden className="inline-block w-1.5 h-1.5 rounded-full bg-amber-500 mr-2 align-middle" />
+          // El punto va aparte del texto (flex): un botón nunca se comporta como texto en línea, así que, con el punto dentro del mismo párrafo, si la frase no cabía entera el punto se quedaba solo en una línea.
+          <div key={l.id} className="py-0.5 text-sm text-slate-800 break-inside-avoid flex items-start gap-2">
+            <span aria-hidden className="shrink-0 w-1.5 h-1.5 rounded-full bg-amber-500 mt-[0.45rem]" />
+            <div className="min-w-0">
             <button
               type="button"
               data-linea={l.id}
@@ -58,6 +60,7 @@ export function BannerPendientes({
             ) : (
               l.detalle && <span className="text-xs text-slate-500"> · {l.detalle}</span>
             )}
+            </div>
           </div>
         ))}
       </div>

@@ -285,8 +285,9 @@ export function Historico() {
       )}
 
       {buscado && !errorBusqueda && (
-        <div className="card overflow-x-auto">
-          <div className="flex items-center justify-between gap-3 px-4 py-2.5 bg-slate-50 border-b flex-wrap">
+        // El resumen y los botones van fuera de la zona que se desplaza: dentro, al deslizar la tabla en el móvil se iban con ella y quedaban cortados.
+        <div className="card">
+          <div className="flex items-center justify-between gap-3 px-4 py-2.5 bg-slate-50 border-b flex-wrap rounded-t-xl">
             <p className="text-xs text-slate-500">
               <span className="font-semibold text-slate-700">{resultados.length}</span> resultado{resultados.length === 1 ? '' : 's'} · {resumenFiltros()}
             </p>
@@ -304,6 +305,7 @@ export function Historico() {
           {resultados.length === 0 ? (
             <p className="px-4 py-8 text-center text-slate-500 text-sm">Sin incidencias con estos filtros.</p>
           ) : (
+            <div className="overflow-x-auto rounded-b-xl">
             <table className="w-full text-sm min-w-[720px]">
               <thead>
                 <tr className="border-b bg-slate-50 text-left text-xs font-semibold text-slate-500">
@@ -349,6 +351,7 @@ export function Historico() {
                 })}
               </tbody>
             </table>
+            </div>
           )}
         </div>
       )}

@@ -43,7 +43,8 @@ export function InputFecha({ value, onChange, min, max, className, disabled }: {
     <input
       ref={campo}
       type="date"
-      className={className ?? 'input'}
+      // min-w-0: en iOS el campo de fecha tiene un ancho mínimo propio y desbordaba su columna; el texto a la izquierda, como el resto de campos.
+      className={className ?? 'input min-w-0 [&::-webkit-date-and-time-value]:text-left'}
       defaultValue={value}
       min={min}
       max={max}

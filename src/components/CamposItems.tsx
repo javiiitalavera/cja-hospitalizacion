@@ -22,7 +22,7 @@ function Seccion({ panel, titulo, primera = false, children }: { panel: boolean;
       {children}
     </>
   ) : (
-    <div className="card p-6">
+    <div className="card p-6 max-md:p-4">
       <p className="section-title">{titulo}</p>
       {children}
     </div>
@@ -84,7 +84,7 @@ export function CamposItems({ data, update, updateVarios, ingresoId, pacienteInf
             return (
               <button key={color} type="button" aria-pressed={activo} aria-label={`Semáforo de caídas ${color}`}
                 onClick={() => update('semaforo_caidas', activo ? null : color)}
-                className={`${panel ? 'flex-1' : 'min-w-[5.5rem]'} py-1.5 rounded-lg text-xs font-semibold border-2 transition-all ${activo ? 'border-slate-700 scale-105' : 'border-transparent opacity-90 hover:opacity-100'}`}
+                className={`${panel ? 'flex-1' : 'flex-1 min-w-0 md:flex-none md:min-w-[5.5rem]'} py-1.5 rounded-lg text-xs font-semibold border-2 transition-all ${activo ? 'border-slate-700 scale-105' : 'border-transparent opacity-90 hover:opacity-100'}`}
                 style={{ backgroundColor: SEMAFORO_CAIDAS_COLOR[color], color: color === 'rojo' ? '#fff' : '#000' }}>
                 {color.charAt(0).toUpperCase() + color.slice(1)}
               </button>
