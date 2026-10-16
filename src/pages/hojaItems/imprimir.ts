@@ -5,6 +5,8 @@ import type { IngresoConItems } from './tipos'
 
 // ─── TABLA HTML PURA PARA IMPRESIÓN ──────────────────────────
 
+const TEXTOS_LIBRES = new Set(['objetos_calma', 'observaciones'])
+
 function buildPrintHTML(data: IngresoConItems[], today: string): string {
   const habs1_16 = data.filter((i) => i.habitacion && i.habitacion <= 16)
   const habs17_max = data.filter((i) => i.habitacion && i.habitacion > 16)
@@ -42,7 +44,11 @@ function buildPrintHTML(data: IngresoConItems[], today: string): string {
           const bg = fila.key === 'nombre' ? habBg(ing ?? null) : aislado ? '#6d28d9' : ''
           const color = aislado ? '#ffffff' : bg ? textColor(bg) : ''
           const estilo = bg ? ` style="background:${bg};color:${color}"` : ''
-          html += `<td${estilo}${esNegritaCelda ? ' class="bold"' : ''}>${escapeHtml(String(valor ?? ''))}</td>`
+          const texto = escapeHtml(String(valor ?? ''))
+          // Nombre y textos libres no caben en una línea de la columna: se parten en varias (el nombre entero; los
+          // textos hasta 2 líneas y con «…» si hay más) en vez de cortarse sin avisar.
+          const contenido = fila.key === 'nombre' || TEXTOS_LIBRES.has(fila.key) ? `<div class="${fila.key === 'nombre' ? 'nom' : 'txt'}">${texto}</div>` : texto
+          html += `<td${estilo}${esNegritaCelda ? ' class="bold"' : ''}>${contenido}</td>`
         })
         html += '</tr>'
       })
@@ -58,11 +64,13 @@ function buildPrintHTML(data: IngresoConItems[], today: string): string {
     sinCabecera: true,
     css: `
       table { table-layout: fixed; }
-      th, td { padding: 2px 2px; font-size: 6.5pt; text-align: center; overflow: hidden; white-space: nowrap; border-color: #999; }
+      th, td { padding: 1.5px 2px; font-size: 6.5pt; text-align: center; overflow: hidden; white-space: nowrap; border-color: #999; }
       td.col-label, th.col-label { text-align: left; width: 24mm; font-weight: 600; white-space: nowrap; }
       tr.grupo td { background: #5b7a9d; color: #fff; font-weight: 700; text-align: left; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       th, td[style] { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       td.bold, th.bold { font-weight: 700; }
+      .nom { white-space: normal; overflow-wrap: anywhere; line-height: 1.15; }
+      .txt { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 1; overflow: hidden; white-space: normal; overflow-wrap: anywhere; line-height: 1.15; }
       .salto { break-before: page; }
     `,
     cuerpo: `

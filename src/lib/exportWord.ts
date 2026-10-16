@@ -10,6 +10,9 @@ import { edad, hoyLocal } from './fechas'
 import { registrarAcceso } from './accesos'
 
 // ─── UTILIDADES ───────────────────────────────────────────────────────────────
+
+// Fechas de los informes siempre con día y mes de dos cifras (14/03/1938, 02/09/2026), no «14/3/1938».
+const FECHA_CORTA: Intl.DateTimeFormatOptions = { day: '2-digit', month: '2-digit', year: 'numeric' }
 //
 // Formato común a TODOS los informes Word (ingreso, alta, enfermería y
 // "Otros informes"): se cambia aquí y cambia en todos.
@@ -313,7 +316,7 @@ function inyectarHeader(
     .replace(/(<w:t[^>]*>)Segundo Apellido:(?: )?(<\/w:t>)/, (_m, a, b) => `${a}Segundo Apellido: ${esc(p.segundo_apellido ?? '')}${b}`)
     .replace(
       /(<w:t[^>]*>)Fecha de nacimiento: (<\/w:t>)/,
-      (_m, a, b) => `${a}Fecha de nacimiento: ${p.fecha_nacimiento ? new Date(p.fecha_nacimiento).toLocaleDateString('es-ES') : ''}${b}`
+      (_m, a, b) => `${a}Fecha de nacimiento: ${p.fecha_nacimiento ? new Date(p.fecha_nacimiento).toLocaleDateString('es-ES', FECHA_CORTA) : ''}${b}`
     )
     .replace(/(<w:t[^>]*>)Fecha de ingreso: (<\/w:t>)/, (_m, a, b) => `${a}Fecha de ingreso: ${esc(fingreso)}${b}`)
     .replace(/(<w:t[^>]*>)Fecha de alta: (<\/w:t>)/, (_m, a, b) => `${a}Fecha de alta: ${esc(falta)}${b}`)
@@ -323,7 +326,7 @@ function inyectarHeader(
 
 // ─── DATOS COMUNES ────────────────────────────────────────────────────────────
 
-const fechaCorta = (iso: string | null | undefined) => (iso ? new Date(iso).toLocaleDateString('es-ES') : '')
+const fechaCorta = (iso: string | null | undefined) => (iso ? new Date(iso).toLocaleDateString('es-ES', FECHA_CORTA) : '')
 
 function firmaMedico(ingreso: Ingreso): string[] {
   const m = ingreso.medico_responsable
@@ -542,7 +545,7 @@ export async function exportarInformePuntual(ingreso: Ingreso, inf: InformePuntu
     cuerpo,
     inyectarHeader(headerRaw, p, fingreso, '')
       .replace(/(<w:t[^>]*>)INFORME DE ALTA(<\/w:t>)/g, (_m, a, b) => `${a}${esc(plantillaPorId(inf.plantilla).tituloCabecera)}${b}`)
-      .replace(/(<w:t[^>]*>)Fecha de alta: (<\/w:t>)/g, (_m, a, b) => `${a}Fecha del informe: ${new Date().toLocaleDateString('es-ES')}${b}`)
+      .replace(/(<w:t[^>]*>)Fecha de alta: (<\/w:t>)/g, (_m, a, b) => `${a}Fecha del informe: ${new Date().toLocaleDateString('es-ES', FECHA_CORTA)}${b}`)
   )
   registrarAcceso('exportacion_word', { ingresoId: ingreso.id, pacienteId: ingreso.paciente_id, detalle: `Otro informe: ${inf.plantilla}` })
   descargar(zip, `Informe_${inf.plantilla === 'estado_actual' ? 'clinico' : inf.plantilla}_${p.primer_apellido ?? 'paciente'}_${hoyLocal()}.docx`)
@@ -602,7 +605,7 @@ export async function exportarInformeEnfermeria(
     cuerpo,
     inyectarHeader(headerRaw, p, fingreso, '')
       .replace(/(<w:t[^>]*>)INFORME DE ALTA(<\/w:t>)/g, (_m, a, b) => `${a}INFORME DE ENFERMERÍA${b}`)
-      .replace(/(<w:t[^>]*>)Fecha de alta: (<\/w:t>)/g, (_m, a, b) => `${a}Fecha del informe: ${new Date().toLocaleDateString('es-ES')}${b}`)
+      .replace(/(<w:t[^>]*>)Fecha de alta: (<\/w:t>)/g, (_m, a, b) => `${a}Fecha del informe: ${new Date().toLocaleDateString('es-ES', FECHA_CORTA)}${b}`)
   )
   registrarAcceso('exportacion_word', { ingresoId: ingreso.id, pacienteId: ingreso.paciente_id, detalle: 'Informe de enfermería' })
   descargar(zip, `Informe_Enfermeria_${p.primer_apellido ?? 'paciente'}_${hoyLocal()}.docx`)
