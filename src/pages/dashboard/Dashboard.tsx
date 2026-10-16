@@ -12,12 +12,13 @@ import { ResumenDashboard } from './ResumenDashboard'
 import { ActividadDashboard } from './ActividadDashboard'
 import { ExploradorEpisodios } from './ExploradorEpisodios'
 import { SeguridadDashboard } from './SeguridadDashboard'
+import { ContencionesDashboard } from './ContencionesDashboard'
 import { DiagnosticosDashboard } from './DiagnosticosDashboard'
 import { MedicacionDashboard } from './MedicacionDashboard'
 import { EvolucionDashboard } from './EvolucionDashboard'
 import { ContextoExportar, descargarExcel, etiquetaIntervalo, type AporteExport } from './exportar'
 
-type Vista = 'resumen' | 'actividad' | 'diagnosticos' | 'evolucion' | 'medicacion' | 'seguridad' | 'explorador'
+type Vista = 'resumen' | 'actividad' | 'diagnosticos' | 'evolucion' | 'medicacion' | 'seguridad' | 'contenciones' | 'explorador'
 
 // Los filtros se reflejan en la URL, para poder compartir o volver a
 // un mismo filtro sin tener que reconstruirlo a mano.
@@ -129,6 +130,7 @@ export function Dashboard() {
     { valor: 'evolucion', etiqueta: 'Evolución', disponible: true },
     { valor: 'medicacion', etiqueta: 'Medicación', disponible: true },
     { valor: 'seguridad', etiqueta: 'Seguridad', disponible: true },
+    { valor: 'contenciones', etiqueta: 'Contenciones', disponible: true },
     { valor: 'explorador', etiqueta: 'Episodios', disponible: true },
   ]
 
@@ -214,11 +216,14 @@ export function Dashboard() {
         <MedicacionDashboard filtros={filtros} desde={desde} hasta={hasta} />
       )}
       {vista === 'seguridad' && (
-        <SeguridadDashboard filtros={filtros} desde={desde} hasta={hasta} onExplorar={irAIncidencias} onExplorarEpisodios={irAExplorador} />
+        <SeguridadDashboard filtros={filtros} desde={desde} hasta={hasta} onExplorar={irAIncidencias} onExplorarEpisodios={irAExplorador} onVerContenciones={() => cambiarVista('contenciones')} />
+      )}
+      {vista === 'contenciones' && (
+        <ContencionesDashboard filtros={filtros} desde={desde} hasta={hasta} />
       )}
       </ContextoExportar.Provider>
       {vista === 'explorador' && <ExploradorEpisodios />}
-      {vista !== 'resumen' && vista !== 'actividad' && vista !== 'diagnosticos' && vista !== 'evolucion' && vista !== 'medicacion' && vista !== 'explorador' && vista !== 'seguridad' && (
+      {vista !== 'resumen' && vista !== 'actividad' && vista !== 'diagnosticos' && vista !== 'evolucion' && vista !== 'medicacion' && vista !== 'explorador' && vista !== 'seguridad' && vista !== 'contenciones' && (
         <div className="card p-10 text-center text-slate-500 text-sm">
           Esta vista se construye en una ronda posterior.
         </div>

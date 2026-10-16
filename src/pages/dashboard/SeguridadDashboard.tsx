@@ -64,12 +64,13 @@ function Pendiente({ etiqueta, valor, nota, onClick }: { etiqueta: string; valor
   )
 }
 
-export function SeguridadDashboard({ filtros, desde, hasta, onExplorar, onExplorarEpisodios }: {
+export function SeguridadDashboard({ filtros, desde, hasta, onExplorar, onExplorarEpisodios, onVerContenciones }: {
   filtros: Filtros
   desde: string
   hasta: string
   onExplorar: (filtroExtra?: Record<string, string>) => void
   onExplorarEpisodios: (filtroExtra?: Record<string, string>) => void
+  onVerContenciones?: () => void
 }) {
   const [datos, setDatos] = useState<Seguridad | null>(null)
   const [estado, setEstado] = useState<EstadoCarga>('cargando')
@@ -336,6 +337,11 @@ export function SeguridadDashboard({ filtros, desde, hasta, onExplorar, onExplor
                   valor={ingresados ? `${contenciones.pacientes_con_si_precisa} de ${ingresados}` : contenciones.pacientes_con_si_precisa}
                   subvalor={porcentaje(contenciones.pacientes_con_si_precisa, ingresados)} />
               </div>
+              {onVerContenciones && (
+                <button type="button" onClick={onVerContenciones} className="text-xs text-primary-700 underline hover:text-primary-800 mt-2 text-left" data-ver-contenciones>
+                  Ver la evolución, las medidas, la duración y la relación con caídas y agresiones
+                </button>
+              )}
             </section>
           </>
         )

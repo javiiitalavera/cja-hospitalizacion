@@ -293,6 +293,55 @@ export const DEFINICIONES = definiciones({
     formula: 'Episodios que coinciden con el periodo (ingresados algún día de él) con la casilla marcada.',
     ojo: 'Cuenta episodios, no infecciones nuevas fechadas en el periodo: un episodio con dos infecciones cuenta una vez.',
   },
+
+  // ── Contenciones (pestaña propia) ───────────────────────────
+  con_evolucion: {
+    titulo: 'Contención a lo largo del tiempo',
+    queCuenta: 'De todos los días en que había pacientes ingresados, en qué proporción tenían contención activa o «si precisa».',
+    formula: 'Días-paciente con contención activa (o «si precisa») ÷ días-paciente ingresados, en cada tramo. Un día-paciente es un paciente ingresado esa noche, con la pauta que tenía al terminar el día.',
+    ojo: 'La pauta se reconstruye con el historial de cambios. Antes del primer registro de un episodio no se sabe qué había: esos días van en «sin registro» y no cuentan como «sin contención».',
+  },
+  con_sin_registro: {
+    titulo: 'Días sin registro de pauta',
+    queCuenta: 'Días-paciente en los que el episodio todavía no tenía ninguna pauta de contención registrada.',
+    formula: 'Días-paciente anteriores al primer registro de pauta de su episodio ÷ días-paciente ingresados.',
+    ojo: 'Mide lo completo que está el dato, no la clínica. Si es alto, las demás cifras de contención infravaloran.',
+  },
+  con_medidas: {
+    titulo: 'Medidas de día y de noche',
+    queCuenta: 'Cuántos días-paciente ha estado pautada cada medida.',
+    formula: 'Días-paciente con esa medida ÷ días-paciente con pauta registrada en ese turno (día o noche). «Pacientes» cuenta episodios distintos.',
+    ojo: 'De noche pueden pautarse varias medidas a la vez, así que los porcentajes de la noche suman más de 100 %. Solo la contención fija y la «si precisa» cuentan como contención; barras, cota cero y sensor son medidas de seguridad o alternativas.',
+  },
+  con_noche_resumen: {
+    titulo: 'Noches con contención o con alternativas',
+    queCuenta: 'Cómo se reparten las noches con pauta registrada.',
+    formula: '«Con contención»: contención fija o «si precisa». «Solo alternativas»: barras, cota cero o sensor, sin contención. «Sin nada»: noche revisada sin ninguna medida.',
+  },
+  con_vigentes: {
+    titulo: 'Contención activa vigente',
+    queCuenta: 'Pacientes ingresados ahora con contención activa y desde cuándo la llevan sin interrupción.',
+    formula: 'Días seguidos con contención activa (día continua o noche fija) hasta hoy, contando el día de inicio y hoy. Se marca en ámbar cuando pasan de 30.',
+    ojo: 'Es la situación de hoy: no depende de las fechas del filtro. Si se cambia de una medida activa a otra, el tiempo sigue contando; solo se corta cuando deja de haber contención activa.',
+  },
+  con_terminadas: {
+    titulo: 'Duración de las contenciones retiradas',
+    queCuenta: 'Cuánto duró cada periodo seguido de contención activa que se retiró dentro del periodo elegido.',
+    formula: 'Días entre el inicio y la retirada, por cada tramo retirado en el periodo. Mediana, media y máximo de esos tramos.',
+    ojo: 'No incluye los que acabaron por el alta del paciente. Con pocos tramos, la media se mueve mucho: la mediana es más fiable.',
+  },
+  con_sucesos: {
+    titulo: 'Caídas y agresiones según la contención',
+    queCuenta: 'Cuántas caídas (o agresiones físicas) hubo, de día y de noche, en pacientes con y sin contención activa en ese momento.',
+    formula: 'Sucesos con contención activa (o sin ella) en su franja ÷ días-paciente de esa situación × 1.000. De día cuenta la contención continua; de noche, la fija. Mañana y tarde son «día»; la noche es 22-8 h.',
+    ojo: 'Es una asociación, no una causa: la contención se pauta a quien tiene más riesgo, así que es esperable que haya más sucesos entre quienes la llevan. Con pocos sucesos, las tasas no son fiables. Se usa la pauta vigente en el momento del suceso (o al terminar su día, si no tiene hora).',
+  },
+  con_ingreso_alta: {
+    titulo: 'Contención al ingreso y al alta',
+    queCuenta: 'Para las salidas del periodo (altas, traslados y éxitus), qué contención tenían al ingresar y cuál al irse.',
+    formula: '«Al ingreso»: la primera pauta registrada, si se registró en los 3 primeros días. «Al alta»: la última pauta registrada antes de salir. Cada paciente cuenta una vez, en su categoría más grave: activa > «si precisa» > ninguna.',
+    ojo: '«Sin dato»: no había pauta registrada en ese momento. Los éxitus entran en la tabla, igual que en el resto de indicadores de salidas.',
+  },
 })
 
 export type ClaveDefinicion = keyof typeof DEFINICIONES

@@ -13,6 +13,7 @@ import type { ContencionDia, ContencionNoche } from '../types/contenciones'
 import type { IngresoConItems } from './hojaItems/tipos'
 import { FILAS_PLANAS } from './hojaItems/constantes'
 import { printHoja } from './hojaItems/imprimir'
+import LeyendaHoja from './hojaItems/LeyendaHoja'
 import PanelEdicion from './hojaItems/PanelEdicion'
 import Bloque from './hojaItems/Bloque'
 import { InputFecha } from '../components/InputFecha'
@@ -250,6 +251,7 @@ export default function HojaItems() {
         subtitulo={<><span className="inline-block first-letter:uppercase">{today}</span>{!selected && ' · haz clic en un paciente para editar sus ítems'}</>}
       >
         <BotonActualizar onClick={fetchData} cargando={refreshing} />
+        <LeyendaHoja />
         <button
           onClick={() => {
             setVerHistorico((v) => !v)

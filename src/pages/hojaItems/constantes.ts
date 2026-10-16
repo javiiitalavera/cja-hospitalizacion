@@ -1,6 +1,7 @@
 import type { ItemsPaciente } from '../../types'
 import { SEMAFORO_CAIDAS_COLOR as SEMAFORO_COLOR } from '../../types'
 import type { IngresoConItems } from './tipos'
+import { CONTENCION_DIA_LABEL, CONTENCION_NOCHE_LABEL, type ContencionDia, type ContencionNoche } from '../../types/contenciones'
 
 export function habBg(ingreso: IngresoConItems | null): string {
   if (!ingreso) return '#FFFFFF'
@@ -40,8 +41,8 @@ export const NOCHE_SHORT: Record<string, string> = {
   contencion_si_precisa: 'CSP',
 }
 // Códigos muy cortos para las celdas estrechas de la hoja (vías y aislamiento).
-const VIA_HOJA: Record<string, string> = { venosa: 'IV', subcutanea: 'SC', central: 'CVC', sng: 'SNG', peg: 'PEG', ostomia: 'Ost', traqueostomia: 'Tq' }
-const AISLAMIENTO_HOJA: Record<string, string> = { contacto: 'C', gotas: 'G' }
+export const VIA_HOJA: Record<string, string> = { venosa: 'IV', subcutanea: 'SC', central: 'CVC', sng: 'SNG', peg: 'PEG', ostomia: 'Ost', traqueostomia: 'Tq' }
+export const AISLAMIENTO_HOJA: Record<string, string> = { contacto: 'C', gotas: 'G' }
 const ordenado = (valores: readonly string[] | null | undefined, orden: string[]) => orden.filter((x) => (valores ?? []).includes(x))
 export const viasStr = (v: readonly string[] | null | undefined) => ordenado(v, Object.keys(VIA_HOJA)).map((x) => VIA_HOJA[x]).join('+')
 export const aislamientoStr = (v: readonly string[] | null | undefined) => ordenado(v, Object.keys(AISLAMIENTO_HOJA)).map((x) => AISLAMIENTO_HOJA[x]).join('+')
@@ -186,3 +187,41 @@ export const FILAS_PLANAS = GRUPOS.flatMap((g) => g.filas).filter((f) => f.key !
 
 export const BOLD_ROWS = new Set(['nombre', 'medico'])
 export const LABEL_BOLD_ROWS = new Set(['nombre', 'medico', 'dep'])
+
+// ── Leyenda de la pantalla (no se imprime) ───────────────────
+// Qué significa cada abreviatura de la hoja. Lo que sale de un código de arriba (contención, vías, aislamiento) se
+// construye a partir de esos mismos códigos, así que no se descuadra si se cambian; el resto va escrito aquí y hay
+// que revisarlo si se cambia una abreviatura en GRUPOS.
+const VIA_LEYENDA: Record<string, string> = { IV: 'Vía venosa periférica', SC: 'Vía subcutánea', CVC: 'Catéter venoso central', SNG: 'Sonda nasogástrica', PEG: 'Gastrostomía (PEG)', Ost: 'Ostomía', Tq: 'Traqueostomía' }
+const AISLAMIENTO_LEYENDA: Record<string, string> = { C: 'Aislamiento de contacto', G: 'Aislamiento por gotas' }
+
+export interface GrupoLeyenda { titulo: string; nota?: string; items: { codigo: string; significado: string }[] }
+
+export const LEYENDA_HOJA: GrupoLeyenda[] = [
+  {
+    titulo: 'Contención de día',
+    nota: 'La fila queda vacía si no hay nada pautado.',
+    items: (['continua_seguridad', 'si_precisa_asistencial', 'si_precisa_paciente'] as const).map((k) => {
+      const clave = (k === 'si_precisa_asistencial' ? 'si_precisa_supervision' : k) as ContencionDia
+      return { codigo: DIA_SHORT[k], significado: CONTENCION_DIA_LABEL[clave] }
+    }),
+  },
+  {
+    titulo: 'Contención de noche',
+    nota: 'Se suman con «+» si hay varias medidas. El sensor de presión tiene su propia fila (X).',
+    items: (Object.keys(NOCHE_SHORT) as ContencionNoche[]).filter((k) => k !== 'sensor_presion').map((k) => ({ codigo: NOCHE_SHORT[k], significado: CONTENCION_NOCHE_LABEL[k] })),
+  },
+  { titulo: 'Alerta de conducta', items: [{ codigo: 'Autol.', significado: 'Riesgo autolítico' }, { codigo: 'Agres.', significado: 'Agresión imprevisible' }, { codigo: 'Fuga', significado: 'Riesgo de fuga' }] },
+  { titulo: 'Aislamiento', items: Object.entries(AISLAMIENTO_HOJA).map(([k, codigo]) => ({ codigo, significado: AISLAMIENTO_LEYENDA[codigo] ?? k })) },
+  {
+    titulo: 'Vías',
+    nota: 'Varias vías se suman con «+».',
+    items: Object.entries(VIA_HOJA).map(([k, codigo]) => ({ codigo, significado: VIA_LEYENDA[codigo] ?? k })),
+  },
+  { titulo: 'Sonda y oxígeno', items: [{ codigo: 'Ch14…', significado: 'Sonda vesical, con su calibre (Ch)' }, { codigo: '2l', significado: 'Oxigenoterapia, con el flujo en litros por minuto' }, { codigo: 'X', significado: 'Marcado, sin más detalle' }] },
+  { titulo: 'Deambulación', items: [{ codigo: 'Autón.', significado: 'Autónomo' }, { codigo: '1P / 2P', significado: 'Con ayuda de 1 / 2 personas' }] },
+  { titulo: 'Ayudas para deambular', items: [{ codigo: 'Bast.', significado: 'Bastón' }, { codigo: 'And.2r', significado: 'Andador de 2 ruedas' }, { codigo: 'And.4r', significado: 'Andador de 4 ruedas' }, { codigo: 'SR', significado: 'Silla de ruedas' }] },
+  { titulo: 'Higiene y continencia', items: [{ codigo: '1P / 2P', significado: 'Dependencia para las actividades de la vida diaria: personas necesarias' }, { codigo: 'BP · CA', significado: 'Tipo de pañal pautado, día y noche' }, { codigo: 'A / D', significado: 'Ingestas y vestido: Autónomo / Dependiente' }, { codigo: 'L / C', significado: 'Higiene en Lavabo / en Cama' }, { codigo: 'P / S', significado: 'Ducha de Pie / Sentado' }] },
+  { titulo: 'Gafas', items: [{ codigo: 'Sí', significado: 'Siempre' }, { codigo: 'TV', significado: 'Solo para la televisión' }] },
+  { titulo: 'Colores y marcas', items: [{ codigo: 'X', significado: 'Casilla marcada' }, { codigo: 'Color', significado: 'Color de la habitación: semáforo de riesgo de caídas' }] },
+]
