@@ -542,7 +542,7 @@ export default function Home() {
         )}
         {vista === 'tarjetas' ? vistaTarjetas() : (
         // Sin overflow-hidden a propósito: recortaría los tooltips de la primera fila. Las esquinas se redondean a mano.
-        <div className="card max-xl:overflow-x-auto">
+        <div className="card max-xl:tabla-scroll">
         {/* El mínimo va en rem, como las columnas: en px, con un tamaño de letra mayor el contenido se salía de la fila y las líneas y el fondo acababan antes que la tabla. */}
         <div className="max-xl:min-w-[60rem]">
           {/* Cabecera */}

@@ -232,8 +232,8 @@ export function Personal() {
       {cargando ? (
         <Cargando />
       ) : (
-        <div className="card overflow-x-auto">
-          <table className="w-full text-sm min-w-[640px]">
+        <div className="card tabla-scroll">
+          <table className="w-full text-sm min-w-[36.4rem]">
             <thead className="bg-slate-50 text-slate-500 text-left">
               <tr>
                 <th className="px-4 py-2 font-medium">Nombre</th>

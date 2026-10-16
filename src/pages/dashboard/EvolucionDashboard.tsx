@@ -117,7 +117,7 @@ export function EvolucionDashboard({ filtros, desde, hasta }: { filtros: Filtros
 
       <section>
         <p className="section-title">Cambio entre el ingreso y el alta</p>
-        <div className="card overflow-x-auto" tabIndex={0} role="region" aria-label="Cambio de conducta y autonomía: tabla con desplazamiento horizontal">
+        <div className="card tabla-scroll" tabIndex={0} role="region" aria-label="Cambio de conducta y autonomía: tabla con desplazamiento horizontal">
           <table className="w-full text-sm min-w-[54rem]">
             <thead>
               <tr className="border-b bg-slate-50 text-left text-xs font-semibold text-slate-500">

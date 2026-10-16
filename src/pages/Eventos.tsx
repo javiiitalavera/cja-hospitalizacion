@@ -323,7 +323,7 @@ export function Eventos() {
           {errorSemaforos && !loadingContenciones && (
             <p className="aviso aviso-atencion mb-2">No se pudo cargar el semáforo de caídas: la columna Semáforo no es fiable ahora mismo.</p>
           )}
-          <div className="card overflow-x-auto">
+          <div className="card tabla-scroll">
             {loadingContenciones ? (
               <Cargando />
             ) : errorContenciones ? (
@@ -331,7 +331,7 @@ export function Eventos() {
             ) : contenciones.length === 0 ? (
               <p className="px-4 py-8 text-center text-slate-500 text-sm">Ningún paciente ingresado tiene contención pautada ahora mismo.</p>
             ) : (
-              <table className="w-full text-sm min-w-[560px]">
+              <table className="w-full text-sm min-w-[31.8rem]">
                 <thead>
                   <tr className="border-b bg-slate-50 text-left text-xs font-semibold text-slate-500">
                     <th className="px-4 py-2.5">Hab.</th>

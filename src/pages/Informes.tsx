@@ -287,8 +287,8 @@ export function Informes() {
         </select>
       </div>
 
-      <div className="card overflow-x-auto">
-        <table className="w-full text-sm min-w-[640px]">
+      <div className="card tabla-scroll">
+        <table className="w-full text-sm min-w-[36.4rem]">
           <thead>
             <tr className="border-b bg-slate-50">
               {COLUMNAS.map(({ clave, titulo }) => {

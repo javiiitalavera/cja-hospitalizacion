@@ -290,12 +290,12 @@ export function ExploradorEpisodios() {
 
       <p className="text-xs text-slate-500">{total} episodio{total === 1 ? '' : 's'} · {resumenFiltros()}</p>
 
-      <div className="card overflow-hidden">
+      <div className="card tabla-scroll">
         {estado === 'cargando' && <EstadoCargando />}
         {estado === 'error' && <EstadoError mensaje={error} onReintentar={buscar} />}
         {estado === 'sin_datos' && <EstadoSinDatos mensaje="Ningún episodio coincide con estos filtros." />}
         {estado === 'listo' && (
-          <table className="w-full text-sm min-w-[720px]">
+          <table className="w-full text-sm min-w-[40.9rem]">
             <thead>
               <tr className="border-b bg-slate-50 text-left text-xs font-semibold text-slate-500">
                 <CabeceraOrden col="paciente">Paciente</CabeceraOrden>

@@ -302,19 +302,19 @@ export function TablaMedicacion({ filas, onChange, disabled }: {
 
   return (
     <div className="space-y-2">
-      <div className="overflow-x-auto">
+      <div className="tabla-scroll">
         <table className="w-full text-xs border-collapse">
           <thead>
             <tr className="bg-slate-100">
-              <th className="border border-slate-200 px-2 py-2 text-left font-semibold text-slate-600 min-w-[210px]">Fármaco</th>
-              <th className="border border-slate-200 px-2 py-2 text-left font-semibold text-slate-600 min-w-[80px]">Dosis</th>
+              <th className="border border-slate-200 px-2 py-2 text-left font-semibold text-slate-600 min-w-[11.9rem]">Fármaco</th>
+              <th className="border border-slate-200 px-2 py-2 text-left font-semibold text-slate-600 min-w-[4.5rem]">Dosis</th>
               {TOMAS.map(t => (
-                <th key={t.key} className="border border-slate-200 px-2 py-2 text-center font-semibold text-slate-600 min-w-[70px]">
+                <th key={t.key} className="border border-slate-200 px-2 py-2 text-center font-semibold text-slate-600 min-w-[4rem]">
                   {t.label}
                 </th>
               ))}
-              <th className="border border-slate-200 px-2 py-2 text-left font-semibold text-slate-600 min-w-[120px]">Observaciones</th>
-              <th className="border border-slate-200 px-2 py-2 text-left font-semibold text-slate-600 min-w-[150px]">Psicofármaco</th>
+              <th className="border border-slate-200 px-2 py-2 text-left font-semibold text-slate-600 min-w-[6.8rem]">Observaciones</th>
+              <th className="border border-slate-200 px-2 py-2 text-left font-semibold text-slate-600 min-w-[8.5rem]">Psicofármaco</th>
               {!disabled && <th className="border border-slate-200 w-8"></th>}
             </tr>
           </thead>

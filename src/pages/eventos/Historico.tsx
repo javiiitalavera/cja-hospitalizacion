@@ -305,8 +305,8 @@ export function Historico() {
           {resultados.length === 0 ? (
             <p className="px-4 py-8 text-center text-slate-500 text-sm">Sin incidencias con estos filtros.</p>
           ) : (
-            <div className="overflow-x-auto rounded-b-xl">
-            <table className="w-full text-sm min-w-[720px]">
+            <div className="tabla-scroll rounded-b-xl">
+            <table className="w-full text-sm min-w-[40.9rem]">
               <thead>
                 <tr className="border-b bg-slate-50 text-left text-xs font-semibold text-slate-500">
                   <th className="px-4 py-2">Fecha</th>

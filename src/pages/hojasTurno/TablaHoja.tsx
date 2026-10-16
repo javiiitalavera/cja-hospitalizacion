@@ -14,12 +14,12 @@ export function TablaHoja({ turno, pacientes, acciones }: {
   const maxHab = Math.max(33, ...pacientes.map((p) => p.habitacion))
   const columnas = columnasManuales(turno)
   return (
-    <div className="card overflow-x-auto">
+    <div className="card tabla-scroll">
       <table className="w-full text-sm">
         <thead>
           <tr className="bg-slate-50 text-left text-xs font-semibold text-slate-500">
             {/* La habitación se queda fija a la izquierda al desplazar la tabla de lado (móvil y tablet): así se sabe de quién es cada fila. */}
-            <th className="px-3 py-2 text-center w-12 sticky left-0 z-[5] bg-slate-50">Hab.</th>
+            <th className="px-3 py-2 text-center w-12 col-fija bg-slate-50">Hab.</th>
             <th className="px-3 py-2 md:whitespace-nowrap">Paciente</th>
             {/* Las que se rellenan a mano en el papel: aquí solo se muestran, para que se vea que es la hoja de turno. */}
             {columnas.map((c) => (

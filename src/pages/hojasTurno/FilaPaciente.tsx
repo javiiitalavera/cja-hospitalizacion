@@ -47,7 +47,7 @@ export function FilaPaciente({ n, p, turno, columnas, acciones }: {
   if (!p) {
     return (
       <tr className="border-t">
-        <td className="px-3 py-2 text-center font-bold text-slate-500 align-top sticky left-0 z-[5] bg-white">{n}</td>
+        <td className="px-3 py-2 text-center font-bold text-slate-500 align-top col-fija bg-white">{n}</td>
         <td colSpan={columnas.length + 3} className="px-3 py-2 text-slate-500 italic align-top">Libre</td>
       </tr>
     )
@@ -109,7 +109,7 @@ export function FilaPaciente({ n, p, turno, columnas, acciones }: {
   return (
     <tr className="border-t align-top hover:bg-slate-50/60 group">
       {/* Fija a la izquierda al desplazar de lado; con fondo sólido para que no se transparente lo que pasa por debajo. */}
-      <td className="px-3 py-2 text-center sticky left-0 z-[5] bg-white group-hover:bg-slate-50">
+      <td className="px-3 py-2 text-center col-fija bg-white group-hover:bg-slate-50">
         <span
           className="inline-flex items-center justify-center w-8 h-8 rounded-lg font-bold text-slate-700"
           style={sem ? { background: sem.fondo, color: sem.texto } : undefined}

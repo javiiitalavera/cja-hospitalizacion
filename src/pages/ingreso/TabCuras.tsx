@@ -541,7 +541,7 @@ export function TablaHistorial({
 }) {
   if (vals.length === 0) return <p className="text-xs text-slate-500 mt-2">Todavía no hay registros.</p>
   return (
-    <div className="mt-2 overflow-x-auto">
+    <div className="mt-2 tabla-scroll">
       <table className="w-full text-xs">
         <thead>
           <tr className="text-left text-slate-500 border-b">

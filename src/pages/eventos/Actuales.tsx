@@ -122,11 +122,11 @@ export function Actuales({ eventos, desde, cargando, error, onReintentar, onIrAH
           </div>
         )}
 
-        <div className="card overflow-hidden">
+        <div className="card tabla-scroll">
           {visibles.length === 0 ? (
             <p className="px-4 py-10 text-center text-slate-500 text-sm">No hay incidencias en los últimos {DIAS_VENTANA_ACTUALES} días.</p>
           ) : (
-            <table className="w-full text-sm min-w-[640px]">
+            <table className="w-full text-sm min-w-[36.4rem]">
               <thead>
                 <tr className="border-b bg-slate-50 text-left text-xs font-semibold text-slate-500">
                   <th className="px-4 py-2.5 w-8"></th>

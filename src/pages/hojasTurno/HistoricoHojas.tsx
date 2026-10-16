@@ -212,7 +212,7 @@ function PorPaciente() {
             {sel && `${sel.primer_apellido}, ${sel.nombre}`}
             <span className="font-normal text-slate-500 ml-2">· {dias.length} {dias.length === 1 ? 'día' : 'días'} guardados</span>
           </p>
-          <div className="card overflow-x-auto">
+          <div className="card tabla-scroll">
             <table className="w-full text-xs">
               <thead>
                 <tr className="bg-slate-50 text-left font-semibold text-slate-500">

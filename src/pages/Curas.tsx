@@ -227,7 +227,7 @@ export default function Curas() {
       {pacientes.length > 0 && (
         <>
           <p className="section-title">Tabla semanal</p>
-          <div className="card overflow-x-auto mb-8">
+          <div className="card tabla-scroll mb-8">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-slate-50 text-xs text-slate-500">
@@ -304,7 +304,7 @@ export default function Curas() {
           {pacientes.some((p) => p.lesiones.length > 0) && (
           <>
           <p className="section-title">Tabla de cuidados</p>
-          <div className="card overflow-x-auto">
+          <div className="card tabla-scroll">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-slate-50 text-xs text-slate-500">

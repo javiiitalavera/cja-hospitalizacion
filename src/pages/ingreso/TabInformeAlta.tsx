@@ -364,7 +364,7 @@ function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
             falta. Sin etiquetar ninguna diferencia como mejoría o
             empeoramiento: la dirección no se interpreta igual en
             todas las escalas. */}
-        <div className="overflow-x-auto">
+        <div className="tabla-scroll">
           <table className="w-full text-sm border-collapse">
             <thead>
               <tr className="border-b bg-slate-50 text-left text-xs font-semibold text-slate-500">

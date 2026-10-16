@@ -183,7 +183,7 @@ export function TabCambios({ personal }: { personal: Personal }) {
           </div>
         )
       ) : (
-        <div className="card overflow-x-auto">
+        <div className="card tabla-scroll">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-slate-500 text-left">
               <tr>

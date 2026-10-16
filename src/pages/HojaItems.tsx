@@ -389,11 +389,11 @@ export default function HojaItems() {
                         desplazamiento horizontal — sin él, se habrían
                         aplastado igual que le pasaba a la rejilla
                         principal con el panel abierto. */}
-                    <div className="card overflow-x-auto">
-                      <table className="text-xs" style={{ minWidth: `${140 + FILAS_PLANAS.length * 90}px` }}>
+                    <div className="card tabla-scroll">
+                      <table className="text-xs" style={{ minWidth: `${(140 + FILAS_PLANAS.length * 90) / 17.6}rem` }}>
                         <thead>
                           <tr className="border-b bg-slate-50">
-                            <th className="px-3 py-2 text-left font-semibold text-slate-500 sticky left-0 bg-slate-50">Fecha</th>
+                            <th className="px-3 py-2 text-left font-semibold text-slate-500 col-fija bg-slate-50">Fecha</th>
                             <th className="px-3 py-2 text-left font-semibold text-slate-500">Hab.</th>
                             {FILAS_PLANAS.map((f) => (
                               <th key={f.key} className="px-3 py-2 text-left font-semibold text-slate-500 whitespace-nowrap">{f.label}</th>
@@ -412,7 +412,7 @@ export default function HojaItems() {
                             const esUltimo = idx === historialPaciente.length - 1
                             return (
                               <tr key={`${h.ingreso_id}-${h.fecha}`} className="hover:bg-slate-50">
-                                <td className="px-3 py-2 font-medium text-slate-800 whitespace-nowrap sticky left-0 bg-white">
+                                <td className="px-3 py-2 font-medium text-slate-800 whitespace-nowrap col-fija bg-white">
                                   {new Date(h.fecha).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}
                                 </td>
                                 <td className="px-3 py-2 text-slate-500">{habDelDia}</td>

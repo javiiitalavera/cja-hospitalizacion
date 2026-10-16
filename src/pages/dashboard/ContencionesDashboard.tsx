@@ -252,7 +252,7 @@ export function ContencionesDashboard({ filtros, desde, hasta }: { filtros: Filt
       <section data-con-medidas>
         <p className="section-title">Medidas de día y de noche <InfoIndicador clave="con_medidas" /></p>
         <div className="grid md:grid-cols-2 gap-4 items-start">
-          <div className="card overflow-x-auto">
+          <div className="card tabla-scroll">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-slate-50 text-left text-xs font-semibold text-slate-500">
@@ -280,7 +280,7 @@ export function ContencionesDashboard({ filtros, desde, hasta }: { filtros: Filt
             </table>
           </div>
 
-          <div className="card overflow-x-auto">
+          <div className="card tabla-scroll">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-slate-50 text-left text-xs font-semibold text-slate-500">
@@ -347,7 +347,7 @@ export function ContencionesDashboard({ filtros, desde, hasta }: { filtros: Filt
           <span className="text-xs font-semibold bg-white border text-slate-700 rounded-full px-2 py-0.5">Hoy</span>
           <InfoIndicador clave="con_vigentes" />
         </div>
-        <div className="card overflow-x-auto" data-con-vigentes>
+        <div className="card tabla-scroll" data-con-vigentes>
           {duracion.vigentes.length === 0 ? <EstadoSinDatos mensaje="Nadie tiene contención activa ahora." /> : (
             <table className="w-full text-sm">
               <thead>
@@ -398,7 +398,7 @@ export function ContencionesDashboard({ filtros, desde, hasta }: { filtros: Filt
             ].map((r) => ({ ...r, x: sucesos.franjas.find((x) => x.tipo === tipo && x.franja === r.f && x.con_contencion === r.con) }))
             const clasificados = filas.reduce((a, r) => a + (r.x?.sucesos ?? 0), 0)
             return (
-              <div key={tipo} className="card overflow-x-auto" data-con-suceso={tipo}>
+              <div key={tipo} className="card tabla-scroll" data-con-suceso={tipo}>
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b bg-slate-50 text-left text-xs font-semibold text-slate-500">
@@ -451,7 +451,7 @@ export function ContencionesDashboard({ filtros, desde, hasta }: { filtros: Filt
                 <TarjetaMetrica info="con_ingreso_alta" etiqueta="Ingresan y salen con activa" valor={mantienen} />
                 <TarjetaMetrica info="con_ingreso_alta" etiqueta="Salen con activa sin haber ingresado con ella" valor={sinYSeVanCon} />
               </div>
-              <div className="card overflow-x-auto mt-3">
+              <div className="card tabla-scroll mt-3">
                 <table className="w-full text-sm min-w-[36rem]">
                   <thead>
                     <tr className="border-b bg-slate-50 text-left text-xs font-semibold text-slate-500">

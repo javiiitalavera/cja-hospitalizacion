@@ -53,6 +53,21 @@
   .card {
     @apply bg-white rounded-xl border shadow-sm;
   }
+  /* Tabla que se desplaza de lado cuando no cabe (móvil y tablet). Se usa junto a .card: <div className="card tabla-scroll">.
+     Reglas para que todas se comporten igual:
+     1) El ancho mínimo de la tabla va en rem, nunca en px: las columnas y el texto escalan con la letra del dispositivo y un
+        mínimo en px deja el contenido más ancho que la fila. La letra base de la app es el 110 % (1 rem = 17,6 px): para
+        convertir un ancho en px, dividir entre 17,6 (640 px = 36,4 rem).
+     2) Lo que no debe moverse (título, resumen, botones) va fuera de este recuadro, no dentro.
+     3) Para dejar una columna fija al desplazar, .col-fija más un fondo sólido en la celda.
+     overscroll-behavior-x evita que, al llegar al borde de la tabla, el navegador del móvil lo interprete como «volver atrás». */
+  .tabla-scroll {
+    @apply overflow-x-auto;
+    overscroll-behavior-x: contain;
+  }
+  .col-fija {
+    @apply sticky left-0 z-[5];
+  }
   /* Los tres anchos de contenido de la app. Cada pantalla usa uno según lo que muestra:
      formulario/ficha (texto que se lee), tabla/listado, o matriz densa con muchas columnas.
      Todo va alineado a la izquierda para que el título no cambie de sitio al cambiar de pantalla. */
