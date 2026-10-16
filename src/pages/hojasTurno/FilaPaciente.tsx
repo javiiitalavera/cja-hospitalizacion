@@ -1,5 +1,5 @@
 // Una fila de la hoja de turno en pantalla: habitación, paciente, columnas de papel, vía y las
-// indicaciones de enfermería del turno (editables por enfermería y administración). La vía y la diuresis salen
+// indicaciones de enfermería del turno (editables por todos menos las auxiliares). La vía y la diuresis salen
 // de Otros cuidados y de la Hoja de ítems: aquí no se editan.
 
 import { DistintivoAislamiento } from '../../components/DistintivoAislamiento'

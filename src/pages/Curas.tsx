@@ -65,7 +65,7 @@ function imprimirHoja(pacientes: PacienteConCuras[], semana: string[], registros
 
 export default function Curas() {
   const navigate = useNavigate()
-  const { profesional } = useAuth()
+  const { profesional, puedeCurar } = useAuth()
   const hoy = hoyLocal()
   const [lunes, setLunes] = useState(lunesDe(hoy))
   const [pacientes, setPacientes] = useState<PacienteConCuras[]>([])
@@ -263,7 +263,7 @@ export default function Curas() {
                         <td key={d} className={`px-1 py-1 text-center ${d === hoy ? 'bg-primary-50/40' : ''}`}>
                           <button
                             onClick={() => setCelda({ p, fecha: d })}
-                            disabled={futuro || !profesional || (!marca && !toca)}
+                            disabled={futuro || !profesional || !puedeCurar || (!marca && !toca)}
                             title={
                               marca
                                 ? noRealizada ? `No realizada${quien}: ${marca.motivo ?? ''}` : `Hecha${quien}`

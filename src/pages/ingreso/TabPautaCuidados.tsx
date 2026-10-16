@@ -1,7 +1,7 @@
 // Otros cuidados de un paciente: las indicaciones de enfermería para las hojas de trabajo de las auxiliares (por turno)
 // y, al final, lo que se sigue gestionando en Aegerus. Todo lo demás del paciente (contención, aislamiento, vías y
 // dispositivos, movilidad, higiene…) está en la Hoja de ítems, que es el único sitio donde se edita. Las indicaciones
-// solo las escribe enfermería. Con el episodio cerrado todo queda en solo lectura.
+// las escriben médicos, enfermería y técnicos (no las auxiliares, que son quienes las leen). Con el episodio cerrado todo queda en solo lectura.
 
 import { useEffect, useState } from 'react'
 import { useAvisoSalida } from '../../lib/avisoSalida'
@@ -30,8 +30,8 @@ const EN_AEGERUS = [
 ]
 
 export function TabPautaCuidados({ ingresoId, episodioActivo }: { ingresoId: string; episodioActivo: boolean }) {
-  const { esEnfermeria } = useAuth()
-  const puedeEditar = esEnfermeria && episodioActivo
+  const { puedeIndicarCuidados } = useAuth()
+  const puedeEditar = puedeIndicarCuidados && episodioActivo
 
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')
@@ -130,7 +130,7 @@ export function TabPautaCuidados({ ingresoId, episodioActivo }: { ingresoId: str
         <AvisoFicha icono={Lock}>
           {!episodioActivo
             ? 'Episodio cerrado: las indicaciones quedan en solo lectura.'
-            : 'Solo lectura: las indicaciones las escribe enfermería (o un administrador).'}
+            : 'Solo lectura: las indicaciones las escriben médicos, enfermería y técnicos.'}
         </AvisoFicha>
       )}
       <div className="sticky top-0 z-10 flex justify-end h-0 !mt-0 pointer-events-none">

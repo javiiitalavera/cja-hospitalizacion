@@ -103,8 +103,8 @@ export default function Home() {
   const navigate = useNavigate()
   const { esMedico, esAdmin, rol } = useAuth()
   // Qué avisos de Inicio le tocan a cada perfil (la administración los ve todos; ver calcularPendientes).
-  const verCuras = esAdmin || rol === 'enfermeria' || rol === 'auxiliar'
-  const verLesiones = esAdmin || rol !== 'tecnico'
+  const verCuras = esAdmin || rol === 'enfermeria'
+  const verLesiones = esAdmin || rol === 'enfermeria' || rol === 'medico'
   const verSemaforo = esAdmin || rol !== 'medico'
 
   const today = new Date().toLocaleDateString('es-ES', {

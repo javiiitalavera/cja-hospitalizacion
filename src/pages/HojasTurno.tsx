@@ -24,7 +24,7 @@ import {
 } from './hojasTurno/operaciones'
 
 export default function HojasTurno() {
-  const { esEnfermeria } = useAuth()
+  const { puedeIndicarCuidados } = useAuth()
   const [verHistorico, setVerHistorico] = useState(false)
   const [turno, setTurno] = useState<Turno>(() => turnoActual())
   const [pacientes, setPacientes] = useState<PacienteHoja[]>([])
@@ -79,7 +79,7 @@ export default function HojasTurno() {
 
   useEffect(() => { cargar() }, [])
 
-  // ── Edición (solo enfermería y administración) ──────────────
+  // ── Edición (todos menos las auxiliares) ──────────────
   function actualizar(ingresoId: string, f: (p: PacienteHoja) => PacienteHoja) {
     setPacientes((l) => l.map((p) => (p.ingresoId === ingresoId ? f(p) : p)))
   }
@@ -95,7 +95,7 @@ export default function HojasTurno() {
     return !r.error
   }
 
-  const acciones: AccionesFila | undefined = esEnfermeria ? {
+  const acciones: AccionesFila | undefined = puedeIndicarCuidados ? {
     anadir: async (ingresoId, texto, turnos) => {
       empezar()
       const r = await anadirIndicacion(ingresoId, texto, turnos)

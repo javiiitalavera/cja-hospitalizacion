@@ -21,14 +21,14 @@ export function ModalCura({
   // Recarga la pantalla Curas tras guardar o cambiar algo.
   onCambio: () => Promise<void>
 }) {
-  const { profesional, esAdmin } = useAuth()
+  const { profesional, esAdmin, puedeCurar } = useAuth()
   const { confirmar, dialogo } = useConfirmar()
   const [formValoracion, setFormValoracion] = useState<{ editando: Valoracion } | null>(null)
   const [errorAccion, setErrorAccion] = useState('')
 
   // En la pantalla Curas solo salen ingresos activos, así que se puede editar
   // mientras haya una cuenta con ficha de profesional (la base de datos decide el resto).
-  const puedeEditar = !!profesional
+  const puedeEditar = !!profesional && puedeCurar
   const esMio = (autor: string | null) => !!profesional && autor === profesional.id
 
   async function cambiarEstado() {

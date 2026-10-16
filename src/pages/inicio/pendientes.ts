@@ -57,8 +57,8 @@ export interface EntradaPendientes {
   esMedico: boolean
   // Quién ve qué (la administración lo ve todo). Todos reciben: incidencias pendientes y pacientes sin pauta de
   // contención. Además:
-  //   · verCuras:    curas de hoy sin hacer               → enfermería y auxiliares
-  //   · verLesiones: lesiones sin valoración >7 días      → todos menos el técnico
+  //   · verCuras:    curas de hoy sin hacer               → enfermería (quien las hace)
+  //   · verLesiones: lesiones sin evolución >7 días       → médicos y enfermería (quienes pueden registrarla)
   //   · verSemaforo: pacientes sin semáforo de caídas     → todos menos los médicos (técnico incluido)
   verCuras: boolean
   verLesiones: boolean
@@ -210,7 +210,7 @@ export function calcularPendientes(e: EntradaPendientes): LineaPendiente[] {
     }
   }
 
-  // ── Curas (quien las hace, y la administración) ───────────────
+  // ── Curas (enfermería, y la administración) ───────────────
   const lesionesActivas = e.extras.lesiones.filter((l) => activos.has(l.ingreso_id))
   if (e.verCuras && e.extras.curasHoy) {
     const hechas = new Set(e.extras.curasHoy)
@@ -242,7 +242,7 @@ export function calcularPendientes(e: EntradaPendientes): LineaPendiente[] {
     }
   }
 
-  // Lesiones sin valoración nueva en más de DIAS_SIN_VALORACION días (todos menos el técnico).
+  // Lesiones sin valoración nueva en más de DIAS_SIN_VALORACION días (médicos y enfermería: quienes pueden registrarla).
   const limiteValoracion = sumarDias(e.hoy, -DIAS_SIN_VALORACION)
   const sinValorar = !e.verLesiones ? [] : lesionesActivas.filter((l) => {
     // Cuenta como valorar la lesión anotar cómo está (medidas, grado, escalas…), no cambiar la pauta de cura.

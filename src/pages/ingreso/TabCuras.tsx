@@ -674,7 +674,7 @@ export function TarjetaLesion({
 
 // ── Pestaña Curas de la ficha ────────────────────────────────
 export function TabCuras({ ingresoId, episodioActivo }: { ingresoId: string; episodioActivo: boolean }) {
-  const { profesional, esAdmin } = useAuth()
+  const { profesional, esAdmin, puedeCurar } = useAuth()
   const { confirmar, dialogo } = useConfirmar()
   const [lesiones, setLesiones] = useState<Lesion[]>([])
   const [marcaHoy, setMarcaHoy] = useState<RegistroCura | null>(null)
@@ -712,7 +712,7 @@ export function TabCuras({ ingresoId, episodioActivo }: { ingresoId: string; epi
 
   const activas = useMemo(() => lesiones.filter((l) => !l.fecha_fin), [lesiones])
   const curadas = useMemo(() => lesiones.filter((l) => !!l.fecha_fin), [lesiones])
-  const puedeEditar = episodioActivo && !!profesional
+  const puedeEditar = episodioActivo && !!profesional && puedeCurar
   const esMio = (autor: string | null) => !!profesional && autor === profesional.id
 
   // ¿Toca cura hoy según la pauta de alguna lesión activa?
@@ -768,9 +768,14 @@ export function TabCuras({ ingresoId, episodioActivo }: { ingresoId: string; epi
           Episodio cerrado: las curas quedan solo en lectura.
         </AvisoFicha>
       )}
+      {episodioActivo && !puedeCurar && (
+        <AvisoFicha icono={Lock}>
+          Solo lectura: las curas las registran médicos y enfermería.
+        </AvisoFicha>
+      )}
 
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <TituloSeccion titulo="Curas y piel" subtitulo={<>Lesiones y cuidados de la piel. ·{activas.length} activa{activas.length === 1 ? '' : 's'}{curadas.length > 0 && ` · ${curadas.length} curada${curadas.length === 1 ? '' : 's'}`}</>} />
+        <TituloSeccion titulo="Curas y piel" subtitulo={<>Lesiones y cuidados de la piel. · {activas.length} activa{activas.length === 1 ? '' : 's'}{curadas.length > 0 && ` · ${curadas.length} curada${curadas.length === 1 ? '' : 's'}`}</>} />
         {puedeEditar && (
           <div className="flex items-center gap-2">
             {activas.length > 0 && (
