@@ -18,8 +18,9 @@ export function TablaHoja({ turno, pacientes, acciones }: {
       <table className="w-full text-sm">
         <thead>
           <tr className="bg-slate-50 text-left text-xs font-semibold text-slate-500">
-            <th className="px-3 py-2 text-center w-12">Hab.</th>
-            <th className="px-3 py-2 whitespace-nowrap">Paciente</th>
+            {/* La habitación se queda fija a la izquierda al desplazar la tabla de lado (móvil y tablet): así se sabe de quién es cada fila. */}
+            <th className="px-3 py-2 text-center w-12 sticky left-0 z-[5] bg-slate-50">Hab.</th>
+            <th className="px-3 py-2 md:whitespace-nowrap">Paciente</th>
             {/* Las que se rellenan a mano en el papel: aquí solo se muestran, para que se vea que es la hoja de turno. */}
             {columnas.map((c) => (
               <th key={c} className="px-1 py-2 text-center text-[0.65rem] font-semibold text-slate-500 border-l border-dashed border-slate-200 w-14 min-w-14">{c}</th>
