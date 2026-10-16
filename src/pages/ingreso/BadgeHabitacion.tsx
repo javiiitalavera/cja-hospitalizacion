@@ -35,13 +35,13 @@ export function BadgeHabitacion({
       aria-label={texto}
       title={texto}
       data-testid="badge-habitacion"
-      className={`w-16 h-16 rounded-xl shrink-0 flex flex-col items-center justify-center leading-none ${
+      className={`w-16 h-16 max-md:w-12 max-md:h-12 max-md:rounded-lg rounded-xl shrink-0 flex flex-col items-center justify-center leading-none ${
         color ? 'shadow-sm' : 'bg-slate-100 border border-dashed border-slate-300 text-slate-600'
       }`}
       style={color ? { backgroundColor: color, color: semaforo === 'rojo' ? '#FFFFFF' : '#000000' } : undefined}
     >
-      <span className="text-[0.65rem] font-semibold uppercase tracking-wider opacity-80">Hab.</span>
-      <span className="text-3xl font-extrabold tabular-nums mt-0.5">{habitacion}</span>
+      <span className="text-[0.65rem] max-md:text-[0.55rem] font-semibold uppercase tracking-wider opacity-80">Hab.</span>
+      <span className="text-3xl max-md:text-2xl font-extrabold tabular-nums mt-0.5">{habitacion}</span>
     </div>
   )
 }

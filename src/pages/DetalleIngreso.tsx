@@ -22,6 +22,9 @@ import { NavegadorPacientes } from './ingreso/NavegadorPacientes'
 import { BadgeHabitacion } from './ingreso/BadgeHabitacion'
 import { EVENTO_SEMAFORO } from '../components/SemaforoCaidas'
 import { TIPALT_LABEL } from '../lib/alta'
+
+// 01/08/2026: día y mes con dos cifras, igual que en los informes y las exportaciones.
+const fechaCorta = (iso: string) => new Date(iso).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })
 import { registrarAcceso } from '../lib/accesos'
 import { useConfirmarSalida } from '../components/useConfirmarSalida'
 import { PestanasFicha } from '../components/PestanasFicha'
@@ -280,46 +283,47 @@ export default function DetalleIngreso() {
       {dialogoSalida}
       {/* Header */}
       <div className="border-b bg-white px-4 sm:px-6 md:px-8 py-4">
-        <div className="flex items-start justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-3 min-w-0">
-            <button onClick={async () => { if (await permitirSalida()) navigate(-1) }} className="text-slate-500 hover:text-slate-600 mt-1">
+        {/* En móvil (menos de 768 px) la cabecera ocupa lo mínimo: nombre y datos arriba, y debajo una sola fila con las
+            flechas, el buscador y «Dar de alta». Así deja la mayor parte de la pantalla al contenido. */}
+        <div className="flex items-start justify-between gap-3 flex-wrap max-md:flex-col max-md:gap-2">
+          <div className="flex items-center gap-3 min-w-0 max-md:gap-2.5 max-md:w-full">
+            <button onClick={async () => { if (await permitirSalida()) navigate(-1) }} className="text-slate-500 hover:text-slate-600 md:mt-1 max-md:p-1 max-md:-ml-1" aria-label="Volver">
               <ChevronLeft className="w-5 h-5" />
             </button>
             {ingreso.habitacion && (
               <BadgeHabitacion habitacion={ingreso.habitacion} semaforo={semaforo} cerrado={episodioCerrado} />
             )}
             <div>
-              <h1 className="text-xl font-bold text-slate-800">{nombreDelPaciente}</h1>
-              <div className="flex items-center gap-3 mt-0.5 text-xs text-slate-500 flex-wrap">
+              <h1 className="text-xl font-bold text-slate-800 max-md:text-base max-md:leading-snug">{nombreDelPaciente}</h1>
+              {/* Sin puntos separadores escritos en el texto: al saltar de línea quedaban sueltos al principio de la siguiente. */}
+              <div className="flex items-center gap-x-3 gap-y-0.5 mt-0.5 text-xs text-slate-500 flex-wrap">
                 {edadPaciente != null && <span>{edadPaciente} años</span>}
                 {/* NHC: identificador del paciente en el centro, siempre a mano en la cabecera */}
                 {p.nhc && (
                   <span data-nhc className="tabular-nums">
-                    {edadPaciente != null ? '· ' : ''}NHC <span className="font-medium text-slate-700 select-all">{p.nhc}</span>
+                    NHC <span className="font-medium text-slate-700 select-all">{p.nhc}</span>
                   </span>
                 )}
                 {ingreso.medico_responsable && (
-                  <span>
-                    {edadPaciente != null || p.nhc ? '· ' : ''}{ingreso.medico_responsable.nombre} {ingreso.medico_responsable.apellidos}
-                  </span>
+                  <span>{ingreso.medico_responsable.nombre} {ingreso.medico_responsable.apellidos}</span>
                 )}
                 {episodioCerrado ? (
                   <span>
-                    Ingreso: {new Date(ingreso.fecha_ingreso).toLocaleDateString('es-ES')}
-                    {ingreso.fecha_alta && ` · Alta: ${new Date(ingreso.fecha_alta).toLocaleDateString('es-ES')}`}
+                    Ingreso: {fechaCorta(ingreso.fecha_ingreso)}
+                    {ingreso.fecha_alta && ` · Alta: ${fechaCorta(ingreso.fecha_alta)}`}
                     {(() => {
                       const circunstancia = (ingreso as any).cmbd?.[0]?.circunstancia_alta
                       return circunstancia ? ` · ${TIPALT_LABEL[circunstancia] ?? circunstancia}` : ''
                     })()}
                   </span>
                 ) : (
-                  <span>· {new Date(ingreso.fecha_ingreso).toLocaleDateString('es-ES')}</span>
+                  <span>Ingreso {fechaCorta(ingreso.fecha_ingreso)}</span>
                 )}
                 <EstadoIngreso estado={ingreso.estado} />
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-3 flex-wrap max-md:flex-nowrap max-md:gap-1.5 max-md:w-full">
           {id && <NavegadorPacientes ingresoId={id} />}
           {ingreso.estado === 'activo' && esMedico && (
             <button

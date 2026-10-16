@@ -102,7 +102,8 @@ export function NavegadorPacientes({ ingresoId }: { ingresoId: string }) {
   if (error) return null
 
   return (
-    <div className="flex items-center gap-1.5">
+    // En móvil ocupa todo el ancho que deja «Dar de alta»: el buscador se estira y la lista de resultados se abre con el ancho de la pantalla.
+    <div className="flex items-center gap-1.5 max-md:flex-1 max-md:min-w-0">
       {dialogoSalida}
       <button
         type="button"
@@ -125,7 +126,7 @@ export function NavegadorPacientes({ ingresoId }: { ingresoId: string }) {
         <ChevronRight className="w-4 h-4" />
       </button>
 
-      <div className="relative">
+      <div className="relative max-md:flex-1 max-md:min-w-0">
         <Search className="w-3.5 h-3.5 text-slate-500 absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none" />
         <input
           type="text"
@@ -141,10 +142,10 @@ export function NavegadorPacientes({ ingresoId }: { ingresoId: string }) {
             else if (e.key === 'Enter' && resultados[sel]) { e.preventDefault(); ir(resultados[sel].id) }
             else if (e.key === 'Escape') { setQ(''); setAbierto(false) }
           }}
-          className="input !py-1.5 !pl-7 !text-xs w-36"
+          className="input !py-1.5 !pl-7 !text-xs w-full md:w-36"
         />
         {abierto && q.trim() !== '' && (
-          <div role="listbox" className="absolute right-0 top-full mt-1 w-72 bg-white border border-slate-200 rounded-lg shadow-lg z-30 py-1">
+          <div role="listbox" className="absolute right-0 top-full mt-1 w-72 max-md:fixed max-md:left-4 max-md:right-4 max-md:top-auto max-md:w-auto bg-white border border-slate-200 rounded-lg shadow-lg z-30 py-1">
             {resultados.length === 0 ? (
               <p className="px-3 py-2 text-xs text-slate-500">Ningún paciente ingresado coincide.</p>
             ) : (

@@ -57,7 +57,13 @@ const MAX_LINEAS_TOOLTIP = 6
 
 // Hab., Paciente, Edad, Días, Ingreso, Médico, Contención, Incidencias, flecha. Contención e Incidencias van
 // separadas por un hueco propio (la columna de Incidencias lleva relleno a la izquierda) para que no se lean como un solo grupo.
-const COLUMNAS_TABLA = '2.5rem minmax(0,2.1fr) 2.5rem 3rem 5rem minmax(0,0.8fr) 6rem 11.5rem 2rem'
+// El nombre tiene un mínimo de 12 rem y puede ocupar dos líneas, y el médico un mínimo de 6,5 rem: así ninguno de los dos se
+// corta ni se solapa con la columna de al lado. Por debajo de 1280 px la tabla se desplaza de lado (ver más abajo).
+const COLUMNAS_TABLA = '2.5rem minmax(12rem,2.1fr) 2.5rem 3rem 5rem minmax(6.5rem,0.8fr) 6rem 11.5rem 2rem'
+// Celda de la habitación: al desplazar la tabla de lado se queda fija a la izquierda, para saber de qué paciente es cada fila.
+// Ocupa toda la altura de la fila, relleno incluido (si no, los botones de contención, más altos, asoman por encima y por debajo).
+// Se ensancha con márgenes negativos (el relleno compensa) para tapar el hueco entre columnas y la franja del borde.
+const CELDA_HAB_FIJA = 'max-xl:self-stretch max-xl:flex max-xl:items-center max-xl:sticky max-xl:left-0 max-xl:z-[5] max-xl:bg-inherit max-xl:-ml-3 max-xl:pl-3 max-xl:-mr-3 max-xl:pr-3 max-xl:-my-2 max-xl:py-2'
 // Enlace que ocupa toda la fila (o tarjeta): se navega con un enlace de verdad, que se puede tabular, abrir en otra
 // pestaña y leen los lectores de pantalla. Los botones de dentro (contención, incidencias) quedan por encima.
 const ENLACE_FILA = 'after:absolute after:inset-0 after:content-[\'\'] focus:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-primary-400 focus-visible:after:rounded-[inherit]'
@@ -536,14 +542,14 @@ export default function Home() {
         )}
         {vista === 'tarjetas' ? vistaTarjetas() : (
         // Sin overflow-hidden a propósito: recortaría los tooltips de la primera fila. Las esquinas se redondean a mano.
-        <div className="card max-lg:overflow-x-auto">
-        <div className="max-lg:min-w-[760px]">
+        <div className="card max-xl:overflow-x-auto">
+        <div className="max-xl:min-w-[920px]">
           {/* Cabecera */}
           <div
             className="grid gap-x-3 items-end text-xs font-semibold text-slate-500 px-3 py-2 bg-slate-50 border-b rounded-t-xl"
             style={{ gridTemplateColumns: COLUMNAS_TABLA }}
           >
-            <div>Hab.</div>
+            <div className={`${CELDA_HAB_FIJA} max-xl:!items-end`}>Hab.</div>
             <div>Paciente</div>
             <div>Edad</div>
             <div>Días</div>
@@ -579,7 +585,7 @@ export default function Home() {
                   style={{ gridTemplateColumns: COLUMNAS_TABLA }}
                   title={esMedico ? `Ingresar en habitación ${n}` : `Habitación ${n} libre`}
                 >
-                  <span className="text-xs font-bold text-slate-500">{n}</span>
+                  <span className={`text-xs font-bold text-slate-500 ${CELDA_HAB_FIJA} max-xl:!bg-slate-50 max-xl:!-my-1.5 max-xl:!py-1.5`}>{n}</span>
                   {esMedico ? (
                     <Link to={`/pacientes/nuevo?habitacion=${n}`} className={`text-xs text-slate-500 hover:text-primary-700 ${ENLACE_FILA}`}>
                       — libre — <span className="sr-only">· ingresar en la habitación {n}</span>
@@ -622,7 +628,7 @@ export default function Home() {
                   style={{ gridTemplateColumns: COLUMNAS_TABLA }}
                 >
                   {/* Hab con semáforo */}
-                  <div>
+                  <div className={`${CELDA_HAB_FIJA} max-xl:!bg-white max-xl:group-hover:!bg-slate-50`}>
                     <div
                       className="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs"
                       style={
@@ -636,8 +642,8 @@ export default function Home() {
                   </div>
                   {/* Nombre */}
                   <div className="min-w-0 pr-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <p className="font-semibold text-slate-800 text-sm leading-tight truncate min-w-0">
+                    <div className="flex items-center gap-x-2 gap-y-1 min-w-0 flex-wrap">
+                      <p className="font-semibold text-slate-800 text-sm leading-tight min-w-0 break-words">
                         <Link to={`/ingresos/${ingreso.id}`} data-fila-paciente={ingreso.id} className={ENLACE_FILA}>{nombreDelPaciente}</Link>
                       </p>
                       <DistintivoAislamiento aislamiento={items[ingreso.id]?.aislamiento} ingresoId={ingreso.id} className="shrink-0" />
