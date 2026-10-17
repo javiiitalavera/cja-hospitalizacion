@@ -25,9 +25,10 @@ export function imprimirHTMLEnMarco(html: string): void {
   registrarAcceso('impresion', { detalle: titulo ? desescapar(titulo) : 'Documento' })
   const marco = document.createElement('iframe')
   marco.setAttribute('aria-hidden', 'true')
-  // Fuera de la pantalla pero con el ancho útil de un A4 vertical (210 − 2×12 mm): así el documento se maqueta como saldrá
-  // en papel y puede medirse (los documentos «de una sola página» se ajustan midiéndose a sí mismos).
-  marco.style.cssText = 'position:fixed;left:-10000px;top:0;width:186mm;height:280mm;border:0'
+  // Fuera de la pantalla pero con el ancho útil de un A4 vertical (210 − 12 − 17 mm de márgenes): así el documento se maqueta
+  // como saldrá en papel y puede medirse (los documentos «de una sola página» se ajustan midiéndose a sí mismos).
+  // El margen derecho es mayor que el izquierdo para que las impresoras que recortan por ese lado no corten la tabla.
+  marco.style.cssText = 'position:fixed;left:-10000px;top:0;width:181mm;height:280mm;border:0'
   const quitar = () => { if (marco.parentNode) marco.parentNode.removeChild(marco) }
   marco.onload = () => {
     const w = marco.contentWindow
@@ -59,7 +60,7 @@ export function pieImpresion(): string {
 
 function estiloBase(orientacion: 'portrait' | 'landscape'): string {
   return `
-  @page { size: A4 ${orientacion}; margin: 8mm 12mm; }
+  @page { size: A4 ${orientacion}; margin: 8mm 17mm 8mm 12mm; }
   * { box-sizing: border-box; }
   body { font-family: Arial, sans-serif; margin: 0; padding: 0; color: #111; }
   .cab { display: flex; justify-content: space-between; align-items: baseline; gap: 8mm; margin-bottom: 3mm; }

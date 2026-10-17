@@ -39,7 +39,7 @@ const MANUAL = 'c-m'   // 14 mm: bastan para anotar a mano y dejan más ancho a 
 const COLUMNAS: Record<Turno, ColumnaHoja[]> = {
   manana: ['Aseo', 'Diuresis', 'Deposición', 'Desayuno', 'Comida'].map((titulo) => ({ titulo, clase: MANUAL })),
   tarde: ['Diuresis', 'Deposición', 'Merienda', 'Cena'].map((titulo) => ({ titulo, clase: MANUAL })),
-  noche: ['Orina', 'Deposición'].map((titulo) => ({ titulo, clase: MANUAL })),
+  noche: ['Diuresis', 'Deposición'].map((titulo) => ({ titulo, clase: MANUAL })),
 }
 
 // Títulos de las columnas que las auxiliares rellenan a mano en el papel (Aseo, Diuresis, Deposición, comidas).
@@ -101,7 +101,7 @@ function filaHTML(n: number, p: PacienteHoja | undefined, turno: Turno): string 
     .map((i) => `<div class="ind">${escapeHtml(i.texto.trim())}</div>`)
     .join('')
   const celdas = cols.map((c) => {
-    const contenido = c.titulo === 'Diuresis' || c.titulo === 'Orina' ? escapeHtml(textoDiuresis(p)) : ''
+    const contenido = c.titulo === 'Diuresis' ? escapeHtml(textoDiuresis(p)) : ''
     return `<td class="${c.clase}">${contenido}</td>`
   }).join('')
   const via = `<td class="c-m c-via">${escapeHtml(textoVias(p.vias))}</td>`
