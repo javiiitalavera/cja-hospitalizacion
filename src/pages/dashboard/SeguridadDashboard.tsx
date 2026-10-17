@@ -244,11 +244,10 @@ export function SeguridadDashboard({ filtros, desde, hasta, onExplorar, onExplor
             {/* ── Caídas ──────────────────────────────────────── */}
             <section>
               <p className="section-title">Caídas</p>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 <TarjetaMetrica info="caidas_con_lesion" etiqueta="Con lesión" valor={caidas.con_lesion}
                   subvalor={caidas.tasa_con_lesion_1000 != null ? `${caidas.tasa_con_lesion_1000} / 1.000 días-estancia` : undefined} />
                 <TarjetaMetrica info="caidas_graves" etiqueta="Graves" valor={caidas.graves} />
-                <TarjetaMetrica info="caidas_pendientes" etiqueta="Pendientes de valoración" valor={caidas.pendientes_valoracion} />
                 <TarjetaMetrica info="caidas_repetidas" etiqueta="Pacientes con 2 o más caídas" valor={caidas.pacientes_con_caidas_repetidas ?? '—'} subvalor="En el periodo" />
               </div>
               {repetidas.length > 0 && (
@@ -291,10 +290,7 @@ export function SeguridadDashboard({ filtros, desde, hasta, onExplorar, onExplor
                   subvalor={ulceras.tasa_aparecidas_1000 != null ? `${ulceras.tasa_aparecidas_1000} / 1.000 días-estancia` : 'Origen: dentro del centro'} />
                 <TarjetaMetrica etiqueta="Presentes al ingreso" valor={ulceras.presentes_al_ingreso} subvalor="Origen: fuera del centro" />
                 <TarjetaMetrica etiqueta="Pacientes afectados" valor={ulceras.pacientes_afectados ?? '—'} />
-                <TarjetaMetrica etiqueta="Sin origen indicado" valor={ulceras.sin_origen ?? '—'} subvalor="Pendientes de completar en Curas" />
                 <TarjetaMetrica info="upp_grado" etiqueta="Grados III-IV" valor={ulceras.grado_iii_iv} />
-                <TarjetaMetrica info="upp_sin_grado" etiqueta="Sin grado valorado" valor={ulceras.sin_grado ?? '—'} />
-                <TarjetaMetrica etiqueta="No clasificables" valor={ulceras.grado_no_clasificable ?? '—'} subvalor="Ya valoradas como «no clasificable»; no son trabajo pendiente" />
               </div>
               <button type="button" onClick={irAEpisodiosConUPP}
                 className="text-xs text-primary-700 underline hover:text-primary-800 mt-2 text-left" data-ver-episodios-upp>

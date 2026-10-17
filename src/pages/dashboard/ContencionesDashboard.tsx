@@ -213,10 +213,9 @@ export function ContencionesDashboard({ filtros, desde, hasta }: { filtros: Filt
       {/* ── 1. Evolución ───────────────────────────────────── */}
       <section data-con-evolucion>
         <p className="section-title">Evolución <InfoIndicador clave="con_evolucion" /></p>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           <TarjetaMetrica etiqueta="Con contención activa" valor={pct(totales.act, totales.pd)} subvalor="De los días-paciente del periodo" />
           <TarjetaMetrica etiqueta="Con «si precisa» (sin activa)" valor={pct(totales.sp, totales.pd)} subvalor="De los días-paciente del periodo" />
-          <TarjetaMetrica etiqueta="Activa o «si precisa»" valor={pct(totales.act + totales.sp, totales.pd)} subvalor="De los días-paciente del periodo" />
           <TarjetaMetrica info="con_sin_registro" etiqueta="Sin registro de pauta" valor={pct(totales.sd, totales.pd)} subvalor="Días anteriores al primer registro" />
         </div>
         {muchoSinRegistro && (
@@ -445,7 +444,9 @@ export function ContencionesDashboard({ filtros, desde, hasta }: { filtros: Filt
                 <TarjetaMetrica etiqueta="Ingresan y salen con activa" valor={mantienen} />
                 <TarjetaMetrica etiqueta="Salen con activa sin haber ingresado con ella" valor={sinYSeVanCon} />
               </div>
-              <div className="card tabla-scroll mt-3">
+              <details className="mt-3 group">
+                <summary className="text-xs text-primary-700 underline cursor-pointer hover:text-primary-800">Ver la tabla completa (ingreso × alta)</summary>
+              <div className="card tabla-scroll mt-2">
                 <table className="w-full text-sm min-w-[36rem]">
                   <thead>
                     <tr className="border-b bg-slate-50 text-left text-xs font-semibold text-slate-500">
@@ -466,6 +467,7 @@ export function ContencionesDashboard({ filtros, desde, hasta }: { filtros: Filt
                   </tbody>
                 </table>
               </div>
+              </details>
             </>
           )
         })()}
