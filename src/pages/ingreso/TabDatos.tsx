@@ -16,12 +16,15 @@ function TabDatos({ ingreso, onUpdate, iniciarEditando = false }: { ingreso: Ing
   useEffect(() => {
     if (iniciarEditando) habitacionInputRef.current?.focus()
   }, [iniciarEditando])
-  const [ingresoEdit, setIngresoEdit] = useState({
-    habitacion: ingreso.habitacion?.toString() ?? '',
-    motivo_ingreso: ingreso.motivo_ingreso ?? '',
-    fecha_ingreso: ingreso.fecha_ingreso ?? '',
-    medico_responsable_id: ingreso.medico_responsable_id ?? '',
+  const valoresDe = (i: Ingreso) => ({
+    habitacion: i.habitacion?.toString() ?? '',
+    motivo_ingreso: i.motivo_ingreso ?? '',
+    fecha_ingreso: i.fecha_ingreso ?? '',
+    medico_responsable_id: i.medico_responsable_id ?? '',
   })
+  const [ingresoEdit, setIngresoEdit] = useState(valoresDe(ingreso))
+  // Valores con los que se abrió el formulario: lo que la persona toca es lo que difiere de ellos (no de la copia más reciente).
+  const partidaRef = useRef(valoresDe(ingreso))
   const [medicos, setMedicos] = useState<Profesional[]>([])
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -39,12 +42,8 @@ function TabDatos({ ingreso, onUpdate, iniciarEditando = false }: { ingreso: Ing
   // para no borrar en silencio un cambio a medio escribir.
   useEffect(() => {
     if (editando) return
-    setIngresoEdit({
-      habitacion: ingreso.habitacion?.toString() ?? '',
-      motivo_ingreso: ingreso.motivo_ingreso ?? '',
-      fecha_ingreso: ingreso.fecha_ingreso ?? '',
-      medico_responsable_id: ingreso.medico_responsable_id ?? '',
-    })
+    partidaRef.current = valoresDe(ingreso)
+    setIngresoEdit(partidaRef.current)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ingreso.habitacion, ingreso.motivo_ingreso, ingreso.fecha_ingreso, ingreso.medico_responsable_id, editando])
 
@@ -54,25 +53,68 @@ function TabDatos({ ingreso, onUpdate, iniciarEditando = false }: { ingreso: Ing
     // Nota: "estado" NO se toca aquí a propósito. Cambiar de activo a
     // alta/exitus/traslado pasa siempre por el flujo de "Dar de alta",
     // que genera el informe y dispara la auditoría correspondiente.
-    const { data, error: dbError } = await supabase
-      .from('ingresos')
-      .update({
-        habitacion: ingresoEdit.habitacion ? parseInt(ingresoEdit.habitacion) : null,
-        motivo_ingreso: ingresoEdit.motivo_ingreso,
-        fecha_ingreso: ingresoEdit.fecha_ingreso,
-        medico_responsable_id: ingresoEdit.medico_responsable_id || null,
-      })
+    //
+    // Solo se envían los campos que esta persona ha cambiado, y cada uno
+    // solo se escribe si sigue valiendo lo que esta pantalla cargó. Antes
+    // se enviaban los cuatro campos siempre: guardar el médico desde una
+    // copia antigua devolvía el motivo (u otro campo) a su valor viejo,
+    // pisando en silencio un cambio ya guardado por otra persona o pestaña.
+    const original: Record<string, string | number | null> = {
+      habitacion: ingreso.habitacion ?? null,
+      motivo_ingreso: ingreso.motivo_ingreso ?? '',
+      fecha_ingreso: ingreso.fecha_ingreso ?? '',
+      medico_responsable_id: ingreso.medico_responsable_id ?? null,
+    }
+    const nuevo: Record<string, string | number | null> = {
+      habitacion: ingresoEdit.habitacion ? parseInt(ingresoEdit.habitacion) : null,
+      motivo_ingreso: ingresoEdit.motivo_ingreso,
+      fecha_ingreso: ingresoEdit.fecha_ingreso,
+      medico_responsable_id: ingresoEdit.medico_responsable_id || null,
+    }
+    const partida = partidaRef.current as Record<string, string>
+    const cambios = Object.keys(nuevo).filter((k) => (ingresoEdit as Record<string, string>)[k] !== partida[k])
+    if (cambios.length === 0) {
+      setSaving(false)
+      setEditando(false)
+      return
+    }
+    const datos: Record<string, string | number | null> = {}
+    let consulta = supabase.from('ingresos').update(datos)
+    for (const k of cambios) {
+      datos[k] = nuevo[k]
+      // Un motivo vacío puede estar guardado como null o como ''.
+      if (original[k] === null) consulta = consulta.is(k, null)
+      else if (k === 'motivo_ingreso' && original[k] === '') consulta = consulta.or('motivo_ingreso.is.null,motivo_ingreso.eq.')
+      else consulta = consulta.eq(k, original[k] as string | number)
+    }
+    const SELECT = '*, paciente:pacientes(*), medico_responsable:profesionales(*), cmbd(circunstancia_alta)'
+    const { data, error: dbError } = await consulta
       .eq('id', ingreso.id)
-      .select('*, paciente:pacientes(*), medico_responsable:profesionales(*), cmbd(circunstancia_alta)')
-      .single()
-    setSaving(false)
+      .select(SELECT)
+      .maybeSingle()
     if (dbError) {
+      setSaving(false)
       setError('No se pudieron guardar los cambios. Inténtalo de nuevo.')
       return
     }
+    if (!data) {
+      // Ningún episodio cumple «sigue como lo cargué»: alguien lo ha cambiado mientras se editaba.
+      const { data: actual } = await supabase.from('ingresos').select(SELECT).eq('id', ingreso.id).maybeSingle()
+      setSaving(false)
+      if (!actual) { setError('No se pudieron guardar los cambios. Inténtalo de nuevo.'); return }
+      const ETIQUETA: Record<string, string> = { habitacion: 'la habitación', motivo_ingreso: 'el motivo', fecha_ingreso: 'la fecha de ingreso', medico_responsable_id: 'el médico responsable' }
+      const act = actual as unknown as Record<string, unknown>
+      const norma = (v: unknown) => (v === null || v === undefined || v === '' ? null : v)
+      const distintos = cambios.filter((k) => norma(act[k]) !== norma(original[k])).map((k) => ETIQUETA[k])
+      // Se refresca la copia de esta pantalla: si se pulsa «Guardar» otra vez, ya se está sabiendo lo que se pisa.
+      onUpdate(actual as unknown as Ingreso)
+      setError(`Alguien ha cambiado ${distintos.length ? distintos.join(', ') : 'estos datos'} mientras lo editabas, y no se ha guardado. Lo que has escrito sigue aquí; revisa el dato actual y pulsa Guardar de nuevo si sigue siendo lo que quieres.`)
+      return
+    }
+    setSaving(false)
     // Sincronizamos el estado del padre para que el encabezado y el resto
     // de pestañas reflejen los cambios sin necesidad de recargar la página.
-    if (data) onUpdate(data as unknown as Ingreso)
+    onUpdate(data as unknown as Ingreso)
     setSaved(true)
     setEditando(false)
     setTimeout(() => setSaved(false), 2000)
