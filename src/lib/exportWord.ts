@@ -261,10 +261,12 @@ function inyectarPie(footerXml: string): string {
 async function componerDocumento(zip: JSZip, cuerpo: string, cabecera: string): Promise<void> {
   const xmlRaw = await zip.file('word/document.xml')!.async('string')
   const sectPr = xmlRaw.match(/<w:sectPr[\s\S]*<\/w:sectPr>/)?.[0] ?? ''
-  zip.file('word/document.xml', xmlRaw.replace(/<w:body>[\s\S]*<\/w:body>/, () => `<w:body>${cuerpo}${sectPr}</w:body>`))
-  zip.file('word/header1.xml', cabecera)
+  // createFolders: false → sin entradas de carpeta («word/») dentro del .docx: un paquete de Word no las lleva.
+  const SIN_CARPETAS = { createFolders: false }
+  zip.file('word/document.xml', xmlRaw.replace(/<w:body>[\s\S]*<\/w:body>/, () => `<w:body>${cuerpo}${sectPr}</w:body>`), SIN_CARPETAS)
+  zip.file('word/header1.xml', cabecera, SIN_CARPETAS)
   const pie = zip.file('word/footer1.xml')
-  if (pie) zip.file('word/footer1.xml', inyectarPie(await pie.async('string')))
+  if (pie) zip.file('word/footer1.xml', inyectarPie(await pie.async('string')), SIN_CARPETAS)
   await comprobarXml(zip, ['word/document.xml', 'word/header1.xml', 'word/footer1.xml'])
 }
 
@@ -292,6 +294,7 @@ function descargar(zip: JSZip, nombre: string) {
   zip
     .generateAsync({
       type: 'blob',
+      compression: 'DEFLATE',   // como lo guarda Word (por defecto JSZip no comprime)
       mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     })
     .then((blob) => {
