@@ -98,7 +98,7 @@ export function construirLibro(ctx: Pick<ContextoExportacion, 'vista' | 'desde' 
   const generado = `${ahora.toLocaleDateString('es-ES')} ${ahora.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}`
 
   const filasCabecera: Celda[][] = [
-    ['CJA Hospital · Dashboard'],
+    ['CJA Hospital · Panel de control'],
     [],
     ['Vista', ctx.vista],
     ['Desde', fechaES(ctx.desde)],

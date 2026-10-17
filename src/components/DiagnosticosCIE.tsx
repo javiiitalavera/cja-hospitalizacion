@@ -288,7 +288,7 @@ export function BloqueDiagnosticosCMBD({ ingresoId }: { ingresoId: string }) {
         <div>
           <p className="text-sm font-semibold text-slate-700">Códigos CIE-10-ES</p>
           <p className="text-xs text-slate-500">
-            Los códigos valen para el CMBD y el dashboard. No aparecen en el informe al exportarlo ni al imprimirlo.
+            Los códigos valen para el CMBD y el panel de control. No aparecen en el informe al exportarlo ni al imprimirlo.
           </p>
         </div>
         <IndicadorGuardado estado={estado} className="shrink-0" />

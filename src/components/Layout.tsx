@@ -26,7 +26,7 @@ const navItems = [
   { to: '/hojas-turno', icon: ClipboardCheck, label: 'Hojas de turno', grupo: 2 },
   { to: '/curas', icon: Bandage, label: 'Curas y piel', grupo: 2 },
   { to: '/eventos', icon: AlertTriangle, label: 'Incidencias', grupo: 2 },
-  { to: '/dashboard', icon: BarChart2, label: 'Dashboard', soloAdmin: true, grupo: 3 },
+  { to: '/dashboard', icon: BarChart2, label: 'Panel de control', soloAdmin: true, grupo: 3 },
   { to: '/personal', icon: UserCog, label: 'Personal', soloAdmin: true, grupo: 3 },
   { to: '/auditoria', icon: History, label: 'Auditoría', soloAdmin: true, grupo: 3 },
 ]

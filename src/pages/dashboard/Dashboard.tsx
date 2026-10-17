@@ -139,7 +139,7 @@ export function Dashboard() {
   // todos los hooks a propósito: un "return" antes de un useState o
   // useEffect rompería las reglas de hooks de React en cuanto
   // esAdmin cambiara de valor entre renderizados.
-  const nombreVista = vistas.find((v) => v.valor === vista)?.etiqueta ?? 'Dashboard'
+  const nombreVista = vistas.find((v) => v.valor === vista)?.etiqueta ?? 'Panel de control'
   const medicoElegido = medicos.find((m) => m.id === filtros.medicoId)
   const medicoTexto = !filtros.medicoId ? 'Todos los médicos' : medicoElegido ? `${medicoElegido.nombre} ${medicoElegido.apellidos}` : 'Médico elegido'
   const contextoExportar = useMemo(
@@ -153,7 +153,7 @@ export function Dashboard() {
         <div className="card p-6 max-w-md">
           <p className="font-semibold text-slate-800">Acceso restringido</p>
           <p className="text-sm text-slate-500 mt-1">
-            Solo los administradores pueden ver el Dashboard.
+            Solo los administradores pueden ver el panel de control.
           </p>
         </div>
       </div>
@@ -162,11 +162,11 @@ export function Dashboard() {
 
   return (
     <div className="p-4 sm:p-6 md:p-8 space-y-6 ancho-tabla">
-      <CabeceraPagina className="!mb-0" titulo="Dashboard" subtitulo="Indicadores clínicos y de funcionamiento de la unidad" />
+      <CabeceraPagina className="!mb-0" titulo="Panel de control" subtitulo="Indicadores clínicos y de funcionamiento de la unidad" />
 
       <Segmentado
         className="[&_.segmentado-btn]:px-2.5"
-        etiqueta="Vista del dashboard"
+        etiqueta="Vista del panel de control"
         valor={vista}
         onChange={cambiarVista}
         opciones={vistas.map((v) => ({

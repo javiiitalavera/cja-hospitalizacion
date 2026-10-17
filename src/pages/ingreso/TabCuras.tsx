@@ -156,7 +156,7 @@ function CuerpoLesion({
     // El origen de una úlcera por presión alimenta el Dashboard (úlceras
     // producidas en el centro frente a las que ya traía), así que es obligatorio.
     if (f.caracteristicas === 'upp' && !f.origen) {
-      setError('Indica si la úlcera por presión se produjo dentro o fuera del centro: cuenta para los indicadores del Dashboard.')
+      setError('Indica si la úlcera por presión se produjo dentro o fuera del centro: cuenta para los indicadores del panel de control.')
       return
     }
     const frec = aEntero(pauta.frecuencia_horas)

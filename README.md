@@ -4,7 +4,7 @@ CJA Hospital es una aplicación web en desarrollo para apoyar el trabajo de una
 unidad de hospitalización psicogeriátrica. Complementa a Aegerus en los procesos
 que actualmente necesitan un registro más estructurado: episodios, informes de
 ingreso y alta, escalas clínicas, hoja de ítems, contenciones, incidencias, CMBD,
-auditoría y seguimiento de actividad, con un Dashboard de indicadores para
+auditoría y seguimiento de actividad, con un panel de control de indicadores para
 administradores que se puede exportar a Excel.
 
 El repositorio contiene únicamente código y datos de configuración de ejemplo.
@@ -56,9 +56,9 @@ npm run build
 - Las políticas RLS, funciones SQL, disparadores e índices están documentados
   dentro de esos archivos.
 
-## Dashboard
+## Panel de control (Dashboard)
 
-El Dashboard (solo administradores) reúne indicadores de actividad, diagnósticos,
+El panel de control (solo administradores) reúne indicadores de actividad, diagnósticos,
 evolución clínica, medicación, seguridad y demora al alta, más un explorador de
 episodios. Los cálculos pesados son funciones SQL `security invoker`
 (`dashboard_*`, `buscar_episodios_dashboard`) y el resto se calcula en el
@@ -94,5 +94,5 @@ Limitaciones conocidas de esta fase: la instalación limpia de Supabase todavía
 no está automatizada con CLI/CI y `npm run lint` conserva deuda técnica, aunque
 el build de producción sí debe completarse correctamente. `npm audit --omit=dev`
 mantiene además un aviso alto sin corrección publicada en `xlsx`; actualmente
-esa biblioteca solo genera exportaciones (CMBD y datos agregados del Dashboard)
+esa biblioteca solo genera exportaciones (CMBD y datos agregados del panel de control)
 y no procesa archivos aportados por usuarios.
