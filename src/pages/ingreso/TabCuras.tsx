@@ -612,7 +612,7 @@ export function TarjetaLesion({
           </p>
         </div>
         {puedeEditar && !curada && (
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex flex-wrap items-center gap-2">
             <button onClick={() => onEditar('valoracion')} title="Anotar cómo está la lesión hoy: medidas, grado, frotis, escalas" className="btn-secondary btn-sm"><Plus className="w-3.5 h-3.5" />Registrar evolución</button>
             <button onClick={() => onEditar('pauta')} title="Cambiar la cura que lleva: apósito, frecuencia, días" className="btn-secondary btn-sm"><Pencil className="w-3.5 h-3.5" />Cambiar cura</button>
           </div>

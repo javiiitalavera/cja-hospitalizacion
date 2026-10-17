@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { Segmentado } from '../../components/Segmentado'
 import type { Filtros, EstadoCarga } from './tipos'
 import { TarjetaMetrica, EstadoCargando, EstadoError, EstadoSinDatos } from './ComponentesDashboard'
 import {
@@ -118,14 +119,14 @@ export function DiagnosticosDashboard({ filtros, desde, hasta }: { filtros: Filt
 
       {/* ── Diagnósticos más frecuentes ───────────────────────── */}
       <section>
-        <div className="flex items-center justify-between gap-3 mb-3">
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 mb-3">
           <p className="section-title mb-0">Diagnósticos más frecuentes</p>
-          <div className="flex rounded-lg border overflow-hidden text-xs font-medium">
-            {([['principal', 'Principal'], ['todos', 'Principal + secundarios']] as const).map(([v, et]) => (
-              <button key={v} onClick={() => setModo(v)}
-                className={`px-3 py-1.5 ${modo === v ? 'bg-primary-50 text-primary-700' : 'text-slate-500 hover:bg-slate-50'}`}>{et}</button>
-            ))}
-          </div>
+          <Segmentado
+            etiqueta="Qué diagnósticos contar"
+            valor={modo}
+            onChange={setModo}
+            opciones={[{ clave: 'principal', etiqueta: 'Solo principal' }, { clave: 'todos', etiqueta: 'Con secundarios' }]}
+          />
         </div>
         <div className="card p-4">
           {frecuentes.length === 0 ? <EstadoSinDatos mensaje="Todavía no hay diagnósticos codificados en este periodo." /> : (

@@ -300,7 +300,7 @@ export default function FormularioEvento({ ingresoId, eventoExistente, onClose, 
           })()}
 
           {/* Fecha, hora, turno */}
-          <div className="grid grid-cols-3 gap-3">
+          <div className="rejilla-campos [--columnas:3]">
             <div>
               <label className="label">Fecha *</label>
               <input type="date" className="input" value={fecha} max={hoyLocal()} onChange={(e) => setFecha(e.target.value)} />

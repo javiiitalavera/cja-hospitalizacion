@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useCatalogoFarmacos } from '../../lib/farmacos'
 import type { Filtros, EstadoCarga } from './tipos'
-import { TarjetaMetrica, EstadoCargando, EstadoError, EstadoSinDatos } from './ComponentesDashboard'
+import { TarjetaMetrica, Unidad, EstadoCargando, EstadoError, EstadoSinDatos } from './ComponentesDashboard'
 import InfoIndicador from './InfoIndicador'
 import { COLUMNAS_MED, episodioMedDesdeFila, resumenPeriodo, type EpisodioMed } from './medicacion'
 import { porcentajeNum, useAporteExportacion, type AporteExport } from './exportar'
@@ -137,7 +137,7 @@ export function MedicacionDashboard({ filtros, desde, hasta }: { filtros: Filtro
         <TarjetaMetrica info="med_psicofarmacos" etiqueta="Psicofármacos por paciente" valor={`${num(r.medias.ingreso.psicofarmacos)} → ${num(r.medias.alta.psicofarmacos)}`}
           subvalor={r.rellenados.ingreso === 0 && r.rellenados.alta === 0 ? 'Sin datos suficientes' : 'Media al ingreso → al alta'} />
         <TarjetaMetrica info="med_cambio" etiqueta="Cambio medio ingreso → alta"
-          valor={r.cambioMedio ? `${signo(r.cambioMedio.farmacos)} fármacos` : '—'}
+          valor={r.cambioMedio ? <>{signo(r.cambioMedio.farmacos)} <Unidad>fármacos</Unidad></> : '—'}
           subvalor={r.cambioMedio ? `${signo(r.cambioMedio.psicofarmacos)} psicofármacos · ${r.conAmbos} salidas con ambos informes` : 'Sin datos suficientes: faltan salidas con la medicación rellenada en los dos informes'} />
       </div>
       {(r.sinRellenar.ingreso > 0 || r.sinRellenar.alta > 0 || r.sinMedicacion.ingreso > 0 || r.sinMedicacion.alta > 0) && (

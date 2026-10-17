@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { AlertCircle, RefreshCw } from 'lucide-react'
 import { Cargando } from '../../components/Cargando'
 import InfoIndicador from './InfoIndicador'
@@ -29,9 +30,14 @@ export function EstadoError({ mensaje, onReintentar }: { mensaje: string; onRein
   )
 }
 
+// Unidad que acompaña a un valor grande («fármacos»): más pequeña, para que una palabra larga no desborde la tarjeta con letra grande.
+export function Unidad({ children }: { children: ReactNode }) {
+  return <span className="text-base font-semibold text-slate-600">{children}</span>
+}
+
 export function TarjetaMetrica({ etiqueta, valor, subvalor, comparacion, onClick, info }: {
   etiqueta: string
-  valor: string | number
+  valor: ReactNode                 // número o texto; una unidad larga va en <Unidad> para que no se salga de la tarjeta
   subvalor?: string
   // Texto neutro de comparación, sin color de "bueno/malo" — la
   // dirección del cambio no se puede juzgar en automático.

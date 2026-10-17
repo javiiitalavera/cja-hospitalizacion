@@ -68,6 +68,14 @@
   .col-fija {
     @apply sticky left-0 z-[5];
   }
+  /* Rejilla de campos de formulario y filtros (sobre todo con fechas). Cada columna mide al menos 8,5 rem, así que el número de
+     columnas se adapta solo al ancho Y al tamaño de letra: con letra grande caben menos columnas en vez de recortar el valor de un
+     campo. --columnas es el máximo en pantalla ancha (por defecto 4; para 3: className="rejilla-campos [--columnas:3]"). */
+  .rejilla-campos {
+    --columnas: 4;
+    @apply grid gap-3;
+    grid-template-columns: repeat(auto-fill, minmax(max(8.5rem, calc((100% - (var(--columnas) - 1) * 0.75rem) / var(--columnas))), 1fr));
+  }
   /* Los tres anchos de contenido de la app. Cada pantalla usa uno según lo que muestra:
      formulario/ficha (texto que se lee), tabla/listado, o matriz densa con muchas columnas.
      Todo va alineado a la izquierda para que el título no cambie de sitio al cambiar de pantalla. */

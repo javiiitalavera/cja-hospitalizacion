@@ -227,11 +227,11 @@ export function ExploradorEpisodios() {
   return (
     <div className="space-y-4">
       <div className="card p-4 space-y-3">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="col-span-2">
-            <label className="label">Paciente o NHC</label>
-            <input className="input" value={filtros.busqueda} onChange={(e) => set({ busqueda: e.target.value })} />
-          </div>
+        <div>
+          <label className="label">Paciente o NHC</label>
+          <input className="input" value={filtros.busqueda} onChange={(e) => set({ busqueda: e.target.value })} />
+        </div>
+        <div className="rejilla-campos">
           <div>
             <label className="label">Estado</label>
             <select className="input" value={filtros.estado} onChange={(e) => set({ estado: e.target.value })}>

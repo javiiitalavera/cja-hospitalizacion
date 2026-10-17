@@ -194,7 +194,7 @@ export function Historico() {
   return (
     <div className="space-y-3">
       <div className="card p-4 space-y-3">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="rejilla-campos">
           <div>
             <label className="label">Desde</label>
             <InputFecha value={fDesde} onChange={setFDesde} />
@@ -224,7 +224,7 @@ export function Historico() {
           Más filtros
         </button>
         {masFiltros && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="rejilla-campos">
             <div>
               <label className="label">Turno</label>
               <select className="input" value={fTurno} onChange={(e) => setFTurno(e.target.value)}>

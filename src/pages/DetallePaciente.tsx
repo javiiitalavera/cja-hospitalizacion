@@ -260,8 +260,9 @@ export default function DetallePaciente() {
                 <div key={ing.id}
                   className={`card p-5 cursor-pointer hover:shadow-md transition-shadow ${esActual ? 'border-primary-200 bg-primary-50/30' : ''}`}
                   onClick={atajoDeRaton(() => navigate(`/ingresos/${ing.id}`))}>
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
+                  {/* En móvil los botones van debajo de los datos: al lado no caben con la letra grande. */}
+                  <div className="flex items-start justify-between gap-4 max-md:flex-col max-md:gap-3">
+                    <div className="flex-1 min-w-0 max-md:w-full">
                       <div className="flex items-center gap-2 flex-wrap mb-2">
                         <EstadoIngreso estado={ing.estado} className="text-xs font-semibold" />
                         {idx === 0 && ingresos.length > 1 && (
@@ -297,8 +298,8 @@ export default function DetallePaciente() {
                         <p className="text-xs text-slate-500 mt-2 truncate">{ing.motivo_ingreso}</p>
                       )}
                     </div>
-                    <div className="text-right shrink-0">
-                      <div className="flex gap-2 justify-end mb-2">
+                    <div className="text-right shrink-0 max-md:w-full max-md:flex max-md:flex-wrap max-md:items-center max-md:justify-between max-md:gap-2 max-md:text-left">
+                      <div className="flex flex-wrap gap-2 justify-end mb-2 max-md:mb-0">
                         {evCount > 0 && (
                           <button
                             onClick={() => navigate(`/ingresos/${ing.id}?tab=eventos`)}
@@ -384,11 +385,12 @@ export default function DetallePaciente() {
                 const editVal = (editData as any)[key] ?? ''
                 const opciones = (rest as any).opciones as string[] | undefined
                 return (
-                  <div key={key} className="flex items-center px-5 py-3 text-sm border-b last:border-0">
-                    <span className="w-44 text-slate-500 shrink-0">{label}</span>
+                  <div key={key} className="flex items-center gap-2 px-5 py-3 max-md:px-4 text-sm border-b last:border-0">
+                    {/* Ancho proporcional en móvil: con letra grande una etiqueta de ancho fijo dejaba el valor sin sitio. */}
+                    <span className="w-44 max-md:w-2/5 max-md:max-w-44 text-slate-500 shrink-0">{label}</span>
                     {editando ? (
                       opciones ? (
-                        <select className="input py-1 text-sm"
+                        <select className="input py-1 text-sm min-w-0 flex-1"
                           value={editVal}
                           onChange={e => setEditData(prev => ({ ...prev, [key]: e.target.value }))}>
                           <option value="">—</option>
@@ -397,13 +399,13 @@ export default function DetallePaciente() {
                       ) : (
                         <input
                           type={type}
-                          className="input py-1 text-sm"
+                          className="input py-1 text-sm min-w-0 flex-1"
                           value={editVal}
                           onChange={e => setEditData(prev => ({ ...prev, [key]: e.target.value }))}
                         />
                       )
                     ) : (
-                      <span className="text-slate-800">
+                      <span className="text-slate-800 min-w-0 break-words">
                         {type === 'date' && val
                           ? new Date(val).toLocaleDateString('es-ES')
                           : val || <span className="text-slate-500">—</span>}

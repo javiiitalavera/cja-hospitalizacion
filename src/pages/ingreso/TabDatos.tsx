@@ -102,7 +102,7 @@ function TabDatos({ ingreso, onUpdate, iniciarEditando = false }: { ingreso: Ing
           ['Teléfono familiar', p.contacto_familiar_telefono],
         ] as [string, string | null | undefined][]).map(([k, v]) => (
           <div key={k} className="flex py-1">
-            <span className="w-40 max-md:w-36 text-slate-500 shrink-0">{k}</span>
+            <span className="w-40 max-md:w-2/5 max-md:max-w-40 text-slate-500 shrink-0">{k}</span>
             <span className="text-slate-700 min-w-0 break-words">{v || <span className="text-slate-500">—</span>}</span>
           </div>
         ))}
@@ -201,7 +201,7 @@ function TabDatos({ ingreso, onUpdate, iniciarEditando = false }: { ingreso: Ing
         <div className="grid grid-cols-1 gap-y-1 text-sm">
           {rowsIngreso.map(([k, v]) => (
             <div key={k} className="flex py-1">
-              <span className="w-40 max-md:w-36 text-slate-500 shrink-0">{k}</span>
+              <span className="w-40 max-md:w-2/5 max-md:max-w-40 text-slate-500 shrink-0">{k}</span>
               <span className="text-slate-700 min-w-0 break-words">{v || <span className="text-slate-500">—</span>}</span>
             </div>
           ))}

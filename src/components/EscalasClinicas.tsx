@@ -23,10 +23,10 @@ export function TarjetaEscala({ titulo, resultado, incompleta, onAbrir, soloLect
     <button
       type="button"
       onClick={onAbrir}
-      className="flex items-center justify-between w-full px-4 py-3 bg-white rounded-lg border border-slate-200 hover:border-primary-300 hover:bg-primary-50/20 transition-colors text-left"
+      className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 w-full px-4 py-3 bg-white rounded-lg border border-slate-200 hover:border-primary-300 hover:bg-primary-50/20 transition-colors text-left"
     >
       <span className="text-sm font-medium text-slate-700">{titulo}</span>
-      <span className="flex items-center gap-3">
+      <span className="flex items-center gap-3 ml-auto">
         <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
           incompleta ? 'bg-slate-100 text-slate-500' : 'bg-primary-50 text-primary-700'
         }`}>
