@@ -14,6 +14,7 @@ import { encadenar } from '../../lib/colaGuardado'
 function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo?: { nombre: string; habitacion?: number | null } }) {
   const [data, setData] = useState<Partial<ItemsPaciente & { version: number }>>({})
   const [estado, setEstado] = useState<'inactivo' | 'pendiente' | 'guardando' | 'guardado' | 'error' | 'conflicto'>('inactivo')
+  const [errorRecarga, setErrorRecarga] = useState('')   // fallo al pedir la versión más reciente tras un conflicto: el borrador no se toca
   const [verHistorico, setVerHistorico] = useState(false)
   // Estado de la carga de los ítems: hasta que llegan (o si falla) no se enseña el formulario ni se puede guardar,
   // para que un formulario vacío por error de carga no se confunda con «no lleva nada» ni se guarde encima de datos reales.
@@ -113,7 +114,9 @@ function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo
   }
 
   async function recargarTrasConflicto() {
-    const { data: d } = await supabase.from('items_paciente').select('*').eq('ingreso_id', ingresoId).maybeSingle()
+    const { data: d, error } = await supabase.from('items_paciente').select('*').eq('ingreso_id', ingresoId).maybeSingle()
+    if (error) { setErrorRecarga('No se ha podido obtener la versión actual (comprueba la conexión). Tu borrador sigue aquí; inténtalo de nuevo.'); return }
+    setErrorRecarga('')
     versionGuardadaRef.current = null
     setData(d ?? {})
     setSucio(false)
@@ -156,6 +159,7 @@ function TabItems({ ingresoId, pacienteInfo }: { ingresoId: string; pacienteInfo
           <button onClick={recargarTrasConflicto} className="btn-secondary btn-sm shrink-0">Ver la versión más reciente</button>
         }>
           Alguien más ha guardado cambios en esta hoja mientras la editabas. Lo que has marcado sigue aquí, sin guardar.
+          {errorRecarga && <> {errorRecarga}</>}
         </AvisoFicha>
       )}
 

@@ -202,6 +202,7 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
   const [data, setData] = useState<CMBDData>({ servicio: 'GRT' })
   const [loading, setLoading] = useState(true)
   const [estado, setEstado] = useState<'inactivo' | 'pendiente' | 'guardando' | 'guardado' | 'error' | 'conflicto'>('inactivo')
+  const [errorRecarga, setErrorRecarga] = useState('')   // fallo al pedir la versión más reciente tras un conflicto: el borrador no se toca
   const [exportando, setExportando] = useState(false)
   const [errorFaltantes, setErrorFaltantes] = useState<string[]>([])
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -305,7 +306,9 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
 
   async function recargarTrasConflicto() {
     if (debounceRef.current) { clearTimeout(debounceRef.current); debounceRef.current = null }
-    const { data: d } = await supabase.from('cmbd').select('*').eq('ingreso_id', ingresoId).maybeSingle()
+    const { data: d, error } = await supabase.from('cmbd').select('*').eq('ingreso_id', ingresoId).maybeSingle()
+    if (error) { setErrorRecarga('No se ha podido obtener la versión actual (comprueba la conexión). Tu borrador sigue aquí; inténtalo de nuevo.'); return }
+    setErrorRecarga('')
     guardadaRef.current = null
     if (d) setData(d as CMBDData)
     setEstado('inactivo')
@@ -473,6 +476,7 @@ export function TabCMBD({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
           <button onClick={recargarTrasConflicto} className="btn-secondary btn-sm shrink-0">Ver la versión más reciente</button>
         }>
           Alguien más ha guardado cambios en el CMBD mientras lo editabas. Lo que has escrito sigue aquí, sin guardar todavía.
+          {errorRecarga && <> {errorRecarga}</>}
         </AvisoFicha>
       )}
 

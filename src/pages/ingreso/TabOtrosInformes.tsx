@@ -189,6 +189,7 @@ function EditorInforme({
   const plantilla = plantillaPorId(informe.plantilla)
   const [campos, setCampos] = useState<Record<string, string>>(informe.campos ?? {})
   const [estado, setEstado] = useState<EstadoGuardado>('inactivo')
+  const [errorRecarga, setErrorRecarga] = useState('')   // fallo al pedir la versión más reciente tras un conflicto: el borrador no se toca
   const [errorGuardado, setErrorGuardado] = useState('')
   const [errorAccion, setErrorAccion] = useState('')
 
@@ -243,7 +244,9 @@ function EditorInforme({
   }
 
   async function recargarTrasConflicto() {
-    const { data } = await supabase.from('informes_puntuales').select(SELECT_INFORME).eq('id', informe.id).maybeSingle()
+    const { data, error } = await supabase.from('informes_puntuales').select(SELECT_INFORME).eq('id', informe.id).maybeSingle()
+    if (error) { setErrorRecarga('No se ha podido obtener la versión actual (comprueba la conexión). Tu borrador sigue aquí; inténtalo de nuevo.'); return }   // sin versión nueva no se sale del editor: se perdería el borrador
+    setErrorRecarga('')
     if (!data) { onVolver(); return }
     const d = data as unknown as InformePuntual
     conflictoRef.current = false
@@ -320,6 +323,7 @@ function EditorInforme({
           <button onClick={recargarTrasConflicto} className="btn-secondary btn-sm shrink-0">Ver la versión más reciente</button>
         }>
           Alguien más ha guardado este informe. Lo que has escrito sigue aquí, sin guardar.
+          {errorRecarga && <> {errorRecarga}</>}
         </AvisoFicha>
       )}
       {!esMedico && (

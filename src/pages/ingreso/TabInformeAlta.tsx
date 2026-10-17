@@ -34,6 +34,7 @@ type EstadoGuardado = 'inactivo' | 'pendiente' | 'guardando' | 'guardado' | 'err
 function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: Ingreso | null }) {
   const [data, setData] = useState<Partial<InformeAlta & { version: number }>>({})
   const [estado, setEstado] = useState<EstadoGuardado>('inactivo')
+  const [errorRecarga, setErrorRecarga] = useState('')   // fallo al pedir la versión más reciente tras un conflicto: el borrador no se toca
   const [informeIngreso, setInformeIngreso] = useState<Partial<InformeIngreso>>({})
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -258,7 +259,9 @@ function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
 
   async function recargarTrasConflicto() {
     if (debounceRef.current) { clearTimeout(debounceRef.current); debounceRef.current = null }
-    const { data: d } = await supabase.from('informe_alta').select('*').eq('ingreso_id', ingresoId).maybeSingle()
+    const { data: d, error } = await supabase.from('informe_alta').select('*').eq('ingreso_id', ingresoId).maybeSingle()
+    if (error) { setErrorRecarga('No se ha podido obtener la versión actual (comprueba la conexión). Tu borrador sigue aquí; inténtalo de nuevo.'); return }
+    setErrorRecarga('')
     versionGuardadaRef.current = null
     setData(d ?? {})
     setAbiertos((prev) => new Set([...prev, ...CAMPOS_OPCIONALES.filter((k) => ((d as Record<string, unknown> | null)?.[k] as string | undefined)?.trim())]))
@@ -328,6 +331,7 @@ function TabInformeAlta({ ingresoId, ingreso }: { ingresoId: string; ingreso: In
           <button onClick={recargarTrasConflicto} className="btn-secondary btn-sm shrink-0">Ver la versión más reciente</button>
         }>
           Alguien más ha guardado cambios en este informe mientras lo editabas. Lo que has escrito sigue aquí, sin guardar todavía.
+          {errorRecarga && <> {errorRecarga}</>}
         </AvisoFicha>
       )}
 
