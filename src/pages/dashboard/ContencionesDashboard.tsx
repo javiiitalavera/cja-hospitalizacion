@@ -210,18 +210,13 @@ export function ContencionesDashboard({ filtros, desde, hasta }: { filtros: Filt
 
   return (
     <div className="space-y-8" data-contenciones>
-      <p className="text-xs text-slate-600 max-w-3xl">
-        Todo se reconstruye con el historial de cambios de la pauta: cada pauta vale desde el día en que se registró hasta que se cambió.
-        Los días anteriores al primer registro de un episodio quedan como «sin registro»: no se sabe qué había y no se cuentan como «sin contención».
-      </p>
-
       {/* ── 1. Evolución ───────────────────────────────────── */}
       <section data-con-evolucion>
-        <p className="section-title">Evolución</p>
+        <p className="section-title">Evolución <InfoIndicador clave="con_evolucion" /></p>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <TarjetaMetrica info="con_evolucion" etiqueta="Con contención activa" valor={pct(totales.act, totales.pd)} subvalor="De los días-paciente del periodo" />
-          <TarjetaMetrica info="con_evolucion" etiqueta="Con «si precisa» (sin activa)" valor={pct(totales.sp, totales.pd)} subvalor="De los días-paciente del periodo" />
-          <TarjetaMetrica info="con_evolucion" etiqueta="Activa o «si precisa»" valor={pct(totales.act + totales.sp, totales.pd)} subvalor="De los días-paciente del periodo" />
+          <TarjetaMetrica etiqueta="Con contención activa" valor={pct(totales.act, totales.pd)} subvalor="De los días-paciente del periodo" />
+          <TarjetaMetrica etiqueta="Con «si precisa» (sin activa)" valor={pct(totales.sp, totales.pd)} subvalor="De los días-paciente del periodo" />
+          <TarjetaMetrica etiqueta="Activa o «si precisa»" valor={pct(totales.act + totales.sp, totales.pd)} subvalor="De los días-paciente del periodo" />
           <TarjetaMetrica info="con_sin_registro" etiqueta="Sin registro de pauta" valor={pct(totales.sd, totales.pd)} subvalor="Días anteriores al primer registro" />
         </div>
         {muchoSinRegistro && (
@@ -333,13 +328,13 @@ export function ContencionesDashboard({ filtros, desde, hasta }: { filtros: Filt
 
       {/* ── 3. Duración ────────────────────────────────────── */}
       <section data-con-duracion>
-        <p className="section-title">Duración de la contención activa</p>
+        <p className="section-title">Duración de la contención activa <InfoIndicador clave="con_terminadas" /></p>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          <TarjetaMetrica info="con_terminadas" etiqueta="Retiradas en el periodo" valor={duracion.terminadas.n} />
-          <TarjetaMetrica info="con_terminadas" etiqueta="Duración mediana" valor={duracion.terminadas.mediana != null ? `${num1(duracion.terminadas.mediana)} días` : '—'} />
-          <TarjetaMetrica info="con_terminadas" etiqueta="Duración media" valor={duracion.terminadas.media != null ? `${num1(duracion.terminadas.media)} días` : '—'} />
-          <TarjetaMetrica info="con_terminadas" etiqueta="Duración máxima" valor={duracion.terminadas.maximo != null ? `${duracion.terminadas.maximo} días` : '—'} />
-          <TarjetaMetrica info="con_terminadas" etiqueta={`Con más de ${datos.umbral_dias} días`} valor={duracion.terminadas.mas_del_umbral} />
+          <TarjetaMetrica etiqueta="Retiradas en el periodo" valor={duracion.terminadas.n} />
+          <TarjetaMetrica etiqueta="Duración mediana" valor={duracion.terminadas.mediana != null ? `${num1(duracion.terminadas.mediana)} días` : '—'} />
+          <TarjetaMetrica etiqueta="Duración media" valor={duracion.terminadas.media != null ? `${num1(duracion.terminadas.media)} días` : '—'} />
+          <TarjetaMetrica etiqueta="Duración máxima" valor={duracion.terminadas.maximo != null ? `${duracion.terminadas.maximo} días` : '—'} />
+          <TarjetaMetrica etiqueta={`Con más de ${datos.umbral_dias} días`} valor={duracion.terminadas.mas_del_umbral} />
         </div>
 
         <div className="flex items-center gap-2 mt-4 mb-2">
@@ -384,8 +379,7 @@ export function ContencionesDashboard({ filtros, desde, hasta }: { filtros: Filt
       <section data-con-sucesos>
         <p className="section-title">Caídas y agresiones según la contención <InfoIndicador clave="con_sucesos" /></p>
         <p className="aviso aviso-info text-xs mb-3 max-w-3xl">
-          Esto muestra una asociación, no una causa. La contención se pauta a los pacientes con más riesgo, así que es normal que tengan más sucesos;
-          no indica que la contención los provoque ni que los evite.
+          Asociación, no causa: la contención se pauta a quien tiene más riesgo, así que es esperable que tengan más sucesos.
         </p>
         <div className="grid lg:grid-cols-2 gap-4">
           {Object.keys(SUCESO_LABEL).map((tipo) => {
@@ -446,10 +440,10 @@ export function ContencionesDashboard({ filtros, desde, hasta }: { filtros: Filt
           return (
             <>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <TarjetaMetrica info="con_ingreso_alta" etiqueta="Salidas del periodo" valor={ingreso_vs_alta.altas} />
-                <TarjetaMetrica info="con_ingreso_alta" etiqueta="Ingresan con activa y se van sin ella" valor={activaYSeVanSin} subvalor={conIngreso > 0 ? `De ${conIngreso} que ingresaron con contención activa` : undefined} />
-                <TarjetaMetrica info="con_ingreso_alta" etiqueta="Ingresan y salen con activa" valor={mantienen} />
-                <TarjetaMetrica info="con_ingreso_alta" etiqueta="Salen con activa sin haber ingresado con ella" valor={sinYSeVanCon} />
+                <TarjetaMetrica etiqueta="Salidas del periodo" valor={ingreso_vs_alta.altas} />
+                <TarjetaMetrica etiqueta="Ingresan con activa y se van sin ella" valor={activaYSeVanSin} subvalor={conIngreso > 0 ? `De ${conIngreso} que ingresaron con contención activa` : undefined} />
+                <TarjetaMetrica etiqueta="Ingresan y salen con activa" valor={mantienen} />
+                <TarjetaMetrica etiqueta="Salen con activa sin haber ingresado con ella" valor={sinYSeVanCon} />
               </div>
               <div className="card tabla-scroll mt-3">
                 <table className="w-full text-sm min-w-[36rem]">
@@ -472,9 +466,6 @@ export function ContencionesDashboard({ filtros, desde, hasta }: { filtros: Filt
                   </tbody>
                 </table>
               </div>
-              <p className="text-xs text-slate-500 mt-2">
-                «Sin dato»: no había pauta registrada en ese momento. Al ingreso cuenta la primera pauta si se registró en los primeros {datos.ventana_ingreso_dias} días.
-              </p>
             </>
           )
         })()}
