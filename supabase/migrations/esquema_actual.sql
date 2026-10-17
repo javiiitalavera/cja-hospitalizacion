@@ -2364,7 +2364,10 @@ begin
   tramos0 as (
     select e.ingreso_id, e.id, e.cambiado_en, e.desde, e.siguiente, ep.estado,
            private.categoria_contencion(e.dia, e.noche) = 'activa' as activa,
-           coalesce(e.siguiente, case when ep.estado = 'activo' then v_hoy + 1 else ep.fecha_alta end) as hasta
+           -- Un tramo no pasa de la fecha de alta, aunque después se registrara un cambio de pauta (alta retroactiva).
+           least(coalesce(e.siguiente, case when ep.estado = 'activo' then v_hoy + 1 else ep.fecha_alta end),
+                 coalesce(ep.fecha_alta, 'infinity'::date)) as hasta,
+           (e.siguiente is null or (ep.estado <> 'activo' and e.siguiente >= ep.fecha_alta)) as fin_por_alta
     from est e
     inner join ep on ep.id = e.ingreso_id
   ),
@@ -2383,7 +2386,7 @@ begin
     select t.ingreso_id, t.grupo, min(t.desde) as desde, max(t.hasta) as hasta,
            case
              when bool_or(t.siguiente is null) and max(t.estado) = 'activo' then 'vigente'
-             when bool_or(t.siguiente is null) then 'alta'
+             when bool_or(t.fin_por_alta) then 'alta'
              else 'retirada'
            end as cierre
     from tramos2 t
@@ -2394,7 +2397,8 @@ begin
     select i.*, (i.hasta - i.desde) as dias from islas i
   ),
   -- Caídas y agresiones físicas, con la pauta que había en el momento (la última registrada antes). Sin hora, se toma
-  -- el final de ese día.
+  -- el final de ese día. Limitación conocida: el suceso guarda fecha y hora locales sin zona, así que la hora repetida
+  -- al acabar el horario de verano (2:00-3:00 de la última noche de octubre) es ambigua y se toma la segunda vez.
   ev as (
     select e.id, e.tipo, e.ingreso_id, e.datos,
            ((e.fecha + coalesce(e.hora, time '23:59:59'))::timestamp at time zone 'Europe/Madrid') as momento,
@@ -2455,7 +2459,7 @@ begin
     from altas a
     left join lateral (
       select e.dia, e.noche from est0 e
-      where e.ingreso_id = a.id and e.desde <= a.fecha_ingreso + c_ventana_ingreso
+      where e.ingreso_id = a.id and e.desde < a.fecha_ingreso + c_ventana_ingreso
       order by e.cambiado_en, e.id limit 1
     ) i on true
     left join lateral (
