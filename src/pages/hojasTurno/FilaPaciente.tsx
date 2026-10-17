@@ -127,7 +127,7 @@ export function FilaPaciente({ n, p, turno, columnas, acciones }: {
       </td>
       {columnas.map((c) => (
         <td key={c} className="px-0.5 py-2 text-center text-[0.65rem] text-slate-500 bg-slate-50/70 border-l border-dashed border-slate-200">
-          {c === 'Diuresis' || c === 'Orina' ? diuresis : ''}
+          {c === 'Diuresis' ? diuresis : ''}
         </td>
       ))}
       {/* La vía sale de la Hoja de ítems del paciente: aquí solo se muestra, como Diuresis. */}
